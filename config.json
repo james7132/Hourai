@@ -1,0 +1,6 @@
+{
+	"Token" : "<YOUR TOKEN HERE>",
+	"LogDirectory" : "logs",
+	"ConfigDirectory" : "config",
+	"CommandPrefix" :  "~"
+}
