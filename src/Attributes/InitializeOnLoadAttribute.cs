@@ -3,7 +3,7 @@ using System;
 namespace DrumBot {
 
     [AttributeUsage(AttributeTargets.Class)]
-    class InitializeOnLoadAttribute : Attribute {
+    public class InitializeOnLoadAttribute : Attribute {
         public int Order { get; set; }
 
         public InitializeOnLoadAttribute() : this(0) { }

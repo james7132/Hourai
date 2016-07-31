@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Discord;
@@ -12,23 +13,40 @@ namespace DrumBot {
     class DrumBot {
         readonly DiscordClient _client;
         readonly HashSet<ulong> _servers;
-        readonly ChannelSet _channelSet;
+        public static readonly ChannelSet ChannelSet;
+        public static readonly Config Config;
+
+        static DrumBot() {
+            Log.Info("Initializing..."); 
+            ChannelSet = new ChannelSet();
+            Config = Config.Load();
+            var types = from assembly in AppDomain.CurrentDomain.GetAssemblies()
+                        from type in assembly.GetTypes()
+                        where
+                            !type.IsAbstract && type.IsClass
+                                && type.IsDefined(
+                                    typeof(InitializeOnLoadAttribute), false)
+                        orderby -type.GetAttribute<InitializeOnLoadAttribute>().Order
+                        select type;
+            foreach(var type in types) {
+                Log.Info($"Executing static initializer for { type.FullName } ({type.GetAttribute<InitializeOnLoadAttribute>().Order})...");
+                RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+            }
+        }
 
         public DrumBot() {
             _client = new DiscordClient();
-            _channelSet = new ChannelSet();
             _servers = new HashSet<ulong>();
-            Log.Info("Starting DrumBot..");
-
-            var config = DrumBotConfig.Instance;
+            Log.Info($"Starting { Config.BotName }..");
 
             _client.MessageReceived +=
                 async (s, e) => {
                     if (e.Message.IsAuthor)
                         return;
-                    await _channelSet.Get(e.Channel).LogMessage(e);
+                    await ChannelSet.Get(e.Channel).LogMessage(e);
                 };
             _client.ServerAvailable += ServerLog("Discovered", id => _servers.Add(id));
+            _client.ServerAvailable += (s, e) => Config.GetServerConfig(e.Server);
             _client.ServerAvailable += JoinServer;
             _client.ServerUnavailable += ServerLog("Lost", id => _servers.Remove(id));
             _client.ChannelCreated += ChannelLog("created");
@@ -37,36 +55,55 @@ namespace DrumBot {
             _client.UserLeft += UserLog("left");
 
             var commandService = new CommandService(new CommandServiceConfigBuilder {
-                    PrefixChar = config.CommandPrefix,
+                    PrefixChar = Config.CommandPrefix,
                     HelpMode = HelpMode.Public
                 }.Build());
 
-            commandService.CreateCommand("search")
-                    .Alias("find", "s", "f")
-                    .Description("Searches logs for certain texts.")
-                    .Parameter("SearchTerm")
-                    .Do(async e => {
-                        Log.Info($"Command Triggered: Search by { e.User.ToIDString() }");
-                        string reply = await _channelSet.Get(e.Channel).Search(e.GetArg("SearchTerm"));
-                        await e.Channel.SendMessage($"{e.User.Mention}: Matches found in {e.Channel.Mention}:\n{reply}");
-                    });
+            var commandMethods =
+                from assembly in AppDomain.CurrentDomain.GetAssemblies()
+                from type in assembly.GetTypes()
+                from method in type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)
+                where
+                    method.IsDefined(typeof(CommandAttribute), false)
+                        && method.IsStatic
+                select method;
 
-            //commandService.CreateCommand("avatar")
-            //        .Description("Gets the avatar URLs for specified members")
-            //        .Do(async e => {
-            //            Log.Info($"Command Triggered: Avatar by { e.User.ToIDString() }");
-            //            if(!e.Message.MentionedUsers.Any()) {
-            //                await e.Channel.SendMessage("No user(s) specified. Please mention at least one user.");
-            //                return;
-            //            }
-            //            var stringBuilder = new StringBuilder();
-            //            foreach (User user in e.Message.MentionedUsers) {
-            //                stringBuilder.AppendLine(user.AvatarUrl);
-            //            }
-            //            await e.Channel.SendMessage(stringBuilder.ToString());
-            //        });
+            Log.Info("Initializing commands...");
+            foreach (MethodInfo commandMethod in commandMethods) {
+                if(!IsMethodCompatibleWithDelegate<Func<CommandEventArgs, Task>>(commandMethod)) {
+                    Log.Error($"Static method { commandMethod } is marked as a command but isn't compatible with the signature needed.");
+                }
+                var name = commandMethod.GetAttribute<CommandAttribute>().Name;
+                var func = (Func<CommandEventArgs, Task>)Delegate.CreateDelegate(typeof(Func<CommandEventArgs, Task>), commandMethod);
+                Log.Info($"Creating command \"{name}\"");
+                var command = commandService.CreateCommand(name);
+                if (!commandMethod.IsPublic) {
+                    Log.Info($"Command \"{ name }\" is not public, hiding.");
+                    command = command.Hide();
+                }
+                foreach (var builder in commandMethod.GetCustomAttributes<CommandBuilderAttribte>()) 
+                    command = builder.Build(name, command);
+                foreach(var decorator in commandMethod.GetCustomAttributes<CommandDecoratorAttribute>())
+                    func = decorator.Decorate(name, func);
+                command.Do(func);
+                Log.Info($"Successfully created command \"{name}\"");
+            }
 
             _client.AddService(commandService);
+        }
+
+        bool IsMethodCompatibleWithDelegate<T>(MethodInfo method) where T : class {
+            Type delegateType = typeof(T);
+            MethodInfo delegateSignature = delegateType.GetMethod("Invoke");
+
+            bool parametersEqual = delegateSignature
+                .GetParameters()
+                .Select(x => x.ParameterType)
+                .SequenceEqual(method.GetParameters()
+                    .Select(x => x.ParameterType));
+
+            return delegateSignature.ReturnType == method.ReturnType &&
+                   parametersEqual;
         }
 
         EventHandler<UserEventArgs> UserLog(string eventType) {
@@ -92,41 +129,22 @@ namespace DrumBot {
 
         void JoinServer(object sender, ServerEventArgs serverEventArgs) {
             foreach (Channel channel in serverEventArgs.Server.TextChannels)
-                _channelSet.Get(channel);
+                ChannelSet.Get(channel);
         }
 
         async Task Login() {
             Log.Info("Connecting to Discord...");
-            await _client.Connect(DrumBotConfig.Instance.Token);
+            await _client.Connect(Config.Token);
             Log.Info($"Logged in as { _client.CurrentUser.ToIDString() }");
         }
 
         public void Run() {
             _client.ExecuteAndWait(async () => {
                 await Login();
-                _client.SetGame("James's Bongos");
             });
-            _client.Disconnect();
-        }
-
-        static void StaticInitializers() {
-            var types = from assembly in AppDomain.CurrentDomain.GetAssemblies()
-                        from type in assembly.GetTypes()
-                        where
-                            !type.IsAbstract && type.IsClass
-                                && type.IsDefined(
-                                    typeof(InitializeOnLoadAttribute), false)
-                        orderby -type.GetAttribute<InitializeOnLoadAttribute>().Order
-                        select type;
-            foreach(var type in types) {
-                Log.Info($"Executing static initializer for { type.FullName } ({type.GetAttribute<InitializeOnLoadAttribute>().Order})...");
-                RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            }
         }
 
         static void Main(string[] args) {
-            Log.Info("Initializing..."); 
-            StaticInitializers();
             new DrumBot().Run();
         }
     }

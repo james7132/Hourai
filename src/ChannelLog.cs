@@ -15,7 +15,7 @@ namespace DrumBot {
 
         static ChannelLog() {
             LogDirectory = Path.Combine(DrumPath.ExecutionDirectory,
-                DrumBotConfig.Instance.LogDirectory);
+                DrumBot.Config.LogDirectory);
             Log.Info($"Chat Log Directory: { LogDirectory }");
         }
 
@@ -28,7 +28,7 @@ namespace DrumBot {
             _channelDirectory = Path.Combine(LogDirectory,
                 channel.Server.Id.ToString(),
                 channel.Id.ToString());
-            Log.Info($"Saving channel logs for { channel.Server.Name }'s #{ channel.Name} to { _channelDirectory }...");
+            Log.Info($"Saving channel logs for { channel.Server.Name }'s #{ channel.Name} to { _channelDirectory }");
             if (!Directory.Exists(_channelDirectory))
                 Directory.CreateDirectory(_channelDirectory);
         }
