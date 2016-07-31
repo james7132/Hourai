@@ -75,13 +75,22 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\Attributes\AliasAttribute.cs" />
+    <Compile Include="src\Attributes\CheckPermissionsAttribute.cs" />
+    <Compile Include="src\Attributes\CommandAttribute.cs" />
+    <Compile Include="src\Attributes\CommandDecoratorAttribute.cs" />
+    <Compile Include="src\Attributes\DescriptionAttribute.cs" />
+    <Compile Include="src\Attributes\LogAttribute.cs" />
+    <Compile Include="src\Attributes\ParameterAttribute.cs" />
     <Compile Include="src\ChannelLog.cs" />
     <Compile Include="src\ChannelSet.cs" />
+    <Compile Include="src\Config\ServerConfig.cs" />
     <Compile Include="src\DiscordStringExtensions.cs" />
-    <Compile Include="src\DrumBotConfig.cs" />
+    <Compile Include="src\Config\Config.cs" />
+    <Compile Include="src\DrumBotCommands.cs" />
     <Compile Include="src\DrumDate.cs" />
     <Compile Include="src\DrumPath.cs" />
-    <Compile Include="src\InitializeOnLoadAttribute.cs" />
+    <Compile Include="src\Attributes\InitializeOnLoadAttribute.cs" />
     <Compile Include="src\Log.cs" />
     <Compile Include="src\DrumBot.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
