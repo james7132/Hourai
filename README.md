@@ -13,6 +13,9 @@
 ###Features
 * Per-Channel logging
 * Log searching
+* Administrative
+ * Role Management (Adding/Removing/**NUKING**) - works on multiple members at once
+ * Member Management (Kicking/Banning) - work on multiple members at once
 * More to come!
 
 ### Setup
