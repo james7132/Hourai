@@ -76,23 +76,26 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\Attributes\AliasAttribute.cs" />
-    <Compile Include="src\Attributes\CheckPermissionsAttribute.cs" />
+    <Compile Include="src\Attributes\CheckAttribute.cs" />
+    <Compile Include="src\Checkers\PermissionChecker.cs" />
+    <Compile Include="src\Checkers\ProdChecker.cs" />
     <Compile Include="src\Attributes\CommandAttribute.cs" />
-    <Compile Include="src\Attributes\CommandDecoratorAttribute.cs" />
+    <Compile Include="src\Attributes\CommandBuilderAttribute.cs" />
     <Compile Include="src\Attributes\DescriptionAttribute.cs" />
-    <Compile Include="src\Attributes\LogAttribute.cs" />
+    <Compile Include="src\Checkers\LogChecker.cs" />
     <Compile Include="src\Attributes\ParameterAttribute.cs" />
-    <Compile Include="src\ChannelLog.cs" />
+    <Compile Include="src\Extensions\DiscordExtensions.cs" />
+    <Compile Include="src\Logging\ChannelLog.cs" />
     <Compile Include="src\ChannelSet.cs" />
     <Compile Include="src\Config\ServerConfig.cs" />
-    <Compile Include="src\DiscordStringExtensions.cs" />
+    <Compile Include="src\Extensions\DiscordStringExtensions.cs" />
     <Compile Include="src\Config\Config.cs" />
-    <Compile Include="src\DrumBotCommands.cs" />
+    <Compile Include="src\BotCommands.cs" />
     <Compile Include="src\DrumDate.cs" />
     <Compile Include="src\DrumPath.cs" />
     <Compile Include="src\Attributes\InitializeOnLoadAttribute.cs" />
     <Compile Include="src\Log.cs" />
-    <Compile Include="src\DrumBot.cs" />
+    <Compile Include="src\Bot.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -100,6 +103,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
+    <Compile Include="src\Extensions\ServerExtensions.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

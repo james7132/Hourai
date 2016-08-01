@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -10,13 +9,13 @@ using RestSharp.Extensions;
 
 namespace DrumBot {
 
-    class DrumBot {
-        readonly DiscordClient _client;
-        readonly HashSet<ulong> _servers;
+    class Bot {
+        public static readonly DiscordClient Client;
         public static readonly ChannelSet ChannelSet;
         public static readonly Config Config;
+        public static readonly CommandService CommandService;
 
-        static DrumBot() {
+        static Bot() {
             Log.Info("Initializing..."); 
             ChannelSet = new ChannelSet();
             Config = Config.Load();
@@ -32,32 +31,32 @@ namespace DrumBot {
                 Log.Info($"Executing static initializer for { type.FullName } ({type.GetAttribute<InitializeOnLoadAttribute>().Order})...");
                 RuntimeHelpers.RunClassConstructor(type.TypeHandle);
             }
+            Client = new DiscordClient(new DiscordConfigBuilder {
+                
+            });
+            CommandService = Client.AddService(new CommandService(new CommandServiceConfigBuilder {
+                    PrefixChar = Config.CommandPrefix,
+                    HelpMode = HelpMode.Public
+                }.Build()));
         }
 
-        public DrumBot() {
-            _client = new DiscordClient();
-            _servers = new HashSet<ulong>();
-            Log.Info($"Starting { Config.BotName }..");
+        public Bot() {
+            Log.Info($"Starting { Config.BotName }...");
 
-            _client.MessageReceived +=
+            Client.MessageReceived +=
                 async (s, e) => {
                     if (e.Message.IsAuthor)
                         return;
                     await ChannelSet.Get(e.Channel).LogMessage(e);
                 };
-            _client.ServerAvailable += ServerLog("Discovered", id => _servers.Add(id));
-            _client.ServerAvailable += (s, e) => Config.GetServerConfig(e.Server);
-            _client.ServerAvailable += JoinServer;
-            _client.ServerUnavailable += ServerLog("Lost", id => _servers.Remove(id));
-            _client.ChannelCreated += ChannelLog("created");
-            _client.ChannelDestroyed += ChannelLog("removed");
-            _client.UserJoined += UserLog("joined");
-            _client.UserLeft += UserLog("left");
-
-            var commandService = new CommandService(new CommandServiceConfigBuilder {
-                    PrefixChar = Config.CommandPrefix,
-                    HelpMode = HelpMode.Public
-                }.Build());
+            Client.ServerAvailable += ServerLog("Discovered");
+            Client.ServerAvailable += (s, e) => Config.GetServerConfig(e.Server);
+            Client.ServerAvailable += JoinServer;
+            Client.ServerUnavailable += ServerLog("Lost");
+            Client.ChannelCreated += ChannelLog("created");
+            Client.ChannelDestroyed += ChannelLog("removed");
+            Client.UserJoined += UserLog("joined");
+            Client.UserLeft += UserLog("left");
 
             var commandMethods =
                 from assembly in AppDomain.CurrentDomain.GetAssemblies()
@@ -70,26 +69,50 @@ namespace DrumBot {
 
             Log.Info("Initializing commands...");
             foreach (MethodInfo commandMethod in commandMethods) {
-                if(!IsMethodCompatibleWithDelegate<Func<CommandEventArgs, Task>>(commandMethod)) {
+                if(!IsMethodCompatibleWithDelegate<Action<CommandEventArgs>>(commandMethod)) {
                     Log.Error($"Static method { commandMethod } is marked as a command but isn't compatible with the signature needed.");
                 }
                 var name = commandMethod.GetAttribute<CommandAttribute>().Name;
-                var func = (Func<CommandEventArgs, Task>)Delegate.CreateDelegate(typeof(Func<CommandEventArgs, Task>), commandMethod);
-                Log.Info($"Creating command \"{name}\"");
-                var command = commandService.CreateCommand(name);
+                if (string.IsNullOrEmpty(name))
+                    name = commandMethod.Name.ToLower();
+                var func = (Action<CommandEventArgs>)Delegate.CreateDelegate(typeof(Action<CommandEventArgs>), commandMethod);
+                Log.Info($"[{name}] Creating command");
+                var command = CommandService.CreateCommand(name);
                 if (!commandMethod.IsPublic) {
-                    Log.Info($"Command \"{ name }\" is not public, hiding.");
+                    Log.Info($"[{name}] Command is not public, hiding.");
                     command = command.Hide();
                 }
                 foreach (var builder in commandMethod.GetCustomAttributes<CommandBuilderAttribte>()) 
                     command = builder.Build(name, command);
-                foreach(var decorator in commandMethod.GetCustomAttributes<CommandDecoratorAttribute>())
-                    func = decorator.Decorate(name, func);
                 command.Do(func);
-                Log.Info($"Successfully created command \"{name}\"");
+                Log.Info($"[{name}] Successfully created command.");
             }
 
-            _client.AddService(commandService);
+            CommandService.CommandErrored += async (sender, args) => {
+                string response = string.Empty;
+                switch (args.ErrorType) {
+                    case CommandErrorType.BadArgCount:
+                        response = "Improper argument count."; 
+                        break;
+                    case CommandErrorType.Exception:
+                        response = args.Exception.Message;
+                        break;
+                    case CommandErrorType.InvalidInput:
+                        response = "Invalid input.";
+                        break;
+                    default:
+                        response = "Unknown error.";
+                        break;
+                }
+                if(args.Command != null)
+                    response +=
+                        $" Try ``{Config.CommandPrefix}help {args.Command.Text}``.";
+                else {
+                    response +=
+                        $" Try ``{Config.CommandPrefix}help``.";
+                }
+                await args.Channel.Respond(response);
+            };
         }
 
         bool IsMethodCompatibleWithDelegate<T>(MethodInfo method) where T : class {
@@ -118,12 +141,9 @@ namespace DrumBot {
             };
         }
 
-        EventHandler<ServerEventArgs> ServerLog(string eventType, Func<ulong, bool> changeFunc) {
-            if(changeFunc == null)
-                throw new ArgumentNullException();
+        EventHandler<ServerEventArgs> ServerLog(string eventType) {
             return delegate (object sender, ServerEventArgs e) {
-                if(changeFunc(e.Server.Id))
-                    Log.Info($"{eventType} server {e.Server.ToIDString()}. Server Count: {_servers.Count}");
+                    Log.Info($"{eventType} server {e.Server.ToIDString()}. Server Count: { Client.Servers.Count() }");
             };
         }
 
@@ -134,18 +154,16 @@ namespace DrumBot {
 
         async Task Login() {
             Log.Info("Connecting to Discord...");
-            await _client.Connect(Config.Token);
-            Log.Info($"Logged in as { _client.CurrentUser.ToIDString() }");
+            await Client.Connect(Config.Token);
+            Log.Info($"Logged in as { Client.CurrentUser.ToIDString() }");
         }
 
         public void Run() {
-            _client.ExecuteAndWait(async () => {
-                await Login();
-            });
+            Client.ExecuteAndWait(Login);
         }
 
-        static void Main(string[] args) {
-            new DrumBot().Run();
+        static void Main() {
+            new Bot().Run();
         }
     }
 }

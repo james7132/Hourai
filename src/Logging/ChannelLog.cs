@@ -15,7 +15,7 @@ namespace DrumBot {
 
         static ChannelLog() {
             LogDirectory = Path.Combine(DrumPath.ExecutionDirectory,
-                DrumBot.Config.LogDirectory);
+                Bot.Config.LogDirectory);
             Log.Info($"Chat Log Directory: { LogDirectory }");
         }
 
@@ -69,7 +69,7 @@ namespace DrumBot {
                 using (StreamReader reader = File.OpenText(path)) {
                     while(!reader.EndOfStream) {
                         string line = await reader.ReadLineAsync();
-                        if (line != null && line.Contains(exactMatch) && !line.Contains("~search") && !line.Contains("DrumBot: "))
+                        if (line != null && line.Contains(exactMatch) && !line.Contains("~search") && !line.Contains("Bot: "))
                             builder.AppendLine(line);
                     }
                 }

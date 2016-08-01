@@ -1,7 +1,7 @@
 using System;
 using Discord.Commands;
 
-namespace DrumBot.src.Attributes {
+namespace DrumBot {
 
     [AttributeUsage(AttributeTargets.Method)]
     public class AliasAttribute : CommandBuilderAttribte {
@@ -12,7 +12,7 @@ namespace DrumBot.src.Attributes {
         public override CommandBuilder Build(string name, CommandBuilder builder) {
             if (Aliases.Length <= 0)
                 return builder;
-            Log.Info($"Adding alia{ (Aliases.Length > 1 ? "es" : "s") } \"{ string.Join(", ", Aliases) }\" to command \"{ name }\"");
+            Log.Info($"[{name}] Adding alias{ (Aliases.Length > 1 ? "es" : string.Empty) } \"{ string.Join(", ", Aliases) }\"");
             return builder.Alias(Aliases);
         }
     }
