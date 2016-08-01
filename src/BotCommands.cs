@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,46 +19,97 @@ namespace DrumBot {
         [Alias("find")]
         [Description("Search the history of the current channel for a certain value.")]
         [Parameter("SearchTerm")]
-        [Check(typeof(LogChecker))]
         [Check(typeof(ProdChecker))]
         public static async void Search(CommandEventArgs e) {
             string reply = await Bot.ChannelSet.Get(e.Channel).Search(e.GetArg("SearchTerm"));
-            await e.Channel.Respond($"{e.User.Mention}: Matches found in {e.Channel.Mention}:\n{reply}");
+            await e.Channel.Respond($"Matches found in {e.Channel.Name}:\n{reply}");
         }
 
         [Command]
-        [Check(typeof(LogChecker))]
+        [Alias("findall")]
+        [Description("Search the history of the all channels for a certain value.")]
+        [Parameter("SearchTerm")]
+        [Group("search")]
+        [Check(typeof(ProdChecker))]
+        public static async void All(CommandEventArgs e) {
+            var builder = new StringBuilder();
+            var serverConfig = e.Server.GetConfig();
+            foreach (Channel channel in e.Server.TextChannels) {
+                if (e.Channel != channel && serverConfig.IsIgnored(channel))
+                    continue;
+                string result = await Bot.ChannelSet.Get(channel).Search(e.GetArg("SearchTerm"));
+                if (string.IsNullOrEmpty(result))
+                    continue;
+                builder.AppendLine($"Matches found in {channel.Name}:");
+                builder.AppendLine(result);
+            }
+            await e.Channel.Respond(builder.ToString());
+        }
+
+        [Command]
+        [Description("Get the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
+        [Parameter("Day")]
+        [Check(typeof(ProdChecker))]
+        public static async void GetLog(CommandEventArgs e) {
+            string path = Bot.ChannelSet.Get(e.Channel).GetPath(e.GetArg("Day"));
+            if (File.Exists(path))
+                await e.Channel.SendFile(path);
+            else
+                await e.Channel.SendMessage($"A log for { e.Channel.Mention } on date { e.GetArg("Day") } cannot be found.");
+        }
+
+        [Command]
         static async void ServerConfig(CommandEventArgs e) {
             await e.Channel.Respond(
-                    $"{e.User.Mention}, here is the server config for {e.Server.Name}:\n{Bot.Config.GetServerConfig(e.Server)}");
+                    $"{e.User.Mention}, here is the server config for {e.Server.Name}:\n{e.Server.GetConfig()}");
+        }
+
+        [Command]
+        [Group("channel")]
+        [Description("Marks all mentioned channels for ignoring search. Requires ``Manage Channels`` permission.")]
+        [Parameter("Channels", ParameterType.Multiple)]
+        [Check(typeof(ProdChecker))]
+        [Check(typeof(UserManageChannelsChecker))]
+        public static async void Ignore(CommandEventArgs e) {
+            e.Server.GetConfig().AddIgnoredChannels(e.Message.MentionedChannels.Select(c => c.Id).ToArray());
+            await e.Channel.Respond(":thumbsup:");
+        }
+
+        [Command]
+        [Group("channel")]
+        [Description("Marks all mentioned channels to stop ignoring search. Requires ``Manage Channels`` permission.")]
+        [Parameter("Channels", ParameterType.Multiple)]
+        [Check(typeof(ProdChecker))]
+        [Check(typeof(UserManageChannelsChecker))]
+        public static async void Unignore(CommandEventArgs e) {
+            e.Server.GetConfig().RemoveIgnoredChannels(e.Message.MentionedChannels.Select(c => c.Id).ToArray());
+            await e.Channel.Respond(":thumbsup:");
         }
 
         [Command]
         [Description("Adds a role to all mentioned users. Requires ``Manage Role`` permission for u1 and bot.")]
         [Parameter("Role")]
         [Parameter("Users", ParameterType.Multiple)]
-        [Check(typeof(LogChecker))]
+        [Group("role")]
         [Check(typeof(ManageRolesChecker))]
-        public static void AddRole(CommandEventArgs e) {
-            Log.Info("ADDROLE");
+        public static void Add(CommandEventArgs e) {
             RoleCommand(e, e.Message.MentionedUsers, AddRoleFunc, "add");
         }
 
         [Command]
+        [Group("role")]
         [Description("Removes a role to all mentioned users. Requires ``Manage Role`` permission for u1 and bot.")]
         [Parameter("Role")]
         [Parameter("Users", ParameterType.Multiple)]
-        [Check(typeof(LogChecker))]
         [Check(typeof(ManageRolesChecker))]
-        public static void RemoveRole(CommandEventArgs e) {
-            Log.Info("REMOVEROLE");
+        public static void Remove(CommandEventArgs e) {
             RoleCommand(e, e.Message.MentionedUsers, RemoveRoleFunc, "remove");
         }
 
         [Command]
+        [Group("roles")]
         [Description("Kicks all mentioned users. Requires ``Kick Members`` permission for u1 and bot")]
         [Parameter("Users", ParameterType.Multiple)]
-        [Check(typeof(LogChecker))]
         [Check(typeof(KickMembersChecker))]
         public static async void Kick(CommandEventArgs e) {
             await e.Channel.Respond(await AdminAction(e, e.Message.MentionedUsers, "kick",
@@ -70,7 +122,6 @@ namespace DrumBot {
         [Command]
         [Description("Bans all mentioned users. Requires ``Ban Members`` permission for u1 and bot")]
         [Parameter("Users", ParameterType.Multiple)]
-        [Check(typeof(LogChecker))]
         [Check(typeof(BanMembersChecker))]
         public static async void Ban(CommandEventArgs e) {
             await e.Channel.Respond(await AdminAction(e, e.Message.MentionedUsers, "ban",
@@ -83,17 +134,16 @@ namespace DrumBot {
         [Command]
         [Description("Gets the avatar url of all mentioned users.")]
         [Parameter("Users", ParameterType.Multiple)]
-        [Check(typeof(LogChecker))]
         public static async void Avatar(CommandEventArgs e) {
             await e.Channel.Respond(AllMentionedUsers(e, user => user.AvatarUrl));
         }
 
         [Command]
+        [Group("role")]
         [Description("Nukes all of a certain role from all members of the server")]
         [Parameter("Role")]
         [Check(typeof(ManageRolesChecker))]
-        [Check(typeof(LogChecker))]
-        public static void NukeRole(CommandEventArgs e) {
+        public static void Nuke(CommandEventArgs e) {
             RoleCommand(e, e.Server.Users, RemoveRoleFunc, "remove");
         }
 
