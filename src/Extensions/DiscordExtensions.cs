@@ -22,6 +22,14 @@ namespace DrumBot {
             }
         }
 
+        public static ServerConfig GetConfig(this Server server) {
+            return Bot.Config.GetServerConfig(server);
+        }
+
+        public static bool IsBotOwner(this User user) {
+            return user.Id == Bot.Config.Owner;
+        }
+
         public static bool IsOwner(this User user) {
             return user.Server.Owner == user;
         }

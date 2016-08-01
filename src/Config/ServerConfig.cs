@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
@@ -17,7 +19,9 @@ namespace DrumBot {
         [JsonIgnore]
         public ulong ID { get; set; }
         public ServerType Type { get; set; } = ServerType.PROD;
+        [JsonIgnore]
         public Server Server { get; }
+        public HashSet<ulong> IgnoredChannels { get; set; }
 
         [JsonIgnore] 
         public static string ConfigDirectory => Path.Combine(DrumPath.ExecutionDirectory,
@@ -29,6 +33,8 @@ namespace DrumBot {
         public ServerConfig(Server server) {
             Server = server;
             ID = server.Id;
+            if (IgnoredChannels == null)
+                IgnoredChannels = new HashSet<ulong>();
             Log.Info($"Loading server configuration for { server.ToIDString() } from { SaveLocation }");
             if (!File.Exists(SaveLocation))
                 Save().Wait();
@@ -36,6 +42,22 @@ namespace DrumBot {
                 Load().Wait();
         }
 
+        public bool IsIgnored(Channel channel) {
+            return IgnoredChannels.Contains(channel.Id);
+        }
+
+        public async void AddIgnoredChannels(params ulong[] channels) {
+            IgnoredChannels.UnionWith(channels);
+            Log.Info(IgnoredChannels.Count);
+            await Save();
+        }
+
+        public async void RemoveIgnoredChannels(params ulong[] channels) {
+            IgnoredChannels.ExceptWith(channels);
+            Log.Info(IgnoredChannels.Count);
+            await Save();
+        }
+        
         [JsonIgnore]
         public bool AllowCommands {
             get {

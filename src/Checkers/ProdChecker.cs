@@ -17,7 +17,6 @@ namespace DrumBot {
                                        Channel channel,
                                        out string error) {
             error = string.Empty;
-            Log.Info("PERMISSION CHECK");
             if (Bot.Config.GetServerConfig(channel.Server).AllowCommands) {
 #if DEBUG
                 Log.Info($"Command { Name } is running in DEBUG mode on a TEST server and can execute");

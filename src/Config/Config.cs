@@ -11,9 +11,6 @@ namespace DrumBot {
 
         public const string ConfigFilePath = "config.json";
 
-        static Config() {
-        }
-
         readonly Dictionary<ulong, ServerConfig> _serversConfigs;
 
         public Config() {
@@ -43,5 +40,6 @@ namespace DrumBot {
         public string LogDirectory { get; set; } = "logs";
         public string ConfigDirectory { get; set; } = "config";
         public char CommandPrefix { get; set; } = '~';
+        public ulong Owner { get; set; }
     }
 }

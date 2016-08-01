@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -31,9 +32,8 @@ namespace DrumBot {
                 Log.Info($"Executing static initializer for { type.FullName } ({type.GetAttribute<InitializeOnLoadAttribute>().Order})...");
                 RuntimeHelpers.RunClassConstructor(type.TypeHandle);
             }
-            Client = new DiscordClient(new DiscordConfigBuilder {
-                
-            });
+            Client = new DiscordClient();
+            Client.AddService<LogService>();
             CommandService = Client.AddService(new CommandService(new CommandServiceConfigBuilder {
                     PrefixChar = Config.CommandPrefix,
                     HelpMode = HelpMode.Public
@@ -42,21 +42,14 @@ namespace DrumBot {
 
         public Bot() {
             Log.Info($"Starting { Config.BotName }...");
-
             Client.MessageReceived +=
                 async (s, e) => {
                     if (e.Message.IsAuthor)
                         return;
                     await ChannelSet.Get(e.Channel).LogMessage(e);
                 };
-            Client.ServerAvailable += ServerLog("Discovered");
             Client.ServerAvailable += (s, e) => Config.GetServerConfig(e.Server);
             Client.ServerAvailable += JoinServer;
-            Client.ServerUnavailable += ServerLog("Lost");
-            Client.ChannelCreated += ChannelLog("created");
-            Client.ChannelDestroyed += ChannelLog("removed");
-            Client.UserJoined += UserLog("joined");
-            Client.UserLeft += UserLog("left");
 
             var commandMethods =
                 from assembly in AppDomain.CurrentDomain.GetAssemblies()
@@ -67,25 +60,27 @@ namespace DrumBot {
                         && method.IsStatic
                 select method;
 
+            var _commandGroups = new Dictionary<string, List<MethodInfo>>();
+
             Log.Info("Initializing commands...");
-            foreach (MethodInfo commandMethod in commandMethods) {
-                if(!IsMethodCompatibleWithDelegate<Action<CommandEventArgs>>(commandMethod)) {
-                    Log.Error($"Static method { commandMethod } is marked as a command but isn't compatible with the signature needed.");
+            foreach (MethodInfo method in commandMethods) {
+                var groupAttribute = method.GetCustomAttribute<GroupAttribute>();
+                if (groupAttribute == null) 
+                    CreateCommand(method, s => CommandService.CreateCommand(s));
+                else {
+                    string name = groupAttribute.Name;
+                    if (!_commandGroups.ContainsKey(name))
+                        _commandGroups.Add(name, new List<MethodInfo>());
+                    _commandGroups[name].Add(method);
                 }
-                var name = commandMethod.GetAttribute<CommandAttribute>().Name;
-                if (string.IsNullOrEmpty(name))
-                    name = commandMethod.Name.ToLower();
-                var func = (Action<CommandEventArgs>)Delegate.CreateDelegate(typeof(Action<CommandEventArgs>), commandMethod);
-                Log.Info($"[{name}] Creating command");
-                var command = CommandService.CreateCommand(name);
-                if (!commandMethod.IsPublic) {
-                    Log.Info($"[{name}] Command is not public, hiding.");
-                    command = command.Hide();
-                }
-                foreach (var builder in commandMethod.GetCustomAttributes<CommandBuilderAttribte>()) 
-                    command = builder.Build(name, command);
-                command.Do(func);
-                Log.Info($"[{name}] Successfully created command.");
+            }
+
+            foreach (var commandGroup in _commandGroups) {
+                CommandService.CreateGroup(commandGroup.Key,
+                    cgb => {
+                        foreach (MethodInfo method in commandGroup.Value)
+                            CreateCommand(method, cgb.CreateCommand);
+                    });
             }
 
             CommandService.CommandErrored += async (sender, args) => {
@@ -94,15 +89,16 @@ namespace DrumBot {
                     case CommandErrorType.BadArgCount:
                         response = "Improper argument count."; 
                         break;
+                    case CommandErrorType.BadPermissions:
                     case CommandErrorType.Exception:
-                        response = args.Exception.Message;
+                        if(args.Exception != null)
+                            response = args.Exception.Message;
                         break;
                     case CommandErrorType.InvalidInput:
                         response = "Invalid input.";
                         break;
                     default:
-                        response = "Unknown error.";
-                        break;
+                        return;
                 }
                 if(args.Command != null)
                     response +=
@@ -115,36 +111,28 @@ namespace DrumBot {
             };
         }
 
-        bool IsMethodCompatibleWithDelegate<T>(MethodInfo method) where T : class {
-            Type delegateType = typeof(T);
-            MethodInfo delegateSignature = delegateType.GetMethod("Invoke");
-
-            bool parametersEqual = delegateSignature
-                .GetParameters()
-                .Select(x => x.ParameterType)
-                .SequenceEqual(method.GetParameters()
-                    .Select(x => x.ParameterType));
-
-            return delegateSignature.ReturnType == method.ReturnType &&
-                   parametersEqual;
-        }
-
-        EventHandler<UserEventArgs> UserLog(string eventType) {
-            return delegate (object sender, UserEventArgs e) {
-                Log.Info($"User { e.User.ToIDString() } {eventType} { e.Server.ToIDString() }");
-            };
-        }
-
-        EventHandler<ChannelEventArgs> ChannelLog(string eventType) {
-            return delegate (object sender, ChannelEventArgs e) {
-                Log.Info($"Channel {eventType}: {e.Channel.ToIDString()} on server {e.Server.ToIDString()}");
-            };
-        }
-
-        EventHandler<ServerEventArgs> ServerLog(string eventType) {
-            return delegate (object sender, ServerEventArgs e) {
-                    Log.Info($"{eventType} server {e.Server.ToIDString()}. Server Count: { Client.Servers.Count() }");
-            };
+        void CreateCommand(MethodInfo method, Func<string, CommandBuilder> builderFunc) {
+            var func = (Action<CommandEventArgs>) method.ToDelegate<Action<CommandEventArgs>>();
+            if (func == null) {
+                Log.Error($"Static method { method } is marked as a command but isn't compatible with the signature needed.");
+                return;
+            }
+            var name = method.GetAttribute<CommandAttribute>().Name;
+            if (string.IsNullOrEmpty(name))
+                name = method.Name.ToLower();
+            Log.Info($"[{name}] Creating command");
+            var command = builderFunc(name);
+            if (!method.IsPublic) {
+                Log.Info($"[{name}] Command is not public, hiding.");
+                command = command.Hide();
+            }
+            foreach (var builder in method.GetCustomAttributes<CommandBuilderAttribte>()) 
+                command = builder.Build(name, command);
+            command.Do(delegate(CommandEventArgs e) {
+                Log.Info($"Command { name } was triggered by {e.User.Name} on {e.Server.Name}.");
+                func(e);
+            });
+            Log.Info($"[{name}] Successfully created command.");
         }
 
         void JoinServer(object sender, ServerEventArgs serverEventArgs) {

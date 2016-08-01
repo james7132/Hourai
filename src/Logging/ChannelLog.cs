@@ -19,9 +19,12 @@ namespace DrumBot {
             Log.Info($"Chat Log Directory: { LogDirectory }");
         }
 
-        string GetPath(DateTime time) {
-            return Path.Combine(_channelDirectory, time.ToString("yyyy-MM-dd"))
-                + ".log";
+        public string GetPath(DateTime time) {
+            return GetPath(time.ToString("yyyy-MM-dd"));
+        }
+
+        public string GetPath(string time) {
+            return Path.Combine(_channelDirectory, time) + ".log";
         }
 
         public ChannelLog(Channel channel) {
@@ -53,13 +56,7 @@ namespace DrumBot {
 
         public async Task<string> Search(string exactMatch) {
             var builder = new StringBuilder();
-#if DEBUG
-            string[] files = Directory.GetFiles(LogDirectory,
-                "*.*",
-                SearchOption.AllDirectories);
-#else
             string[] files = Directory.GetFiles(_channelDirectory);
-#endif
             await Task.WhenAll(files.Select(file => SearchFile(file, exactMatch, builder)));
             return LogToMessage(builder.ToString());
         }
