@@ -1,9 +1,9 @@
 using System;
 using Discord.Commands;
 
-namespace DrumBot.src.Attributes {
+namespace DrumBot {
 
-    [AttributeUsage(AttributeTargets.Method)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     public class ParameterAttribute : CommandBuilderAttribte {
 
         public string Parameter { get; set; }
@@ -17,7 +17,7 @@ namespace DrumBot.src.Attributes {
         public override CommandBuilder Build(string name, CommandBuilder builder) {
             if (string.IsNullOrEmpty(Parameter))
                 return builder;
-            Log.Info($"Adding description of command \"{name}\" to \"{ Parameter }\"");
+            Log.Info($"[{name}] Adding parameter: \"{ Parameter }\"");
             return builder.Parameter(Parameter, Type);
         }
     }

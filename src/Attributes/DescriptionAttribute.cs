@@ -1,7 +1,7 @@
 using System;
 using Discord.Commands;
 
-namespace DrumBot.src.Attributes {
+namespace DrumBot {
 
     [AttributeUsage(AttributeTargets.Method)]
     public class DescriptionAttribute : CommandBuilderAttribte {
@@ -15,7 +15,7 @@ namespace DrumBot.src.Attributes {
         public override CommandBuilder Build(string name, CommandBuilder builder) {
             if (string.IsNullOrEmpty(Description))
                 return builder;
-            Log.Info($"Adding description of command \"{name}\" to \"{Description}\"");
+            Log.Info($"[{name}] Setting description to \"{Description}\"");
             return builder.Description(Description);
         }
     }

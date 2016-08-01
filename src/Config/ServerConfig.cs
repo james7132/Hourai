@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Newtonsoft.Json;
@@ -16,15 +17,17 @@ namespace DrumBot {
         [JsonIgnore]
         public ulong ID { get; set; }
         public ServerType Type { get; set; } = ServerType.PROD;
+        public Server Server { get; }
 
         [JsonIgnore] 
         public static string ConfigDirectory => Path.Combine(DrumPath.ExecutionDirectory,
-            DrumBot.Config.ConfigDirectory);
+            Bot.Config.ConfigDirectory);
 
         [JsonIgnore]
         public string SaveLocation => Path.Combine(ConfigDirectory, ID + ".config.json");
 
         public ServerConfig(Server server) {
+            Server = server;
             ID = server.Id;
             Log.Info($"Loading server configuration for { server.ToIDString() } from { SaveLocation }");
             if (!File.Exists(SaveLocation))
@@ -37,9 +40,9 @@ namespace DrumBot {
         public bool AllowCommands {
             get {
 #if DEBUG
-                return Type != ServerType.PROD;
+                return Type == ServerType.TEST;
 #else
-                return true;
+                return Type == ServerType.PROD;
 #endif
             }
         }
@@ -60,7 +63,15 @@ namespace DrumBot {
         }
 
         public override string ToString() {
-            return $"``ID: {ID}\nType: {Type}``";
+            var builder = new StringBuilder();
+            builder.AppendLine($"ID: {ID}");
+            builder.AppendLine($"Type: {Type}");
+            builder.AppendLine("Roles:");
+            foreach (Role role in Server.Roles) {
+                builder.AppendLine(
+                    $"{role.Name}: {role.Position}, {role.Color}, {role.Id}");
+            }
+            return builder.ToString().Wrap("```");
         }
     }
 }

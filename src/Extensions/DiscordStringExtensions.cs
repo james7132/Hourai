@@ -3,6 +3,8 @@ using Discord;
 namespace DrumBot {
     public static class DiscordStringExtensions {
 
+        public static string Wrap(this string s, string w) { return w + s + w; }
+
         public static string ToIDString(this Channel channel) {
             return $"#{channel.Name} ({channel.Id})";
         }
