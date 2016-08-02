@@ -34,13 +34,44 @@ namespace DrumBot {
             return _serversConfigs[server.Id];
         }
 
+        /// <summary>
+        /// The login token used by the bot to access Discord 
+        /// </summary>
         public string Token { get; set; }
+
+        /// <summary>
+        /// The name of the bot.
+        /// </summary>
         public string BotName { get; set; }
+
+        /// <summary>
+        /// The owner of the bot's ID.
+        /// </summary>
         public ulong Owner { get; set; }
+
+        /// <summary>
+        /// The subdirectory name where the logs for each channel is logged.
+        /// </summary>
         public string LogDirectory { get; set; } = "logs";
+
+        /// <summary>
+        /// The subdirectory where the configs for each server is stored.
+        /// </summary>
         public string ConfigDirectory { get; set; } = "config";
+
+        /// <summary>
+        /// The command prefix that triggers commands specified by the bot
+        /// </summary>
         public char CommandPrefix { get; set; } = '~';
+
+        /// <summary>
+        /// What is responded when a command succeeds
+        /// </summary>
         public string SuccessResponse { get; set; } = ":thumbsup:";
+
+        /// <summary>
+        /// Maximum number of messages to remove with the prune command.
+        /// </summary>
         public int PruneLimit { get; set; } = 100;
     }
 }

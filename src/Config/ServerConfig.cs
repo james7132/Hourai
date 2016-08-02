@@ -43,16 +43,22 @@ namespace DrumBot {
             return IgnoredChannels.Contains(channel.Id);
         }
 
-        public async void AddIgnoredChannels(params ulong[] channels) {
+        public async Task AddIgnoredChannels(IEnumerable<ulong> channels) {
             IgnoredChannels.UnionWith(channels);
-            Log.Info(IgnoredChannels.Count);
             await Save();
         }
 
-        public async void RemoveIgnoredChannels(params ulong[] channels) {
+        public Task AddIgnoredChannels(IEnumerable<Channel> channels) {
+            return AddIgnoredChannels(channels.Select(ch => ch.Id));
+        }
+
+        public async Task RemoveIgnoredChannels(IEnumerable<ulong> channels) {
             IgnoredChannels.ExceptWith(channels);
-            Log.Info(IgnoredChannels.Count);
             await Save();
+        }
+
+        public Task RemoveIgnoredChannels(IEnumerable<Channel> channels) {
+            return RemoveIgnoredChannels(channels.Select(ch => ch.Id));
         }
         
         [JsonIgnore]

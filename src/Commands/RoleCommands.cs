@@ -5,6 +5,10 @@ using Discord;
 using Discord.Commands;
 
 namespace DrumBot {
+
+    /// <summary>
+    /// Role related comamnds.
+    /// </summary>
     static class RoleCommands {
 
         static readonly Func<User, Role, Task> AddRoleFunc =

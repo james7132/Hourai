@@ -4,6 +4,7 @@ using Discord;
 namespace DrumBot {
     public static class UserExtensions {
 
+        /// <summary> Self-explanatory helper functions to alter the state of a user</summary>
         public static Task SetMuted(this User user, bool value) => user.Edit(isMuted: value);
         public static Task SetDeafen(this User user, bool value) => user.Edit(isDeafened: value);
         public static Task Mute(this User user) => user.SetMuted(true);

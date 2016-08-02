@@ -1,7 +1,12 @@
 using Discord.Commands;
 
 namespace DrumBot {
+
+    /// <summary>
+    /// Administrative bot commands.
+    /// </summary>
     class AdminCommands {
+
         [Command]
         [Description("Kicks all mentioned users. Requires ``Kick Members`` permission for both user and bot")]
         [Parameter("Users", ParameterType.Multiple)]

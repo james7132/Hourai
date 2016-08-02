@@ -3,6 +3,10 @@ using System.Linq;
 using Discord.Commands;
 
 namespace DrumBot {
+
+    /// <summary>
+    /// Standard bot style commands.
+    /// </summary>
     static class StandardCommands {
 
         [Command]
