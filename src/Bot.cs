@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -11,15 +12,22 @@ using RestSharp.Extensions;
 namespace DrumBot {
 
     class Bot {
-        public static readonly DiscordClient Client;
-        public static readonly ChannelSet ChannelSet;
-        public static readonly Config Config;
-        public static readonly CommandService CommandService;
+        public static DiscordClient Client { get; private set; }
+        public static ChannelSet ChannelSet { get; private set; }
+        public static Config Config { get; private set; }
+        public static CommandService CommandService { get; private set; }
+        public static Channel OwnerChannel { get; private set; }
+        public static string ExecutionDirectory { get; private set; }
+        readonly List<string> _errors;
 
-        static Bot() {
-            Log.Info("Initializing..."); 
-            ChannelSet = new ChannelSet();
-            Config = Config.Load();
+
+        static string GetExecutionDirectory() {
+            var uri = new UriBuilder(Assembly.GetExecutingAssembly().CodeBase);
+            string path = Uri.UnescapeDataString(uri.Path);
+            return Path.GetDirectoryName(path);
+        }
+
+        static void ExecuteStaticInitializers() {
             var types = from assembly in AppDomain.CurrentDomain.GetAssemblies()
                         from type in assembly.GetTypes()
                         where
@@ -32,16 +40,24 @@ namespace DrumBot {
                 Log.Info($"Executing static initializer for { type.FullName } ({type.GetAttribute<InitializeOnLoadAttribute>().Order})...");
                 RuntimeHelpers.RunClassConstructor(type.TypeHandle);
             }
+        }
+
+        public Bot() {
+            Log.Info("Initializing..."); 
+            ChannelSet = new ChannelSet();
+            ExecutionDirectory = GetExecutionDirectory();
+            Log.Info($"Execution Directory: { ExecutionDirectory }");
+            Config = Config.Load();
+            ExecuteStaticInitializers();
+
             Client = new DiscordClient();
             Client.AddService<LogService>();
             CommandService = Client.AddService(new CommandService(new CommandServiceConfigBuilder {
                     PrefixChar = Config.CommandPrefix,
                     HelpMode = HelpMode.Public
                 }.Build()));
-        }
-
-        public Bot() {
             Log.Info($"Starting { Config.BotName }...");
+            _errors = new List<string>();
             Client.MessageReceived +=
                 async (s, e) => {
                     if (e.Message.IsAuthor)
@@ -79,7 +95,7 @@ namespace DrumBot {
                 CommandService.CreateGroup(commandGroup.Key,
                     cgb => {
                         foreach (MethodInfo method in commandGroup.Value)
-                            CreateCommand(method, cgb.CreateCommand);
+                            CreateCommand(method, cgb.CreateCommand, commandGroup.Key + " ");
                     });
             }
 
@@ -107,11 +123,11 @@ namespace DrumBot {
                     response +=
                         $" Try ``{Config.CommandPrefix}help``.";
                 }
-                await args.Channel.Respond(response);
+                await args.Respond(response);
             };
         }
 
-        void CreateCommand(MethodInfo method, Func<string, CommandBuilder> builderFunc) {
+        void CreateCommand(MethodInfo method, Func<string, CommandBuilder> builderFunc, string prefix = null) {
             var func = (Action<CommandEventArgs>) method.ToDelegate<Action<CommandEventArgs>>();
             if (func == null) {
                 Log.Error($"Static method { method } is marked as a command but isn't compatible with the signature needed.");
@@ -120,19 +136,20 @@ namespace DrumBot {
             var name = method.GetAttribute<CommandAttribute>().Name;
             if (string.IsNullOrEmpty(name))
                 name = method.Name.ToLower();
-            Log.Info($"[{name}] Creating command");
+            var displayName = (prefix ?? string.Empty) + name;
+            Log.Info($"[{displayName}] Creating command");
             var command = builderFunc(name);
             if (!method.IsPublic) {
-                Log.Info($"[{name}] Command is not public, hiding.");
+                Log.Info($"[{displayName}] Command is not public, hiding.");
                 command = command.Hide();
             }
             foreach (var builder in method.GetCustomAttributes<CommandBuilderAttribte>()) 
-                command = builder.Build(name, command);
+                command = builder.Build(displayName, command);
             command.Do(delegate(CommandEventArgs e) {
-                Log.Info($"Command { name } was triggered by {e.User.Name} on {e.Server.Name}.");
+                Log.Info($"Command { displayName } was triggered by {e.User.Name} on {e.Server.Name}.");
                 func(e);
             });
-            Log.Info($"[{name}] Successfully created command.");
+            Log.Info($"[{displayName}] Successfully created command.");
         }
 
         void JoinServer(object sender, ServerEventArgs serverEventArgs) {
@@ -140,14 +157,33 @@ namespace DrumBot {
                 ChannelSet.Get(channel);
         }
 
+        Channel GetOwnerChannel() {
+            return Client.PrivateChannels.FirstOrDefault(
+                    ch => ch.GetUser(Config.Owner) != null);
+        }
+
         async Task Login() {
             Log.Info("Connecting to Discord...");
             await Client.Connect(Config.Token);
             Log.Info($"Logged in as { Client.CurrentUser.ToIDString() }");
+            OwnerChannel = GetOwnerChannel();
+            if (OwnerChannel == null)
+                return;
+            foreach (string error in _errors) 
+                await OwnerChannel.SendMessage($"ERROR: {error}");
+            _errors.Clear();
+            await OwnerChannel.SendMessage($"Bot has been started at { DateTime.Now }");
         }
 
         public void Run() {
-            Client.ExecuteAndWait(Login);
+            while(true) {
+                try {
+                    Client.ExecuteAndWait(Login);
+                } catch (Exception error) {
+                    Log.Error(error);
+                    _errors.Add(error.Message);
+                }
+            }
         }
 
         static void Main() {

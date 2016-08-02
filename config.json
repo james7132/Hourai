@@ -3,5 +3,7 @@
 	"LogDirectory" : "logs",
 	"ConfigDirectory" : "config",
 	"CommandPrefix" :  "~",
-	"Owner": <Owner discord account id>
+	"Owner": <Owner Discord Account ID>,
+	"SuccessResponse": ":thumbsup:",
+	"PruneLimit": 100
 }
