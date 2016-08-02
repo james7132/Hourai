@@ -6,7 +6,6 @@ using Newtonsoft.Json;
 
 namespace DrumBot {
     [Serializable]
-    [InitializeOnLoad(10000)]
     public class Config {
 
         public const string ConfigFilePath = "config.json";
@@ -18,7 +17,7 @@ namespace DrumBot {
         }
 
         public static Config Load() {
-            string fullPath = Path.Combine(DrumPath.ExecutionDirectory,
+            string fullPath = Path.Combine(Bot.ExecutionDirectory,
                 ConfigFilePath);
             Log.Info($"Loading DrumBot config from {fullPath}...");
             var config = JsonConvert.DeserializeObject<Config>(
@@ -35,11 +34,13 @@ namespace DrumBot {
             return _serversConfigs[server.Id];
         }
 
-        public string BotName { get; set; }
         public string Token { get; set; }
+        public string BotName { get; set; }
+        public ulong Owner { get; set; }
         public string LogDirectory { get; set; } = "logs";
         public string ConfigDirectory { get; set; } = "config";
         public char CommandPrefix { get; set; } = '~';
-        public ulong Owner { get; set; }
+        public string SuccessResponse { get; set; } = ":thumbsup:";
+        public int PruneLimit { get; set; } = 100;
     }
 }

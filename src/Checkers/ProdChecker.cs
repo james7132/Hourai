@@ -7,12 +7,12 @@ namespace DrumBot {
     public abstract class Checker : IPermissionChecker {
         public string Name { get; set; }
 
-        public abstract bool CanRun(Command command, User user, Channel channel, out string error);
+        public abstract bool CanRun(Discord.Commands.Command command, User user, Channel channel, out string error);
     }
 
     public class ProdChecker : Checker {
 
-        public override bool CanRun(Command command,
+        public override bool CanRun(Discord.Commands.Command command,
                                        User user,
                                        Channel channel,
                                        out string error) {

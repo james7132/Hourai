@@ -24,8 +24,7 @@ namespace DrumBot {
         public HashSet<ulong> IgnoredChannels { get; set; }
 
         [JsonIgnore] 
-        public static string ConfigDirectory => Path.Combine(DrumPath.ExecutionDirectory,
-            Bot.Config.ConfigDirectory);
+        public static string ConfigDirectory => Path.Combine(Bot.ExecutionDirectory, Bot.Config.ConfigDirectory);
 
         [JsonIgnore]
         public string SaveLocation => Path.Combine(ConfigDirectory, ID + ".config.json");
@@ -36,9 +35,7 @@ namespace DrumBot {
             if (IgnoredChannels == null)
                 IgnoredChannels = new HashSet<ulong>();
             Log.Info($"Loading server configuration for { server.ToIDString() } from { SaveLocation }");
-            if (!File.Exists(SaveLocation))
-                Save().Wait();
-            else
+            if (File.Exists(SaveLocation))
                 Load().Wait();
         }
 
@@ -72,7 +69,7 @@ namespace DrumBot {
         public async Task Save() {
             if (!Directory.Exists(ConfigDirectory))
                 Directory.CreateDirectory(ConfigDirectory);
-            using(var file = File.Open(SaveLocation, FileMode.OpenOrCreate, FileAccess.Write))
+            using(var file = File.Open(SaveLocation, FileMode.Create, FileAccess.Write))
             using(var writer = new StreamWriter(file))
                 await writer.WriteAsync(JsonConvert.SerializeObject(this, Formatting.Indented, new StringEnumConverter()));
         }
@@ -91,7 +88,7 @@ namespace DrumBot {
             builder.AppendLine("Roles:");
             foreach (Role role in Server.Roles) {
                 builder.AppendLine(
-                    $"{role.Name}: {role.Position}, {role.Color}, {role.Id}");
+                    $"   {role.Name}: {role.Position}, {role.Color}, {role.Id}");
             }
             return builder.ToString().Wrap("```");
         }

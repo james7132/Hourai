@@ -14,8 +14,7 @@ namespace DrumBot {
         readonly string _channelDirectory;
 
         static ChannelLog() {
-            LogDirectory = Path.Combine(DrumPath.ExecutionDirectory,
-                Bot.Config.LogDirectory);
+            LogDirectory = Path.Combine(Bot.ExecutionDirectory, Bot.Config.LogDirectory);
             Log.Info($"Chat Log Directory: { LogDirectory }");
         }
 
@@ -32,8 +31,6 @@ namespace DrumBot {
                 channel.Server.Id.ToString(),
                 channel.Id.ToString());
             Log.Info($"Saving channel logs for { channel.Server.Name }'s #{ channel.Name} to { _channelDirectory }");
-            if (!Directory.Exists(_channelDirectory))
-                Directory.CreateDirectory(_channelDirectory);
         }
 
         string MessageToLog(string message) {
@@ -45,16 +42,20 @@ namespace DrumBot {
         }
 
         public async Task LogMessage(MessageEventArgs args) {
+            if (!Directory.Exists(_channelDirectory))
+                Directory.CreateDirectory(_channelDirectory);
             try {
                 var timestamp = args.Message.Timestamp;
                 using (StreamWriter writer = File.AppendText(GetPath(timestamp)))
-                    await writer.WriteLineAsync(MessageToLog($"{timestamp.DrumDateString()} - { args.Message }"));
+                    await writer.WriteLineAsync(MessageToLog($"{Utility.DateString(timestamp)} - { args.Message.ToProcessedString() }"));
             } catch(IOException ioException) {
                 Log.Error(ioException);
             }
         }
 
         public async Task<string> Search(string exactMatch) {
+            if (!Directory.Exists(_channelDirectory))
+                return string.Empty;
             var builder = new StringBuilder();
             string[] files = Directory.GetFiles(_channelDirectory);
             await Task.WhenAll(files.Select(file => SearchFile(file, exactMatch, builder)));

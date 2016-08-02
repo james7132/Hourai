@@ -35,8 +35,7 @@ namespace DrumBot {
         static void LogValue(LogLevel level, object value) {
             if (level < Level)
                 return;
-            Console.WriteLine(
-                $"[{level}] {DrumDate.Now}: {value}");
+            Console.WriteLine($"[{level}] {Utility.DateString(DateTime.Now)}: {value}");
         }
     }
 }
