@@ -1,7 +1,10 @@
-using System.Linq;
 using Discord.Commands;
 
 namespace DrumBot {
+
+    /// <summary>
+    /// Channel ignoring related commands.
+    /// </summary>
     class ChannelCommands {
         [Command]
         [Group("channel")]
@@ -10,7 +13,7 @@ namespace DrumBot {
         [Check(typeof(ProdChecker))]
         [Check(typeof(UserManageChannelsChecker))]
         public static async void Ignore(CommandEventArgs e) {
-            e.Server.GetConfig().AddIgnoredChannels(e.Message.MentionedChannels.Select(c => c.Id).ToArray());
+            await e.Server.GetConfig().AddIgnoredChannels(e.Message.MentionedChannels);
             await e.Respond(Bot.Config.SuccessResponse);
         }
 
@@ -21,7 +24,7 @@ namespace DrumBot {
         [Check(typeof(ProdChecker))]
         [Check(typeof(UserManageChannelsChecker))]
         public static async void Unignore(CommandEventArgs e) {
-            e.Server.GetConfig().RemoveIgnoredChannels(e.Message.MentionedChannels.Select(c => c.Id).ToArray());
+            await e.Server.GetConfig().RemoveIgnoredChannels(e.Message.MentionedChannels);
             await e.Respond(Bot.Config.SuccessResponse);
         }
     }

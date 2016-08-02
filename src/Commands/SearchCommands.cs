@@ -4,6 +4,10 @@ using Discord;
 using Discord.Commands;
 
 namespace DrumBot {
+
+    /// <summary>
+    /// Log searching relate commands
+    /// </summary>
     static class SearchCommands {
         [Command]
         [Description("Search the history of the current channel for a certain value.")]

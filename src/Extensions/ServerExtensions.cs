@@ -1,12 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Discord;
 
 namespace DrumBot {
-    class ServerExtensions {
+    public static class ServerExtensions {
 
+        /// <summary>
+        /// Shortcut for getting the Server config given a Server reference.
+        /// </summary>
+        public static ServerConfig GetConfig(this Server server) => Bot.Config.GetServerConfig(server);
     }
 }

@@ -1,6 +1,4 @@
-using System.ComponentModel;
 using Discord;
-using Discord.Commands;
 
 namespace DrumBot {
     public abstract class PermissionChecker : Checker {

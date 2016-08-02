@@ -1,6 +1,10 @@
 using Discord.Commands;
 
 namespace DrumBot {
+
+    /// <summary>
+    /// Special owner only or debug hidden commands.
+    /// </summary>
     class HiddenCommands {
 
         [Command]
