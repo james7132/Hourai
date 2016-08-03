@@ -4,7 +4,7 @@
     <a href="https://opensource.org/licenses/mit-license.php">
         <img src="https://img.shields.io/badge/license-MIT%20License-blue.svg" alt="MIT License">
     </a>
-    <a href="https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF">
+    <a href="https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0x00000008">
         <img src="https://img.shields.io/badge/discord-add--to--server-738bd7.svg" alt="Add DrumBot to your server!">
     </a>
 </p>
@@ -20,7 +20,7 @@
 To see a comprehensive list of commands and what they do, please take a look at the [wiki](https://github.com/james7132/DrumBot/wiki).
 
 ### Setup
-Simply click this [link](https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF) to add DrumBot to your server (you need the Manage Server permission to do so)
+Simply click this [link](https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0x00000008) to add DrumBot to your server (you need the Manage Server permission to do so)
 
 ### Source Setup
 0. Use Nuget to obtain the following packages:
