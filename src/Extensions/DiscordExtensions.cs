@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,6 +25,13 @@ namespace DrumBot {
                 if (func != null)
                     await func(e);
             });
+        }
+
+        static readonly Random Random = new Random();
+
+        public static T SelectRandom<T>(this IEnumerable<T> t) {
+            var array = t.ToArray();
+            return array[Random.Next(array.Length)];
         }
 
         public static async Task Respond(this Channel channel, string response) {

@@ -82,6 +82,7 @@ namespace DrumBot {
             Client.AddService(new RoleService());
             Client.AddService(new ChannelService());
             Client.AddService(new AdminService());
+            Client.AddService(new PrivateCommandService());
             //Client.AddService<SubchannelService>();
 
             Log.Info($"Starting { Config.BotName }...");
@@ -143,8 +144,17 @@ namespace DrumBot {
             await OwnerChannel.SendMessage($"Bot has been started at { DateTime.Now }");
             var startTime = DateTime.Now;
             while (true) {
-                await Task.Delay(300000);
+                await
+                    Client.CurrentUser.Edit(
+                        avatar:
+                            new FileStream(
+                                Directory.GetFiles(
+                                    Path.Combine(ExecutionDirectory,
+                                        Config.AvatarDirectory)).SelectRandom(),
+                                FileMode.Open));
+                Client.SetGame(Config.Version);
                 Log.Info($"Uptime: { DateTime.Now - startTime }");
+                await Task.Delay(300000);
             }
         }
 

@@ -52,6 +52,9 @@ namespace DrumBot {
         [JsonProperty]
         public static ulong Owner { get; set; }
 
+        [JsonProperty]
+        public static string Version { get; set; }
+
         /// <summary>
         /// The subdirectory name where the logs for each channel is logged.
         /// </summary>
@@ -63,6 +66,9 @@ namespace DrumBot {
         /// </summary>
         [JsonProperty]
         public static string ConfigDirectory { get; set; } = "config";
+
+        [JsonProperty]
+        public static string AvatarDirectory { get; set; } = "avatars";
 
         /// <summary>
         /// The command prefix that triggers commands specified by the bot
