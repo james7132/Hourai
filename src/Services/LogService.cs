@@ -17,6 +17,8 @@ namespace DrumBot {
             client.UserLeft += UserLog("left");
 
             client.MessageUpdated += delegate(object sender, MessageUpdatedEventArgs e) {
+                if (e.Channel.IsPrivate)
+                    return;
                 Log.Info($"Messagae by { e.User.Name } on { e.Channel.Name } on { e.Server.ToIDString() } was updated.");
             };
             client.MessageDeleted += MessageLog("deleted");

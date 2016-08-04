@@ -14,25 +14,81 @@ namespace DrumBot {
         /// </summary>
         /// <param name="response">the string of the message to respond with.</param>
         public static async Task Respond(this CommandEventArgs evt, string response) {
+            await evt.Channel.Respond(response);
+        }
+
+        public static void DoBy(this CommandBuilder builder,
+                                Func<CommandEventArgs, Task> func) {
+            builder.Do(async delegate(CommandEventArgs e) {
+
+                if (func != null)
+                    await func(e);
+            });
+        }
+
+        public static async Task Respond(this Channel channel, string response) {
+            const string fileName = "results.txt";
             if (response.Length > DiscordConfig.MaxMessageSize) {
-                using (var stream = new MemoryStream()) {
-                    var writer = new StreamWriter(stream);
-                    writer.Write(response);
-                    writer.Flush();
-                    stream.Position = 0;
-                    await evt.Channel.SendFile("results.txt", stream);
-                }
+                if (channel.IsPrivate)
+                    await channel.Users.FirstOrDefault().SendMemoryFile(fileName, response);
+                else
+                    await channel.SendMemoryFile(fileName, response);
             }
             else {
                 if(response.Length > 0)
-                    await evt.Channel.SendMessage(response);
+                    await channel.SendMessage(response);
             }
         }
+
+        public static async Task Success(this CommandEventArgs e) => await e.Respond(Config.SuccessResponse);
+
+        public static async Task SendFileRetry(this Channel user,
+                                                string path) {
+            await Utility.FileIO(async () => {
+                using (var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) {
+                    await user.SendFile(Path.GetFileName(path), file);
+                }
+            });
+        }
+
+        public static async Task SendFileRetry(this User user,
+                                               string path) {
+            await Utility.FileIO(async () => {
+                using (var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) {
+                    await user.SendFile(Path.GetFileName(path), file);
+                }
+            });
+        }
+
+        public static async Task SendMemoryFile(this Channel channel,
+                                          string name,
+                                          string value) {
+            using (var stream = new MemoryStream()) {
+                var writer = new StreamWriter(stream);
+                writer.Write(value);
+                writer.Flush();
+                stream.Position = 0;
+                await channel.SendFile(name, stream);
+            }
+        }
+
+        public static async Task SendMemoryFile(this User user,
+                                          string name,
+                                          string value) {
+            using (var stream = new MemoryStream()) {
+                var writer = new StreamWriter(stream);
+                writer.Write(value);
+                writer.Flush();
+                stream.Position = 0;
+                await user.SendFile(name, stream);
+            }
+        }
+
 
         public static string ToProcessedString(this Message message) => $"{message.User?.Name ?? "Unknown User"}: {message.Text}";
 
         /// <summary>
-        /// Compares two users. Favors the user with the higher highest role.
+        /// Compares two users. Favors the channel with the higher highest role.
         /// </summary>
         public static int CompareTo(this User u1, User u2) {
             Func<Role, int> rolePos = role => role.Position;

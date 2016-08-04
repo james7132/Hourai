@@ -26,7 +26,7 @@ namespace DrumBot {
         readonly string _channelDirectory;
 
         static ChannelLog() {
-            LogDirectory = Path.Combine(Bot.ExecutionDirectory, Bot.Config.LogDirectory);
+            LogDirectory = Path.Combine(Bot.ExecutionDirectory, Config.LogDirectory);
             Log.Info($"Chat Log Directory: { LogDirectory }");
         }
 
@@ -68,13 +68,11 @@ namespace DrumBot {
                 throw new ArgumentNullException();
             if (!Directory.Exists(_channelDirectory))
                 Directory.CreateDirectory(_channelDirectory);
-            try {
-                var timestamp = message.Timestamp;
+            var timestamp = message.Timestamp;
+            await Utility.FileIO(async delegate {
                 using (StreamWriter writer = File.AppendText(GetPath(timestamp)))
                     await writer.WriteLineAsync(MessageToLog($"{Utility.DateString(timestamp)} - { message.ToProcessedString() }"));
-            } catch(IOException ioException) {
-                Log.Error(ioException);
-            }
+            });
         }
 
         /// <summary>
@@ -85,10 +83,9 @@ namespace DrumBot {
         public async Task<string> Search(string exactMatch) {
             if (!Directory.Exists(_channelDirectory))
                 return string.Empty;
-            var builder = new StringBuilder();
             string[] files = Directory.GetFiles(_channelDirectory);
-            await Task.WhenAll(files.Select(file => SearchFile(file, exactMatch, builder)));
-            return LogToMessage(builder.ToString());
+            string[] results = await Task.WhenAll(files.Select(file => SearchFile(file, exactMatch)));
+            return LogToMessage(string.Join("\n", results.Where(s => !string.IsNullOrEmpty(s))));
         }
 
         /// <summary>
@@ -96,9 +93,9 @@ namespace DrumBot {
         /// </summary>
         /// <param name="path">the path to the file</param>
         /// <param name="exactMatch">the exact match to search for</param>
-        /// <param name="builder">the string builder to add results to.</param>
-        async Task SearchFile(string path, string exactMatch, StringBuilder builder) {
-            try {
+        async Task<string> SearchFile(string path, string exactMatch) {
+            var builder = new StringBuilder();
+            Func<Task> read = async delegate {
                 using (StreamReader reader = File.OpenText(path)) {
                     while(!reader.EndOfStream) {
                         string line = await reader.ReadLineAsync();
@@ -106,9 +103,10 @@ namespace DrumBot {
                             builder.AppendLine(line);
                     }
                 }
-            } catch(IOException exception) {
-                Log.Error(exception);
-            }
+            };
+            Action retry = delegate { builder.Clear(); };
+            await Utility.FileIO(read, retry);
+            return builder.ToString();
         }
     }
 }

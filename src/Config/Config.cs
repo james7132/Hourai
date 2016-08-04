@@ -10,25 +10,25 @@ namespace DrumBot {
 
         public const string ConfigFilePath = "config.json";
 
-        readonly Dictionary<ulong, ServerConfig> _serversConfigs;
+        static readonly Dictionary<ulong, ServerConfig> _serversConfigs;
 
-        public Config() {
+        public IEnumerable<ServerConfig> ServerConfigs => _serversConfigs.Values;
+
+        static Config() {
             _serversConfigs = new Dictionary<ulong, ServerConfig>();
         }
 
-        public static Config Load() {
+        public static void Load() {
             string fullPath = Path.Combine(Bot.ExecutionDirectory,
                 ConfigFilePath);
             Log.Info($"Loading DrumBot config from {fullPath}...");
-            var config = JsonConvert.DeserializeObject<Config>(
-                            File.ReadAllText(ConfigFilePath));
-            Log.Info($"Setting log directory to: { config.LogDirectory }");
-            Log.Info($"Setting config directory to: { config.ConfigDirectory }");
+            JsonConvert.DeserializeObject<Config>(File.ReadAllText(ConfigFilePath));
+            Log.Info($"Setting log directory to: { LogDirectory }");
+            Log.Info($"Setting config directory to: { ConfigDirectory }");
             Log.Info("Config loaded.");
-            return config;
         }
 
-        public ServerConfig GetServerConfig(Server server) {
+        public static ServerConfig GetServerConfig(Server server) {
             if(!_serversConfigs.ContainsKey(server.Id))
                 _serversConfigs[server.Id] = new ServerConfig(server);
             return _serversConfigs[server.Id];
@@ -37,41 +37,49 @@ namespace DrumBot {
         /// <summary>
         /// The login token used by the bot to access Discord 
         /// </summary>
-        public string Token { get; set; }
+        [JsonProperty]
+        public static string Token { get; set; }
 
         /// <summary>
         /// The name of the bot.
         /// </summary>
-        public string BotName { get; set; }
+        [JsonProperty]
+        public static string BotName { get; set; }
 
         /// <summary>
         /// The owner of the bot's ID.
         /// </summary>
-        public ulong Owner { get; set; }
+        [JsonProperty]
+        public static ulong Owner { get; set; }
 
         /// <summary>
         /// The subdirectory name where the logs for each channel is logged.
         /// </summary>
-        public string LogDirectory { get; set; } = "logs";
+        [JsonProperty]
+        public static string LogDirectory { get; set; } = "logs";
 
         /// <summary>
         /// The subdirectory where the configs for each server is stored.
         /// </summary>
-        public string ConfigDirectory { get; set; } = "config";
+        [JsonProperty]
+        public static string ConfigDirectory { get; set; } = "config";
 
         /// <summary>
         /// The command prefix that triggers commands specified by the bot
         /// </summary>
-        public char CommandPrefix { get; set; } = '~';
+        [JsonProperty]
+        public static char CommandPrefix { get; set; } = '~';
 
         /// <summary>
         /// What is responded when a command succeeds
         /// </summary>
-        public string SuccessResponse { get; set; } = ":thumbsup:";
+        [JsonProperty]
+        public static string SuccessResponse { get; set; } = ":thumbsup:";
 
         /// <summary>
         /// Maximum number of messages to remove with the prune command.
         /// </summary>
-        public int PruneLimit { get; set; } = 100;
+        [JsonProperty]
+        public static int PruneLimit { get; set; } = 100;
     }
 }
