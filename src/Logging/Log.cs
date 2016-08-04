@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 namespace DrumBot {
     public enum LogLevel {
@@ -35,7 +36,7 @@ namespace DrumBot {
         static void LogValue(LogLevel level, object value) {
             if (level < Level)
                 return;
-            Console.WriteLine($"[{level}] {Utility.DateString(DateTime.Now)}: {value}");
+            Trace.WriteLine($"[{level}] {Utility.DateString(DateTime.Now)}: {value}");
         }
     }
 }

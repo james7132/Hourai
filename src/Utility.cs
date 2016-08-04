@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Discord;
 
 namespace DrumBot {
@@ -8,25 +10,49 @@ namespace DrumBot {
         public RoleNotFoundException(string role) : base($"No role named { role } found.") {
         }
     }
+
+    public class RoleRankException : Exception {
+        public RoleRankException(string message) : base(message) {
+        }
+    }
+
     public static class Utility {
 
-        public static Role GetRole(string roleName, Server server) {
-            Role role = server.FindRoles(roleName).FirstOrDefault();
-            if (role == null)
-                throw new RoleNotFoundException(roleName);
-            //RoleCheck(server.GetUser(Bot.Client.CurrentUser.Id), role, action);
-            //RoleCheck(caller, role, action);
-            return role;
-        }
+        //TODO: Expose as config option
+        const int MaxRetries = 20;
 
-        public static void RoleCheck(User user, Role role, string action) {
+        public static bool RoleCheck(User user, Role role) {
             int position = role.Position;
-            if (user.Server.Owner != user && user.Roles.Max(r => r.Position) <= position)
-                throw new Exception($"{user.Name} cannot {action} role \"{role.Name}\", as it is above their role.");
+            return user.IsServerOwner() || user.Roles.Max(r => r.Position) > position;
         }
 
         public static string DateString(DateTime date) {
-            return date.ToString("yyyy-MM-dd hh:mm:ss");
+            return date.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        public static async Task FileIO(Func<Task> fileIOaction,
+                                        Action retry = null,
+                                        Action failure = null) {
+            var success = false;
+            var tries = 0;
+            while (!success) {
+                try {
+                    await fileIOaction();
+                    success = true;
+                } catch (IOException) {
+                    if (tries <= MaxRetries) {
+                        retry?.Invoke();
+                        tries++;
+                        await Task.Delay(100);
+                    }
+                    else {
+                        Log.Error(
+                            "Failed to read file for search. Max retries exceeded.");
+                        failure?.Invoke();
+                        throw;
+                    }
+                }
+            }
         }
 
     }

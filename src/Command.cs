@@ -8,8 +8,8 @@ using Discord.Commands;
 namespace DrumBot {
     public class Command {
 
-        public static async Task ForEveryUser(CommandEventArgs e, IEnumerable<User> users, Func<User, Task<string>> func) {
-            string[] results = await Task.WhenAll(e.Message.MentionedUsers.Select(func));
+        public static async Task ForEvery<T>(CommandEventArgs e, IEnumerable<T> users, Func<T, Task<string>> func) {
+            string[] results = await Task.WhenAll(users.Select(func));
             string response;
             if (results.Length > 0)
                 response = string.Join("\n", results);
@@ -18,7 +18,7 @@ namespace DrumBot {
             await e.Respond(response);
         }
 
-        public static Func<User, Task<string>> AdminAction(Channel channel,
+        public static Func<User, Task<string>> Action(Channel channel,
                                                             string action,
                                                             Func<User, Task> task,
                                                             bool ignoreErrors = false) {
@@ -35,8 +35,24 @@ namespace DrumBot {
                     result = exception.Message;
                 } 
                 if (string.IsNullOrEmpty(result) || ignoreErrors)
-                    return $"{user.Name}: { Bot.Config.SuccessResponse }";
+                    return $"{user.Name}: { Config.SuccessResponse }";
                 return $"{user.Name}: {result}";
+            };
+        }
+
+        public static Func<Channel, Task<string>> Action(Channel channel,
+                                                                Func<Channel, Task> task,
+                                                                bool ignoreErrors = false) {
+            return async delegate(Channel targetChannel) {
+                string result = string.Empty;
+                try {
+                    await task(targetChannel);
+                } catch (Exception exception) {
+                    result = exception.Message;
+                } 
+                if (string.IsNullOrEmpty(result) || ignoreErrors)
+                    return $"{targetChannel.Name}: { Config.SuccessResponse }";
+                return $"{targetChannel.Name}: {result}";
             };
         }
     }

@@ -75,37 +75,33 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\Attributes\AliasAttribute.cs" />
-    <Compile Include="src\Attributes\CheckAttribute.cs" />
-    <Compile Include="src\Attributes\GroupAttribute.cs" />
     <Compile Include="src\Checkers\PermissionChecker.cs" />
     <Compile Include="src\Checkers\ProdChecker.cs" />
-    <Compile Include="src\Attributes\CommandAttribute.cs" />
-    <Compile Include="src\Attributes\CommandBuilderAttribute.cs" />
-    <Compile Include="src\Attributes\DescriptionAttribute.cs" />
-    <Compile Include="src\Attributes\ParameterAttribute.cs" />
-    <Compile Include="src\Commands\AdminCommands.cs" />
-    <Compile Include="src\Commands\ChannelCommands.cs" />
-    <Compile Include="src\Commands\HiddenCommands.cs" />
     <Compile Include="src\Command.cs" />
-    <Compile Include="src\Commands\StandardCommands.cs" />
     <Compile Include="src\Exceptions\PermissionException.cs" />
     <Compile Include="src\Extensions\UserExtensions.cs" />
+    <Compile Include="src\Services\AdminService.cs" />
+    <Compile Include="src\Services\ChannelService.cs" />
+    <Compile Include="src\Services\InfoService.cs" />
+    <Compile Include="src\Services\NicknameService.cs" />
+    <Compile Include="src\Services\PrivateCommandService.cs" />
+    <Compile Include="src\Services\PruneService.cs" />
+    <Compile Include="src\Services\SearchService.cs" />
+    <Compile Include="src\Services\RoleService.cs" />
+    <Compile Include="src\Services\SubchannelService.cs" />
     <Compile Include="src\Utility.cs" />
     <Compile Include="src\Extensions\DiscordExtensions.cs" />
     <Compile Include="src\Extensions\MethodInfoExtensions.cs" />
     <Compile Include="src\Logging\ChannelLog.cs" />
     <Compile Include="src\ChannelSet.cs" />
     <Compile Include="src\Config\ServerConfig.cs" />
-    <Compile Include="src\Extensions\DiscordStringExtensions.cs" />
+    <Compile Include="src\Extensions\StringExtensions.cs" />
     <Compile Include="src\Config\Config.cs" />
     <Compile Include="src\Attributes\InitializeOnLoadAttribute.cs" />
     <Compile Include="src\Logging\Log.cs" />
     <Compile Include="src\Bot.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="src\Logging\LogService.cs" />
-    <Compile Include="src\Commands\RoleCommands.cs" />
-    <Compile Include="src\Commands\SearchCommands.cs" />
+    <Compile Include="src\Services\LogService.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="config.json">

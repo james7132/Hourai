@@ -1,168 +1,94 @@
+using System;
 using Discord;
+using Discord.Commands.Permissions;
 
 namespace DrumBot {
-    public abstract class PermissionChecker : Checker {
+
+    public class BotOwnerChecker : Checker {
         public override bool CanRun(Discord.Commands.Command command,
                                     User user,
                                     Channel channel,
                                     out string error) {
             error = string.Empty;
-            if (CheckUser && !Check(user)) {
-                error =
-                    $"{user.Mention}, you do not have the { PermissionName.Wrap("``")} permission.";
+            if (!user.IsBotOwner()) {
+                error = $"{user.Name} you are not the owner of this bot, and thus cannot run {command.Text}";
                 return false;
             }
-            if (CheckBot && !Check(channel.Server.CurrentUser)) {
-                error = $"{ Bot.Client.CurrentUser.Name } does not have the { PermissionName.Wrap("``") } permission.";
+            return true;
+        }
+    }
+
+    class PermissionChecker : Checker {
+        string PermissionName { get; }
+        bool CheckBot { get; }
+        bool CheckUser { get; }
+
+        readonly Func<ServerPermissions, bool> PermCheck;
+
+        public PermissionChecker(string name, 
+                                 Func<ServerPermissions, bool> check, 
+                                 bool checkBot = true, 
+                                 bool checkUser = true) {
+            PermissionName = Check.NotNull(name);
+            PermCheck = Check.NotNull(check);
+            CheckBot = checkBot;
+            CheckUser = checkUser;
+        }
+
+        public override bool CanRun(Discord.Commands.Command command,
+                                    User user,
+                                    Channel channel,
+                                    out string error) {
+            error = string.Empty;
+            if (CheckBot && !PermCheck(channel.Server.CurrentUser.ServerPermissions)) {
+                error = $"{ channel.Server.CurrentUser.Name } does not have the { PermissionName.Code() } permission.";
+                return false;
+            }
+            if (CheckUser && user.IsBotOwner())
+                return true;
+            if (CheckUser && !PermCheck(user.ServerPermissions)) {
+                error = $"{user.Mention}, you do not have the { PermissionName.Code() } permission.";
                 return false;
             }
             return true;
         }
 
-        protected abstract string PermissionName { get; }
-
-        protected virtual bool CheckBot { get; } = true;
-        protected virtual bool CheckUser { get; } = true;
-
-        protected abstract bool Check(User user);
 
     }
 
+    public static class Check {
+        public static T NotNull<T>(T obj) {
+            if (obj == null)
+                throw new ArgumentNullException();
+            return obj;
+        }
 
-    #region Manage Channels
-    public class ManageChannelsChecker : PermissionChecker {
-        protected override string PermissionName => "Manage Channels";
-        protected override bool Check(User user) => user.ServerPermissions.ManageChannels; 
-    }
+        public static IPermissionChecker ManageChannels(bool user = true, bool bot = true) => 
+            new PermissionChecker("Manage Channels", s => s.ManageChannels, bot, user);
 
-    public class UserManageChannelsChecker : ManageChannelsChecker {
-        protected override bool CheckBot { get; } = false;
-    }
+        public static IPermissionChecker ManageMessages(bool user = true, bool bot = true) => 
+            new PermissionChecker("Manage Messages", s => s.ManageMessages, bot, user);
 
-    public class BotManageChannelsChecker : ManageChannelsChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
+        public static IPermissionChecker ManageNicknames(bool user = true, bool bot = true) => 
+            new PermissionChecker("Manage Nicknames", s => s.ManageNicknames, bot, user);
 
-    #region Manage Messages
-    public class ManageMessagesChecker : PermissionChecker {
-        protected override string PermissionName => "Manage Messages";
-        protected override bool Check(User user) => user.ServerPermissions.ManageMessages; 
-    }
+        public static IPermissionChecker ManageServer(bool user = true, bool bot = true) => 
+            new PermissionChecker("Manage Server", s => s.ManageServer, bot, user);
+        
+        public static IPermissionChecker ManageRoles(bool user = true, bool bot = true) => 
+            new PermissionChecker("Manage Roles", s => s.ManageRoles, bot, user);
 
-    public class UserManageMessagesChecker : ManageMessagesChecker {
-        protected override bool CheckBot { get; } = false;
-    }
+        public static IPermissionChecker KickMembers(bool user = true, bool bot = true) => 
+            new PermissionChecker("Kick Members", s => s.KickMembers, bot, user);
 
-    public class BotManageMessagesChecker : ManageMessagesChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
+        public static IPermissionChecker BanMembers(bool user = true, bool bot = true) => 
+            new PermissionChecker("Ban Members", s => s.BanMembers, bot, user);
 
-    #region Manage Nicknames
-    public class ManageNicknamesChecker : PermissionChecker {
-        protected override string PermissionName => "Manage Nicknames";
-        protected override bool Check(User user) => user.ServerPermissions.ManageNicknames; 
-    }
+        public static IPermissionChecker MuteMembers(bool user = true, bool bot = true) => 
+            new PermissionChecker("Mute Members", s => s.MuteMembers, bot, user);
 
-    public class UserManageNicknamesChecker : ManageNicknamesChecker {
-        protected override bool CheckBot { get; } = false;
+        public static IPermissionChecker DeafenMembers(bool user = true, bool bot = true) => 
+            new PermissionChecker("Deafen Members", s => s.DeafenMembers, bot, user);
     }
-
-    public class BotManageNicknamesChecker : ManageNicknamesChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
- 
-    #region Manage Server
-    public class ManageServerChecker : PermissionChecker {
-        protected override string PermissionName => "Manage Server";
-        protected override bool Check(User user) => user.ServerPermissions.ManageServer; 
-    }
-
-    public class UserManageServerChecker : ManageServerChecker {
-        protected override bool CheckBot { get; } = false;
-    }
-
-    public class BotManageServerChecker : ManageServerChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
-
-    #region Manage Roles
-    public class ManageRolesChecker : PermissionChecker {
-        protected override string PermissionName => "Manage Roles";
-        protected override bool Check(User user) => user.ServerPermissions.ManageRoles;
-    }
-
-    public class UserManageRolesChecker : ManageRolesChecker {
-        protected override bool CheckBot { get; } = false;
-    }
-
-    public class BotManageRolesChecker : ManageRolesChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
-
-    #region Kick Members
-    public class KickMembersChecker : PermissionChecker {
-        protected override string PermissionName => "Kick Members";
-        protected override bool Check(User user) => user.ServerPermissions.KickMembers;
-    }
-
-    public class UserKickMembersChecker : KickMembersChecker {
-        protected override bool CheckBot { get; } = false;
-    }
-
-    public class BotKickMembersChecker : KickMembersChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
-
-    #region Mute Members
-    public class MuteMembersChecker : PermissionChecker {
-        protected override string PermissionName => "Mute Members";
-        protected override bool Check(User user) => user.ServerPermissions.MuteMembers;
-    }
-
-    public class UserMuteMembersChecker : MuteMembersChecker {
-        protected override bool CheckBot { get; } = false;
-    }
-
-    public class BotMuteMembersChecker : MuteMembersChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
-
-    #region Deafen Members
-    public class DeafenMembersChecker : PermissionChecker {
-        protected override string PermissionName => "Deafen Members";
-        protected override bool Check(User user) => user.ServerPermissions.DeafenMembers;
-    }
-
-    public class UserDeafenMembersChecker : DeafenMembersChecker {
-        protected override bool CheckBot { get; } = false;
-    }
-
-    public class BotDeafenMembersChecker : DeafenMembersChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
-
-    #region Ban Members
-    public class BanMembersChecker : PermissionChecker {
-        protected override string PermissionName => "Ban Members";
-        protected override bool Check(User user) => user.ServerPermissions.BanMembers; 
-    }
-
-    public class UserBanMembersChecker : BanMembersChecker {
-        protected override bool CheckBot { get; } = false;
-    }
-
-    public class BotBanMembersChecker : BanMembersChecker {
-        protected override bool CheckUser { get; } = false;
-    }
-    #endregion
-
 
 }

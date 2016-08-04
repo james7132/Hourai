@@ -12,7 +12,9 @@ namespace DrumBot {
         public static Task Unmute(this User user) => user.SetMuted(false);
         public static Task Undeafen(this User user) => user.SetDeafen(false);
 
-        public static bool IsBotOwner(this User user) => user.Id == Bot.Config.Owner;
+        public static Task SetNickname(this User user, string nickname) => user.Edit(nickname: nickname);
+
+        public static bool IsBotOwner(this User user) => user.Id == Config.Owner;
         public static bool IsServerOwner(this User user) => user.Server.Owner == user;
 
         public static Task Ban(this User user) => user.Server.Ban(user);
