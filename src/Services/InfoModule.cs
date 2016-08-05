@@ -4,9 +4,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using Discord.Modules;
 
 namespace DrumBot {
-    public class InfoService : IService {
+    public class InfoModule : IModule {
 
         async void Info(CommandEventArgs e) {
             var builder = new StringBuilder();
@@ -54,25 +55,21 @@ namespace DrumBot {
             await e.Respond(builder.ToString());
         }
 
-        public void Install(DiscordClient client) {
-            var commandService = client.GetService<CommandService>();
+        public void Install(ModuleManager manager) {
+            manager.CreateCommands("", cbg => {
+                cbg.AddCheck(new ProdChecker());
+                cbg.CreateCommand("avatar")
+                    .Description("Gets the avatar url of all mentioned users.")
+                    .Parameter("User(s)", ParameterType.Multiple)
+                    .Do(Avatar);
 
-            commandService.CreateCommand("avatar")
-                .Description("Gets the avatar url of all mentioned users.")
-                .Parameter("User(s)", ParameterType.Multiple)
-                .AddCheck(new ProdChecker())
-                .Do(Avatar);
-
-            commandService.CreateCommand("whois")
-                .Description("Gets information on a specified user")
-                .Parameter("User")
-                .AddCheck(new ProdChecker())
-                .Do(WhoIs);
-            
-            commandService.CreateGroup("server", cbg => {
-                cbg.CreateCommand("info")
+                cbg.CreateCommand("whois")
+                    .Description("Gets information on a specified user")
+                    .Parameter("User")
+                    .Do(WhoIs);
+                
+                cbg.CreateCommand("serverinfo")
                    .Description("Gets general information about the current server")
-                   .AddCheck(new ProdChecker())
                    .Do(e => Info(e));
             });
         }

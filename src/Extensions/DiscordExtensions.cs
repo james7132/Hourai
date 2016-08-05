@@ -18,15 +18,6 @@ namespace DrumBot {
             await evt.Channel.Respond(response);
         }
 
-        public static void DoBy(this CommandBuilder builder,
-                                Func<CommandEventArgs, Task> func) {
-            builder.Do(async delegate(CommandEventArgs e) {
-
-                if (func != null)
-                    await func(e);
-            });
-        }
-
         static readonly Random Random = new Random();
 
         public static T SelectRandom<T>(this IEnumerable<T> t) {
@@ -93,7 +84,12 @@ namespace DrumBot {
         }
 
 
-        public static string ToProcessedString(this Message message) => $"{message.User?.Name ?? "Unknown User"}: {message.Text}";
+        public static string ToProcessedString(this Message message) {
+            var baseLog = $"{message.User?.Name ?? "Unknown User"}: {message.Text}";
+            var attachments = string.Join(" ", message.Attachments.Select(a => a.Url));
+            var embeds = string.Join(" ", message.Embeds.Select(a => a.Url));
+            return baseLog + attachments + embeds;
+        }
 
         /// <summary>
         /// Compares two users. Favors the channel with the higher highest role.

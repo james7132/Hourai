@@ -1,25 +1,25 @@
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using Discord.Modules;
 
 namespace DrumBot {
-    public class ChannelService : IService {
+    public class ChannelModule : IModule {
 
         const string Requires = "Requires ``Manage Channels`` permission for both bot and user.";
 
-        public void Install(DiscordClient client) {
-            var commandService = client.GetService<CommandService>();
+        public void Install(ModuleManager manager) {
+            manager.CreateCommands("channel", cbg => {
+                cbg.Category("Admin");
+                cbg.AddCheck(new ProdChecker());
+                cbg.AddCheck(Check.ManageChannels());
+                CreateCommand(cbg, "create", "Creates a channel with a specified name.", false)
+                    .Parameter("Name")
+                    .Do(CreateChannel);
 
-            commandService.CreateGroup("channel",
-                cbg => {
-
-                    CreateCommand(cbg, "create", "Creates a channel with a specified name.", false)
-                        .Parameter("Name")
-                        .Do(CreateChannel);
-
-                    CreateCommand(cbg, "delete", "Deletes all mentioned channels")
-                        .Do(DeleteChannel);
-                });
+                CreateCommand(cbg, "delete", "Deletes all mentioned channels")
+                    .Do(DeleteChannel);
+            });
         }
 
         async Task DeleteChannel(CommandEventArgs e) {
@@ -36,9 +36,7 @@ namespace DrumBot {
                                       string description,
                                       bool multiple = true) {
             var command = builder.CreateCommand(name)
-                                 .Description(description + Requires)
-                                 .AddCheck(new ProdChecker())
-                                 .AddCheck(Check.ManageChannels());
+                                 .Description(description + Requires);
             if (multiple)
                 command = command.Parameter("Channels", ParameterType.Multiple);
             return command;

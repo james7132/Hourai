@@ -26,12 +26,8 @@ namespace DrumBot {
                                        out string error) {
             error = string.Empty;
             if (Config.GetServerConfig(channel.Server).AllowCommands) {
-#if DEBUG
-                Log.Info($"Command { Name } is running in DEBUG mode on a TEST server and can execute");
-#endif
                 return true;
             }
-            Log.Info($"Command \"{ Name }\" cannot be used in { channel.Server.Name } as it is not a PROD server.");
             return false;
         }
     }
