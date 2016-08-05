@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using Discord.Modules;
 
 namespace DrumBot {
-
-    public sealed class RoleService : IService {
+    public class RoleModule : IModule {
         readonly Func<User, Role, Task> _addRoleFunc = async (user, role) => await user.AddRoles(role);
         readonly Func<User, Role, Task> _removeRoleFunc = async (user, role) => await user.RemoveRoles(role);
         const string RoleParam = "Role";
@@ -14,18 +14,18 @@ namespace DrumBot {
         const string Requirements =
             "Requires ``Manage Role`` permission for both user and bot.";
 
-        public void Install(DiscordClient client) {
-            client.UserUpdated +=
+        public void Install(ModuleManager manager) {
+            manager.UserUpdated +=
                 async delegate(object s, UserUpdatedEventArgs e) {
                     var serverConfig = Config.GetServerConfig(e.Server);
                     if (!serverConfig.AllowCommands)
                         return;
                     await serverConfig.RemoveBannedRoles(e.After);
                 };
-
-            var commandService = client.GetService<CommandService>();
-
-            commandService.CreateGroup("role", cbg => {
+            manager.CreateCommands("role", cbg => {
+                cbg.Category("Admin");
+                cbg.AddCheck(new ProdChecker());
+                cbg.AddCheck(Check.ManageRoles());
                 RoleCommandBuilder(cbg, "ban", "Bans all mentioned users from a specified role")
                     .Do(async delegate(CommandEventArgs e) {
                         var serverConfig = Config.GetServerConfig(e.Server);
@@ -66,9 +66,7 @@ namespace DrumBot {
         CommandBuilder RoleCommandBuilder(CommandGroupBuilder builder, string name, string description, bool requireUsers = true) {
             var command = builder.CreateCommand(name)
                                  .Description(description + Requirements)
-                                 .Parameter(RoleParam)
-                                 .AddCheck(new ProdChecker())
-                                 .AddCheck(Check.ManageRoles());
+                                 .Parameter(RoleParam);
             if (requireUsers)
                 command = command.Parameter(UserParam, ParameterType.Multiple);
             return command;

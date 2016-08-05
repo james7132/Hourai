@@ -41,6 +41,10 @@
       <HintPath>packages\Discord.Net.Commands.0.9.4\lib\net45\Discord.Net.Commands.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Discord.Net.Modules, Version=0.9.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Discord.Net.Modules.0.9.4\lib\net45\Discord.Net.Modules.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.8.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -78,17 +82,19 @@
     <Compile Include="src\Checkers\PermissionChecker.cs" />
     <Compile Include="src\Checkers\ProdChecker.cs" />
     <Compile Include="src\Command.cs" />
-    <Compile Include="src\Exceptions\PermissionException.cs" />
+    <Compile Include="src\Exceptions.cs" />
+    <Compile Include="src\Extensions\CommandExtensions.cs" />
     <Compile Include="src\Extensions\UserExtensions.cs" />
-    <Compile Include="src\Services\AdminService.cs" />
-    <Compile Include="src\Services\ChannelService.cs" />
-    <Compile Include="src\Services\InfoService.cs" />
+    <Compile Include="src\Services\AdminModule.cs" />
+    <Compile Include="src\Services\ChannelModule.cs" />
+    <Compile Include="src\Services\InfoModule.cs" />
+    <Compile Include="src\Services\ModuleModule.cs" />
     <Compile Include="src\Services\NicknameService.cs" />
     <Compile Include="src\Services\PrivateCommandService.cs" />
-    <Compile Include="src\Services\PruneService.cs" />
-    <Compile Include="src\Services\SearchService.cs" />
-    <Compile Include="src\Services\RoleService.cs" />
-    <Compile Include="src\Services\SubchannelService.cs" />
+    <Compile Include="src\Services\RoleModule.cs" />
+    <Compile Include="src\Services\SearchModule.cs" />
+    <Compile Include="src\Services\SubchannelModule.cs" />
+    <Compile Include="src\UserAction.cs" />
     <Compile Include="src\Utility.cs" />
     <Compile Include="src\Extensions\DiscordExtensions.cs" />
     <Compile Include="src\Extensions\MethodInfoExtensions.cs" />

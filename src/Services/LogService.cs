@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Discord;
+using Discord.Commands;
 
 namespace DrumBot {
     public class LogService : IService {
@@ -17,6 +18,12 @@ namespace DrumBot {
             client.UserLeft += UserLog("left");
 
             client.MessageUpdated += delegate(object sender, MessageUpdatedEventArgs e) {
+                var log = $"Message update by {e.User.ToIDString()} ";
+                if (e.Channel.IsPrivate)
+                    log += "in private channel.";
+                else
+                    log += $"in {e.Channel.Name} on {e.Server.ToIDString()}";
+                Log.Info(log);
                 if (e.Channel.IsPrivate)
                     return;
                 Log.Info($"Messagae by { e.User.Name } on { e.Channel.Name } on { e.Server.ToIDString() } was updated.");
@@ -28,6 +35,19 @@ namespace DrumBot {
                 Log.Info($"Role { e.After.Name } on { e.Server.ToIDString() } was updated.");
             };
             client.RoleDeleted += RoleLog("deleted");
+
+            var commandService = client.GetService<CommandService>();
+            if(commandService != null)
+                commandService.CommandExecuted +=
+                    delegate(object s, CommandEventArgs e) {
+                        var log = $"Command {e.Command.Text} executed by {e.User.ToIDString()} ";
+                        if (e.Channel.IsPrivate)
+                            log += "in private channel.";
+                        else
+                            log += $"in {e.Channel.Name} on {e.Server.ToIDString()}";
+                        Log.Info(log);
+                    };
+
         }
 
         EventHandler<RoleEventArgs> RoleLog(string eventType) {

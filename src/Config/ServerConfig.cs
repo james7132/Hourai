@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
+using DrumBot.src;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -23,6 +23,8 @@ namespace DrumBot {
         public ServerType Type { get; set; } = ServerType.PROD;
         [JsonIgnore]
         public Server Server { get; }
+        public HashSet<string> Modules { get; set; }
+        public List<TempUserAction> TempActions { get; set; }
         public HashSet<ulong> IgnoredChannels { get; set; }
         public Dictionary<ulong, HashSet<ulong>> BannedRoles { get; set; }
         public Dictionary<ulong, HashSet<ulong>> Groups { get; set; }
@@ -36,6 +38,8 @@ namespace DrumBot {
         public ServerConfig(Server server) {
             Server = server;
             ID = server.Id;
+            Modules = new HashSet<string>();
+            TempActions = new List<TempUserAction>();
             IgnoredChannels = new HashSet<ulong>();
             BannedRoles = new Dictionary<ulong, HashSet<ulong>>();
             Groups = new Dictionary<ulong, HashSet<ulong>>();
@@ -149,6 +153,23 @@ namespace DrumBot {
             await Save();
         }
 
+        public async Task Update(DiscordClient client) {
+            var server = client.GetServer(ID); 
+            if (server == null)
+                return;
+            var changed = false;
+            foreach (TempUserAction tempUserAction in TempActions.ToArray()) {
+                if (tempUserAction.Expiration > DateTime.Now)
+                    continue;
+                await tempUserAction.Undo(server);
+                await server.DefaultChannel.SendMessage("Temp Action Undone.");
+                TempActions.Remove(tempUserAction);
+                changed = true;
+            }
+            if (changed)
+                await Save();
+        }
+
         public Channel GetMainChannel(Channel channel) {
             ulong id = Groups.FirstOrDefault(g => g.Value.Contains(channel.Id)).Key;
             if(id == default(ulong))
@@ -186,6 +207,20 @@ namespace DrumBot {
 
         public Task RemoveIgnoredChannels(IEnumerable<Channel> channels) {
             return RemoveIgnoredChannels(channels.Select(ch => ch.Id));
+        }
+
+        public async Task AddModule(string name) {
+            if (Modules.Add(name))
+                await Save();
+        }
+
+        public bool IsModuleEnabled(string name) {
+            return Modules.Contains(name);
+        }
+
+        public async Task RemoveModule(string name) {
+            if (Modules.Remove(name))
+                await Save();
         }
         
         [JsonIgnore]

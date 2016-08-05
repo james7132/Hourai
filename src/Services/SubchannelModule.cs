@@ -1,16 +1,11 @@
-using Discord;
+﻿using Discord;
+using Discord.Modules;
 
 namespace DrumBot {
-    public class SubchannelService : IService {
+    public class SubchannelModule : IModule {
 
-        public Config Config { get; }
-
-        public SubchannelService(Config config) {
-            Config = Check.NotNull(config);
-        }
-
-        public void Install(DiscordClient client) {
-            client.ChannelDestroyed +=
+        public void Install(ModuleManager manager) {
+            manager.ChannelDestroyed +=
                 async delegate(object sender, ChannelEventArgs args) {
                     var channel = args.Channel;
                     var serverConfig = Config.GetServerConfig(args.Server);
@@ -22,8 +17,14 @@ namespace DrumBot {
                             await groupChannel.Delete();
                         }
                     } 
-                    await serverConfig.Cleanup(client);
+                    await serverConfig.Cleanup(manager.Client);
                 };
+            manager.CreateCommands("soon",
+                cbg => {
+                    cbg.AddCheck(new ProdChecker());
+                    cbg.CreateCommand()
+                        .Do(async e => await e.Respond("Subchannel emulation: Coming soon™"));
+                });
         }
     }
 }

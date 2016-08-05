@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using Discord.Modules;
+using DrumBot.src.Services;
 using RestSharp.Extensions;
 
 namespace DrumBot {
@@ -67,24 +69,71 @@ namespace DrumBot {
             ExecuteStaticInitializers();
 
             SoftErrors = new HashSet<Type> {
-                typeof(RoleNotFoundException),
+                typeof(NotFoundException),
                 typeof(RoleRankException)
             };
 
             Client = new DiscordClient();
-            Client.AddService<LogService>();
             var commandService = Client.AddService(new CommandService(new CommandServiceConfigBuilder {
-                    PrefixChar = Config.CommandPrefix,
-                    HelpMode = HelpMode.Public
-                }));
-            Client.AddService<InfoService>();
-            Client.AddService(new SearchService(ChannelSet));
-            Client.AddService(new RoleService());
-            Client.AddService(new ChannelService());
-            Client.AddService(new AdminService());
-            Client.AddService(new PrivateCommandService());
-            //Client.AddService<SubchannelService>();
+                PrefixChar = Config.CommandPrefix,
+                HelpMode = HelpMode.Public
+            }));
+            Client.AddService<LogService>();
+            var moduleService = Client.AddService<ModuleService>();
 
+            Client.AddModule<ModuleModule>("Module");
+            var modules = new IModule[] {
+                new InfoModule(),
+                new AdminModule(),
+                new RoleModule(),
+                new ChannelModule(),
+                new SearchModule(ChannelSet), 
+                new SubchannelModule()
+            };
+            foreach (IModule module in modules) {
+                Client.AddModule(module,
+                    module.GetType().Name.Replace("Module", ""),
+                    ModuleFilter.ServerWhitelist);
+            }
+            Client.ServerAvailable += delegate(object s, ServerEventArgs e) {
+                var config = Config.GetServerConfig(e.Server);
+                foreach (string moduleId in config.Modules.ToArray()) {
+                    var module =
+                        moduleService.Modules.FirstOrDefault(
+                            m => m.Id == moduleId);
+                    module?.EnableServer(e.Server);
+                }
+            };
+            foreach (var moduleManager in moduleService.Modules) {
+                var id = moduleManager.Id;
+                moduleManager.ServerEnabled +=
+                    async delegate(object s, ServerEventArgs e) {
+                        var config = Config.GetServerConfig(e.Server);
+                        if(!config.IsModuleEnabled(id))
+                            await config.AddModule(id);
+                    };
+                moduleManager.ServerDisabled +=
+                    async delegate(object s, ServerEventArgs e) {
+                        var config = Config.GetServerConfig(e.Server);
+                        if(config.IsModuleEnabled(id))
+                            await config.RemoveModule(id);
+                    };
+            }
+            Client.AddService(new PrivateCommandService());
+
+            // Log every public message not made by the bot.
+            Client.MessageReceived +=
+                async (s, e) => {
+                    if (e.Message.IsAuthor || e.Channel.IsPrivate)
+                        return;
+                    await ChannelSet.Get(e.Channel).LogMessage(e.Message);
+                };
+
+            // Make sure that every channel is available on loading up a server.
+            Client.ServerAvailable += delegate(object sender, ServerEventArgs e) {
+                foreach (Channel channel in e.Server.TextChannels)
+                    ChannelSet.Get(channel);
+            };
             Log.Info($"Starting { Config.BotName }...");
             _errors = new List<string>();
             Client.ServerAvailable += (s, e) => Config.GetServerConfig(e.Server);
@@ -144,14 +193,12 @@ namespace DrumBot {
             await OwnerChannel.SendMessage($"Bot has been started at { DateTime.Now }");
             var startTime = DateTime.Now;
             while (true) {
-                await
-                    Client.CurrentUser.Edit(
-                        avatar:
-                            new FileStream(
-                                Directory.GetFiles(
-                                    Path.Combine(ExecutionDirectory,
-                                        Config.AvatarDirectory)).SelectRandom(),
-                                FileMode.Open));
+                var path = Directory.GetFiles(Path.Combine(ExecutionDirectory,
+                              Config.AvatarDirectory)).SelectRandom();
+                await Utility.FileIO(async delegate {
+                    using (var stream = new FileStream(path, FileMode.Open))
+                        await Client.CurrentUser.Edit(avatar:stream, avatarType: ImageType.Png);
+                });
                 Client.SetGame(Config.Version);
                 Log.Info($"Uptime: { DateTime.Now - startTime }");
                 await Task.Delay(300000);

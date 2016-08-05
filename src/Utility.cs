@@ -6,15 +6,6 @@ using Discord;
 
 namespace DrumBot {
 
-    public class RoleNotFoundException : Exception {
-        public RoleNotFoundException(string role) : base($"No role named { role } found.") {
-        }
-    }
-
-    public class RoleRankException : Exception {
-        public RoleRankException(string message) : base(message) {
-        }
-    }
 
     public static class Utility {
 

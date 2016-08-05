@@ -8,7 +8,7 @@ namespace DrumBot {
         public static Role GetRole(this Server server, string roleName) {
             Role role = server.FindRoles(roleName).FirstOrDefault();
             if (role == null)
-                throw new RoleNotFoundException(roleName);
+                throw new NotFoundException("role", roleName);
             return role;
         }
 
