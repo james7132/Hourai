@@ -20,24 +20,21 @@ namespace DrumBot {
                     var serverConfig = Config.GetServerConfig(e.Server);
                     if (!serverConfig.AllowCommands)
                         return;
-                    await serverConfig.RemoveBannedRoles(e.After);
+                    await serverConfig.GetUserConfig(e.After).RemoveBannedRoles(e.After);
                 };
             manager.CreateCommands("role", cbg => {
                 cbg.Category("Admin");
-                cbg.AddCheck(new ProdChecker());
                 cbg.AddCheck(Check.ManageRoles());
                 RoleCommandBuilder(cbg, "ban", "Bans all mentioned users from a specified role")
                     .Do(async delegate(CommandEventArgs e) {
                         var serverConfig = Config.GetServerConfig(e.Server);
-                        await RoleCommand(e, "ban", e.Message.MentionedUsers, async (u, r) => serverConfig.BanUsersFromRole(r, u));
-                        await serverConfig.Save();
+                        await RoleCommand(e, "ban", e.Message.MentionedUsers, async (u, r) => serverConfig.GetUserConfig(u).BanRole(r));
                     });
 
                 RoleCommandBuilder(cbg, "unban", "Unban all mentioned users from a specified role")
                     .Do(async delegate(CommandEventArgs e) {
                         var serverConfig = Config.GetServerConfig(e.Server);
-                        await RoleCommand(e, "ban", e.Message.MentionedUsers, async (u, r) => serverConfig.UnbanUserFromRole(r, u));
-                        await serverConfig.Save();
+                        await RoleCommand(e, "ban", e.Message.MentionedUsers, async (u, r) => serverConfig.GetUserConfig(u).UnbanRole(r));
                     });
 
                 RoleCommandBuilder(cbg, "create", "Creates a mentionable role and applies it to all mentioned users")

@@ -57,7 +57,6 @@ namespace DrumBot {
 
         public void Install(ModuleManager manager) {
             manager.CreateCommands("", cbg => {
-                cbg.AddCheck(new ProdChecker());
                 cbg.CreateCommand("avatar")
                     .Description("Gets the avatar url of all mentioned users.")
                     .Parameter("User(s)", ParameterType.Multiple)

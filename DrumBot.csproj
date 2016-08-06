@@ -61,6 +61,10 @@
       <HintPath>packages\Nito.AsyncEx.3.0.1\lib\net45\Nito.AsyncEx.Enlightenment.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Octokit, Version=0.21.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Octokit.0.21.1\lib\net45\Octokit.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="RestSharp, Version=105.2.3.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\RestSharp.105.2.3\lib\net452\RestSharp.dll</HintPath>
       <Private>True</Private>
@@ -79,21 +83,21 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\Checkers\Checker.cs" />
     <Compile Include="src\Checkers\PermissionChecker.cs" />
-    <Compile Include="src\Checkers\ProdChecker.cs" />
     <Compile Include="src\Command.cs" />
     <Compile Include="src\Exceptions.cs" />
     <Compile Include="src\Extensions\CommandExtensions.cs" />
     <Compile Include="src\Extensions\UserExtensions.cs" />
-    <Compile Include="src\Services\AdminModule.cs" />
-    <Compile Include="src\Services\ChannelModule.cs" />
-    <Compile Include="src\Services\InfoModule.cs" />
-    <Compile Include="src\Services\ModuleModule.cs" />
-    <Compile Include="src\Services\NicknameService.cs" />
-    <Compile Include="src\Services\PrivateCommandService.cs" />
-    <Compile Include="src\Services\RoleModule.cs" />
-    <Compile Include="src\Services\SearchModule.cs" />
-    <Compile Include="src\Services\SubchannelModule.cs" />
+    <Compile Include="src\Modules\AdminModule.cs" />
+    <Compile Include="src\Modules\ChannelModule.cs" />
+    <Compile Include="src\Modules\GithubModule.cs" />
+    <Compile Include="src\Modules\InfoModule.cs" />
+    <Compile Include="src\Modules\ModuleModule.cs" />
+    <Compile Include="src\Services\BotOwnerCommandService.cs" />
+    <Compile Include="src\Modules\RoleModule.cs" />
+    <Compile Include="src\Modules\SearchModule.cs" />
+    <Compile Include="src\Modules\SubchannelModule.cs" />
     <Compile Include="src\UserAction.cs" />
     <Compile Include="src\Utility.cs" />
     <Compile Include="src\Extensions\DiscordExtensions.cs" />

@@ -11,7 +11,6 @@ namespace DrumBot.src.Services {
             var moduleService = manager.Client.GetService<ModuleService>();
             const string moduleParam = "Module Name";
             manager.CreateCommands("module", cbg => {
-                cbg.AddCheck(new ProdChecker());
                 cbg.AddCheck(Check.ManageServer(bot: false));
                 cbg.CreateCommand()
                    .PublicOnly()

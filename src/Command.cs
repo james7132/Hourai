@@ -41,8 +41,8 @@ namespace DrumBot {
         }
 
         public static Func<Channel, Task<string>> Action(Channel channel,
-                                                                Func<Channel, Task> task,
-                                                                bool ignoreErrors = false) {
+                                                         Func<Channel, Task> task,
+                                                         bool ignoreErrors = false) {
             return async delegate(Channel targetChannel) {
                 string result = string.Empty;
                 try {

@@ -11,7 +11,6 @@ namespace DrumBot {
         public void Install(ModuleManager manager) {
             manager.CreateCommands("channel", cbg => {
                 cbg.Category("Admin");
-                cbg.AddCheck(new ProdChecker());
                 cbg.AddCheck(Check.ManageChannels());
                 CreateCommand(cbg, "create", "Creates a channel with a specified name.", false)
                     .Parameter("Name")

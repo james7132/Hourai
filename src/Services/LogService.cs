@@ -5,6 +5,11 @@ using Discord.Commands;
 
 namespace DrumBot {
     public class LogService : IService {
+
+        public ChannelSet ChannelSet { get; }
+        
+        public LogService(ChannelSet set) { ChannelSet = set; }
+
         public void Install(DiscordClient client) {
             client.ServerAvailable += ServerLog(client, "Discovered");
             client.ServerUnavailable += ServerLog(client, "Lost");
@@ -24,9 +29,6 @@ namespace DrumBot {
                 else
                     log += $"in {e.Channel.Name} on {e.Server.ToIDString()}";
                 Log.Info(log);
-                if (e.Channel.IsPrivate)
-                    return;
-                Log.Info($"Messagae by { e.User.Name } on { e.Channel.Name } on { e.Server.ToIDString() } was updated.");
             };
             client.MessageDeleted += MessageLog("deleted");
 
@@ -48,6 +50,27 @@ namespace DrumBot {
                         Log.Info(log);
                     };
 
+            // Log every public message not made by the bot.
+            client.MessageReceived +=
+                async (s, e) => {
+                    if (e.Message.IsAuthor || e.Channel.IsPrivate)
+                        return;
+                    await ChannelSet.Get(e.Channel).LogMessage(e.Message);
+                };
+
+            // Make sure that every channel is available on loading up a server.
+            client.ServerAvailable += delegate(object sender, ServerEventArgs e) {
+                foreach (Channel channel in e.Server.TextChannels)
+                    ChannelSet.Get(channel);
+            };
+            
+            // Keep up to date with channels
+            client.ChannelCreated += (s, e) => ChannelSet.Get(e.Channel);
+
+            // Preserve logs from deleted channels
+            client.ChannelDestroyed += async delegate(object sender, ChannelEventArgs evt) {
+                await ChannelSet.Get(evt.Channel).DeletedChannel(evt.Channel);
+            };
         }
 
         EventHandler<RoleEventArgs> RoleLog(string eventType) {
