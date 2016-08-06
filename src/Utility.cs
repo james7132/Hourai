@@ -21,6 +21,30 @@ namespace DrumBot {
             return date.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
+        public static async Task FileIO(Action fileIOaction,
+                                        Action retry = null,
+                                        Action failure = null) {
+            var success = false;
+            var tries = 0;
+            while (!success) {
+                try {
+                    fileIOaction();
+                    success = true;
+                } catch (IOException) {
+                    if (tries <= MaxRetries) {
+                        retry?.Invoke();
+                        tries++;
+                        await Task.Delay(100);
+                    }
+                    else {
+                        Log.Error("Failed to perform file IO. Max retries exceeded.");
+                        failure?.Invoke();
+                        throw;
+                    }
+                }
+            }
+        }
+
         public static async Task FileIO(Func<Task> fileIOaction,
                                         Action retry = null,
                                         Action failure = null) {
@@ -37,8 +61,7 @@ namespace DrumBot {
                         await Task.Delay(100);
                     }
                     else {
-                        Log.Error(
-                            "Failed to read file for search. Max retries exceeded.");
+                        Log.Error("Failed to perform file IO. Max retries exceeded.");
                         failure?.Invoke();
                         throw;
                     }

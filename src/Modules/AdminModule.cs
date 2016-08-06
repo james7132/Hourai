@@ -1,41 +1,50 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.Commands.Permissions;
 using Discord.Modules;
+using DrumBot.src;
 
 namespace DrumBot {
     public class AdminModule : IModule {
 
         public void Install(ModuleManager manager) {
             manager.CreateCommands(cbg => {
-                cbg.AddCheck(new ProdChecker());
-                CreateCommand(cbg, "kick",
-                    "Kicks all mentioned users." + Requires("Kick"),
-                    user => user.Kick(), false, Check.KickMembers());
+                CreateCommand(cbg,
+                    "kick",
+                    "Kicks all mentioned users." + RequireMembers("Kick"),
+                    (e, u) => u.Kick()).AddCheck(Check.KickMembers());
                 CreateCommand(cbg, "ban",
-                    "Kicks all mentioned users." + Requires("Ban"),
-                    UserExtensions.Ban, false, Check.BanMembers());
+                    "Kicks all mentioned users." + RequireMembers("Ban"),
+                    (e, u) => u.Ban()).AddCheck(Check.BanMembers());
                 cbg.CreateGroup(m => {
                     m.AddCheck(Check.MuteMembers());
                     CreateCommand(cbg, "mute", 
-                        "Server mutes all mentioned users." + Requires("Mute"),
-                        UserExtensions.Mute, true);
+                        "Server mutes all mentioned users." + RequireMembers("Mute"),
+                        (e, u) => u.Mute(), true);
                     CreateCommand(cbg, "unmute", 
-                        "Server unmutes all mentioned users" + Requires("Mute"),
-                        UserExtensions.Unmute, true);
+                        "Server unmutes all mentioned users" + RequireMembers("Mute"),
+                        (e, u) => u.Unmute(), true);
                 });
                 cbg.CreateGroup(d => {
                     d.AddCheck(Check.DeafenMembers());
                     CreateCommand(d, "deafen", 
-                        "Server deafens all mentioned users." + Requires("Deafen"),
-                        UserExtensions.Deafen, true);
+                        "Server deafens all mentioned users." + RequireMembers("Deafen"),
+                        (e, u) => u.Deafen(), true);
                     CreateCommand(d, "undeafen", 
-                        "Server ukdeafens all mentioned users." + Requires("Deafen"),
-                        UserExtensions.Undeafen, true);
+                        "Server ukdeafens all mentioned users." + RequireMembers("Deafen"),
+                        (e, u) => u.Undeafen(), true);
                 });
+                CreateCommand(cbg,
+                    "nickname",
+                    "Sets the nickname of all mentioned users."
+                        + Require("Manage Nicknames"),
+                    (e, u) => u.SetNickname(e.GetArg("Nickname")),
+                    true, "Nickname")
+                    .AddCheck(Check.ManageNicknames());
                 cbg.CreateGroup("prune", p => {
                     p.AddCheck(Check.ManageMessages());
                     p.CreateCommand()
@@ -72,24 +81,35 @@ namespace DrumBot {
             await PruneMessages(e.Channel, count, m => true);
         }
 
-        string Requires(string permission) {
-            return $" Requires ``{permission} Members`` permission for both user and bot.";
+        string Require(string permission) {
+            return $" Requires ``{permission}`` permission for both user and bot.";
         }
 
-        void CreateCommand(CommandGroupBuilder builder, 
+        string RequireMembers(string permission) {
+            return Require(permission + " Members");
+        }
+
+        Func<CommandEventArgs, Task> ActionCommand(
+            Func<CommandEventArgs, IEnumerable<IAction>>  actionFunc) {
+            return async delegate (CommandEventArgs e) {
+                await actionFunc(e).Do(e.Server);
+            };
+        }
+
+        CommandBuilder CreateCommand(CommandGroupBuilder builder, 
                            string name, 
                            string description, 
-                           Func<User, Task> action, 
-                           bool ignorErrors = false,
-                           IPermissionChecker checker = null) {
-            var command = builder.CreateCommand(name).Description(description)
-                                 .Parameter("User(s)", ParameterType.Multiple);
-            if(checker != null)
-                command = command.AddCheck(checker);
+                           Func<CommandEventArgs, User, Task> action, 
+                           bool ignorErrors = false, params string[] parameters) {
+            var command = builder.CreateCommand(name).Description(description);
+            foreach (string parameter in parameters) 
+                command = command.Parameter(parameter);
+            command.Parameter("User(s)", ParameterType.Multiple);
             command.Do(async e => {
                        await Command.ForEvery(e, e.Message.MentionedUsers, 
-                            Command.Action(e.Channel, name, action, ignoreErrors: ignorErrors));
+                            Command.Action(e.Channel, name, async u => await action(e, u), ignoreErrors: ignorErrors));
                    });
+            return command;
         }
     }
 }

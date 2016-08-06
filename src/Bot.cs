@@ -74,11 +74,17 @@ namespace DrumBot {
             };
 
             Client = new DiscordClient();
+            Func<string, int> defaultPrefix = s => s[0] == Config.CommandPrefix ? 1 : -1;
             var commandService = Client.AddService(new CommandService(new CommandServiceConfigBuilder {
-                PrefixChar = Config.CommandPrefix,
-                HelpMode = HelpMode.Public
+                HelpMode = HelpMode.Public,
+                CustomPrefixHandler = delegate (Message message) {
+                    string msg = message.RawText;
+                    if (message.Channel.IsPrivate)
+                        return defaultPrefix(msg);
+                    return Config.GetServerConfig(message.Server).AllowCommands ? defaultPrefix(msg) : -1;
+                }
             }));
-            Client.AddService<LogService>();
+            Client.AddService(new LogService(ChannelSet));
             var moduleService = Client.AddService<ModuleService>();
 
             Client.AddModule<ModuleModule>("Module");
@@ -106,34 +112,19 @@ namespace DrumBot {
             };
             foreach (var moduleManager in moduleService.Modules) {
                 var id = moduleManager.Id;
-                moduleManager.ServerEnabled +=
-                    async delegate(object s, ServerEventArgs e) {
+                moduleManager.ServerEnabled += delegate(object s, ServerEventArgs e) {
                         var config = Config.GetServerConfig(e.Server);
                         if(!config.IsModuleEnabled(id))
-                            await config.AddModule(id);
+                            config.AddModule(id);
                     };
-                moduleManager.ServerDisabled +=
-                    async delegate(object s, ServerEventArgs e) {
+                moduleManager.ServerDisabled += delegate(object s, ServerEventArgs e) {
                         var config = Config.GetServerConfig(e.Server);
                         if(config.IsModuleEnabled(id))
-                            await config.RemoveModule(id);
+                            config.RemoveModule(id);
                     };
             }
-            Client.AddService(new PrivateCommandService());
+            Client.AddService(new BotOwnerCommandService());
 
-            // Log every public message not made by the bot.
-            Client.MessageReceived +=
-                async (s, e) => {
-                    if (e.Message.IsAuthor || e.Channel.IsPrivate)
-                        return;
-                    await ChannelSet.Get(e.Channel).LogMessage(e.Message);
-                };
-
-            // Make sure that every channel is available on loading up a server.
-            Client.ServerAvailable += delegate(object sender, ServerEventArgs e) {
-                foreach (Channel channel in e.Server.TextChannels)
-                    ChannelSet.Get(channel);
-            };
             Log.Info($"Starting { Config.BotName }...");
             _errors = new List<string>();
             Client.ServerAvailable += (s, e) => Config.GetServerConfig(e.Server);

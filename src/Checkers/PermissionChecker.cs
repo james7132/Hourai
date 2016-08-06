@@ -4,8 +4,8 @@ using Discord.Commands.Permissions;
 
 namespace DrumBot {
 
-    public class BotOwnerChecker : Checker {
-        public override bool CanRun(Discord.Commands.Command command,
+    public class BotOwnerChecker : IPermissionChecker {
+        public bool CanRun(Discord.Commands.Command command,
                                     User user,
                                     Channel channel,
                                     out string error) {
@@ -18,7 +18,7 @@ namespace DrumBot {
         }
     }
 
-    class PermissionChecker : Checker {
+    class PermissionChecker : IPermissionChecker {
         string PermissionName { get; }
         bool CheckBot { get; }
         bool CheckUser { get; }
@@ -35,7 +35,7 @@ namespace DrumBot {
             CheckUser = checkUser;
         }
 
-        public override bool CanRun(Discord.Commands.Command command,
+        public bool CanRun(Discord.Commands.Command command,
                                     User user,
                                     Channel channel,
                                     out string error) {

@@ -3,7 +3,7 @@ using Discord.Commands;
 using Discord.Commands.Permissions.Visibility;
 
 namespace DrumBot {
-    public class PrivateCommandService : IService {
+    public class BotOwnerCommandService : IService {
         public void Install(DiscordClient client) {
             client.GetService<CommandService>()
                 .CreateCommand("getbotlog")

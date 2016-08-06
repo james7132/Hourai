@@ -5,7 +5,13 @@ using System.Threading.Tasks;
 using Discord;
 
 namespace DrumBot.src {
-    public abstract class UserAction {
+
+    public interface IAction {
+        Task Do(Server server);
+        Task Undo(Server server);
+    }
+
+    public abstract class UserAction : IAction {
         public ulong UserId { get; set; }
 
         protected UserAction(ulong userID) { UserId = userID; }
@@ -22,11 +28,11 @@ namespace DrumBot.src {
         public abstract Task Undo(Server server);
     }
 
-    public class BanAction : UserAction {
-        public BanAction(ulong userID) : base(userID) {
+    public class Ban : UserAction {
+        public Ban(ulong userID) : base(userID) {
         }
 
-        public BanAction(User user) : base(user) {
+        public Ban(User user) : base(user) {
         }
 
         public override async Task Do(Server server) {
@@ -34,6 +40,20 @@ namespace DrumBot.src {
         }
 
         public override async Task Undo(Server server) { await server.Unban(UserId); }
+    }
+
+    public class Kick : UserAction {
+        public Kick(ulong userID) : base(userID) {
+        }
+
+        public Kick(User user) : base(user) {
+        }
+
+        public override async Task Do(Server server) {
+            await GetUser(server).Kick();
+        }
+
+        public override Task Undo(Server server) { throw new InvalidOperationException("Cannot undo a kick operation.");}
     }
 
     public class RoleAction : UserAction {
@@ -69,22 +89,17 @@ namespace DrumBot.src {
         }
     }
 
-    public static class UserActionExtensions {
+    public static class ActionExtensions {
 
         public static UserAction Reverse(this UserAction action) {
             return new ReverseUserAction(action);
         }
 
-        public static UserAction Temp(this UserAction action,
-                                      TimeSpan expiration) {
-            return new TempUserAction(action, DateTime.Now + expiration);
-        }
-
-        public static async Task Do(this IEnumerable<UserAction> actions, Server server) {
+        public static async Task Do(this IEnumerable<IAction> actions, Server server) {
             await Task.WhenAll(actions.Select(a => a.Do(server)));
         }
 
-        public static async Task Undo(this IEnumerable<UserAction> actions, Server server) {
+        public static async Task Undo(this IEnumerable<IAction> actions, Server server) {
             await Task.WhenAll(actions.Select(a => a.Undo(server)));
         }
 
@@ -106,19 +121,19 @@ namespace DrumBot.src {
         }
     }
 
-    public class TempUserAction : UserAction {
+    public class TempUserAction : IAction {
 
-        public UserAction Action { get; set; }
+        public IAction Action { get; set; }
         public DateTime Expiration { get; set; }
 
-        public TempUserAction(UserAction action, DateTime expiration) : base(Check.NotNull(action).UserId) {
+        public TempUserAction(IAction action, DateTime expiration) {
             if(expiration <= DateTime.Now)
                 throw new ArgumentException();
-            Action = action;
+            Action = Check.NotNull(action);
             Expiration = expiration;
         }
 
-        public override Task Do(Server server) { return Action.Do(server); }
-        public override Task Undo(Server server) { return Action.Undo(server); }
+        public Task Do(Server server) { return Action.Do(server); }
+        public Task Undo(Server server) { return Action.Undo(server); }
     }
 }
