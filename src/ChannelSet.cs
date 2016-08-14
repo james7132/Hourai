@@ -10,7 +10,7 @@ namespace DrumBot {
             _channels = new Dictionary<ulong, ChannelLog>();
         }
 
-        public ChannelLog Get(Channel channel) {
+        public ChannelLog Get(ITextChannel channel) {
             ulong id = channel.Id;
             if (!_channels.ContainsKey(id))
                 _channels[id] = new ChannelLog(channel);

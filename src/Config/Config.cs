@@ -28,10 +28,10 @@ namespace DrumBot {
             Log.Info("Config loaded.");
         }
 
-        public static ServerConfig GetServerConfig(Server server) {
-            if(!_serversConfigs.ContainsKey(server.Id))
-                _serversConfigs[server.Id] = new ServerConfig(server);
-            return _serversConfigs[server.Id];
+        public static ServerConfig GetGuildConfig(IGuild guild) {
+            if(!_serversConfigs.ContainsKey(guild.Id))
+                _serversConfigs[guild.Id] = new ServerConfig(guild);
+            return _serversConfigs[guild.Id];
         }
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace DrumBot {
         public static string LogDirectory { get; set; } = "logs";
 
         /// <summary>
-        /// The subdirectory where the configs for each server is stored.
+        /// The subdirectory where the configs for each guild is stored.
         /// </summary>
         [JsonProperty]
         public static string ConfigDirectory { get; set; } = "config";
