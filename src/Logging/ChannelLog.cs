@@ -7,13 +7,15 @@ using Discord;
 
 namespace DrumBot {
 
-    [InitializeOnLoad]
     public class ChannelLog {
 
         /// <summary>
         /// A replacement for all new lines to keep all messages on one line while logging.
         /// </summary>
         const string NewLineReplacement = "\\n";
+
+        const string DateFormat = "yyyy-MM-dd";
+        const string FileType = ".log";
 
         /// <summary>
         /// The absolute path to the directory where all of the logs are stored.
@@ -35,12 +37,12 @@ namespace DrumBot {
             Log.Info($"Chat Log Directory: { LogDirectory }");
         }
 
-        public static string ServerDirectory(Server server) {
-            return Path.Combine(LogDirectory, Check.NotNull(server).Id.ToString());
+        public static string GuildDirectory(IGuild guild) {
+            return Path.Combine(LogDirectory, Check.NotNull(guild).Id.ToString());
         }
 
-        public static string ChannelDirectory(Channel channel) {
-            return Path.Combine(ServerDirectory(channel.Server), channel.Id.ToString());
+        public static string ChannelDirectory(IGuildChannel channel) {
+            return Path.Combine(GuildDirectory(channel.Guild), channel.Id.ToString());
         }
 
         /// <summary>
@@ -48,19 +50,18 @@ namespace DrumBot {
         /// </summary>
         /// <param name="time">the day specified</param>
         /// <returns>the path to the log file</returns>
-        public string GetPath(DateTime time) {
-            return GetPath(time.ToString("yyyy-MM-dd"));
+        public string GetPath(DateTimeOffset time) {
+            return GetPath(time.ToString(DateFormat));
         }
 
         // Same as above, except with direct access.
         public string GetPath(string time) {
-            return Path.Combine(_channelDirectory, time) + ".log";
+            return Path.Combine(_channelDirectory, time) + FileType;
         }
 
-        public ChannelLog(Channel channel) {
-            _serverDirectory = ServerDirectory(channel.Server);
+        public ChannelLog(ITextChannel channel) {
+            _serverDirectory = GuildDirectory(channel.Guild);
             _channelDirectory = ChannelDirectory(channel);
-            Log.Info($"Saving channel logs for { channel.Server.Name }'s #{ channel.Name} to { _channelDirectory }");
             if (!Directory.Exists(_channelDirectory)) {
                 Directory.CreateDirectory(_channelDirectory);
                 Log.Info($"Logs for { channel.Name } do not exist. Downloading the most recent messages.");
@@ -68,10 +69,10 @@ namespace DrumBot {
             }
         }
 
-        public async Task DeletedChannel(Channel channel) {
-            if (!Directory.Exists(_channelDirectory) || channel.IsPrivate)
+        public async Task DeletedChannel(ITextChannel channel) {
+            if (!Directory.Exists(_channelDirectory))
                 return;
-            var serverConfig = Config.GetServerConfig(channel.Server);
+            var serverConfig = Config.GetGuildConfig(channel.Guild);
             if(serverConfig.GetChannelConfig(channel).IsIgnored) {
                 Log.Info("Ignored channel deleted. Deleting logs...");
                 await Utility.FileIO(() => Directory.Delete(_channelDirectory, true));
@@ -83,8 +84,8 @@ namespace DrumBot {
             }
         }
 
-        async void LogChannelRecent(Channel channel) {
-            var messages = await channel.DownloadMessages();
+        async void LogChannelRecent(ITextChannel channel) {
+            var messages = await channel.GetMessagesAsync();
             foreach (var message in messages.OrderByDescending(m => m.Timestamp))
                 await LogMessage(message);
         }
@@ -101,7 +102,7 @@ namespace DrumBot {
         /// Logs a message.
         /// </summary>
         /// <param name="message">the message to log</param>
-        public async Task LogMessage(Message message) {
+        public async Task LogMessage(IMessage message) {
             if(message == null)
                 throw new ArgumentNullException();
             var timestamp = message.Timestamp;
@@ -125,7 +126,7 @@ namespace DrumBot {
                 return string.Empty;
             string[] files = Directory.GetFiles(directory);
             string[] results = await Task.WhenAll(files.Select(file => SearchFile(file, pred)));
-            return LogToMessage(string.Join("", results.Where(s => !string.IsNullOrEmpty(s))));
+            return LogToMessage(results.Where(s => !s.IsNullOrEmpty()).Join());
         }
 
         /// <summary>

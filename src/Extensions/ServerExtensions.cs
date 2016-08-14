@@ -5,25 +5,23 @@ using Discord;
 namespace DrumBot {
     public static class ServerExtensions {
 
-        public static Role GetRole(this Server server, string roleName) {
-            Role role = server.FindRoles(roleName).FirstOrDefault();
+        public static IRole GetRole(this IGuild server, string roleName) {
+            IRole role = server.Roles.FirstOrDefault(r => r.Name == roleName);
             if (role == null)
                 throw new NotFoundException("role", roleName);
             return role;
         }
 
-        public static IEnumerable<Role> Order(this IEnumerable<Role> roles) => 
-            roles.Where(r => r != r.Server.EveryoneRole)
-                .OrderBy(r => r.Position);
+        public static IEnumerable<IRole> Order(this IEnumerable<IRole> roles) => 
+            roles.OrderBy(r => r.Position);
 
-        public static IEnumerable<Role> OrderAlpha(this IEnumerable<Role> roles) => 
-            roles.Where(r => r != r.Server.EveryoneRole)
-                .OrderBy(r => r.Name);
+        public static IEnumerable<IRole> OrderAlpha(this IEnumerable<IRole> roles) => 
+            roles.OrderBy(r => r.Name);
 
-        public static IEnumerable<Channel> Order(this IEnumerable<Channel> channels) => 
+        public static IEnumerable<IGuildChannel> Order(this IEnumerable<IGuildChannel> channels) => 
             channels.OrderBy(c => c.Position);
 
-        public static IEnumerable<Channel> OrderAlpha(this IEnumerable<Channel> channels) => 
+        public static IEnumerable<IGuildChannel> OrderAlpha(this IEnumerable<IGuildChannel> channels) => 
             channels.OrderBy(c => c.Name);
     }
 }
