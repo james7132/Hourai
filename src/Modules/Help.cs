@@ -44,8 +44,7 @@ namespace DrumBot {
             }
 
             void AddCommand(Command command) {
-                var names = SplitComamnd(command.Text);
-                AddCommand(names, command);
+                AddCommand(SplitComamnd(command.Text), command);
             }
 
             void AddCommand(Queue<string> names, Command command) {
@@ -64,61 +63,68 @@ namespace DrumBot {
                 }
             }
 
-            public string GetSpecficHelp(IMessage message, string command) {
+            public Task<string> GetSpecficHelp(IMessage message, string command) {
                 return GetSpecficHelp(message, command, SplitComamnd(command));
             }
 
-            string GetSpecficHelp(IMessage message, string command, Queue<string> names) {
+            async Task<string> GetSpecficHelp(IMessage message, string command, Queue<string> names) {
                 if (names.Count == 0)
                     return null;
                 var prefix = names.Dequeue();
                 if(names.Count > 0) {
                     if (!Groups.ContainsKey(prefix))
                         return null;
-                    return Groups[prefix].GetSpecficHelp(message, command, names);
+                    return await Groups[prefix].GetSpecficHelp(message, command, names);
                 }
                 var builder = new StringBuilder();
                 Command c = null;
-                if (Commands.ContainsKey(prefix)) {
+                if (Commands.ContainsKey(prefix))
                     c = Commands[prefix];
-                }
                 using (builder.Code()) {
                     builder.Append(command);
                     if(c != null) {
                         foreach (CommandParameter parameter in c.Parameters) {
-                            var name = " " + parameter.Name;
+                            var name = parameter.Name;
                             if(parameter.IsMultiple || parameter.IsRemainder)
                                 name += "...";
                             if (parameter.IsOptional)
                                 name = name.SquareBracket();
-                            builder.Append(name);
+                            if(!name.IsNullOrEmpty())
+                                builder.Append(" " + name);
                         }
                     }
                 }
-                if (c != null) {
+                if (c != null)
                     builder.AppendLine(c.Description);
-                    foreach (var parameter in c.Parameters) {
-                        if(!parameter.Description.IsNullOrEmpty())
-                            builder.AppendLine($"{parameter.Name}: {parameter.Description}");
-                    }
-                }
                 if(Groups.ContainsKey(prefix)) {
                     var g = Groups[prefix];
                     builder.AppendLine("Available Subcommands:");
-                    builder.AppendLine(g.List(message));
+                    builder.AppendLine(await g.List(message));
                 }
                 return builder.ToString();
             }
 
-            public string List(IMessage message) {
+            public async Task<string> List(IMessage message) {
                 var usable = new List<string>();
                 usable.AddRange(Commands.Where(c => true).Select(c => c.Key));
-                usable.AddRange(Groups.Where(c => c.Value.CanUse(message)).Select(c => c.Key + "*"));
+                foreach (var kvp in Groups) {
+                    if(await kvp.Value.CanUse(message))
+                        usable.Add(kvp.Key + "*");
+                }
                 return usable.Select(s => s.Code()).Join(", ");
             }
 
-            public bool CanUse(IMessage user) {
-                return Commands.Any(c => true) || Groups.Any(g => true); // TODO: Permission check
+            public async Task<bool> CanUse(IMessage message) {
+                foreach (Command command in Commands.Values) {
+                    var result = await command.CheckPreconditions(message);
+                    if (result.IsSuccess)
+                        return true;
+                }
+                foreach (CommandGroup commandGroup in Groups.Values) {
+                    if (await commandGroup.CanUse(message))
+                        return true;
+                }
+                return false;
             }
         }
 
@@ -126,35 +132,36 @@ namespace DrumBot {
             var commands = Bot.CommandService?.Commands;
             if(commands == null)
                 throw new InvalidOperationException("Cannot create a help command if there is no command service");
-            Modules = commands.ToKVStream(c => c.Module, c => c)
-                            .GroupByKey()
-                            .MapValue(v => new CommandGroup(v))
-                            .Evaluate();
+            Modules = commands.GroupBy(c => c.Module)
+                            .ToDictionary(g => g.Key, g => new CommandGroup(g));
         }
 
         [Command("help")]
         [Description("Gets information about commands")]
-        public async Task HelpCommand(IMessage message, 
-                [Remainder, Description("The command to get information on")] string command = "") {
-            if(command.IsNullOrEmpty()) {
-                await message.Respond(GetGeneralHelp(message));
-            } else {
-                foreach (var module in Modules) {
-                    var help = module.Value.GetSpecficHelp(message, command);
-                    if (help.IsNullOrEmpty())
-                        continue;
-                    await message.Respond(help);
-                    return;
-                }
-                await message.Respond($"{message.Author.Mention}: No command named {command.DoubleQuote()} found");
+        public async Task HelpCommand(IMessage message, [Remainder] string command = "") {
+            if(command.IsNullOrEmpty())
+                await message.Respond(await GetGeneralHelp(message));
+            foreach (CommandGroup commandGroup in Modules.Values) {
+                string specificHelp = await commandGroup.GetSpecficHelp(message, command);
+                if (specificHelp.IsNullOrEmpty())
+                    continue;
+                await message.Respond(specificHelp);
+                return;
             }
+            await message.Respond($"{message.Author.Mention}: No command named {command.DoubleQuote()} found");
         }
 
-        string GetGeneralHelp(IMessage message) {
-            var modules = Modules.Where(m => m.Value.CanUse(message))
-                                    .Select(m => $"{m.Key.Name.Bold()}{(m.Key.Name.IsNullOrEmpty() ? "" : ":")} {m.Value.List(message)}")
-                                    .Join("\n");
-            return $"{message.Author.Mention} here are the commands you can use:\n{modules}\n\nRun ``help <command>`` for more information";
+        async Task<string> GetGeneralHelp(IMessage message) {
+            var builder = new StringBuilder();
+            foreach (var kvp in Modules) {
+                if (!await kvp.Value.CanUse(message))
+                    continue;
+                var name = kvp.Key.Name;
+                if (!name.IsNullOrEmpty())
+                    builder.Append((name + ":").Bold());
+                builder.AppendLine(await kvp.Value.List(message));
+            }
+            return $"{message.Author.Mention} here are the commands you can use:\n{builder}\n\nRun ``help <command>`` for more information";
         }
 
     }

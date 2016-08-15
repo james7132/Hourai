@@ -306,16 +306,16 @@ namespace DrumBot {
         public IEnumerable<CustomCommand> Commands => CustomCommands;
 
         public void AddModule(string name) {
-            if (Modules.Add(name))
+            if (Modules.Add(name.ToLowerInvariant()))
                 Save();
         }
 
         public bool IsModuleEnabled(string name) {
-            return Modules.Contains(name);
+            return Modules.Contains(name.ToLowerInvariant());
         }
 
         public void RemoveModule(string name) {
-            if (Modules.Remove(name))
+            if (Modules.Remove(name.ToLowerInvariant()))
                Save();
         }
         

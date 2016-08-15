@@ -1,7 +1,63 @@
 using System;
+using System.Threading.Tasks;
 using Discord;
+using Discord.Commands;
 
 namespace DrumBot {
+
+    public class PublicOnlyAttribute : PreconditionAttribute {
+        public override async Task<PreconditionResult> CheckPermissions(
+            IMessage context,
+            Command executingCommand,
+            object moduleInstance) {
+            if (!(context.Channel is IGuildChannel))
+                return PreconditionResult.FromError("Command must be executed in a public channel");
+            return PreconditionResult.FromSuccess();
+        }
+    }
+
+    public class PrivateOnlyAttribute : PreconditionAttribute {
+        public override async Task<PreconditionResult> CheckPermissions(
+            IMessage context,
+            Command executingCommand,
+            object moduleInstance) {
+            if (!(context.Channel is IDMChannel))
+                return PreconditionResult.FromError("Command must be executed in a private chat.");
+            return PreconditionResult.FromSuccess();
+        }
+    }
+
+    public class ModuleCheckAttribute : PublicOnlyAttribute {
+
+        public string ModuleName { get; }
+        public ModuleCheckAttribute(string moduleName) {
+            ModuleName = moduleName;
+        }
+
+        public override async Task<PreconditionResult> CheckPermissions(
+            IMessage context,
+            Command executingCommand,
+            object moduleInstance) {
+            var baseCheck = await base.CheckPermissions(context, executingCommand, moduleInstance);
+            if (!baseCheck.IsSuccess)
+                return PreconditionResult.FromError(baseCheck);
+            var config = Config.GetGuildConfig((context as IGuildChannel).Guild);
+            if (config.IsModuleEnabled(ModuleName))
+                return PreconditionResult.FromSuccess();
+            return PreconditionResult.FromError($"Module \"{ModuleName}\" is not enabled.");
+        }
+    }
+
+    public class BotOwnerAttribute : PreconditionAttribute {
+        public override async Task<PreconditionResult> CheckPermissions(
+            IMessage context,
+            Command executingCommand,
+            object moduleInstance) {
+            if (context.Author.IsBotOwner())
+                return PreconditionResult.FromSuccess();
+            return PreconditionResult.FromError("You must be the bot owner to use this command.");
+        }
+    }
 
     //    public class BotOwnerChecker : IPermissionChecker {
     //        public bool CanRun(Discord.CommandService.CommandUtility command,
@@ -87,33 +143,6 @@ namespace DrumBot {
                 throw new Exception("CommandUtility must be executed in a private channel");
             return message.Channel as IDMChannel;
         }
-
-        //        public static IPermissionChecker ManageChannels(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("Manage Channels", s => s.ManageChannels, bot, user);
-
-        //        public static IPermissionChecker ManageMessages(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("Manage Messages", s => s.ManageMessages, bot, user);
-
-        //        public static IPermissionChecker ManageNicknames(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("Manage Nicknames", s => s.ManageNicknames, bot, user);
-
-        //        public static IPermissionChecker ManageServer(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("Manage Server", s => s.ManageServer, bot, user);
-
-        //        public static IPermissionChecker ManageRoles(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("Manage Roles", s => s.ManageRoles, bot, user);
-
-        //        public static IPermissionChecker KickMembers(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("Kick Members", s => s.KickMembers, bot, user);
-
-        //        public static IPermissionChecker BanMembers(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("BanAsync Members", s => s.BanMembers, bot, user);
-
-        //        public static IPermissionChecker MuteMembers(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("MuteAsync Members", s => s.MuteMembers, bot, user);
-
-        //        public static IPermissionChecker DeafenMembers(bool user = true, bool bot = true) => 
-        //            new PermissionChecker("DeafenAsync Members", s => s.DeafenMembers, bot, user);
     }
 
 }

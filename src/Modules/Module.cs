@@ -16,7 +16,6 @@
 
 //        }
 
-
 //        public void Install(ModuleManager manager) {
 //            var moduleService = manager.Client.GetService<ModuleService>();
 //            manager.CreateCommands("module", cbg => {
