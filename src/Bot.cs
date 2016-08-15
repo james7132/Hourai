@@ -17,7 +17,8 @@ namespace DrumBot {
         static void Main() => new Bot().Run().GetAwaiter().GetResult();
         public static DiscordSocketClient Client { get; private set; }
         public static ChannelSet Channels { get; private set; }
-        IChannel OwnerChannel { get; set; }
+        public static ISelfUser BotUser { get; private set; }
+        IDMChannel OwnerChannel { get; set; }
 
         public static CommandService CommandService { get; private set; }
         LogService LogService { get; }
@@ -52,7 +53,7 @@ namespace DrumBot {
             LogService = new LogService(Channels);
 
             Log.Info($"Starting { Config.BotName }...");
-            //TODO: Client.ServerAvailable += (s, e) => Config.GetGuildConfig(e.Server);
+            Client.GuildAvailable += async g => Config.GetGuildConfig(g);
         }
 
         async Task Initialize() {
@@ -103,49 +104,6 @@ namespace DrumBot {
             Trace.AutoFlush = true;
         }
 
-        //ModuleService AddModules(DiscordClient client, ChannelSet channels) {
-        //    var moduleService = client.AddService<ModuleService>();
-        //    client.AddModule<Module>("Module");
-        //    var modules = from type in ReflectionUtility.ConcreteClasses
-        //                                   .InheritsFrom<IModule>()
-        //                                   .WithParameterlessConstructor()
-        //                  where type != typeof(Module)
-        //                  select Activator.CreateInstance(type) as IModule;
-        //    modules = modules.Concat(new IModule[] {
-        //        new SearchChat(channels),
-        //    });
-        //    foreach (IModule module in modules) {
-        //        var moduleName = module.GetType().Name.Replace("Module", "");
-        //        Log.Info($"Adding module {moduleName.DoubleQuote()}");
-        //        client.AddModule(module, moduleName, ModuleFilter.ServerWhitelist);
-        //    }
-
-        //    // Enable modules for each server based on what is saved in the configs.
-        //    Client.ServerAvailable += delegate(object s, ServerEventArgs e) {
-        //        var config = Config.GetGuildConfig(e.Server);
-        //        foreach (string moduleId in config.Modules.ToArray()) {
-        //            var module = moduleService.Modules.FirstOrDefault(m => m.Id == moduleId);
-        //            module?.EnableServer(e.Server);
-        //        }
-        //    };
-
-            //    // Set up modules to save when each server enables/disables a server.
-            //    foreach (var moduleManager in moduleService.Modules) {
-            //        var id = moduleManager.Id;
-            //        moduleManager.ServerEnabled += delegate(object s, ServerEventArgs e) {
-            //                var config = Config.GetGuildConfig(e.Server);
-            //                if(!config.IsModuleEnabled(id))
-            //                    config.AddModule(id);
-            //            };
-            //        moduleManager.ServerDisabled += delegate(object s, ServerEventArgs e) {
-            //                var config = Config.GetGuildConfig(e.Server);
-            //                if(config.IsModuleEnabled(id))
-            //                    config.RemoveModule(id);
-            //            };
-            //    }
-            //    return moduleService;
-            //}
-
         public async Task HandleMessage(IMessage msg) {
             Log.Info(msg.Content);
             // Marks where the command begins
@@ -174,7 +132,7 @@ namespace DrumBot {
         //        }
         //    }));
         //    commandService.CommandErrored += OnCommandError;
-        //    client.AddService(new BotOwnerModule());
+        //    client.AddService(new Owner());
         //    return commandService;
         //}
 
@@ -215,18 +173,14 @@ namespace DrumBot {
         //    await args.Respond(response);
         //}
 
-        //Channel GetOwnerChannel() {
-        //    return Client.PrivateChannels.FirstOrDefault(ch => ch.GetUser(Config.Owner) != null);
-        //}
-
-        //async void SendOwnerErrors() {
-        //    OwnerChannel = GetOwnerChannel();
-        //    if (OwnerChannel == null)
-        //        return;
-        //    foreach (string error in _errors) 
-        //        await OwnerChannel.SendMessage($"ERROR: {error}");
-        //    _errors.Clear();
-        //}
+        async void SendOwnerErrors() {
+            OwnerChannel = Client.GetDMChannel(Config.Owner);
+            if (OwnerChannel == null)
+                return;
+            foreach (string error in _errors)
+                await OwnerChannel.SendMessageAsync($"ERROR: {error}");
+            _errors.Clear();
+        }
 
         async Task MainLoop() {
             Log.Info("Connecting to Discord...");
@@ -235,18 +189,19 @@ namespace DrumBot {
             var self = await Client.GetCurrentUserAsync();
             Log.Info($"Logged in as { self.ToIDString() }");
 
-            //SendOwnerErrors();
+            SendOwnerErrors();
 
+            BotUser = await Client.GetCurrentUserAsync();
             while (true) {
                 Log.Info(CommandService.Commands.Select(c => c.Text).Join(", "));
-                // TODO: Select random avatar to set to the bot
-                //var path = Directory.GetFiles(Path.Combine(ExecutionDirectory,
-                //              Config.AvatarDirectory)).SelectRandom();
-                //await Utility.FileIO(async delegate {
-                //    using (var stream = new FileStream(path, FileMode.Open))
-                //        await Client.CurrentUser.Edit(avatar:stream);
-                //});
-
+                var path = Directory.GetFiles(Path.Combine(ExecutionDirectory,
+                              Config.AvatarDirectory)).SelectRandom();
+                await BotUser.ModifyAsync(async u => {
+                    await Utility.FileIO(delegate {
+                        using (var stream = new FileStream(path, FileMode.Open))
+                            u.Avatar = stream;
+                    });
+                });
                 // Set the game of the bot to the bot's version.
                 // TODO: Client.SetGame(Config.Version);
 

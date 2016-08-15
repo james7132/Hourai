@@ -11,6 +11,7 @@ using Discord.Commands;
 namespace DrumBot {
 
     [Module("search", AutoLoad = false)]
+    [PublicOnly]
     public class Search {
 
         public ChannelSet ChannelSet { get; }
@@ -60,9 +61,6 @@ namespace DrumBot {
         [Description("Searches the history of all channels in the current server based on a regex.")]
         public async Task AllRegex(IMessage message, string regex) {
             await SearchAll(message, RegexMatch(regex));
-            //TODO: Reimplement
-            await message.Channel.SendMessageAsync("Unimplemented");
-            //SearchAll(e => RegexMatch(e.GetArg("SearchRegex")))
         }
 
         [Command("ignore")]

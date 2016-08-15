@@ -12,9 +12,8 @@ namespace DrumBot {
         public LogService(ChannelSet set) { ChannelSet = set; }
 
         public LogService(DiscordSocketClient client, CommandService service = null) {
-            // TODO: Reimplement
-            //client.ServerAvailable += ServerLog(client, "Discovered");
-            //client.ServerUnavailable += ServerLog(client, "Lost");
+            client.GuildAvailable += ServerLog("Discovered");
+            client.GuildUnavailable += ServerLog("Lost");
 
             client.ChannelCreated += ChannelLog("created");
             client.ChannelDestroyed += ChannelLog("removed");
@@ -56,30 +55,35 @@ namespace DrumBot {
             //    };
 
             // Log every public message not made by the bot.
-            // TODO: Reimplement
-            //client.MessageReceived +=
-            //    async (s, e) => {
-            //        if (e.Message.IsAuthor || e.Channel.IsPrivate)
-            //            return;
-            //        await ChannelSet.Get(e.Channel).LogMessage(e.Message);
-            //    };
+            client.MessageReceived +=
+                async m => {
+                    var channel = m.Channel as ITextChannel;
+                    if (m.IsAwthor() || channel == null)
+                        return;
+                    await ChannelSet.Get(channel).LogMessage(m);
+                };
 
             //// Make sure that every channel is available on loading up a server.
-            // TODO: Reimplement
-            //client.ServerAvailable += delegate(object sender, ServerEventArgs e) {
-            //    foreach (Channel channel in e.Server.TextChannels)
-            //        ChannelSet.Get(channel);
-            //};j
-            
+            client.GuildAvailable += delegate (IGuild guild) {
+                foreach (ITextChannel channel in guild.GetTextChannels())
+                    ChannelSet.Get(channel);
+                return Task.CompletedTask;
+            };
+
             // Keep up to date with channels
-            // TODO: Reimplement
-            //client.ChannelCreated += (s, e) => ChannelSet.Get(e.Channel);
+            client.ChannelCreated += channel => {
+                var textChannel = channel as ITextChannel;
+                if (textChannel != null)
+                    ChannelSet.Get(textChannel);
+                return Task.CompletedTask;
+            };
 
             // Preserve logs from deleted channels
-            // TODO: Reimplement
-            //client.ChannelDestroyed += async delegate(object sender, ChannelEventArgs evt) {
-            //    await ChannelSet.Get(evt.Channel).DeletedChannel(evt.Channel);
-            //};
+            client.ChannelDestroyed += async channel => {
+                var textChannel = channel as ITextChannel;
+                if (textChannel != null)
+                    await ChannelSet.Get(textChannel).DeletedChannel(textChannel);
+            };
         }
 
         Func<IRole, Task> RoleLog(string eventType) {
@@ -132,11 +136,11 @@ namespace DrumBot {
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         }
 
-        //TODO: Reevaluate necessity of this funciton 
-        //EventHandler<ServerEventArgs> ServerLog(DiscordClient client, string eventType) {
-        //    return delegate (object sender, ServerEventArgs e) {
-        //            Log.Info($"{eventType} server {e.Server.ToIDString()}. Server CountValues: { client.Servers.CountValues() }");
-        //    };
-        //}
+        Func<IGuild, Task> ServerLog(string eventType) {
+            return delegate (IGuild g) {
+                Log.Info($"{eventType} guild {g.ToIDString()}.");
+                return Task.CompletedTask;
+            };
+        }
     }
 }
