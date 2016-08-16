@@ -12,7 +12,7 @@
 
 //        [CommandUtility("")]
 //        [Description("Lists all modules available. Enabled ones are highligted" + Utility.Requires(Permission))]
-//        public async Task List(IMessage message) {
+//        public async Task ListSubcommands(IMessage message) {
 
 //        }
 

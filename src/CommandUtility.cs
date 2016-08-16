@@ -34,9 +34,8 @@ namespace DrumBot {
                                                       string action,
                                                       Func<IGuildUser, Task> task,
                                                       bool ignoreErrors = false) {
-            var server = Check.InGuild(message).Guild;
-            var botSelfUser = await Bot.Client.GetCurrentUserAsync();
-            var botUser = await server.GetUserAsync(botSelfUser.Id);
+            var guild = Check.InGuild(message).Guild;
+            var botUser = await guild.GetCurrentUserAsync();
             return async delegate (IGuildUser user) {
                 if (user.IsServerOwner())
                     return $"{user.Username}: User is server's owner. Cannot { action }.";

@@ -14,7 +14,7 @@ namespace DrumBot {
 
         public static Task SetNickname(this IGuildUser user, string nickname) => user.ModifyAsync(p => p.Nickname = nickname);
 
-        public static bool IsMe(this IUser user) => user == Bot.BotUser;
+        public static bool IsMe(this IUser user) => user == Bot.User;
         public static bool IsBotOwner(this IUser user) => user.Id == Config.Owner;
         public static bool IsServerOwner(this IGuildUser user) => user.Guild.Id == user.Id;
 

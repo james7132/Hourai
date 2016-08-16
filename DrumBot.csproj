@@ -49,8 +49,8 @@
       <HintPath>packages\Microsoft.Win32.Primitives.4.0.2-beta-24404-01\lib\net46\Microsoft.Win32.Primitives.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>packages\Newtonsoft.Json.8.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -152,7 +152,7 @@
     <Compile Include="src\Modules\Search.cs" />
     <Compile Include="src\Modules\Subchannel.cs" />
     <Compile Include="src\ReflectionUtility.cs" />
-    <Compile Include="src\Services\BotOwnerModule.cs" />
+    <Compile Include="src\Modules\Owner.cs" />
     <Compile Include="src\Services\LogService.cs" />
     <Compile Include="src\UserAction.cs" />
     <Compile Include="src\Utility.cs" />
@@ -167,16 +167,36 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="avatars\01.PNG" />
-    <Content Include="avatars\02.PNG" />
-    <Content Include="avatars\03.PNG" />
-    <Content Include="avatars\04.PNG" />
-    <Content Include="avatars\05.png" />
-    <Content Include="avatars\06.PNG" />
-    <Content Include="avatars\07.PNG" />
-    <Content Include="avatars\08.PNG" />
-    <Content Include="avatars\09.PNG" />
-    <Content Include="avatars\10.png" />
+    <Content Include="avatars\01.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\02.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\03.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\04.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\06.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\07.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\08.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\09.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="avatars\10.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
