@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -24,23 +25,28 @@ namespace DrumBot {
 
         public class CommandGroup {
 
-            public string Prefix{  get; }
-            public Dictionary<string, Command> Commands { get; }
-            public Dictionary<string, CommandGroup> Groups { get; }
+            public string Name{  get; }
+            public Command Command { get; }
+            public Dictionary<string, CommandGroup> Subcommands { get; }
 
             CommandGroup() {
-                Commands = new Dictionary<string, Command>();
-                Groups = new Dictionary<string, CommandGroup>();
+                Subcommands = new Dictionary<string, CommandGroup>();
             }
 
             public CommandGroup(IEnumerable<Command> commands) : this() {
-                Prefix = "";
+                Name = "";
+                Command = null;
                 foreach (Command command in commands.EmptyIfNull())
                     AddCommand(command);
             }
 
-            CommandGroup(string prefix) : this() {
-                Prefix = prefix;
+            CommandGroup(string name) : this() {
+                Name = name;
+            }
+
+            CommandGroup(Command command, string name) : this(name) {
+                Name = name;
+                Command = command;
             }
 
             void AddCommand(Command command) {
@@ -51,37 +57,37 @@ namespace DrumBot {
                 Check.NotNull(names);
                 if (names.Count == 0)
                     return;
-                var prefix = names.Dequeue();
+                var name = names.Dequeue();
                 if (names.Count == 0) {
-                    if (Commands.ContainsKey(prefix))
+                    if (Subcommands.ContainsKey(name))
                         throw new Exception("Cannot register two commands to the same name");
-                    Commands.Add(prefix, command);
+                    Subcommands.Add(name, new CommandGroup(command, name));
                 } else {
-                    if(!Groups.ContainsKey(prefix))
-                        Groups[prefix] = new CommandGroup(prefix);
-                    Groups[prefix].AddCommand(names, command);
+                    if(!Subcommands.ContainsKey(name))
+                        Subcommands[name] = new CommandGroup(name);
+                    Subcommands[name].AddCommand(names, command);
                 }
             }
 
             public Task<string> GetSpecficHelp(IMessage message, string command) {
-                return GetSpecficHelp(message, command, SplitComamnd(command));
+                return GetSpecficHelp(message, SplitComamnd(command));
             }
 
-            async Task<string> GetSpecficHelp(IMessage message, string command, Queue<string> names) {
+            Task<string> GetSpecficHelp(IMessage message, Queue<string> names) {
                 if (names.Count == 0)
-                    return null;
+                    return GetSpecficHelp(message);
                 var prefix = names.Dequeue();
-                if(names.Count > 0) {
-                    if (!Groups.ContainsKey(prefix))
-                        return null;
-                    return await Groups[prefix].GetSpecficHelp(message, command, names);
-                }
+                // Recurse as needed
+                if (Subcommands.ContainsKey(prefix))
+                    return Subcommands[prefix].GetSpecficHelp(message, names);
+                return null;
+            }
+
+            async Task<string> GetSpecficHelp(IMessage message) {
                 var builder = new StringBuilder();
-                Command c = null;
-                if (Commands.ContainsKey(prefix))
-                    c = Commands[prefix];
+                Command c = Command;
                 using (builder.Code()) {
-                    builder.Append(command);
+                    builder.Append(Name);
                     if(c != null) {
                         foreach (CommandParameter parameter in c.Parameters) {
                             var name = parameter.Name;
@@ -96,35 +102,40 @@ namespace DrumBot {
                 }
                 if (c != null)
                     builder.AppendLine(c.Description);
-                if(Groups.ContainsKey(prefix)) {
-                    var g = Groups[prefix];
+                if(Subcommands.Count > 0) {
                     builder.AppendLine("Available Subcommands:");
-                    builder.AppendLine(await g.List(message));
+                    builder.AppendLine(await ListSubcommands(message));
                 }
                 return builder.ToString();
             }
 
-            public async Task<string> List(IMessage message) {
+            public async Task<string> ListSubcommands(IMessage message) {
                 var usable = new List<string>();
-                usable.AddRange(Commands.Where(c => true).Select(c => c.Key));
-                foreach (var kvp in Groups) {
-                    if(await kvp.Value.CanUse(message))
-                        usable.Add(kvp.Key + "*");
+                foreach (var commandGroup in Subcommands.Values) {
+                    if(await commandGroup.CanUse(message))
+                        usable.Add(commandGroup.ToString().Code());
                 }
-                return usable.Select(s => s.Code()).Join(", ");
+                return usable.Join(", ");
             }
 
             public async Task<bool> CanUse(IMessage message) {
-                foreach (Command command in Commands.Values) {
-                    var result = await command.CheckPreconditions(message);
+                if (Command != null) {
+                    var result = await Command.CheckPreconditions(message);
                     if (result.IsSuccess)
                         return true;
                 }
-                foreach (CommandGroup commandGroup in Groups.Values) {
+                foreach (CommandGroup commandGroup in Subcommands.Values) {
                     if (await commandGroup.CanUse(message))
                         return true;
                 }
                 return false;
+            }
+
+            public override string ToString() {
+                var str = Name.ToLowerInvariant();
+                if (Subcommands.Count > 0)
+                    str += "*";
+                return str;
             }
         }
 
@@ -139,9 +150,12 @@ namespace DrumBot {
         [Command("help")]
         [Description("Gets information about commands")]
         public async Task HelpCommand(IMessage message, [Remainder] string command = "") {
-            if(command.IsNullOrEmpty())
+            if(command.IsNullOrEmpty()) {
                 await message.Respond(await GetGeneralHelp(message));
+                return;
+            }
             foreach (CommandGroup commandGroup in Modules.Values) {
+                Log.Info(commandGroup);
                 string specificHelp = await commandGroup.GetSpecficHelp(message, command);
                 if (specificHelp.IsNullOrEmpty())
                     continue;
@@ -158,10 +172,10 @@ namespace DrumBot {
                     continue;
                 var name = kvp.Key.Name;
                 if (!name.IsNullOrEmpty())
-                    builder.Append((name + ":").Bold());
-                builder.AppendLine(await kvp.Value.List(message));
+                    builder.Append((name + ": ").Bold());
+                builder.AppendLine(await kvp.Value.ListSubcommands(message));
             }
-            return $"{message.Author.Mention} here are the commands you can use:\n{builder}\n\nRun ``help <command>`` for more information";
+            return $"{message.Author.Mention} here are the commands you can use:\n{builder}\nRun ``help <command>`` for more information";
         }
 
     }

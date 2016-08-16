@@ -275,9 +275,9 @@ namespace DrumBot {
             var server = await client.GetGuildAsync(ID);
             if (server == null)
                 return;
-            //foreach (var group in Groups.ToArray()) {
+            //foreach (var group in Subcommands.ToArray()) {
             //    if (server.GetChannel(group.Key) == null)
-            //        Groups.RemoveCustomCommand(group.Key);
+            //        Subcommands.RemoveCustomCommand(group.Key);
             //    foreach (ulong channel in group.Value.ToArray())
             //        group.Value.RemoveCustomCommand(channel);
             //}

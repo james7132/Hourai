@@ -1,11 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Discord;
 
 namespace DrumBot {
     public static class StringExtensions {
+
+        static readonly Regex CamelCaseRegex;
+
+        static StringExtensions() {
+           CamelCaseRegex = new Regex("([a-z](?=[A-Z])|[A-Z](?=[A-Z][a-z]))", RegexOptions.Compiled);
+        }
 
         class StringBuilderWrapper : IDisposable {
             string Wrapper { get; }
@@ -68,6 +75,8 @@ namespace DrumBot {
             else
                 return string.Join(delimiter, strings);
         }
+
+        public static string SplitCamelCase(this string str, string delimiter = " ") => CamelCaseRegex.Replace(str, $"$1{delimiter}");
 
         public static string ToIDString(this IGuildChannel channel) => $"#{channel.Name} ({channel.Id})";
         public static string ToIDString(this IGuild server) => $"{server.Name} ({server.Id})";

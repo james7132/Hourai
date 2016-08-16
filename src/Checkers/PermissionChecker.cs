@@ -59,6 +59,96 @@ namespace DrumBot {
         }
     }
 
+    public enum Require {
+        Bot,
+        User,
+        Both
+    }
+
+    public class Permission : PreconditionAttribute {
+        public Require Requirement { get; }
+        public GuildPermission[] GuildPermission { get; }
+        public ChannelPermission[] ChannelPermission { get; }
+
+        public Permission(GuildPermission permission, Require requirement = Require.Both) {
+            Requirement = requirement;
+            GuildPermission = new [] {permission};
+            ChannelPermission = null;
+        }
+
+        public Permission(ChannelPermission permission, Require requirement = Require.Both) {
+            Requirement = requirement;
+            ChannelPermission = new[] {permission};
+            GuildPermission = null;
+        }
+
+        public Permission(GuildPermission[] permission, Require requirement = Require.Both) {
+            Requirement = requirement;
+            GuildPermission = permission;
+            ChannelPermission = null;
+        }
+
+        public Permission(ChannelPermission[] permission, Require requirement = Require.Both) {
+            Requirement = requirement;
+            ChannelPermission = permission;
+            GuildPermission = null;
+        }
+
+        PreconditionResult CheckUser(IUser user, IChannel channel) {
+            var guildUser = user as IGuildUser;
+            
+            // If user is server owner or has the administrator role
+            // they get a free pass.
+            if(guildUser != null && 
+                (guildUser.IsServerOwner() || 
+                guildUser.GuildPermissions
+                .Has(Discord.GuildPermission.Administrator)))
+                return PreconditionResult.FromSuccess();
+            if (GuildPermission != null) {
+                if (guildUser == null)
+                    return PreconditionResult.FromError("Command must be used in a guild channel");
+                foreach (GuildPermission guildPermission in GuildPermission) {
+                    if (!guildUser.GuildPermissions.Has(guildPermission))
+                        return PreconditionResult.FromError($"Command requires guild permission {guildPermission.ToString().SplitCamelCase().Code()}");
+                }
+            }
+
+            if (ChannelPermission != null) {
+                var guildChannel = channel as IGuildChannel;
+                ChannelPermissions perms;
+                if (guildChannel != null)
+                    perms = guildUser.GetPermissions(guildChannel);
+                else
+                    perms = ChannelPermissions.All(guildChannel);
+                foreach (ChannelPermission channelPermission in ChannelPermission) {
+                    if (!perms.Has(channelPermission))
+                        return PreconditionResult.FromError($"Command requires channel permission {channelPermission.ToString().SplitCamelCase().Code()}");
+                }
+            }
+            return PreconditionResult.FromSuccess();
+        }
+
+        public override async Task<PreconditionResult> CheckPermissions(IMessage context, Command executingCommand, object moduleInstance) {
+            // Check if the bot needs/has the permissions
+            if(Requirement != Require.User) {
+                IUser botUser = Bot.User;
+                var guild = (context.Channel as IGuildChannel)?.Guild;
+                if (guild != null)
+                    botUser = await guild.GetCurrentUserAsync();
+                var result = CheckUser(botUser, context.Channel);
+                if(!result.IsSuccess)
+                    return PreconditionResult.FromError(result);
+            }
+            // Check if the user has permissions. (Bot Owner gets override over this)
+            if(Requirement != Require.Bot && !context.Author.IsBotOwner()) {
+                var result = CheckUser(context.Author, context.Channel);
+                if(!result.IsSuccess)
+                    return PreconditionResult.FromError(result);
+            }
+            return PreconditionResult.FromSuccess();
+        }
+    }
+
     //    public class BotOwnerChecker : IPermissionChecker {
     //        public bool CanRun(Discord.CommandService.CommandUtility command,
     //                                    User user,

@@ -12,6 +12,16 @@ namespace DrumBot {
             return role;
         }
 
+        public static bool AllowCommands(this IGuild guild)
+            => guild != null && Config.GetGuildConfig(guild).AllowCommands;
+
+        public static bool AllowCommands(this IChannel channel) {
+            if (channel == null)
+                return false;
+            var gChannel = channel as IGuildChannel;
+            return gChannel == null || gChannel.Guild.AllowCommands();
+        }
+
         public static IEnumerable<IRole> Order(this IEnumerable<IRole> roles) => 
             roles.OrderBy(r => r.Position);
 

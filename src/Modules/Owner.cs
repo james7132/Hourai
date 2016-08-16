@@ -10,7 +10,6 @@ namespace DrumBot {
     public class Owner {
 
         [Command("getbotlog")]
-        [PrivateOnly]
         [Description("Gets the log for the bot.")]
         public async Task GetBotLog(IMessage message) {
             await message.Channel.SendFileRetry(Bot.BotLog);

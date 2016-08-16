@@ -35,7 +35,9 @@ namespace DrumBot {
 
         public static T SelectRandom<T>(this IEnumerable<T> t) {
             var array = t.ToArray();
-            return array[Random.Next(array.Length)];
+            if (array.Length <= 0)
+                return default(T);
+            return array[Random.Next(array.Length - 1)];
         }
 
         public static Task Respond(this IMessageChannel channel, string response) {

@@ -17,7 +17,7 @@ namespace DrumBot {
         static void Main() => new Bot().Run().GetAwaiter().GetResult();
         public static DiscordSocketClient Client { get; private set; }
         public static ChannelSet Channels { get; private set; }
-        public static ISelfUser BotUser { get; private set; }
+        public static ISelfUser User { get; private set; }
         IDMChannel OwnerChannel { get; set; }
 
         public static CommandService CommandService { get; private set; }
@@ -33,6 +33,7 @@ namespace DrumBot {
         bool _initialized;
 
         public Bot() {
+            _initialized = false;
             _startTime = DateTime.Now;
             Channels = new ChannelSet();
             _errors = new List<string>();
@@ -61,6 +62,7 @@ namespace DrumBot {
                 return;
             Log.Info("Initializing...");
             await InstallCommands(Client);
+            _initialized = true;
         }
 
         async Task InstallCommands(DiscordSocketClient client) {
@@ -105,16 +107,27 @@ namespace DrumBot {
         }
 
         public async Task HandleMessage(IMessage msg) {
-            Log.Info(msg.Content);
+            var channel = msg.Channel as ITextChannel;
+            if(!channel.AllowCommands() || msg.Author.IsBot || msg.IsAwthor())
+                return;
             // Marks where the command begins
             var argPos = 0;
+
             // Determine if the msg is a command, based on if it starts with the defined command prefix 
-            if (msg.HasCharPrefix(Config.CommandPrefix, ref argPos)) {
-                // Execute the command. (result does not indicate a return value, 
-                // rather an object stating if the command executed succesfully)
-                var result = await CommandService.Execute(msg, argPos);
-                if (!result.IsSuccess)
-                    await msg.Channel.SendMessageAsync(result.ErrorReason);
+            if (!msg.HasCharPrefix(Config.CommandPrefix, ref argPos))
+                return;
+
+            // Execute the command. (result does not indicate a return value, 
+            // rather an object stating if the command executed succesfully)
+            var result = await CommandService.Execute(msg, argPos);
+            if (result.IsSuccess)
+                return;
+            switch (result.Error) {
+                case CommandError.UnknownCommand:
+                    return;
+                default:
+                    await msg.Respond(result.ErrorReason);
+                    break;
             }
         }
 
@@ -191,16 +204,17 @@ namespace DrumBot {
 
             SendOwnerErrors();
 
-            BotUser = await Client.GetCurrentUserAsync();
+            User = await Client.GetCurrentUserAsync();
+            Log.Info(CommandService.Commands.Select(c => c.Text).Join(", "));
             while (true) {
-                Log.Info(CommandService.Commands.Select(c => c.Text).Join(", "));
                 var path = Directory.GetFiles(Path.Combine(ExecutionDirectory,
                               Config.AvatarDirectory)).SelectRandom();
-                await BotUser.ModifyAsync(async u => {
-                    await Utility.FileIO(delegate {
-                        using (var stream = new FileStream(path, FileMode.Open))
+                await Utility.FileIO(async delegate {
+                    using (var stream = new FileStream(path, FileMode.Open)) {
+                        await User.ModifyAsync(u => {
                             u.Avatar = stream;
-                    });
+                        });
+                    }
                 });
                 // Set the game of the bot to the bot's version.
                 // TODO: Client.SetGame(Config.Version);
