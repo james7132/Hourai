@@ -9,9 +9,11 @@ namespace DrumBot {
     public static class StringExtensions {
 
         static readonly Regex CamelCaseRegex;
+        static readonly Regex WhitespaceRegex;
 
         static StringExtensions() {
            CamelCaseRegex = new Regex("([a-z](?=[A-Z])|[A-Z](?=[A-Z][a-z]))", RegexOptions.Compiled);
+            WhitespaceRegex = new Regex(@"\s+", RegexOptions.Compiled);
         }
 
         class StringBuilderWrapper : IDisposable {
@@ -67,6 +69,9 @@ namespace DrumBot {
         public static string NullIfEmpty(this string str) => str.IsNullOrEmpty() ? null : str;
 
         public static string Remove(this string str, string substring) => str.Replace(substring, string.Empty);
+
+        public static string[] SplitWhitespace(this string str)
+            => WhitespaceRegex.Replace(str.Trim(), " ").Split(' ');
 
         public static string Join(this IEnumerable<string> strings,
                                   string delimiter = null) {

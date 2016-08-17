@@ -12,6 +12,27 @@ namespace DrumBot {
         public LogService(ChannelSet set) { ChannelSet = set; }
 
         public LogService(DiscordSocketClient client, CommandService service = null) {
+            client.Log += delegate(LogMessage message) {
+                switch (message.Severity) {
+                    case LogSeverity.Critical:
+                    case LogSeverity.Error:
+                        Log.Error(message.Message);
+                        break;
+                    case LogSeverity.Warning:
+                        Log.Warning(message.Message);
+                        break;
+                    case LogSeverity.Info:
+                        Log.Info(message.Message);
+                        break;
+                    case LogSeverity.Verbose:
+                    case LogSeverity.Debug:
+                        Log.Debug(message.Message);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+                return Task.CompletedTask;
+            };
             client.GuildAvailable += ServerLog("Discovered");
             client.GuildUnavailable += ServerLog("Lost");
 

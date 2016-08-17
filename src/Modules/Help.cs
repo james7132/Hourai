@@ -20,7 +20,7 @@ namespace DrumBot {
         readonly Dictionary<Module, CommandGroup> Modules;
 
         static Queue<string> SplitComamnd(string input) {
-            return new Queue<string>(Regex.Replace(input.Trim(), @"\s\s+", " ").Split(' '));
+            return new Queue<string>(input.SplitWhitespace());
         }
 
         public class CommandGroup {
@@ -80,7 +80,7 @@ namespace DrumBot {
                 // Recurse as needed
                 if (Subcommands.ContainsKey(prefix))
                     return Subcommands[prefix].GetSpecficHelp(message, names);
-                return null;
+                return Task.FromResult<string>(null);
             }
 
             async Task<string> GetSpecficHelp(IMessage message) {
@@ -93,13 +93,14 @@ namespace DrumBot {
                             var name = parameter.Name;
                             if(parameter.IsMultiple || parameter.IsRemainder)
                                 name += "...";
-                            if (parameter.IsOptional)
-                                name = name.SquareBracket();
-                            if(!name.IsNullOrEmpty())
-                                builder.Append(" " + name);
+                            if (parameter.IsOptional || parameter.IsRemainder || parameter.IsMultiple)
+                                name = $"[{name}]";
+                            if (!name.IsNullOrEmpty())
+                                builder.Append(" ").Append(name);
                         }
                     }
                 }
+                builder.AppendLine();
                 if (c != null)
                     builder.AppendLine(c.Description);
                 if(Subcommands.Count > 0) {
@@ -154,20 +155,24 @@ namespace DrumBot {
                 await message.Respond(await GetGeneralHelp(message));
                 return;
             }
-            foreach (CommandGroup commandGroup in Modules.Values) {
-                Log.Info(commandGroup);
-                string specificHelp = await commandGroup.GetSpecficHelp(message, command);
-                if (specificHelp.IsNullOrEmpty())
-                    continue;
-                await message.Respond(specificHelp);
-                return;
+            try {
+                foreach (CommandGroup commandGroup in Modules.Values) {
+                    Log.Info(commandGroup);
+                    string specificHelp = await commandGroup.GetSpecficHelp(message, command);
+                    if (specificHelp.IsNullOrEmpty())
+                        continue;
+                    await message.Respond(specificHelp);
+                    return;
+                }
+                await message.Respond($"{message.Author.Mention}: No command named {command.DoubleQuote()} found");
+            } catch(Exception e) {
+                Log.Error(e + e.StackTrace);
             }
-            await message.Respond($"{message.Author.Mention}: No command named {command.DoubleQuote()} found");
         }
 
         async Task<string> GetGeneralHelp(IMessage message) {
             var builder = new StringBuilder();
-            foreach (var kvp in Modules) {
+            foreach (var kvp in Modules.OrderBy(k => k.Key.Name)) {
                 if (!await kvp.Value.CanUse(message))
                     continue;
                 var name = kvp.Key.Name;
@@ -175,6 +180,9 @@ namespace DrumBot {
                     builder.Append((name + ": ").Bold());
                 builder.AppendLine(await kvp.Value.ListSubcommands(message));
             }
+            var guildConfig = Config.GetGuildConfig(message.Channel);
+            if(guildConfig != null && guildConfig.CustomCommands.Count > 0)
+                builder.AppendLine($"{"Custom: ".Bold()} {guildConfig.CustomCommands.Select(c => c.Name.Code()).Join(", ")}");
             return $"{message.Author.Mention} here are the commands you can use:\n{builder}\nRun ``help <command>`` for more information";
         }
 

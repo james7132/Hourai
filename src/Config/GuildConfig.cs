@@ -156,20 +156,15 @@ namespace DrumBot {
 
         public CustomCommand(string name) { this.name = name; }
 
-        //public void CreateCommand(CommandGroupBuilder builder, Server server) {
-        //    builder.CreateCommand(name)
-        //        .Parameter("Input", ParameterType.Unparsed)
-        //        .AddCheck((cm, u, ch) => ch.Server == server)
-        //        .AddCheck((cm, u, ch) => Config.GetGuildConfig(ch.Server)
-        //            .CommandService.FirstOrDefault(c => c.Name.Equals(cm.Text, StringComparison.OrdinalIgnoreCase)) != null)
-        //        .Do(async e => await e.Respond(response
-        //                .Replace("$input", e.GetArg("Input"))
-        //                .Replace("$user", e.User.Mention)
-        //                .Replace("$channel", e.Channel.Mention)));
-        //}
+        public async Task Execute(IMessage message, string input) {
+            var channel = Check.NotNull(message.Channel as ITextChannel);
+            await message.Respond(response.Replace("$input", input)
+                                    .Replace("$user", message.Author.Mention)
+                                    .Replace("$channel", channel.Mention));
+        }
     }
 
-    public class ServerConfig {
+    public class GuildConfig {
 
         [JsonIgnore]
         public ulong ID { get; set; }
@@ -182,7 +177,7 @@ namespace DrumBot {
         Dictionary<ulong, UserConfig> UserConfigs { get; set; }
 
         [JsonProperty]
-        List<CustomCommand> CustomCommands { get; set; }
+        public List<CustomCommand> CustomCommands { get; set; }
 
         [JsonProperty]
         Dictionary<string, ulong> MinimumRoles { get; set; }
@@ -198,7 +193,7 @@ namespace DrumBot {
         [JsonIgnore]
         public string SaveLocation => Path.Combine(ConfigDirectory, ID + ".config.json");
 
-        public ServerConfig(IGuild server) {
+        public GuildConfig(IGuild server) {
             Server = server;
             ID = server.Id;
             Modules = new HashSet<string>();
