@@ -134,7 +134,7 @@
     <Compile Include="src\Checkers\PermissionChecker.cs" />
     <Compile Include="src\CommandUtility.cs" />
     <Compile Include="src\Config\Config.cs" />
-    <Compile Include="src\Config\ServerConfig.cs" />
+    <Compile Include="src\Config\GuildConfig.cs" />
     <Compile Include="src\Exceptions.cs" />
     <Compile Include="src\Extensions\DiscordExtensions.cs" />
     <Compile Include="src\Extensions\MethodInfoExtensions.cs" />

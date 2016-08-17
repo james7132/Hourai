@@ -25,7 +25,6 @@ namespace DrumBot {
         public static string ExecutionDirectory { get; private set; }
         public static string BotLog { get; private set; }
         readonly List<string> _errors;
-        readonly HashSet<Type> _softErrors;
         readonly DateTime _startTime;
 
         const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
@@ -37,10 +36,6 @@ namespace DrumBot {
             _startTime = DateTime.Now;
             Channels = new ChannelSet();
             _errors = new List<string>();
-            _softErrors = new HashSet<Type> {
-                typeof(NotFoundException),
-                typeof(RoleRankException)
-            };
 
             ExecutionDirectory = GetExecutionDirectory();
             SetupLogs();
@@ -50,11 +45,15 @@ namespace DrumBot {
             ExecuteStaticInitializers();
 
             Client = new DiscordSocketClient();
-            CommandService = new CommandService();
             LogService = new LogService(Channels);
+            CommandService = new CommandService();
 
-            Log.Info($"Starting { Config.BotName }...");
-            Client.GuildAvailable += async g => Config.GetGuildConfig(g);
+            Log.Info($"Starting {Config.BotName}...");
+            Client.GuildAvailable +=
+                delegate(IGuild g) {
+                    Config.GetGuildConfig(g);
+                    return Task.CompletedTask;
+                };
         }
 
         async Task Initialize() {
@@ -79,12 +78,9 @@ namespace DrumBot {
         }
 
         static void ExecuteStaticInitializers() {
-            var types = from type in ReflectionUtility.ConcreteClasses
-                                    .WithAttribute<InitializeOnLoadAttribute>()
-                        orderby -type.Value.Order
-                        select type;
+            var types = from type in ReflectionUtility.ConcreteClasses.WithAttribute<InitializeOnLoadAttribute>() orderby -type.Value.Order select type;
             foreach (var type in types) {
-                Log.Info($"Executing static initializer for { type.Key.FullName } ({type.Value.Order})...");
+                Log.Info($"Executing static initializer for {type.Key.FullName} ({type.Value.Order})...");
                 RuntimeHelpers.RunClassConstructor(type.Key.TypeHandle);
             }
         }
@@ -93,22 +89,14 @@ namespace DrumBot {
             Console.OutputEncoding = Encoding.UTF8;
             BotLog = Path.Combine(ExecutionDirectory, Config.LogDirectory, DateTime.Now.ToString(LogStringFormat) + ".log");
             Trace.Listeners.Clear();
-            var botLogFile = new FileStream(BotLog,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.Read);
-            Trace.Listeners.Add(new TextWriterTraceListener(botLogFile) {
-                TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime
-            });
-            Trace.Listeners.Add(new ConsoleTraceListener(false) {
-                TraceOutputOptions = TraceOptions.DateTime
-            });
+            var botLogFile = new FileStream(BotLog, FileMode.Create, FileAccess.Write, FileShare.Read);
+            Trace.Listeners.Add(new TextWriterTraceListener(botLogFile) {TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime});
+            Trace.Listeners.Add(new ConsoleTraceListener(false) {TraceOutputOptions = TraceOptions.DateTime});
             Trace.AutoFlush = true;
         }
 
         public async Task HandleMessage(IMessage msg) {
-            var channel = msg.Channel as ITextChannel;
-            if(!channel.AllowCommands() || msg.Author.IsBot || msg.IsAwthor())
+            if (!msg.Channel.AllowCommands() || msg.Author.IsBot || msg.IsAwthor())
                 return;
             // Marks where the command begins
             var argPos = 0;
@@ -120,9 +108,18 @@ namespace DrumBot {
             // Execute the command. (result does not indicate a return value, 
             // rather an object stating if the command executed succesfully)
             var result = await CommandService.Execute(msg, argPos);
-            if (result.IsSuccess)
+            var guildChannel = msg.Channel as ITextChannel;
+            string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}." 
+                    : $"in private channel with {(await msg.Channel.GetUsersAsync()).Select(u => u.Username).Join(", ")}.";
+            if (result.IsSuccess) {
+                Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
                 return;
+            }
+            if (await CustomCommandCheck(msg, argPos))
+                return;
+            Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
             switch (result.Error) {
+                // Ignore these kinds of errors, no need for response.
                 case CommandError.UnknownCommand:
                     return;
                 default:
@@ -131,17 +128,31 @@ namespace DrumBot {
             }
         }
 
+        async Task<bool> CustomCommandCheck(IMessage msg, int argPos) {
+            var customCommandCheck =
+                msg.Content.Substring(argPos).SplitWhitespace();
+            if (customCommandCheck.Length <= 0)
+                return false;
+            var commandName = customCommandCheck[0];
+            argPos += commandName.Length;
+            var command = Config.GetGuildConfig(msg.Channel)?.GetCustomCommand(commandName);
+            if (command == null)
+                return false;
+            await command.Execute(msg, msg.Content.Substring(argPos));
+            return true;
+        }
+
         //CommandService AddCommands(DiscordClient client) {
         //    // Short stub to calculate the standard prefix location.
         //    Func<string, int> defaultPrefix = s => s[0] == Config.CommandPrefix ? 1 : -1;
         //    var commandService = client.AddService(new CommandService(new CommandServiceConfigBuilder {
         //        HelpMode = HelpMode.Public,
         //        // Use prefix handler to filter out non-production servers while testing.
-        //        CustomPrefixHandler = delegate (Message message) {
-        //            string msg = message.RawText;
-        //            if (message.Channel.IsPrivate)
+        //        CustomPrefixHandler = delegate (Message msg) {
+        //            string msg = msg.RawText;
+        //            if (msg.Channel.IsPrivate)
         //                return defaultPrefix(msg);
-        //            return Config.GetGuildConfig(message.Server).AllowCommands ? defaultPrefix(msg) : -1;
+        //            return Config.GetGuildConfig(msg.Server).AllowCommands ? defaultPrefix(msg) : -1;
         //        }
         //    }));
         //    commandService.CommandErrored += OnCommandError;
@@ -200,20 +211,17 @@ namespace DrumBot {
             await Client.LoginAsync(TokenType.Bot, Config.Token);
             await Client.ConnectAsync();
             var self = await Client.GetCurrentUserAsync();
-            Log.Info($"Logged in as { self.ToIDString() }");
+            Log.Info($"Logged in as {self.ToIDString()}");
 
             SendOwnerErrors();
 
             User = await Client.GetCurrentUserAsync();
             Log.Info(CommandService.Commands.Select(c => c.Text).Join(", "));
             while (true) {
-                var path = Directory.GetFiles(Path.Combine(ExecutionDirectory,
-                              Config.AvatarDirectory)).SelectRandom();
+                var path = Directory.GetFiles(Path.Combine(ExecutionDirectory, Config.AvatarDirectory)).SelectRandom();
                 await Utility.FileIO(async delegate {
                     using (var stream = new FileStream(path, FileMode.Open)) {
-                        await User.ModifyAsync(u => {
-                            u.Avatar = stream;
-                        });
+                        await User.ModifyAsync(u => { u.Avatar = stream; });
                     }
                 });
                 // Set the game of the bot to the bot's version.
@@ -236,6 +244,5 @@ namespace DrumBot {
                 }
             }
         }
-
     }
 }

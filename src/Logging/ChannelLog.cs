@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
@@ -138,7 +137,7 @@ namespace DrumBot {
             var guildConfig = Config.GetGuildConfig(guild);
             var res =
                 from file in Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories).AsParallel()
-                from line in File.ReadAllLines(file)
+                from line in File.ReadLines(file)
                 where pred(line)
                 group line by Directory.GetParent(file).Name into g
                 orderby g.Key

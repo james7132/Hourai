@@ -10,12 +10,12 @@ namespace DrumBot {
 
         public const string ConfigFilePath = "config.json";
 
-        static readonly Dictionary<ulong, ServerConfig> _serversConfigs;
+        static readonly Dictionary<ulong, GuildConfig> _serversConfigs;
 
-        public IEnumerable<ServerConfig> ServerConfigs => _serversConfigs.Values;
+        public IEnumerable<GuildConfig> ServerConfigs => _serversConfigs.Values;
 
         static Config() {
-            _serversConfigs = new Dictionary<ulong, ServerConfig>();
+            _serversConfigs = new Dictionary<ulong, GuildConfig>();
         }
 
         public static void Load() {
@@ -28,10 +28,21 @@ namespace DrumBot {
             Log.Info("Config loaded.");
         }
 
-        public static ServerConfig GetGuildConfig(IGuild guild) {
+        public static GuildConfig GetGuildConfig(IGuild guild) {
             if(!_serversConfigs.ContainsKey(guild.Id))
-                _serversConfigs[guild.Id] = new ServerConfig(guild);
+                _serversConfigs[guild.Id] = new GuildConfig(guild);
             return _serversConfigs[guild.Id];
+        }
+
+        public static GuildConfig GetGuildConfig(IChannel channel) {
+            var guildChannel = Check.NotNull(channel) as IGuildChannel;
+            if (guildChannel == null)
+                return null;
+            return GetGuildConfig(guildChannel.Guild);
+        }
+
+        public static ChannelConfig GetChannelConfig(IChannel channel) {
+            return GetGuildConfig(channel)?.GetChannelConfig(channel);
         }
 
         /// <summary>
