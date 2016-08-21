@@ -39,7 +39,25 @@ namespace DrumBot {
             }
         }
 
-        public static async Task Success(this CommandEventArgs e) => await e.Respond(Config.SuccessResponse);
+        public static async Task Success(this CommandEventArgs e,
+                                         string followup = null) {
+            await e.Channel.Success(followup);
+        } 
+
+        public static DateTime CreatedOn(this User user) {
+            ulong id = Check.NotNull(user).Id;
+            // Date created is bits 23 to 64
+            id >>= 22;
+            // Add offset to Jan. 1st 2016
+            id += 1420070400000;
+            // Convert from Unix Timestamp to DateTime
+            var dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            return dtDateTime.AddMilliseconds(id);
+        }
+
+        public static async Task Success(this Channel channel, string followup) {
+            await channel.Respond(Utility.Success(followup));
+        }
 
         public static async Task SendFileRetry(this Channel user,
                                                 string path) {
@@ -86,8 +104,8 @@ namespace DrumBot {
 
         public static string ToProcessedString(this Message message) {
             var baseLog = $"{message.User?.Name ?? "Unknown User"}: {message.Text}";
-            var attachments = string.Join(" ", message.Attachments.Select(a => a.Url));
-            var embeds = string.Join(" ", message.Embeds.Select(a => a.Url));
+            var attachments = message.Attachments.Select(a => a.Url).Join(" ");
+            var embeds = message.Embeds.Select(a => a.Url).Join(" ");
             return baseLog + attachments + embeds;
         }
 

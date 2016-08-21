@@ -11,7 +11,21 @@ namespace DrumBot {
                                     out string error) {
             error = string.Empty;
             if (!user.IsBotOwner()) {
-                error = $"{user.Name} you are not the owner of this bot, and thus cannot run {command.Text}";
+                error = $"{user.Name} you are not the owner of this bot, and thus cannot run {command.Text.Code()}";
+                return false;
+            }
+            return true;
+        }
+    }
+
+    public class ServerOwnerChecker : IPermissionChecker {
+        public bool CanRun(Discord.Commands.Command command,
+                           User user,
+                           Channel channel,
+                           out string error) {
+            error = string.Empty;
+            if (!user.IsServerOwner()) {
+                error = $"{user.Name} you are not the owner of this server, and thus cannot run {command.Text.Code()}";
                 return false;
             }
             return true;

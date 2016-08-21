@@ -7,13 +7,15 @@ using Discord;
 
 namespace DrumBot {
 
-    [InitializeOnLoad]
     public class ChannelLog {
 
         /// <summary>
         /// A replacement for all new lines to keep all messages on one line while logging.
         /// </summary>
         const string NewLineReplacement = "\\n";
+
+        const string DateFormat = "yyyy-MM-dd";
+        const string FileType = ".log";
 
         /// <summary>
         /// The absolute path to the directory where all of the logs are stored.
@@ -49,18 +51,17 @@ namespace DrumBot {
         /// <param name="time">the day specified</param>
         /// <returns>the path to the log file</returns>
         public string GetPath(DateTime time) {
-            return GetPath(time.ToString("yyyy-MM-dd"));
+            return GetPath(time.ToString(DateFormat));
         }
 
         // Same as above, except with direct access.
         public string GetPath(string time) {
-            return Path.Combine(_channelDirectory, time) + ".log";
+            return Path.Combine(_channelDirectory, time) + FileType;
         }
 
         public ChannelLog(Channel channel) {
             _serverDirectory = ServerDirectory(channel.Server);
             _channelDirectory = ChannelDirectory(channel);
-            Log.Info($"Saving channel logs for { channel.Server.Name }'s #{ channel.Name} to { _channelDirectory }");
             if (!Directory.Exists(_channelDirectory)) {
                 Directory.CreateDirectory(_channelDirectory);
                 Log.Info($"Logs for { channel.Name } do not exist. Downloading the most recent messages.");
@@ -125,7 +126,7 @@ namespace DrumBot {
                 return string.Empty;
             string[] files = Directory.GetFiles(directory);
             string[] results = await Task.WhenAll(files.Select(file => SearchFile(file, pred)));
-            return LogToMessage(string.Join("", results.Where(s => !string.IsNullOrEmpty(s))));
+            return LogToMessage(results.Where(s => !s.IsNullOrEmpty()).Join());
         }
 
         /// <summary>

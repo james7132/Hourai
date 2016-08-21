@@ -1,22 +1,24 @@
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using Discord.Commands.Permissions.Visibility;
 using Discord.Modules;
 
 namespace DrumBot {
     public class ChannelModule : IModule {
 
-        const string Requires = "Requires ``Manage Channels`` permission for both bot and user.";
+        const string Permission = "Manage Channels";
 
         public void Install(ModuleManager manager) {
             manager.CreateCommands("channel", cbg => {
-                cbg.Category("Admin");
-                cbg.AddCheck(Check.ManageChannels());
-                CreateCommand(cbg, "create", "Creates a channel with a specified name.", false)
+                cbg.Category("Admin")
+                    .PublicOnly()
+                    .AddCheck(Check.ManageChannels());
+                CreateCommand(cbg, "create", "Creates a public channel with a specified name.")
                     .Parameter("Name")
                     .Do(CreateChannel);
-
                 CreateCommand(cbg, "delete", "Deletes all mentioned channels")
+                    .Parameter("Channel(s)", ParameterType.Multiple)
                     .Do(DeleteChannel);
             });
         }
@@ -32,13 +34,9 @@ namespace DrumBot {
 
         CommandBuilder CreateCommand(CommandGroupBuilder builder,
                                       string name,
-                                      string description,
-                                      bool multiple = true) {
-            var command = builder.CreateCommand(name)
-                                 .Description(description + Requires);
-            if (multiple)
-                command = command.Parameter("Channels", ParameterType.Multiple);
-            return command;
+                                      string description) {
+            return builder.CreateCommand(name)
+                          .Description(description + Utility.Requires(Permission));
         }
     }
 }

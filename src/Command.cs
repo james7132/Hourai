@@ -1,28 +1,76 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 
 namespace DrumBot {
-    public class Command {
+    public static class Command {
 
-        public static async Task ForEvery<T>(CommandEventArgs e, IEnumerable<T> users, Func<T, Task<string>> func) {
-            string[] results = await Task.WhenAll(users.Select(func));
-            string response;
-            if (results.Length > 0)
-                response = string.Join("\n", results);
-            else 
-                response ="No users specified. Please specify at least one target user.";
+        const string FailureResponse =
+            "No target specified. Please specify at least one target user.";
+
+        public static Func<CommandEventArgs, Task> Response(Func<CommandEventArgs, StringBuilder> response) {
+            return async delegate(CommandEventArgs e) {
+                var resultBuilder = response(e);
+                var result = resultBuilder.ToString();
+                if (!result.IsNullOrEmpty())
+                    await e.Respond(result);
+            };
+        }
+
+        public static Func<CommandEventArgs, Task> Response(Func<CommandEventArgs, string> response) {
+            return async delegate(CommandEventArgs e) {
+                var result = response(e);
+                if (!result.IsNullOrEmpty())
+                    await e.Respond(result);
+            };
+        }
+
+        public static Func<CommandEventArgs, Task> Response(Func<CommandEventArgs, Task<StringBuilder>> response) {
+            return async delegate(CommandEventArgs e) {
+                var resultBuilder = await response(e);
+                var result = resultBuilder.ToString();
+                if (!result.IsNullOrEmpty())
+                    await e.Respond(result);
+            };
+        }
+
+        public static Func<CommandEventArgs, Task> Response(Func<CommandEventArgs, Task<string>> response) {
+            return async delegate(CommandEventArgs e) {
+                var result = await response(e);
+                if (!result.IsNullOrEmpty())
+                    await e.Respond(result);
+            };
+        }
+
+        public static async Task ForEvery<T>(CommandEventArgs e, 
+                                             IEnumerable<T> enumeration, 
+                                             Func<T, string> func) {
+            string[] results = enumeration.Select(func).ToArray();
+            string response = results.Any()
+                ? results.Join("\n")
+                : FailureResponse;
             await e.Respond(response);
         }
 
-        public static Func<User, Task<string>> Action(Channel channel,
-                                                            string action,
-                                                            Func<User, Task> task,
-                                                            bool ignoreErrors = false) {
-            var botUser = channel.Server.CurrentUser;
+        public static async Task ForEvery<T>(CommandEventArgs e, 
+                                             IEnumerable<T> enumeration, 
+                                              Func<T, Task<string>> func) {
+            string[] results = await Task.WhenAll(enumeration.Select(func));
+            string response = results.Length > 0
+                ? results.Join("\n")
+                : FailureResponse;
+            await e.Respond(response);
+        }
+
+        public static Func<User, Task<string>> Action(Server server,
+                                                      string action,
+                                                      Func<User, Task> task,
+                                                      bool ignoreErrors = false) {
+            var botUser = server.CurrentUser;
             return async delegate(User user) {
                 if (user.IsServerOwner())
                     return $"{user.Name}: User is server's owner. Cannot { action }.";
