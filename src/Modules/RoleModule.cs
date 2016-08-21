@@ -28,7 +28,11 @@ namespace DrumBot {
                 RoleCommandBuilder(cbg, "ban", "Bans all mentioned users from a specified role")
                     .Do(async delegate(CommandEventArgs e) {
                         var serverConfig = Config.GetServerConfig(e.Server);
-                        await RoleCommand(e, "ban", e.Message.MentionedUsers, async (u, r) => serverConfig.GetUserConfig(u).BanRole(r));
+                        await RoleCommand(e, "ban", e.Message.MentionedUsers, async (u, r) => {
+                            if (u.HasRole(r))
+                                await u.RemoveRoles(r);
+                            serverConfig.GetUserConfig(u).BanRole(r);
+                        });
                     });
 
                 RoleCommandBuilder(cbg, "unban", "Unban all mentioned users from a specified role")
@@ -76,11 +80,11 @@ namespace DrumBot {
         static async Task RoleCommand(CommandEventArgs e, string action, IEnumerable<User> users, Func<User, Role, Task> task) {
             Role role = e.Server.GetRole(e.GetArg("Role"));
             if(!Utility.RoleCheck(e.Server.CurrentUser, role))
-                throw new RoleRankException($"I cannot {action} role \"{role.Name}\", as it is above my roles.");
+                throw new RoleRankException($"{e.Server.CurrentUser.Name} cannot {action} role \"{role.Name}\", as it is above my roles.");
             if(!Utility.RoleCheck(e.User, role))
                 throw new RoleRankException($"{e.User.Name} cannot {action} role \"{role.Name}\", as it is above their roles.");
             await Command.ForEvery(e, users,
-                Command.Action(e.Channel, action + " role", async user => await task(user, role)));
+                Command.Action(e.Server, action + " role", async user => await task(user, role)));
         }
     }
 }

@@ -91,9 +91,11 @@
     <Compile Include="src\Extensions\UserExtensions.cs" />
     <Compile Include="src\Modules\AdminModule.cs" />
     <Compile Include="src\Modules\ChannelModule.cs" />
+    <Compile Include="src\Modules\CommandModule.cs" />
     <Compile Include="src\Modules\GithubModule.cs" />
     <Compile Include="src\Modules\InfoModule.cs" />
     <Compile Include="src\Modules\ModuleModule.cs" />
+    <Compile Include="src\ReflectionUtility.cs" />
     <Compile Include="src\Services\BotOwnerCommandService.cs" />
     <Compile Include="src\Modules\RoleModule.cs" />
     <Compile Include="src\Modules\SearchModule.cs" />

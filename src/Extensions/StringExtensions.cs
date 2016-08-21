@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using Discord;
 
 namespace DrumBot {
@@ -45,6 +47,19 @@ namespace DrumBot {
         public static IDisposable Strikethrough(this StringBuilder builder) => builder.Wrap(StrikethroughWrapper);
         public static IDisposable Quote(this StringBuilder builder) => builder.Wrap(QuoteWrapper);
         public static IDisposable DoubleQuote(this StringBuilder builder) => builder.Wrap(DoubleQuoteWrapper);
+
+        public static string ToTitleCase(this string str) => Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(str);
+
+        public static bool IsNullOrEmpty(this string str) => string.IsNullOrEmpty(str);
+        public static string NullIfEmpty(this string str) => str.IsNullOrEmpty() ? null : str;
+
+        public static string Join(this IEnumerable<string> strings,
+                                  string delimiter = null) {
+            if (delimiter.IsNullOrEmpty())
+                return string.Join(string.Empty, strings);
+            else
+                return string.Join(delimiter, strings);
+        }
 
         public static string ToIDString(this Channel channel) => $"#{channel.Name} ({channel.Id})";
         public static string ToIDString(this Server server) => $"{server.Name} ({server.Id})";
