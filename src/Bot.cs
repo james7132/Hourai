@@ -9,46 +9,66 @@ using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
-using Discord.Modules;
-using DrumBot.src.Services;
+using Discord.WebSocket;
 
 namespace DrumBot {
 
     class Bot {
-        DiscordClient Client { get; }
-        Channel OwnerChannel { get; set; }
+        static void Main() => new Bot().Run().GetAwaiter().GetResult();
+        public static DiscordSocketClient Client { get; private set; }
+        public static ChannelSet Channels { get; private set; }
+        public static ISelfUser User { get; private set; }
+        IDMChannel OwnerChannel { get; set; }
+
+        public static CommandService CommandService { get; private set; }
+        LogService LogService { get; }
         public static string ExecutionDirectory { get; private set; }
         public static string BotLog { get; private set; }
         readonly List<string> _errors;
-        readonly HashSet<Type> _softErrors;
         readonly DateTime _startTime;
 
         const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
+        bool _initialized;
+
         public Bot() {
+            _initialized = false;
             _startTime = DateTime.Now;
-            var channelSet = new ChannelSet();
+            Channels = new ChannelSet();
             _errors = new List<string>();
-            _softErrors = new HashSet<Type> {
-                typeof(NotFoundException),
-                typeof(RoleRankException)
-            };
 
             ExecutionDirectory = GetExecutionDirectory();
             SetupLogs();
-
-            Log.Info("Initializing..."); 
             Log.Info($"Execution Directory: { ExecutionDirectory }");
+
             Config.Load();
             ExecuteStaticInitializers();
 
-            Client = new DiscordClient();
-            AddCommands(Client);
-            AddModules(Client, channelSet);
-            Client.AddService(new LogService(channelSet));
+            Client = new DiscordSocketClient();
+            LogService = new LogService(Channels);
+            CommandService = new CommandService();
 
-            Log.Info($"Starting { Config.BotName }...");
-            Client.ServerAvailable += (s, e) => Config.GetServerConfig(e.Server);
+            Log.Info($"Starting {Config.BotName}...");
+            Client.GuildAvailable +=
+                delegate(IGuild g) {
+                    Config.GetGuildConfig(g);
+                    return Task.CompletedTask;
+                };
+        }
+
+        async Task Initialize() {
+            if (_initialized)
+                return;
+            Log.Info("Initializing...");
+            await InstallCommands(Client);
+            _initialized = true;
+        }
+
+        async Task InstallCommands(DiscordSocketClient client) {
+            client.MessageReceived += HandleMessage;
+            await CommandService.LoadAssembly(Assembly.GetEntryAssembly());
+            await CommandService.Load(new Search(Channels));
+            await CommandService.Load(new Help());
         }
 
         static string GetExecutionDirectory() {
@@ -58,12 +78,9 @@ namespace DrumBot {
         }
 
         static void ExecuteStaticInitializers() {
-            var types = from type in ReflectionUtility.ConcreteClasses
-                                    .WithAttribute<InitializeOnLoadAttribute>()
-                        orderby -type.Value.Order
-                        select type;
-            foreach(var type in types) {
-                Log.Info($"Executing static initializer for { type.Key.FullName } ({type.Value.Order})...");
+            var types = from type in ReflectionUtility.ConcreteClasses.WithAttribute<InitializeOnLoadAttribute>() orderby -type.Value.Order select type;
+            foreach (var type in types) {
+                Log.Info($"Executing static initializer for {type.Key.FullName} ({type.Value.Order})...");
                 RuntimeHelpers.RunClassConstructor(type.Key.TypeHandle);
             }
         }
@@ -72,152 +89,143 @@ namespace DrumBot {
             Console.OutputEncoding = Encoding.UTF8;
             BotLog = Path.Combine(ExecutionDirectory, Config.LogDirectory, DateTime.Now.ToString(LogStringFormat) + ".log");
             Trace.Listeners.Clear();
-            var botLogFile = new FileStream(BotLog,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.Read);
-            Trace.Listeners.Add(new TextWriterTraceListener(botLogFile) {
-                        TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime
-                    });
-            Trace.Listeners.Add(new ConsoleTraceListener(false) {
-                TraceOutputOptions = TraceOptions.DateTime
-            });
+            var botLogFile = new FileStream(BotLog, FileMode.Create, FileAccess.Write, FileShare.Read);
+            Trace.Listeners.Add(new TextWriterTraceListener(botLogFile) {TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime});
+            Trace.Listeners.Add(new ConsoleTraceListener(false) {TraceOutputOptions = TraceOptions.DateTime});
             Trace.AutoFlush = true;
         }
 
-        ModuleService AddModules(DiscordClient client, ChannelSet channels) {
-            var moduleService = client.AddService<ModuleService>();
-            client.AddModule<ModuleModule>("Module");
-            var modules = from type in ReflectionUtility.ConcreteClasses
-                                           .InheritsFrom<IModule>()
-                                           .WithParameterlessConstructor()
-                          where type != typeof(ModuleModule)
-                          select Activator.CreateInstance(type) as IModule;
-            modules = modules.Concat(new IModule[] {
-                new SearchModule(channels), 
-            });
-            foreach (IModule module in modules) {
-                var moduleName = module.GetType().Name.Replace("Module", "");
-                Log.Info($"Adding module {moduleName.DoubleQuote()}");
-                client.AddModule(module, moduleName, ModuleFilter.ServerWhitelist);
-            }
-
-            // Enable modules for each server based on what is saved in the configs.
-            Client.ServerAvailable += delegate(object s, ServerEventArgs e) {
-                var config = Config.GetServerConfig(e.Server);
-                foreach (string moduleId in config.Modules.ToArray()) {
-                    var module = moduleService.Modules.FirstOrDefault(m => m.Id == moduleId);
-                    module?.EnableServer(e.Server);
-                }
-            };
-            
-            // Set up modules to save when each server enables/disables a server.
-            foreach (var moduleManager in moduleService.Modules) {
-                var id = moduleManager.Id;
-                moduleManager.ServerEnabled += delegate(object s, ServerEventArgs e) {
-                        var config = Config.GetServerConfig(e.Server);
-                        if(!config.IsModuleEnabled(id))
-                            config.AddModule(id);
-                    };
-                moduleManager.ServerDisabled += delegate(object s, ServerEventArgs e) {
-                        var config = Config.GetServerConfig(e.Server);
-                        if(config.IsModuleEnabled(id))
-                            config.RemoveModule(id);
-                    };
-            }
-            return moduleService;
-        }
-
-        CommandService AddCommands(DiscordClient client) {
-            // Short stub to calculate the standard prefix location.
-            Func<string, int> defaultPrefix = s => s[0] == Config.CommandPrefix ? 1 : -1;
-            var commandService = client.AddService(new CommandService(new CommandServiceConfigBuilder {
-                HelpMode = HelpMode.Public,
-                // Use prefix handler to filter out non-production servers while testing.
-                CustomPrefixHandler = delegate (Message message) {
-                    string msg = message.RawText;
-                    if (message.Channel.IsPrivate)
-                        return defaultPrefix(msg);
-                    return Config.GetServerConfig(message.Server).AllowCommands ? defaultPrefix(msg) : -1;
-                }
-            }));
-            commandService.CommandErrored += OnCommandError;
-            client.AddService(new BotOwnerCommandService());
-            return commandService;
-        }
-
-        async void OnCommandError(object sender, CommandErrorEventArgs args) {
-            string response = string.Empty;
-            switch (args.ErrorType) {
-                case CommandErrorType.BadArgCount:
-                    response = "Improper argument count.";
-                    break;
-                case CommandErrorType.BadPermissions:
-                    if (args.Exception != null)
-                        response = args.Exception.Message;
-                    break;
-                case CommandErrorType.Exception:
-                    if (args.Exception != null) {
-                        if (_softErrors.Contains(args.Exception.GetType())) {
-                            response = args.Exception.Message;
-                        }
-                        else {
-                            Log.Error(args.Exception);
-                            response = args.Exception.ToString().MultilineCode();
-                        }
-                    }
-                    break;
-                case CommandErrorType.InvalidInput:
-                    response = "Invalid input.";
-                    break;
-                default:
-                    return;
-            }
-            if (string.IsNullOrEmpty(response))
+        public async Task HandleMessage(IMessage msg) {
+            if (!msg.Channel.AllowCommands() || msg.Author.IsBot || msg.IsAwthor())
                 return;
-            if (args.Command != null)
-                response += $" Try ``{Config.CommandPrefix}help {args.Command.Text}``.";
-            else {
-                response += $" Try ``{Config.CommandPrefix}help``.";
+            // Marks where the command begins
+            var argPos = 0;
+
+            // Determine if the msg is a command, based on if it starts with the defined command prefix 
+            if (!msg.HasCharPrefix(Config.CommandPrefix, ref argPos))
+                return;
+
+            // Execute the command. (result does not indicate a return value, 
+            // rather an object stating if the command executed succesfully)
+            var result = await CommandService.Execute(msg, argPos);
+            var guildChannel = msg.Channel as ITextChannel;
+            string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}." 
+                    : $"in private channel with {(await msg.Channel.GetUsersAsync()).Select(u => u.Username).Join(", ")}.";
+            if (result.IsSuccess) {
+                Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
+                return;
             }
-            await args.Respond(response);
+            if (await CustomCommandCheck(msg, argPos))
+                return;
+            Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
+            switch (result.Error) {
+                // Ignore these kinds of errors, no need for response.
+                case CommandError.UnknownCommand:
+                    return;
+                default:
+                    await msg.Respond(result.ErrorReason);
+                    break;
+            }
         }
 
-        Channel GetOwnerChannel() {
-            return Client.PrivateChannels.FirstOrDefault(ch => ch.GetUser(Config.Owner) != null);
+        async Task<bool> CustomCommandCheck(IMessage msg, int argPos) {
+            var customCommandCheck =
+                msg.Content.Substring(argPos).SplitWhitespace();
+            if (customCommandCheck.Length <= 0)
+                return false;
+            var commandName = customCommandCheck[0];
+            argPos += commandName.Length;
+            var command = Config.GetGuildConfig(msg.Channel)?.GetCustomCommand(commandName);
+            if (command == null)
+                return false;
+            await command.Execute(msg, msg.Content.Substring(argPos));
+            return true;
         }
+
+        //CommandService AddCommands(DiscordClient client) {
+        //    // Short stub to calculate the standard prefix location.
+        //    Func<string, int> defaultPrefix = s => s[0] == Config.CommandPrefix ? 1 : -1;
+        //    var commandService = client.AddService(new CommandService(new CommandServiceConfigBuilder {
+        //        HelpMode = HelpMode.Public,
+        //        // Use prefix handler to filter out non-production servers while testing.
+        //        CustomPrefixHandler = delegate (Message msg) {
+        //            string msg = msg.RawText;
+        //            if (msg.Channel.IsPrivate)
+        //                return defaultPrefix(msg);
+        //            return Config.GetGuildConfig(msg.Server).AllowCommands ? defaultPrefix(msg) : -1;
+        //        }
+        //    }));
+        //    commandService.CommandErrored += OnCommandError;
+        //    client.AddService(new Owner());
+        //    return commandService;
+        //}
+
+        //async void OnCommandError(object sender, CommandErrorEventArgs args) {
+        //    string response = string.Empty;
+        //    switch (args.ErrorType) {
+        //        case CommandErrorType.BadArgCount:
+        //            response = "Improper argument count.";
+        //            break;
+        //        case CommandErrorType.BadPermissions:
+        //            if (args.Exception != null)
+        //                response = args.Exception.Message;
+        //            break;
+        //        case CommandErrorType.Exception:
+        //            if (args.Exception != null) {
+        //                if (_softErrors.Contains(args.Exception.GetType())) {
+        //                    response = args.Exception.Message;
+        //                }
+        //                else {
+        //                    Log.Error(args.Exception);
+        //                    response = args.Exception.ToString().MultilineCode();
+        //                }
+        //            }
+        //            break;
+        //        case CommandErrorType.InvalidInput:
+        //            response = "Invalid input.";
+        //            break;
+        //        default:
+        //            return;
+        //    }
+        //    if (string.IsNullOrEmpty(response))
+        //        return;
+        //    if (args.CommandUtility != null)
+        //        response += $" Try ``{Config.CommandPrefix}help {args.CommandUtility.Text}``.";
+        //    else {
+        //        response += $" Try ``{Config.CommandPrefix}help``.";
+        //    }
+        //    await args.Respond(response);
+        //}
 
         async void SendOwnerErrors() {
-            OwnerChannel = GetOwnerChannel();
+            OwnerChannel = Client.GetDMChannel(Config.Owner);
             if (OwnerChannel == null)
                 return;
-            foreach (string error in _errors) 
-                await OwnerChannel.SendMessage($"ERROR: {error}");
+            foreach (string error in _errors)
+                await OwnerChannel.SendMessageAsync($"ERROR: {error}");
             _errors.Clear();
         }
 
         async Task MainLoop() {
             Log.Info("Connecting to Discord...");
-            await Client.Connect(Config.Token);
-            Log.Info($"Logged in as { Client.CurrentUser.ToIDString() }");
+            await Client.LoginAsync(TokenType.Bot, Config.Token);
+            await Client.ConnectAsync();
+            var self = await Client.GetCurrentUserAsync();
+            Log.Info($"Logged in as {self.ToIDString()}");
 
             SendOwnerErrors();
 
+            User = await Client.GetCurrentUserAsync();
+            Log.Info(CommandService.Commands.Select(c => c.Text).Join(", "));
             while (true) {
-                // Select random avatar to set to the bot
-                var path = Directory.GetFiles(Path.Combine(ExecutionDirectory,
-                              Config.AvatarDirectory)).SelectRandom();
-                try {
-                    await Utility.FileIO(async delegate {
-                        using (var stream = new FileStream(path, FileMode.Open))
-                            await Client.CurrentUser.Edit(avatar:stream);
-                    });
-                } catch {
-                    Log.Error("Failed to change avatar. Continuing...");
-                }
-
+                var path = Directory.GetFiles(Path.Combine(ExecutionDirectory, Config.AvatarDirectory)).SelectRandom();
+                await Utility.FileIO(async delegate {
+                    using (var stream = new FileStream(path, FileMode.Open)) {
+                        await User.ModifyAsync(u => { u.Avatar = stream; });
+                    }
+                });
                 // Set the game of the bot to the bot's version.
-                Client.SetGame(Config.Version);
+                // TODO: Client.SetGame(Config.Version);
 
                 // Log uptime
                 Log.Info($"Uptime: {DateTime.Now - _startTime}");
@@ -225,17 +233,16 @@ namespace DrumBot {
             }
         }
 
-        public void Run() {
-            while(true) {
+        public async Task Run() {
+            await Initialize();
+            while (true) {
                 try {
-                    Client.ExecuteAndWait(MainLoop);
+                    await MainLoop();
                 } catch (Exception error) {
                     Log.Error(error);
                     _errors.Add(error.Message);
                 }
             }
         }
-
-        static void Main() => new Bot().Run();
     }
 }

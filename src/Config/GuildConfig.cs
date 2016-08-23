@@ -6,9 +6,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
-using Discord.Commands;
-using Discord.Modules;
-using DrumBot.src;
+using Discord.WebSocket;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -108,40 +106,24 @@ namespace DrumBot {
             bannedRoles = new HashSet<ulong>();
         }
 
-        public void LockNickname() {
-            isNicknameLocked = true;
-            OnEdit?.Invoke();
-        }
-
-        public void UnlockNickname() {
-            isNicknameLocked = false;
-            OnEdit?.Invoke();
-        }
-
-        public async Task RemoveBannedRoles(User user) {
+        public async Task RemoveBannedRoles(IGuildUser user) {
             if (bannedRoles.Count <= 0)
                 return;
-            var toRemove = new List<Role>();
-            foreach (var role in user.Roles) {
-                if (bannedRoles.Contains(role.Id))
-                    toRemove.Add(role);
-            }
-            if (toRemove.Count > 0)
-                await user.RemoveRoles(toRemove.ToArray());
+            await user.RemoveRolesAsync(user.Roles.Where(r => bannedRoles.Contains(r.Id)));
         }
 
-        public bool IsRoleBanned(Role role) {
+        public bool IsRoleBanned(IRole role) {
             return bannedRoles.Contains(role.Id);
         }
 
-        public bool BanRole(Role role) {
+        public bool BanRole(IRole role) {
             bool success = bannedRoles.Add(Check.NotNull(role).Id);
             if(success)
                 OnEdit?.Invoke();
             return success;
         }
 
-        public bool UnbanRole(Role role) {
+        public bool UnbanRole(IRole role) {
             bool success = bannedRoles.Remove(Check.NotNull(role).Id);
             if(success)
                 OnEdit?.Invoke();
@@ -182,31 +164,15 @@ namespace DrumBot {
 
         public CustomCommand(string name) { this.name = name; }
 
-        public void CreateCommand(CommandGroupBuilder builder, Server server) {
-            // Already registered a command.
-            if (builder.Service.AllCommands.Any(c => c.Text == name))
-                return;
-            Func<Channel, CustomCommand> GetCustomFunc = ch => {
-                var config = Config.GetServerConfig(ch.Server);
-                return config.Commands.FirstOrDefault(c => c.Name.Equals(name,
-                   StringComparison.OrdinalIgnoreCase));
-            };
-            builder.CreateCommand(name)
-                .Description("Custom command.")
-                .Parameter("Input", ParameterType.Unparsed)
-                .AddCheck((cm, u, ch) => GetCustomFunc(ch) != null)
-                .Do(async delegate(CommandEventArgs e) {
-                    var command = GetCustomFunc(e.Channel);
-                    if (command == null)
-                        return;
-                    await e.Respond(response.Replace("$input", e.GetArg("Input"))
-                                .Replace("$user", e.User.Mention)
-                                .Replace("$channel", e.Channel.Mention));
-                });
+        public async Task Execute(IMessage message, string input) {
+            var channel = Check.NotNull(message.Channel as ITextChannel);
+            await message.Respond(response.Replace("$input", input)
+                                    .Replace("$user", message.Author.Mention)
+                                    .Replace("$channel", channel.Mention));
         }
     }
 
-    public class ServerConfig {
+    public class GuildConfig {
 
         [JsonIgnore]
         public ulong ID { get; set; }
@@ -219,13 +185,13 @@ namespace DrumBot {
         Dictionary<ulong, UserConfig> UserConfigs { get; set; }
 
         [JsonProperty]
-        List<CustomCommand> CustomCommands { get; set; }
+        public List<CustomCommand> CustomCommands { get; set; }
 
         [JsonProperty]
         Dictionary<string, ulong> MinimumRoles { get; set; }
 
         [JsonIgnore]
-        public Server Server { get; }
+        public IGuild Server { get; }
         public HashSet<string> Modules { get; set; }
         public List<TempUserAction> TempActions { get; set; }
 
@@ -235,7 +201,7 @@ namespace DrumBot {
         [JsonIgnore]
         public string SaveLocation => Path.Combine(ConfigDirectory, ID + ".config.json");
 
-        public ServerConfig(Server server) {
+        public GuildConfig(IGuild server) {
             Server = server;
             ID = server.Id;
             Modules = new HashSet<string>();
@@ -249,7 +215,7 @@ namespace DrumBot {
                 Load().Wait();
         }
 
-        public ChannelConfig GetChannelConfig(Channel channel) {
+        public ChannelConfig GetChannelConfig(IChannel channel) {
             var id = Check.NotNull(channel).Id;
             if (!ChannelConfigs.ContainsKey(id)) {
                 var config = new ChannelConfig(channel.Id);
@@ -259,7 +225,7 @@ namespace DrumBot {
             return ChannelConfigs[id];
         }
 
-        public UserConfig GetUserConfig(User user) {
+        public UserConfig GetUserConfig(IGuildUser user) {
             var id = Check.NotNull(user).Id;
             if (!UserConfigs.ContainsKey(id)) {
                 var config = new UserConfig(id);
@@ -269,7 +235,7 @@ namespace DrumBot {
             return UserConfigs[id];
         }
 
-        public void SetMinimumRole(string name, Role minimumRole) {
+        public void SetMinimumRole(string name, IRole minimumRole) {
             MinimumRoles[name] = minimumRole.Id;
             Save();
         }
@@ -308,21 +274,21 @@ namespace DrumBot {
             }
         }
 
-        public void Cleanup(DiscordClient client) {
-            var server = client.GetServer(ID);
+        public async Task Cleanup(DiscordSocketClient client) {
+            var server = await client.GetGuildAsync(ID);
             if (server == null)
                 return;
-            //foreach (var group in Groups.ToArray()) {
+            //foreach (var group in Subcommands.ToArray()) {
             //    if (server.GetChannel(group.Key) == null)
-            //        Groups.RemoveCustomCommand(group.Key);
+            //        Subcommands.RemoveCustomCommand(group.Key);
             //    foreach (ulong channel in group.Value.ToArray())
             //        group.Value.RemoveCustomCommand(channel);
             //}
             Save();
         }
 
-        public async Task Update(DiscordClient client) {
-            var server = client.GetServer(ID); 
+        public async Task Update(DiscordSocketClient client) {
+            var server = await client.GetGuildAsync(ID); 
             if (server == null)
                 return;
             var changed = false;
@@ -330,7 +296,8 @@ namespace DrumBot {
                 if (tempUserAction.Expiration > DateTime.Now)
                     continue;
                 await tempUserAction.Undo(server);
-                await server.DefaultChannel.SendMessage("Temp Action Undone.");
+                var defaultChannel = await server.GetChannelAsync(server.DefaultChannelId) as IMessageChannel;
+                await defaultChannel.SendMessageAsync("Temp Action Undone.");
                 TempActions.Remove(tempUserAction);
                 changed = true;
             }
@@ -342,16 +309,16 @@ namespace DrumBot {
         public IEnumerable<CustomCommand> Commands => CustomCommands;
 
         public void AddModule(string name) {
-            if (Modules.Add(name))
+            if (Modules.Add(name.ToLowerInvariant()))
                 Save();
         }
 
         public bool IsModuleEnabled(string name) {
-            return Modules.Contains(name);
+            return Modules.Contains(name.ToLowerInvariant());
         }
 
         public void RemoveModule(string name) {
-            if (Modules.Remove(name))
+            if (Modules.Remove(name.ToLowerInvariant()))
                Save();
         }
         
@@ -391,9 +358,8 @@ namespace DrumBot {
             builder.AppendLine($"ID: {ID}");
             builder.AppendLine($"Type: {Type}");
             builder.AppendLine("Roles:");
-            foreach (Role role in Server.Roles) {
-                builder.AppendLine(
-                    $"   {role.Name}: {role.Position}, {role.Color}, {role.Id}");
+            foreach (IRole role in Server.Roles) {
+                builder.AppendLine($"   {role.Name}: {role.Position}, {role.Color}, {role.Id}");
             }
             return builder.ToString().Wrap("```");
         }
