@@ -4,106 +4,86 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Discord;
-using Discord.Commands;
 
 namespace DrumBot {
     public static class DiscordExtensions {
+
+        public static IEnumerable<T> EmptyIfNull<T>(this IEnumerable<T> enumerable) {
+            return enumerable ?? Enumerable.Empty<T>();
+        }
+
+        public static TValue GetValueOrDefault<TKey, TValue>(
+            this Dictionary<TKey, TValue> dict,
+            TKey key) {
+            return dict.ContainsKey(key) ? dict[key] : default(TValue);
+        }
+
+        public static Task<T> ToTask<T>(this T obj) {
+            return Task.FromResult(obj);
+        }
 
         /// <summary>
         /// Creates a response to a command. If the result is larger than can be retured as a single message, 
         /// will upload as a text file.
         /// </summary>
+        /// <param name="message">the message to respond to</param>
         /// <param name="response">the string of the message to respond with.</param>
-        public static async Task Respond(this CommandEventArgs evt, string response) {
-            await evt.Channel.Respond(response);
-        }
+        public static Task Respond(this IMessage message, string response) =>
+            message.Channel.Respond(response);
 
         static readonly Random Random = new Random();
 
         public static T SelectRandom<T>(this IEnumerable<T> t) {
             var array = t.ToArray();
-            return array[Random.Next(array.Length)];
+            if (array.Length <= 0)
+                return default(T);
+            return array[Random.Next(array.Length - 1)];
         }
 
-        public static async Task Respond(this Channel channel, string response) {
+        public static Task Respond(this IMessageChannel channel, string response) {
             const string fileName = "results.txt";
-            if (response.Length > DiscordConfig.MaxMessageSize) {
-                if (channel.IsPrivate)
-                    await channel.Users.FirstOrDefault().SendMemoryFile(fileName, response);
-                else
-                    await channel.SendMemoryFile(fileName, response);
-            }
-            else {
-                if(response.Length > 0)
-                    await channel.SendMessage(response);
-            }
+            if (response.Length > DiscordConfig.MaxMessageSize)
+                return channel.SendFileAsync(fileName, response);
+            if(response.Length > 0)
+                return channel.SendMessageAsync(response);
+            return Task.CompletedTask;
         }
 
-        public static async Task Success(this CommandEventArgs e,
-                                         string followup = null) {
-            await e.Channel.Success(followup);
-        } 
+        public static Task Success(this IMessage message,
+                                        string followup = null) => 
+            message.Channel.Success(followup);
 
-        public static DateTime CreatedOn(this User user) {
-            ulong id = Check.NotNull(user).Id;
-            // Date created is bits 23 to 64
-            id >>= 22;
-            // Add offset to Jan. 1st 2016
-            id += 1420070400000;
-            // Convert from Unix Timestamp to DateTime
-            var dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-            return dtDateTime.AddMilliseconds(id);
-        }
+        public static Task Success(this IMessageChannel channel, string followup) =>
+            channel.Respond(Utility.Success(followup));
 
-        public static async Task Success(this Channel channel, string followup) {
-            await channel.Respond(Utility.Success(followup));
-        }
-
-        public static async Task SendFileRetry(this Channel user,
-                                                string path) {
-            await Utility.FileIO(async () => {
+        public static Task SendFileRetry(this IMessageChannel user,
+                                              string path,
+                                              string text = null) {
+            return Utility.FileIO(async () => {
                 using (var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) {
-                    await user.SendFile(Path.GetFileName(path), file);
+                    await user.SendFileAsync(file, Path.GetFileName(path), text);
                 }
             });
         }
 
-        public static async Task SendFileRetry(this User user,
-                                               string path) {
-            await Utility.FileIO(async () => {
-                using (var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) {
-                    await user.SendFile(Path.GetFileName(path), file);
-                }
-            });
-        }
+        public static Task SendFileRetry(this IMessage message, string path, string text = null) => 
+            message.Channel.SendFileRetry(path, text);
 
-        public static async Task SendMemoryFile(this Channel channel,
-                                          string name,
-                                          string value) {
+        public static async Task SendMemoryFile(this IMessageChannel channel,
+                                                  string name,
+                                                  string value,
+                                                  string text = null) {
             using (var stream = new MemoryStream()) {
                 var writer = new StreamWriter(stream);
                 writer.Write(value);
                 writer.Flush();
                 stream.Position = 0;
-                await channel.SendFile(name, stream);
+                await channel.SendFileAsync(stream, name, text);
             }
         }
-
-        public static async Task SendMemoryFile(this User user,
-                                          string name,
-                                          string value) {
-            using (var stream = new MemoryStream()) {
-                var writer = new StreamWriter(stream);
-                writer.Write(value);
-                writer.Flush();
-                stream.Position = 0;
-                await user.SendFile(name, stream);
-            }
-        }
-
-
-        public static string ToProcessedString(this Message message) {
-            var baseLog = $"{message.User?.Name ?? "Unknown User"}: {message.Text}";
+        
+        public static string ToProcessedString(this IMessage message) {
+            var baseLog = $"{message.Author?.Username ?? "Unknown User"}: {message.Content}";
             var attachments = message.Attachments.Select(a => a.Url).Join(" ");
             var embeds = message.Embeds.Select(a => a.Url).Join(" ");
             return baseLog + attachments + embeds;
@@ -112,8 +92,8 @@ namespace DrumBot {
         /// <summary>
         /// Compares two users. Favors the channel with the higher highest role.
         /// </summary>
-        public static int CompareTo(this User u1, User u2) {
-            Func<Role, int> rolePos = role => role.Position;
+        public static int CompareTo(this IGuildUser u1, IGuildUser u2) {
+            Func<IRole, int> rolePos = role => role.Position;
             return u1.Roles.Max(rolePos).CompareTo(u2.Roles.Max(rolePos));
         } 
 

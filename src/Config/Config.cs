@@ -10,12 +10,12 @@ namespace DrumBot {
 
         public const string ConfigFilePath = "config.json";
 
-        static readonly Dictionary<ulong, ServerConfig> _serversConfigs;
+        static readonly Dictionary<ulong, GuildConfig> _serversConfigs;
 
-        public IEnumerable<ServerConfig> ServerConfigs => _serversConfigs.Values;
+        public IEnumerable<GuildConfig> ServerConfigs => _serversConfigs.Values;
 
         static Config() {
-            _serversConfigs = new Dictionary<ulong, ServerConfig>();
+            _serversConfigs = new Dictionary<ulong, GuildConfig>();
         }
 
         public static void Load() {
@@ -28,10 +28,21 @@ namespace DrumBot {
             Log.Info("Config loaded.");
         }
 
-        public static ServerConfig GetServerConfig(Server server) {
-            if(!_serversConfigs.ContainsKey(server.Id))
-                _serversConfigs[server.Id] = new ServerConfig(server);
-            return _serversConfigs[server.Id];
+        public static GuildConfig GetGuildConfig(IGuild guild) {
+            if(!_serversConfigs.ContainsKey(guild.Id))
+                _serversConfigs[guild.Id] = new GuildConfig(guild);
+            return _serversConfigs[guild.Id];
+        }
+
+        public static GuildConfig GetGuildConfig(IChannel channel) {
+            var guildChannel = Check.NotNull(channel) as IGuildChannel;
+            if (guildChannel == null)
+                return null;
+            return GetGuildConfig(guildChannel.Guild);
+        }
+
+        public static ChannelConfig GetChannelConfig(IChannel channel) {
+            return GetGuildConfig(channel)?.GetChannelConfig(channel);
         }
 
         /// <summary>
@@ -62,7 +73,7 @@ namespace DrumBot {
         public static string LogDirectory { get; set; } = "logs";
 
         /// <summary>
-        /// The subdirectory where the configs for each server is stored.
+        /// The subdirectory where the configs for each guild is stored.
         /// </summary>
         [JsonProperty]
         public static string ConfigDirectory { get; set; } = "config";

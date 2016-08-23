@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using RestSharp.Extensions;
+using System.Reflection;
 
 namespace DrumBot {
     public static class ReflectionUtility {
@@ -25,7 +25,7 @@ namespace DrumBot {
             var attributeType = typeof(T);
             return from type in types
                    where type.IsDefined(attributeType, inherit)
-                   select new KeyValuePair<Type, T>(type, type.GetAttribute<T>());
+                   select new KeyValuePair<Type, T>(type, type.GetCustomAttributes().OfType<T>().FirstOrDefault());
         }
 
         public static IEnumerable<Type> WithParameterlessConstructor(

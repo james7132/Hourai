@@ -37,12 +37,16 @@ namespace DrumBot {
         public static string RequireMembers(string permission, bool bot = true, bool user = true)
             => Requires(permission + " Members", bot, user);
 
-        public static bool RoleCheck(User user, Role role) {
+        public static bool RoleCheck(IGuildUser user, IRole role) {
             int position = role.Position;
             return user.IsServerOwner() || user.Roles.Max(r => r.Position) > position;
         }
 
         public static string DateString(DateTime date) {
+            return date.ToString(LogDateFormat);
+        }
+
+        public static string DateString(DateTimeOffset date) {
             return date.ToString(LogDateFormat);
         }
 

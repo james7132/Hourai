@@ -19,8 +19,7 @@ namespace DrumBot {
         }
 
         public static Delegate ToDelegate<T>(this MethodInfo method) where T : class {
-            if(method == null)
-                throw new ArgumentNullException();
+            Check.NotNull(method);
             if(method.IsMethodCompatibleWithDelegate<T>())
                 return Delegate.CreateDelegate(typeof(T), method);
             return null;
