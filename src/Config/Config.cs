@@ -5,6 +5,7 @@ using Discord;
 using Newtonsoft.Json;
 
 namespace DrumBot {
+
     [Serializable]
     public class Config {
 
@@ -104,5 +105,6 @@ namespace DrumBot {
         /// </summary>
         [JsonProperty]
         public static int PruneLimit { get; set; } = 100;
+
     }
 }
