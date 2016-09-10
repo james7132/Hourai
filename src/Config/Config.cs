@@ -6,7 +6,6 @@ using Newtonsoft.Json;
 
 namespace DrumBot {
 
-    [Serializable]
     public class Config {
 
         public const string ConfigFilePath = "config.json";

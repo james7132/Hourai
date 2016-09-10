@@ -81,18 +81,21 @@ namespace DrumBot {
         }
 
         static string GetExecutionDirectory() {
-            var uri = new UriBuilder(Assembly.GetExecutingAssembly().CodeBase);
+            var uri = new UriBuilder(Assembly.GetEntryAssembly().CodeBase);
             string path = Uri.UnescapeDataString(uri.Path);
             return Path.GetDirectoryName(path);
         }
 
         void SetupLogs() {
             Console.OutputEncoding = Encoding.UTF8;
-            BotLog = Path.Combine(ExecutionDirectory, Config.LogDirectory, DateTime.Now.ToString(LogStringFormat) + ".log");
+						var logDirectory = Path.Combine(ExecutionDirectory, Config.LogDirectory);
+						if(!Directory.Exists(logDirectory))
+							Directory.CreateDirectory(logDirectory);
+            BotLog = Path.Combine(logDirectory, DateTime.Now.ToString(LogStringFormat) + ".log");
             Trace.Listeners.Clear();
             var botLogFile = new FileStream(BotLog, FileMode.Create, FileAccess.Write, FileShare.Read);
             Trace.Listeners.Add(new TextWriterTraceListener(botLogFile) {TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime});
-            Trace.Listeners.Add(new ConsoleTraceListener(false) {TraceOutputOptions = TraceOptions.DateTime});
+            Trace.Listeners.Add(new TextWriterTraceListener(Console.Out) {TraceOutputOptions = TraceOptions.DateTime});
             Trace.AutoFlush = true;
         }
 

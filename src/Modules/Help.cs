@@ -100,7 +100,7 @@ namespace DrumBot {
                 }
                 builder.AppendLine();
                 if (c != null)
-                    builder.AppendLine(c.Description);
+                    builder.AppendLine(c.Remarks);
                 if(Subcommands.Count > 0) {
                     builder.AppendLine("Available Subcommands:");
                     builder.AppendLine(await ListSubcommands(message));
@@ -146,7 +146,7 @@ namespace DrumBot {
         }
 
         [Command("help")]
-        [Description("Gets information about commands")]
+        [Remarks("Gets information about commands")]
         public async Task HelpCommand(IUserMessage message, [Remainder] string command = "") {
             if(command.IsNullOrEmpty()) {
                 await message.Respond(await GetGeneralHelp(message));

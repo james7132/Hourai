@@ -29,19 +29,19 @@ namespace DrumBot {
         }
 
         [Command]
-        [Description("Search the history of the current channel for messages that match all of the specfied search terms.")]
+        [Remarks("Search the history of the current channel for messages that match all of the specfied search terms.")]
         public async Task SearchChat(IUserMessage message, params string[] terms) {
             await SearchChannel(message, ExactMatch(terms));
         }
 
         [Command("regex")]
-        [Description("Search the history of the current channel for matches to a specfied regex.")]
+        [Remarks("Search the history of the current channel for matches to a specfied regex.")]
         public async Task SearchRegex(IUserMessage message, string regex) {
             await SearchChannel(message, RegexMatch(regex));
         }
 
         [Command("day")]
-        [Description("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
+        [Remarks("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
         public async Task Day(IUserMessage message, string day) {
             var channel = Check.InGuild(message);
             string path = ChannelSet.Get(channel).GetPath(day);
@@ -52,7 +52,7 @@ namespace DrumBot {
         }
 
         [Command("ignore")]
-        [Description("Mentioned channels will not be searched in ``search all``, except while in said channel. "
+        [Remarks("Mentioned channels will not be searched in ``search all``, except while in said channel. "
                             + "User must have ``Manage Channels`` permission")]
         public async Task Ignore(IUserMessage message, params IGuildChannel[] channels) {
             var channel = Check.InGuild(message);
@@ -63,7 +63,7 @@ namespace DrumBot {
         }
 
         [Command("unigore")]
-        [Description("Mentioned channels will appear in ``search all`` results." 
+        [Remarks("Mentioned channels will appear in ``search all`` results." 
                            +" User must have ``Manage Channels`` permission")]
         public async Task Unignore(IUserMessage message, params IGuildChannel[] channels) {
             var channel = Check.InGuild(message);
@@ -77,13 +77,13 @@ namespace DrumBot {
         public class All {
 
             [Command]
-            [Description("Searches the history of all channels in the current server for any of the specfied search terms.")]
+            [Remarks("Searches the history of all channels in the current server for any of the specfied search terms.")]
             public async Task SearchAll(IUserMessage message, params string[] terms) {
                 await SearchAll(message, ExactMatch(terms));
             }
 
             [Command("regex")]
-            [Description("Searches the history of all channels in the current server based on a regex.")]
+            [Remarks("Searches the history of all channels in the current server based on a regex.")]
             public async Task SearchAllRegex(IUserMessage message, string regex) {
                 await SearchAll(message, RegexMatch(regex));
             }

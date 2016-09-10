@@ -13,13 +13,13 @@ namespace DrumBot {
     public class Standard {
 
         [Command("echo")]
-        [Description("Has the bot repeat what you say")]
+        [Remarks("Has the bot repeat what you say")]
         public async Task Echo(IUserMessage message, [Remainder] string remainder) {
             await message.Respond(remainder);
         }
 
         [Command("avatar")]
-        [Description("Gets the avatar url of all mentioned users.")]
+        [Remarks("Gets the avatar url of all mentioned users.")]
         public async Task Avatar(IUserMessage message, params IGuildUser[] users) {
             IUser[] allUsers = users;
             if (users.Length <= 0)
@@ -28,7 +28,7 @@ namespace DrumBot {
         }
 
         [Command("serverinfo")]
-        [Description("Gets general information about the current server")]
+        [Remarks("Gets general information about the current server")]
         public async Task ServerInfo(IUserMessage message) {
             var builder = new StringBuilder();
             var server = Check.InGuild(message).Guild;
@@ -52,7 +52,7 @@ namespace DrumBot {
         }
 
         [Command("whois")]
-        [Description("Gets information on a specified users")]
+        [Remarks("Gets information on a specified users")]
         public async Task WhoIs(IUserMessage message, IGuildUser user) {
             var builder = new StringBuilder();
             builder.AppendLine($"{message.Author.Mention}:");
