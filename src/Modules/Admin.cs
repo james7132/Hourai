@@ -14,7 +14,7 @@ namespace DrumBot {
 
         [Command("kick")]
         [Permission(GuildPermission.KickMembers)]
-        [Description( "Kicks all mentioned users. Requires ``Kick Members`` permission.")]
+        [Description("Kicks all mentioned users. Requires ``Kick Members`` permission.")]
         public async Task Kick(IUserMessage msg, 
              params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "kick", async u => await u.KickAsync());
@@ -23,7 +23,7 @@ namespace DrumBot {
 
         [Command("ban")]
         [Permission(GuildPermission.BanMembers)]
-        [Description( "Bans all mentioned users. Requires ``Ban Members`` permission.")]
+        [Description("Bans all mentioned users. Requires ``Ban Members`` permission.")]
         public async Task Ban(IUserMessage msg, 
              params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "ban", async u => await u.BanAsync());
@@ -32,7 +32,7 @@ namespace DrumBot {
 
         [Command("mute")]
         [Permission(GuildPermission.MuteMembers)]
-        [Description( "Server mutes all mentioned users. Requires ``Mute Members`` permission.")]
+        [Description("Server mutes all mentioned users. Requires ``Mute Members`` permission.")]
         public async Task Mute(IUserMessage msg, params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "mute", async u => await u.MuteAsync());
             await CommandUtility.ForEvery(msg, users, action);
