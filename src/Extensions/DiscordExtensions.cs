@@ -4,18 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Discord;
+using Discord.WebSocket;
 
 namespace DrumBot {
     public static class DiscordExtensions {
-
         public static IEnumerable<T> EmptyIfNull<T>(this IEnumerable<T> enumerable) {
             return enumerable ?? Enumerable.Empty<T>();
-        }
-
-        public static TValue GetValueOrDefault<TKey, TValue>(
-            this Dictionary<TKey, TValue> dict,
-            TKey key) {
-            return dict.ContainsKey(key) ? dict[key] : default(TValue);
         }
 
         public static Task<T> ToTask<T>(this T obj) {
@@ -43,7 +37,7 @@ namespace DrumBot {
         public static Task Respond(this IMessageChannel channel, string response) {
             const string fileName = "results.txt";
             if (response.Length > DiscordConfig.MaxMessageSize)
-                return channel.SendFileAsync(fileName, response);
+                return channel.SendMemoryFile(fileName, response);
             if(response.Length > 0)
                 return channel.SendMessageAsync(response);
             return Task.CompletedTask;
@@ -83,7 +77,24 @@ namespace DrumBot {
         }
         
         public static string ToProcessedString(this IMessage message) {
-            var baseLog = $"{message.Author?.Username ?? "Unknown User"}: {message.Content}";
+            var content = message.Content;
+            var guildChannel = message.Channel as IGuildChannel;
+            var guild = guildChannel?.Guild;
+            foreach (IUser user in message.MentionedUsers) {
+                var mention = $"@{user.Username}";
+                content = content.Replace($"<@{user.Id}>", mention)
+                                 .Replace($"<@!{user.Id}>", mention);
+            }
+            if(guild != null) {
+                foreach (ulong id in message.MentionedChannelIds) {
+                    var channel = guild.GetChannel(id);
+                    content = content.Replace($"<#{id}>", $"#{channel.Name}");
+                }
+            }
+            foreach (IRole role in message.MentionedRoles) {
+                content = content.Replace($"<@&{role.Id}", $"@{role.Name}");
+            }
+            var baseLog = $"{message.Author?.Username ?? "Unknown User"}: {content}";
             var attachments = message.Attachments.Select(a => a.Url).Join(" ");
             var embeds = message.Embeds.Select(a => a.Url).Join(" ");
             return baseLog + attachments + embeds;

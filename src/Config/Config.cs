@@ -78,6 +78,12 @@ namespace DrumBot {
         [JsonProperty]
         public static string ConfigDirectory { get; set; } = "config";
 
+        /// <summary>
+        /// The subdirectory where the feed is stored.
+        /// </summary>
+        [JsonProperty]
+        public static string FeedDirectory { get; set; } = "feeds";
+
         [JsonProperty]
         public static string AvatarDirectory { get; set; } = "avatars";
 

@@ -19,24 +19,6 @@ namespace DrumBot {
             return response;
         }
 
-        public static string Requires(string permission,
-                                      bool bot = true,
-                                      bool user = true) {
-            string target;
-            if(bot)
-                target = user ? "both user and bot" : "bot";
-            else {
-                if (user)
-                    target = "user";
-                else
-                    return string.Empty;
-            }
-            return $" Requires {permission} on {target}.";
-        }
-
-        public static string RequireMembers(string permission, bool bot = true, bool user = true)
-            => Requires(permission + " Members", bot, user);
-
         public static bool RoleCheck(IGuildUser user, IRole role) {
             int position = role.Position;
             return user.IsServerOwner() || user.Roles.Max(r => r.Position) > position;

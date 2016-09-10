@@ -6,56 +6,59 @@ using Discord.Commands;
 namespace DrumBot {
 
     public class PublicOnlyAttribute : PreconditionAttribute {
-        public override async Task<PreconditionResult> CheckPermissions(
-            IMessage context,
+        public override Task<PreconditionResult> CheckPermissions(
+            IUserMessage context,
             Command executingCommand,
             object moduleInstance) {
+            PreconditionResult result;
             if (!(context.Channel is IGuildChannel))
-                return PreconditionResult.FromError("Command must be executed in a public channel");
-            return PreconditionResult.FromSuccess();
+                result = PreconditionResult.FromError("Command must be executed in a public channel");
+            else 
+                result = PreconditionResult.FromSuccess();
+            return Task.FromResult(result);
         }
     }
 
     public class PrivateOnlyAttribute : PreconditionAttribute {
-        public override async Task<PreconditionResult> CheckPermissions(
-            IMessage context,
+        public override Task<PreconditionResult> CheckPermissions(
+            IUserMessage context,
             Command executingCommand,
             object moduleInstance) {
+            PreconditionResult result;
             if (!(context.Channel is IDMChannel))
-                return PreconditionResult.FromError("Command must be executed in a private chat.");
-            return PreconditionResult.FromSuccess();
+                result = PreconditionResult.FromError("Command must be executed in a private chat.");
+            else 
+                result = PreconditionResult.FromSuccess();
+            return Task.FromResult(result);
         }
     }
 
     public class ModuleCheckAttribute : PublicOnlyAttribute {
-
-        public string ModuleName { get; }
-        public ModuleCheckAttribute(string moduleName) {
-            ModuleName = moduleName;
-        }
-
         public override async Task<PreconditionResult> CheckPermissions(
-            IMessage context,
+            IUserMessage context,
             Command executingCommand,
             object moduleInstance) {
             var baseCheck = await base.CheckPermissions(context, executingCommand, moduleInstance);
             if (!baseCheck.IsSuccess)
-                return PreconditionResult.FromError(baseCheck);
-            var config = Config.GetGuildConfig((context as IGuildChannel).Guild);
-            if (config.IsModuleEnabled(ModuleName))
+                return baseCheck;
+            var config = Config.GetGuildConfig(QCheck.InGuild(context).Guild);
+            if (config.IsModuleEnabled(executingCommand.Module.Name))
                 return PreconditionResult.FromSuccess();
-            return PreconditionResult.FromError($"Module \"{ModuleName}\" is not enabled.");
+            return PreconditionResult.FromError($"Module \"{executingCommand.Module.Name}\" is not enabled.");
         }
     }
 
     public class BotOwnerAttribute : PreconditionAttribute {
-        public override async Task<PreconditionResult> CheckPermissions(
-            IMessage context,
+        public override Task<PreconditionResult> CheckPermissions(
+            IUserMessage context,
             Command executingCommand,
             object moduleInstance) {
+            PreconditionResult result;
             if (context.Author.IsBotOwner())
-                return PreconditionResult.FromSuccess();
-            return PreconditionResult.FromError("You must be the bot owner to use this command.");
+                result = PreconditionResult.FromSuccess();
+            else 
+                result = PreconditionResult.FromError("You must be the bot owner to use this command.");
+            return Task.FromResult(result);
         }
     }
 
@@ -128,7 +131,7 @@ namespace DrumBot {
             return PreconditionResult.FromSuccess();
         }
 
-        public override async Task<PreconditionResult> CheckPermissions(IMessage context, Command executingCommand, object moduleInstance) {
+        public override async Task<PreconditionResult> CheckPermissions(IUserMessage context, Command executingCommand, object moduleInstance) {
             // Check if the bot needs/has the permissions
             if(Requirement != Require.User) {
                 IUser botUser = Bot.User;
@@ -149,71 +152,50 @@ namespace DrumBot {
         }
     }
 
-    //    public class BotOwnerChecker : IPermissionChecker {
-    //        public bool CanRun(Discord.CommandService.CommandUtility command,
-    //                                    User user,
-    //                                    Channel channel,
-    //                                    out string error) {
-    //            error = string.Empty;
-    //            if (!user.IsBotOwner()) {
-    //                error = $"{user.Name} you are not the owner of this bot, and thus cannot run {command.Text.Code()}";
-    //                return false;
-    //            }
-    //            return true;
-    //        }
-    //    }
+    public class ServerOwnerAttribute : PreconditionAttribute {
+        public override Task<PreconditionResult> CheckPermissions(
+            IUserMessage context,
+            Command executingCommand,
+            object moduleInstance) {
+            if (QCheck.InGuild(context) == null)
+                return Task.FromResult(PreconditionResult.FromError("Not in server."));
+            var user = context.Author as IGuildUser;
+            if (!user.IsServerOwner())
+                return Task.FromResult(PreconditionResult.FromError($"{user.Username} you are not the owner of this server, and thus cannot run {executingCommand.Text.Code()}"));
+            return Task.FromResult(PreconditionResult.FromSuccess());
+        }
+    }
 
-    //    public class ServerOwnerChecker : IPermissionChecker {
-    //        public bool CanRun(Discord.CommandService.CommandUtility command,
-    //                           User user,
-    //                           Channel channel,
-    //                           out string error) {
-    //            error = string.Empty;
-    //            if (!user.IsServerOwner()) {
-    //                error = $"{user.Name} you are not the owner of this server, and thus cannot run {command.Text.Code()}";
-    //                return false;
-    //            }
-    //            return true;
-    //        }
-    //    }
+    public class MinimumRoleAttribute : PreconditionAttribute {
+        readonly string _roleType;
 
-    //    class PermissionChecker : IPermissionChecker {
-    //        string PermissionName { get; }
-    //        bool CheckBot { get; }
-    //        bool CheckUser { get; }
+        public MinimumRoleAttribute(string roleType) { this._roleType = roleType; }
 
-    //        readonly Func<ServerPermissions, bool> PermCheck;
+        public override async Task<PreconditionResult> CheckPermissions(
+            IUserMessage context,
+            Command executingCommand,
+            object moduleInstance) {
 
-    //        public PermissionChecker(string name, 
-    //                                 Func<ServerPermissions, bool> check, 
-    //                                 bool checkBot = true, 
-    //                                 bool checkUser = true) {
-    //            PermissionName = Check.NotNull(name);
-    //            PermCheck = Check.NotNull(check);
-    //            CheckBot = checkBot;
-    //            CheckUser = checkUser;
-    //        }
-
-    //        public bool CanRun(Discord.CommandService.CommandUtility command,
-    //                                    User user,
-    //                                    Channel channel,
-    //                                    out string error) {
-    //            error = string.Empty;
-    //            if (CheckBot && !PermCheck(channel.Server.CurrentUser.ServerPermissions)) {
-    //                error = $"{ channel.Server.CurrentUser.Name } does not have the { PermissionName.Code() } permission.";
-    //                return false;
-    //            }
-    //            if (CheckUser && user.IsBotOwner())
-    //                return true;
-    //            if (CheckUser && !PermCheck(user.ServerPermissions)) {
-    //                error = $"{user.Mention}, you do not have the { PermissionName.Code() } permission.";
-    //                return false;
-    //            }
-    //            return true;
-    //        }
-
-
-    //    }
+            var user = context.Author as IGuildUser;
+            if(user == null)
+                return PreconditionResult.FromError("Must be in server to execute this command");
+            if (user.IsBotOwner() || user.IsServerOwner())
+                return PreconditionResult.FromSuccess();
+            var server = user.Guild;
+            var serverConfig = Config.GetGuildConfig(server);
+            ulong? minRole = serverConfig.GetMinimumRole(_roleType);
+            if (minRole == null)
+                return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.Code()} is set.");
+            var role = server.GetRole(minRole.Value);
+            if (role == null) {
+                var owner = await server.GetOwnerAsync();
+                return PreconditionResult.FromError($"{owner.Mention} the role for {_roleType.Code()} no longer exists, and you are the only one who can now run it.");
+            }
+            if (!Utility.RoleCheck(user, role))
+                return PreconditionResult.FromError($"{user.Mention} you do not have the minimum role to run this command. You need at least the {role.Name.Code()} to run it.");
+            return PreconditionResult.FromSuccess();
+        }
+    }
 
     public static class Check {
         public static T NotNull<T>(T obj) {
@@ -225,14 +207,23 @@ namespace DrumBot {
         public static ITextChannel InGuild(IMessage message) {
             if(!(message.Channel is ITextChannel))
                 throw new Exception("CommandUtility must be executed in a public channel");
-            return message.Channel as ITextChannel;
+            return (ITextChannel) message.Channel;
         }
 
         public static IDMChannel InPrivate(IMessage message) {
             if(!(message.Channel is IDMChannel))
                 throw new Exception("CommandUtility must be executed in a private channel");
-            return message.Channel as IDMChannel;
+            return (IDMChannel) message.Channel;
         }
     }
 
+    public static class QCheck {
+        public static ITextChannel InGuild(IMessage message) {
+            return message.Channel as ITextChannel;
+        }
+
+        public static IDMChannel InPrivate(IMessage message) {
+            return message.Channel as IDMChannel;
+        }
+    }
 }

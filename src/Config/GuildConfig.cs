@@ -1,14 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace DrumBot {
 
@@ -17,11 +14,11 @@ namespace DrumBot {
         PROD 
     }
 
-    public interface IConfig {
+    public interface IEditable {
         event Action OnEdit;
     }
 
-    public class ChannelConfig : IConfig {
+    public class ChannelConfig : IEditable {
         [JsonProperty]
         bool isIgnored = false;
 
@@ -85,7 +82,7 @@ namespace DrumBot {
         public ulong Id { get; set; }
     }
 
-    public class UserConfig : IConfig {
+    public class UserConfig : IEditable {
         public event Action OnEdit;
 
         [JsonIgnore]
@@ -99,7 +96,6 @@ namespace DrumBot {
 
         [JsonProperty]
         HashSet<ulong> bannedRoles;
-
 
         public UserConfig(ulong id) {
             Id = id;
@@ -131,25 +127,11 @@ namespace DrumBot {
         }
     }
 
-    public class CustomCommand : IConfig {
+    public class CustomCommand : IEditable {
         public event Action OnEdit;
 
         [JsonProperty]
-        string name;
-
-        [JsonProperty]
         string response;
-
-        [JsonIgnore]
-        public string Name {
-            get { return name; }
-            set {
-                bool changed = name != value;
-                name = value;
-                if(changed)
-                    OnEdit?.Invoke();
-            }
-        }
 
         [JsonIgnore]
         public string Response {
@@ -162,8 +144,6 @@ namespace DrumBot {
             }
         }
 
-        public CustomCommand(string name) { this.name = name; }
-
         public async Task Execute(IMessage message, string input) {
             var channel = Check.NotNull(message.Channel as ITextChannel);
             await message.Respond(response.Replace("$input", input)
@@ -172,7 +152,7 @@ namespace DrumBot {
         }
     }
 
-    public class GuildConfig {
+    public class GuildConfig : JsonSaveable {
 
         [JsonIgnore]
         public ulong ID { get; set; }
@@ -185,7 +165,10 @@ namespace DrumBot {
         Dictionary<ulong, UserConfig> UserConfigs { get; set; }
 
         [JsonProperty]
-        public List<CustomCommand> CustomCommands { get; set; }
+        public Dictionary<string, CustomCommand> CustomCommands { get; set; }
+
+        [JsonIgnore]
+        public IEnumerable<CustomCommand> Commands => CustomCommands.Values;
 
         [JsonProperty]
         Dictionary<string, ulong> MinimumRoles { get; set; }
@@ -193,13 +176,6 @@ namespace DrumBot {
         [JsonIgnore]
         public IGuild Server { get; }
         public HashSet<string> Modules { get; set; }
-        public List<TempUserAction> TempActions { get; set; }
-
-        [JsonIgnore] 
-        public static string ConfigDirectory => Path.Combine(Bot.ExecutionDirectory, Config.ConfigDirectory);
-
-        [JsonIgnore]
-        public string SaveLocation => Path.Combine(ConfigDirectory, ID + ".config.json");
 
         public GuildConfig(IGuild server) {
             Server = server;
@@ -207,12 +183,10 @@ namespace DrumBot {
             Modules = new HashSet<string>();
             ChannelConfigs = new Dictionary<ulong, ChannelConfig>();
             UserConfigs = new Dictionary<ulong, UserConfig>();
-            CustomCommands = new List<CustomCommand>();
-            TempActions = new List<TempUserAction>();
+            CustomCommands = new Dictionary<string, CustomCommand>();
             MinimumRoles = new Dictionary<string, ulong>();
             Log.Info($"Loading server configuration for { server.ToIDString() } from { SaveLocation }");
-            if (File.Exists(SaveLocation))
-                Load().Wait();
+            LoadIfFileExists();
         }
 
         public ChannelConfig GetChannelConfig(IChannel channel) {
@@ -247,30 +221,35 @@ namespace DrumBot {
         }
 
         public CustomCommand GetCustomCommand(string name) {
-            return CustomCommands.Find(c => c.Name == name);
+            name = name.ToLowerInvariant();
+            if (CustomCommands.ContainsKey(name))
+                return CustomCommands[name];
+            return null;
         }
 
         public CustomCommand AddCustomCommand(string name) {
-            var command = new CustomCommand(name);
-            CustomCommands.Add(command);
+            name = name.ToLowerInvariant();
+            var command = new CustomCommand();
+            CustomCommands.Add(name, command);
             Save();
             return command;
         }
 
         public void RemoveCustomCommand(string name) {
-            CustomCommands.RemoveAll(c => c.Name == name);
-            Save();
+            if(CustomCommands.Remove(name))
+                Save();
         }
 
-        [OnDeserialized]
-        void OnDeserialize(StreamingContext context) {
-            foreach (var config in ChannelConfigs) {
-                config.Value.Id = config.Key;
-                config.Value.OnEdit += Save;
-            }
-            foreach (var config in UserConfigs) {
-                config.Value.Id = config.Key;
-                config.Value.OnEdit += Save;
+        protected override IEnumerable<IEditable> Editables {
+            get {
+                foreach (var config in ChannelConfigs) {
+                    config.Value.Id = config.Key;
+                    yield return config.Value;
+                }
+                foreach (var config in UserConfigs) {
+                    config.Value.Id = config.Key;
+                    yield return config.Value;
+                }
             }
         }
 
@@ -292,21 +271,19 @@ namespace DrumBot {
             if (server == null)
                 return;
             var changed = false;
-            foreach (TempUserAction tempUserAction in TempActions.ToArray()) {
-                if (tempUserAction.Expiration > DateTime.Now)
-                    continue;
-                await tempUserAction.Undo(server);
-                var defaultChannel = await server.GetChannelAsync(server.DefaultChannelId) as IMessageChannel;
-                await defaultChannel.SendMessageAsync("Temp Action Undone.");
-                TempActions.Remove(tempUserAction);
-                changed = true;
-            }
+            //foreach (TempUserAction tempUserAction in TempActions.ToArray()) {
+            //    if (tempUserAction.Expiration > DateTime.Now)
+            //        continue;
+            //    await tempUserAction.Undo(server);
+            //    var defaultChannel = await server.GetChannelAsync(server.DefaultChannelId) as IMessageChannel;
+            //    await defaultChannel.SendMessageAsync("Temp Action Undone.");
+            //    TempActions.Remove(tempUserAction);
+            //    changed = true;
+            //}
             if (changed)
                 Save();
         }
 
-        [JsonIgnore]
-        public IEnumerable<CustomCommand> Commands => CustomCommands;
 
         public void AddModule(string name) {
             if (Modules.Add(name.ToLowerInvariant()))
@@ -333,25 +310,6 @@ namespace DrumBot {
             }
         }
 
-        public async void Save() {
-            if (!Directory.Exists(ConfigDirectory))
-                Directory.CreateDirectory(ConfigDirectory);
-            Log.Info("SAVED");
-            await Utility.FileIO(async delegate {
-                using(var file = File.Open(SaveLocation, FileMode.Create, FileAccess.Write))
-                using(var writer = new StreamWriter(file))
-                    await writer.WriteAsync(JsonConvert.SerializeObject(this, Formatting.Indented, new StringEnumConverter()));
-            });
-        }
-
-        public async Task Load() {
-            string obj = string.Empty;
-            await Utility.FileIO(async delegate {
-                using (var file = File.OpenText(SaveLocation))
-                    obj = await file.ReadToEndAsync();
-            });
-            JsonConvert.PopulateObject(obj, this);
-        }
 
         public override string ToString() {
             var builder = new StringBuilder();
@@ -363,5 +321,8 @@ namespace DrumBot {
             }
             return builder.ToString().Wrap("```");
         }
+
+        protected override string DirectoryName => Config.ConfigDirectory;
+        protected override string FileName => ID + ".config";
     }
 }

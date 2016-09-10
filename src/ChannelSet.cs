@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Discord;
 
 namespace DrumBot {
+
     public class ChannelSet {
 
         readonly Dictionary<ulong, ChannelLog> _channels;

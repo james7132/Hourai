@@ -23,7 +23,7 @@ namespace DrumBot {
         }
 
         public static IEnumerable<IRole> Order(this IEnumerable<IRole> roles) => 
-            roles.OrderBy(r => r.Position);
+            roles.OrderByDescending(r => r.Position);
 
         public static IEnumerable<IRole> OrderAlpha(this IEnumerable<IRole> roles) => 
             roles.OrderBy(r => r.Name);

@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Discord;
-using Discord.API;
 
 namespace DrumBot {
     public static class StringExtensions {
@@ -41,7 +40,7 @@ namespace DrumBot {
 
         public static string Wrap(this string s, string w) => w + s + w;
         public static string Wrap(this string s, char l, char r) => l + s + r;
-        public static string Code(this string s) => $"``{s}``";
+        public static string Code(this string s) => $"`{s}`";
         public static string MultilineCode(this string s) => $"```{s}```";
         public static string Bold(this string s) => $"**{s}**";
         public static string Italicize(this string s) => $"*{s}*";

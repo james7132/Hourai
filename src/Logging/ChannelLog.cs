@@ -148,7 +148,6 @@ namespace DrumBot {
                     continue;
                 var name = re.Key;
                 ulong id;
-                Log.Info(name);
                 if(ulong.TryParse(name, out id)) {
                     var channel = await guild.GetChannelAsync(id);
                     if (channel != null) {
