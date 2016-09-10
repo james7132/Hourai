@@ -1,17 +1,15 @@
 using System;
 using System.Threading.Tasks;
 using Discord;
-using Discord.Commands;
 using Discord.WebSocket;
 
 namespace DrumBot {
     public class LogService {
 
         public ChannelSet ChannelSet { get; }
-        
-        public LogService(ChannelSet set) { ChannelSet = set; }
 
-        public LogService(DiscordSocketClient client, CommandService service = null) {
+        public LogService(DiscordSocketClient client, ChannelSet set) {
+            ChannelSet = set;
             client.Log += delegate(LogMessage message) {
                 switch (message.Severity) {
                     case LogSeverity.Critical:
@@ -31,57 +29,39 @@ namespace DrumBot {
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+                if(message.Exception != null)
+                    Log.Error(message.Exception);
                 return Task.CompletedTask;
             };
-            client.GuildAvailable += ServerLog("Discovered");
-            client.GuildUnavailable += ServerLog("Lost");
+            client.GuildAvailable += GuildLog("Discovered");
+            client.GuildUpdated += (b, a) => GuildLog("updated")(a);
+            client.GuildUnavailable += GuildLog("Lost");
 
             client.ChannelCreated += ChannelLog("created");
+            client.ChannelUpdated += (b, a) => ChannelLog("updated")(a);
             client.ChannelDestroyed += ChannelLog("removed");
 
             client.UserBanned += (u, g) => UserLog("was banned from")(u);
+            client.UserUpdated += (b, a) => UserLog("was updated")(a);
             client.UserUnbanned += (u, g) => UserLog("was unbanned from")(u);
+
             client.UserJoined += UserLog("joined");
             client.UserLeft += UserLog("left");
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-            client.MessageUpdated += async delegate(Optional<IMessage> before, IMessage after) {
-                var log = $"Message update by { after.Author.ToIDString()} ";
-                var guildChannel = after.Channel as IGuildChannel;
-                if (guildChannel == null)
-                    log += "in private channel.";
-                else
-                    log += $"in { guildChannel.Name} on {guildChannel.Guild.ToIDString()}";
-                Log.Info(log);
-            };
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-            client.MessageDeleted += (i,u) => MessageLog("deleted")(u.Value);
+            client.MessageUpdated += (b, a) => MessageLog("updated")(a);
+            client.MessageDeleted += (i, u) => MessageLog("deleted")(u.IsSpecified ? u.Value : null);
 
             client.RoleCreated += RoleLog("created");
-            client.RoleUpdated += async delegate(IRole before, IRole after) {
-                var guild = await Bot.Client.GetGuildAsync(after.GuildId);
-                Log.Info($"Role { after.Name } on { guild.ToIDString() } was updated.");
-            };
+            client.RoleUpdated += (b, a) => RoleLog("updated")(a); 
             client.RoleDeleted += RoleLog("deleted");
-
-            //TODO: Reimplement
-            //service.CommandService +=
-            //    delegate(object s, CommandEventArgs e) {
-            //        var log = $"CommandUtility {e.CommandUtility.Text} executed by {e.User.ToIDString()} ";
-            //        if (e.Channel.IsPrivate)
-            //            log += "in private channel.";
-            //        else
-            //            log += $"in {e.Channel.Name} on {e.Server.ToIDString()}";
-            //        Log.Info(log);
-            //    };
 
             // Log every public message not made by the bot.
             client.MessageReceived +=
-                async m => {
+                m => {
                     var channel = m.Channel as ITextChannel;
-                    if (m.IsAwthor() || channel == null)
-                        return;
-                    await ChannelSet.Get(channel).LogMessage(m);
+                    if (m.Author.IsMe() || channel == null)
+                        return Task.CompletedTask;
+                    return ChannelSet.Get(channel).LogMessage(m);
                 };
 
             //// Make sure that every channel is available on loading up a server.
@@ -109,30 +89,36 @@ namespace DrumBot {
 
         Func<IRole, Task> RoleLog(string eventType) {
             return async delegate(IRole role) {
+                if(role == null) {
+                    Log.Info($"Role {eventType}.");
+                    return;
+                }
                 var guild = await Bot.Client.GetGuildAsync(role.GuildId);
                 Log.Info($"Role { role.Name } on { guild.ToIDString() } was { eventType }.");
             };
         }
 
         Func<IMessage, Task> MessageLog(string eventType) {
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-            return async delegate(IMessage message) {
+            return delegate(IMessage message) {
+                if(message == null) {
+                    Log.Info($"Message {eventType}.");
+                    return Task.CompletedTask;
+                }
                 var guildChannel = message.Channel as IGuildChannel;
                 var privateChannel = message.Channel as IPrivateChannel;
                 if (guildChannel != null) {
                     Log.Info($"Message on {guildChannel.Name} on {guildChannel.Guild.ToIDString()} was {eventType}.");
                 } else if(privateChannel != null) {
-                    Log.Info($"Private message to {privateChannel.Recipients} was {eventType}.");
+                    Log.Info($"Message to {privateChannel.Recipients} in private channel was {eventType}.");
                 } else {
                     Log.Error($"Action {eventType.DoubleQuote()} occured to a message instance of type {message.GetType()} and was unhandled");
                 }
+                return Task.CompletedTask;
             };
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         }
 
         Func<IUser, Task> UserLog(string eventType) {
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-            return async delegate (IUser user) {
+            return delegate (IUser user) {
                 var guildUser = user as IGuildUser;
                 var selfUser = user as ISelfUser;
                 if (guildUser != null) {
@@ -142,22 +128,20 @@ namespace DrumBot {
                 } else {
                     Log.Error($"Action {eventType.DoubleQuote()} occured to a user instance of type {user.GetType()} and was unhandled");
                 }
+                return Task.CompletedTask;
             };
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         }
 
         Func<IChannel, Task> ChannelLog(string eventType) {
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-            return async delegate (IChannel channel) {
+            return delegate (IChannel channel) {
                 var guildChannel = channel as IGuildChannel;
                 if(guildChannel != null)
                     Log.Info($"Channel {eventType}: {guildChannel.ToIDString()} on server {guildChannel.Guild.ToIDString()}");
-
+                return Task.CompletedTask;
             };
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         }
 
-        Func<IGuild, Task> ServerLog(string eventType) {
+        Func<IGuild, Task> GuildLog(string eventType) {
             return delegate (IGuild g) {
                 Log.Info($"{eventType} guild {g.ToIDString()}.");
                 return Task.CompletedTask;

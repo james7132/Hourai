@@ -1,63 +1,58 @@
-//using System;
-//using System.Threading.Tasks;
-//using Discord;
-//using Discord.Commands;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Discord;
+using Discord.Commands;
 
-//namespace DrumBot.src.Services {
+namespace DrumBot {
 
-//    [Module("module")]
-//    public class Module {
-//        const string Permission = "Manage Server";
-//        const string ModuleParam = "Module Name";
+    [Module("module", AutoLoad = false)]
+    [PublicOnly]
+    [Permission(GuildPermission.ManageGuild, Require.User)]
+    public class Module {
 
-//        [CommandUtility("")]
-//        [Description("Lists all modules available. Enabled ones are highligted" + Utility.Requires(Permission))]
-//        public async Task ListSubcommands(IMessage message) {
+        static readonly Type HideType = typeof(HideAttribute);
+        IEnumerable<string> Modules => Bot.CommandService.Modules.Where(m => !m.Source.IsDefined(HideType, false)).Select(m => m.Name).ToList();
 
-//        }
+        [Command]
+        [Description("Lists all modules available. Enabled ones are highligted. Requires user to have ``Manage Server`` permission.")]
+        public async Task ModuleList(IUserMessage message) {
+            var config = Config.GetGuildConfig(Check.InGuild(message));
+            await message.Respond(Modules.Select(s => (config.IsModuleEnabled(s)) ? s.Bold().Italicize() : s).Join(", "));
+        }
 
-//        public void Install(ModuleManager manager) {
-//            var moduleService = manager.Client.GetService<ModuleService>();
-//            manager.CreateCommands("module", cbg => {
-//                cbg.PublicOnly()
-//                   .AddCheck(Check.ManageServer(bot: false));
-//                cbg.CreateCommand()
-//                    .Description(+Utility.Requires(Permission))
-//                    .Do(CommandUtility.Response(e =>
-//                           moduleService.Modules.Where(m => m != manager)
-//                                .Select(m => m.EnabledServers.Contains(e.Server)
-//                                    ? m.Name.Bold().Italicize()
-//                                    : m.Name)
-//                                .Join(", ")));
-//                cbg.CreateCommand("enable")
-//                  .Description("Enables a module for this server. " + Utility.Requires(Permission))
-//                  .Parameter(ModuleParam)
-//                  .Do(ModuleCommand("enabled", (m, s) => m.EnableServer(s), moduleService));
-//                cbg.CreateCommand("disable")
-//                  .Description("Disables a module for this server. " + Utility.Requires(Permission))
-//                  .Parameter(ModuleParam)
-//                  .Do(ModuleCommand("disabled", (m, s) => m.DisableServer(s), moduleService));
-//            });
-//        }
+        [Command("enable")]
+        [Description("Enables a module for this server. Requires user to have ``Manage Server`` permission.")]
+        public async Task ModuleEnable(IUserMessage message, params string[] modules) {
+            var response = new StringBuilder();
+            var config = Config.GetGuildConfig(Check.InGuild(message));
+            foreach (string module in modules) {
+                if(Modules.Contains(module, StringComparer.InvariantCultureIgnoreCase)) {
+                    config.AddModule(module);
+                    response.AppendLine($"{Config.SuccessResponse}: Module {module} enabled.");
+                } else {
+                    response.AppendLine($"No module named {module} found.");
+                }
+            }
+            await message.Respond(response.ToString());
+        }
 
-//        Func<CommandEventArgs, Task> ModuleCommand(string action,
-//                                                   Action<ModuleManager, Server> func,
-//                                                   ModuleService service) {
-//            return CommandUtility.Response(delegate (CommandEventArgs e) {
-//                var module = GetModule(e, service);
-//                module.DisableServer(e.Server);
-//                return Success(module, "disabled");
-//            });
-//        }
-
-//        ModuleManager GetModule(CommandEventArgs e, ModuleService service) {
-//            var moduleName = e.GetArg(ModuleParam).ToLowerInvariant();
-//            var module = service.Modules.FirstOrDefault(m => m.Id == moduleName);
-//            if (module == null)
-//                throw new NotFoundException("module", moduleName);
-//            return module;
-//        }
-
-//        string Success(ModuleManager module, string action) => $"{Config.SuccessResponse}: Module {module.Name.Bold()} {action}.";
-//    }
-//}
+        [Command("disable")]
+        [Description("Disable a module for this server. Requires user to have ``Manage Server`` permission.")]
+        public async Task ModuleDisable(IUserMessage message, params string[] modules) {
+            var response = new StringBuilder();
+            var config = Config.GetGuildConfig(Check.InGuild(message));
+            foreach (string module in modules) {
+                if (Modules.Contains(module, StringComparer.InvariantCultureIgnoreCase)) {
+                    config.RemoveModule(module);
+                    response.AppendLine($"{Config.SuccessResponse}: Module {module} disabled.");
+                } else {
+                    response.AppendLine($"No module named {module} found.");
+                }
+            }
+            await message.Respond(response.ToString());
+        }
+    }
+}

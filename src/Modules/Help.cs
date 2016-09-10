@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
@@ -17,7 +15,7 @@ namespace DrumBot {
     /// </summary>
     [Module(AutoLoad = false)]
     public class Help {
-        readonly Dictionary<Module, CommandGroup> Modules;
+        readonly Dictionary<Discord.Commands.Module, CommandGroup> Modules;
 
         static Queue<string> SplitComamnd(string input) {
             return new Queue<string>(input.SplitWhitespace());
@@ -34,7 +32,7 @@ namespace DrumBot {
             }
 
             public CommandGroup(IEnumerable<Command> commands) : this() {
-                Name = "";
+                Name = string.Empty;
                 Command = null;
                 foreach (Command command in commands.EmptyIfNull())
                     AddCommand(command);
@@ -69,11 +67,11 @@ namespace DrumBot {
                 }
             }
 
-            public Task<string> GetSpecficHelp(IMessage message, string command) {
+            public Task<string> GetSpecficHelp(IUserMessage message, string command) {
                 return GetSpecficHelp(message, SplitComamnd(command));
             }
 
-            Task<string> GetSpecficHelp(IMessage message, Queue<string> names) {
+            Task<string> GetSpecficHelp(IUserMessage message, Queue<string> names) {
                 if (names.Count == 0)
                     return GetSpecficHelp(message);
                 var prefix = names.Dequeue();
@@ -83,7 +81,7 @@ namespace DrumBot {
                 return Task.FromResult<string>(null);
             }
 
-            async Task<string> GetSpecficHelp(IMessage message) {
+            async Task<string> GetSpecficHelp(IUserMessage message) {
                 var builder = new StringBuilder();
                 Command c = Command;
                 using (builder.Code()) {
@@ -110,7 +108,7 @@ namespace DrumBot {
                 return builder.ToString();
             }
 
-            public async Task<string> ListSubcommands(IMessage message) {
+            public async Task<string> ListSubcommands(IUserMessage message) {
                 var usable = new List<string>();
                 foreach (var commandGroup in Subcommands.Values) {
                     if(await commandGroup.CanUse(message))
@@ -119,7 +117,7 @@ namespace DrumBot {
                 return usable.Join(", ");
             }
 
-            public async Task<bool> CanUse(IMessage message) {
+            public async Task<bool> CanUse(IUserMessage message) {
                 if (Command != null) {
                     var result = await Command.CheckPreconditions(message);
                     if (result.IsSuccess)
@@ -141,23 +139,21 @@ namespace DrumBot {
         }
 
         public Help() {
-            var commands = Bot.CommandService?.Commands;
-            if(commands == null)
+            var modules = Bot.CommandService?.Modules;
+            if(modules == null)
                 throw new InvalidOperationException("Cannot create a help command if there is no command service");
-            Modules = commands.GroupBy(c => c.Module)
-                            .ToDictionary(g => g.Key, g => new CommandGroup(g));
+            Modules = modules.ToDictionary(g => g, g => new CommandGroup(g.Commands));
         }
 
         [Command("help")]
         [Description("Gets information about commands")]
-        public async Task HelpCommand(IMessage message, [Remainder] string command = "") {
+        public async Task HelpCommand(IUserMessage message, [Remainder] string command = "") {
             if(command.IsNullOrEmpty()) {
                 await message.Respond(await GetGeneralHelp(message));
                 return;
             }
             try {
                 foreach (CommandGroup commandGroup in Modules.Values) {
-                    Log.Info(commandGroup);
                     string specificHelp = await commandGroup.GetSpecficHelp(message, command);
                     if (specificHelp.IsNullOrEmpty())
                         continue;
@@ -170,7 +166,7 @@ namespace DrumBot {
             }
         }
 
-        async Task<string> GetGeneralHelp(IMessage message) {
+        async Task<string> GetGeneralHelp(IUserMessage message) {
             var builder = new StringBuilder();
             foreach (var kvp in Modules.OrderBy(k => k.Key.Name)) {
                 if (!await kvp.Value.CanUse(message))
@@ -182,7 +178,7 @@ namespace DrumBot {
             }
             var guildConfig = Config.GetGuildConfig(message.Channel);
             if(guildConfig != null && guildConfig.CustomCommands.Count > 0)
-                builder.AppendLine($"{"Custom: ".Bold()} {guildConfig.CustomCommands.Select(c => c.Name.Code()).Join(", ")}");
+                builder.AppendLine($"{"Custom: ".Bold()} {guildConfig.CustomCommands.Select(c => c.Key.Code()).Join(", ")}");
             return $"{message.Author.Mention} here are the commands you can use:\n{builder}\nRun ``help <command>`` for more information";
         }
 
