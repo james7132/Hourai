@@ -197,7 +197,7 @@ namespace DrumBot {
         }
 
         [Command("announce")]
-        [Description("Sets the current channel to recieve bot annoucnements when a member joins, leaves, or is banned. Reusing it removes the current channel.")]
+        [Remarks("Sets the current channel to recieve bot annoucnements when a member joins, leaves, or is banned. Reusing it removes the current channel.")]
         public async Task Announce(IUserMessage messaage) {
             var channel = Check.InGuild(messaage);
             var guild = channel.Guild;

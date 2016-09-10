@@ -11,7 +11,7 @@ namespace DrumBot {
 
         [Command]
         [MinimumRole("command")]
-        [Description("Creates a custom command. Deletes an existing one if response is empty.")]
+        [Remarks("Creates a custom command. Deletes an existing one if response is empty.")]
         public async Task CreateCommand(IUserMessage message, string name, [Remainder] string response) {
             var serverConfig = Config.GetGuildConfig(Check.InGuild(message).Guild);
             var command = serverConfig.GetCustomCommand(name);
@@ -39,7 +39,7 @@ namespace DrumBot {
 
         [Command("role")]
         [ServerOwner]
-        [Description("Sets the minimum role for creating custom commands.")]
+        [Remarks("Sets the minimum role for creating custom commands.")]
         public async Task CommandRole(IUserMessage message, IRole role) {
             var serverConfig = Config.GetGuildConfig(Check.InGuild(message).Guild);
             serverConfig.SetMinimumRole("command", role);

@@ -14,7 +14,7 @@ namespace DrumBot {
 
         [Command("kick")]
         [Permission(GuildPermission.KickMembers)]
-        [Description("Kicks all mentioned users. Requires ``Kick Members`` permission.")]
+        [Remarks("Kicks all mentioned users. Requires ``Kick Members`` permission.")]
         public async Task Kick(IUserMessage msg, 
              params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "kick", async u => await u.KickAsync());
@@ -23,7 +23,7 @@ namespace DrumBot {
 
         [Command("ban")]
         [Permission(GuildPermission.BanMembers)]
-        [Description("Bans all mentioned users. Requires ``Ban Members`` permission.")]
+        [Remarks("Bans all mentioned users. Requires ``Ban Members`` permission.")]
         public async Task Ban(IUserMessage msg, 
              params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "ban", async u => await u.BanAsync());
@@ -32,7 +32,7 @@ namespace DrumBot {
 
         [Command("mute")]
         [Permission(GuildPermission.MuteMembers)]
-        [Description("Server mutes all mentioned users. Requires ``Mute Members`` permission.")]
+        [Remarks("Server mutes all mentioned users. Requires ``Mute Members`` permission.")]
         public async Task Mute(IUserMessage msg, params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "mute", async u => await u.MuteAsync());
             await CommandUtility.ForEvery(msg, users, action);
@@ -40,7 +40,7 @@ namespace DrumBot {
 
         [Command("unmute")]
         [Permission(GuildPermission.MuteMembers)]
-        [Description( "Server unmutes all mentioned users. Requires ``Mute Members`` permission.")]
+        [Remarks( "Server unmutes all mentioned users. Requires ``Mute Members`` permission.")]
         public async Task Unmute(IUserMessage msg, params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "unmute", async u => await u.UnmuteAsync());
             await CommandUtility.ForEvery(msg, users, action);
@@ -48,7 +48,7 @@ namespace DrumBot {
 
         [Command("deafen")]
         [Permission(GuildPermission.DeafenMembers)]
-        [Description( "Server deafens all mentioned users. Requires ``Deafen Members`` permission.")]
+        [Remarks( "Server deafens all mentioned users. Requires ``Deafen Members`` permission.")]
         public async Task Deafen(IUserMessage msg, params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "deafen", async u => await u.DeafenAsync());
             await CommandUtility.ForEvery(msg, users, action);
@@ -56,14 +56,14 @@ namespace DrumBot {
 
         [Command("undeafen")]
         [Permission(GuildPermission.DeafenMembers)]
-        [Description( "Server undeafens all mentioned users. Requires ``Deafen Members`` permission.")]
+        [Remarks( "Server undeafens all mentioned users. Requires ``Deafen Members`` permission.")]
         public async Task Undeafen(IUserMessage msg, params IGuildUser[] users) {
             var action = await CommandUtility.Action(msg, "undeafen", async u => await u.UndeafenAsync());
             await CommandUtility.ForEvery(msg, users, action);
         }
 
         [Command("nickname")]
-        [Description("Sets the nickname of all mentioned users, or nicknames yourself.\nIf no ``users`` is empty, nicknames the user who used the command"
+        [Remarks("Sets the nickname of all mentioned users, or nicknames yourself.\nIf no ``users`` is empty, nicknames the user who used the command"
             + "and requires the ``Change Nickname`` permission.\nIf at least one ``user`` is specified, nicknames the mentioned users and requires the "
             + "``Manage Nicknames`` permission.")]
         public async Task Nickname(IUserMessage msg, string nickname, params IGuildUser[] users) {
@@ -91,14 +91,14 @@ namespace DrumBot {
 
             [Command]
             [Permission(GuildPermission.ManageMessages)]
-            [Description("Removes the last X messages from the current channel. Requires ``Manage Messages`` permission.")]
+            [Remarks("Removes the last X messages from the current channel. Requires ``Manage Messages`` permission.")]
             public Task Prune(IUserMessage msg, int count = 100) {
                 return PruneMessages(Check.InGuild(msg), m => true, count);
             }
 
             [Command("user")]
             [Permission(GuildPermission.ManageMessages)]
-            [Description("Removes all messages from all mentioned users in the last 100 messages. Requires ``Manage Messages`` permission.")]
+            [Remarks("Removes all messages from all mentioned users in the last 100 messages. Requires ``Manage Messages`` permission.")]
             public Task PruneUser(IUserMessage msg, params IGuildUser[] users) {
                 var userSet = new HashSet<IUser>(users);
                 return PruneMessages(Check.InGuild(msg), m => userSet.Contains(m.Author));
@@ -106,13 +106,13 @@ namespace DrumBot {
 
             [Command("embed")]
             [Permission(GuildPermission.ManageMessages)]
-            [Description("Removes all messages with embeds or attachments in the last X messages. Requires ``Manage Messages`` permission.")]
+            [Remarks("Removes all messages with embeds or attachments in the last X messages. Requires ``Manage Messages`` permission.")]
             public Task PruneEmbed(IUserMessage msg, int count = 100) {
                 return PruneMessages(Check.InGuild(msg), m => m.Embeds.Any() || m.Attachments.Any(), count);
             }
 
             [Command("mine")]
-            [Description("Removes all messages from the user using the command in the last X messages.")]
+            [Remarks("Removes all messages from the user using the command in the last X messages.")]
             public Task PruneMine(IUserMessage msg, int count = 100) {
                 ulong id = msg.Author.Id;
                 return PruneMessages(Check.InGuild(msg), m => m.Author.Id == id, count);
@@ -120,7 +120,7 @@ namespace DrumBot {
 
             [Command("bot")]
             [Permission(GuildPermission.ManageMessages)]
-            [Description("Removes all messages from all bots in the last X messages. Requires ``Manage Messages`` permission.")]
+            [Remarks("Removes all messages from all bots in the last X messages. Requires ``Manage Messages`` permission.")]
             public Task PruneBot(IUserMessage msg, int count = 100) {
                 return PruneMessages(Check.InGuild(msg), m => m.Author.IsBot, count);
             }
@@ -154,7 +154,7 @@ namespace DrumBot {
 
             [Command("create")]
             [Permission(GuildPermission.ManageChannels)]
-            [Description("Creates a public channel with a specified name. Requires ``Manage Channels`` permission.")]
+            [Remarks("Creates a public channel with a specified name. Requires ``Manage Channels`` permission.")]
             public async Task ChannelCreate(IUserMessage msg, string name) {
                 var guild = Check.InGuild(msg).Guild;
                 var channel = await guild.CreateTextChannelAsync(name); 
@@ -163,7 +163,7 @@ namespace DrumBot {
 
             [Command("delete")]
             [Permission(GuildPermission.ManageChannels)]
-            [Description("Deletes all mentioned channels. Requires ``Manage Channels`` permission.")]
+            [Remarks("Deletes all mentioned channels. Requires ``Manage Channels`` permission.")]
             public Task ChannelDelete(IUserMessage msg, params IGuildChannel[] channels) {
                 return CommandUtility.ForEvery(msg, channels, CommandUtility.Action(
                     async delegate(IGuildChannel channel) {
@@ -179,7 +179,7 @@ namespace DrumBot {
 
             [Command("add")]
             [Permission(GuildPermission.ManageRoles)]
-            [Description("Adds a role to all mentioned users." + Requirement)]
+            [Remarks("Adds a role to all mentioned users." + Requirement)]
             public async Task Add(IUserMessage msg, IRole role, params IGuildUser[] users) {
                 var action = await CommandUtility.Action(msg, "add role", async u => await u.AddRolesAsync(role));
                 await CommandUtility.ForEvery(msg, users, action);
@@ -187,7 +187,7 @@ namespace DrumBot {
             
             [Command("remove")]
             [Permission(GuildPermission.ManageRoles)]
-            [Description("Removes a role to all mentioned users." + Requirement)]
+            [Remarks("Removes a role to all mentioned users." + Requirement)]
             public async Task Remove(IUserMessage msg, IRole role, params IGuildUser[] users) {
                 var action = await CommandUtility.Action(msg, "remove role", async u => await u.RemoveRolesAsync(role));
                 await CommandUtility.ForEvery(msg, users, action);
@@ -195,7 +195,7 @@ namespace DrumBot {
 
             [Command("nuke")]
             [Permission(GuildPermission.ManageRoles)]
-            [Description("Removes a role to all users on the server." + Requirement)]
+            [Remarks("Removes a role to all users on the server." + Requirement)]
             public async Task Nuke(IUserMessage msg, params IRole[] roles) {
                 var users = await Check.InGuild(msg).Guild.GetUsersAsync();
                 var action = await CommandUtility.Action(msg, "remove role", async u => await u.RemoveRolesAsync(roles));
@@ -204,7 +204,7 @@ namespace DrumBot {
 
             [Command("ban")]
             [Permission(GuildPermission.ManageRoles)]
-            [Description("Bans all mentioned users from a specified role." + Requirement)]
+            [Remarks("Bans all mentioned users from a specified role." + Requirement)]
             public async Task RoleBan(IUserMessage msg, IRole role, params IGuildUser[] users) {
                 var guildConfig = Config.GetGuildConfig(Check.InGuild(msg).Guild);
                 var action = await CommandUtility.Action(msg, "ban",
@@ -217,7 +217,7 @@ namespace DrumBot {
 
             [Command("unban")]
             [Permission(GuildPermission.ManageRoles)]
-            [Description("Unban all mentioned users from a specified role." + Requirement)]
+            [Remarks("Unban all mentioned users from a specified role." + Requirement)]
             public async Task RoleUnban(IUserMessage msg, IRole role, params IGuildUser[] users) {
                 var guildConfig = Config.GetGuildConfig(Check.InGuild(msg).Guild);
                 var action = await CommandUtility.Action(msg, "ban",
@@ -230,7 +230,7 @@ namespace DrumBot {
 
             [Command("create")]
             [Permission(GuildPermission.ManageRoles)]
-            [Description("Creates a mentionable role and applies it to all mentioned users")]
+            [Remarks("Creates a mentionable role and applies it to all mentioned users")]
             public async Task RoleCreate(IUserMessage msg, string name) {
                 var guild = Check.InGuild(msg).Guild;
                 await guild.CreateRoleAsync(name);
@@ -239,7 +239,7 @@ namespace DrumBot {
 
             [Command("delete")]
             [Permission(GuildPermission.ManageRoles)]
-            [Description("Deletes a role and removes it from all users.")]
+            [Remarks("Deletes a role and removes it from all users.")]
             public async Task RoleDelete(IUserMessage msg, params IRole[] roles) {
                 await CommandUtility.ForEvery(msg, roles, CommandUtility.Action(
                     async delegate(IRole role) {
