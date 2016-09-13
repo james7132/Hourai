@@ -17,6 +17,7 @@ class Bot {
   static void Main() => new Bot().Run().GetAwaiter().GetResult();
 
   public static DiscordSocketClient Client { get; private set; }
+  public static DiscordSocketConfig ClientConfig { get; private set; }
   public static CommandService CommandService { get; private set; }
   public static ISelfUser User { get; private set; }
   public static IUser Owner { get; set; }
@@ -52,7 +53,8 @@ class Bot {
 
     Config.Load();
 
-    Client = new DiscordSocketClient();
+    ClientConfig = new DiscordSocketConfig();
+    Client = new DiscordSocketClient(ClientConfig);
     LogService = new LogService(Client, Channels);
     CounterService = new CounterService(Client, Counters);
     CommandService = new CommandService();
