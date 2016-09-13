@@ -49,17 +49,17 @@ namespace DrumBot {
     }
 
     public class BotOwnerAttribute : PreconditionAttribute {
-        public override Task<PreconditionResult> CheckPermissions(
-            IUserMessage context,
-            Command executingCommand,
-            object moduleInstance) {
-            PreconditionResult result;
-            if (context.Author.IsBotOwner())
-                result = PreconditionResult.FromSuccess();
-            else 
-                result = PreconditionResult.FromError("You must be the bot owner to use this command.");
-            return Task.FromResult(result);
-        }
+      public override Task<PreconditionResult> CheckPermissions(
+          IUserMessage context,
+          Command executingCommand,
+          object moduleInstance) {
+          PreconditionResult result;
+          if (context.Author.IsBotOwner())
+            result = PreconditionResult.FromSuccess();
+          else 
+            result = PreconditionResult.FromError("");
+          return Task.FromResult(result);
+      }
     }
 
     public enum Require {
