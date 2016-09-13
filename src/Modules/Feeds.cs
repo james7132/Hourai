@@ -120,9 +120,24 @@ public class FeedSet<T> : JsonSaveable {
 public class GuildFeedSet : FeedSet<ulong> {
 
   public GuildFeedSet(DiscordSocketClient client) : base("guilds") {
-    client.UserJoined += u => Get(u)?.Publish($"{u.Mention} has joined the server.");
-    client.UserLeft += u => Get(u)?.Publish($"{u.Username.Bold()} has left the server.");
-    client.UserBanned += (u, g) => Get(g)?.Publish($"{u.Username.Bold()} has been banned from the server.");
+    client.UserJoined += u =>  {
+      var feed = Get(u);
+      if(feed != null)
+        return feed.Publish($"{u.Mention} has joined the server.");
+      return Task.CompletedTask;
+    };
+    client.UserLeft += u => {
+      var feed = Get(u);
+      if(feed != null)
+        return feed.Publish($"{u.Username.Bold()} has left the server.");
+      return Task.CompletedTask;
+    };
+    client.UserBanned += (u, g) =>  {
+      var feed = Get(g);
+      if(feed != null)
+        return feed.Publish($"{u.Username.Bold()} has been banned from the server.");
+      return Task.CompletedTask;
+    };
   }
 
   public Feed Get(IGuild guild) => Get(Check.NotNull(guild).Id);
