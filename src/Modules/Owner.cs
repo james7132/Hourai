@@ -59,5 +59,13 @@ namespace DrumBot {
             await Task.WhenAll(defaultChannels.Select(c => c.Respond(broadcast)));
         }
 
+        [Command("save")]
+        [Remarks("Forces the bot to flush and save all active information")]
+        public async Task SaveAll(IUserMessage msg) {
+          foreach(var config in Config.ServerConfigs)
+            config.Save();
+          await msg.Success();
+        }
+
     }
 }

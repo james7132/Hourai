@@ -49,7 +49,7 @@ namespace DrumBot {
             await Utility.FileIO(async delegate {
                 using(var file = File.Open(SaveLocation, FileMode.Create, FileAccess.Write, FileShare.Write))
                 using(var writer = new StreamWriter(file))
-                    await writer.WriteAsync(JsonConvert.SerializeObject(this, Formatting.Indented, new StringEnumConverter()));
+                    await writer.WriteAsync(JsonConvert.SerializeObject(this));
             });
             Log.Info($"Saved file to {SaveLocation}");
         }
