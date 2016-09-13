@@ -3,6 +3,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Rest;
+using Discord.WebSocket;
 using Discord.Commands;
 
 namespace DrumBot {
@@ -71,23 +73,26 @@ public class Owner {
   [Remarks("Gets statistics about the current running bot instance")]
   public async Task Stats(IUserMessage msg) {
     var client = Bot.Client;
+    var config = Bot.ClientConfig;
     var builder = new StringBuilder();
     var guilds = await client.GetGuildsAsync();
     var usersTask = Task.WhenAll(guilds.Select(g => g.GetUsersAsync()));
     var channelsTask = Task.WhenAll(guilds.Select(g => g.GetChannelsAsync()));
     var users = (await usersTask).Sum(u => u.Count);
     var channels = (await channelsTask).Sum(c => c.Count);
-    builder.AppendLine("Stats".Bold());
-    builder.AppendLine($"Connected Servers: {guilds.Count}");
-    builder.AppendLine($"Visible Users: {users}");
-    builder.AppendLine($"Visible Channels: {channels}");
-    builder.AppendLine();
-    builder.AppendLine($"Start Time: {Bot.StartTime})");
-    builder.AppendLine($"Uptime: {Bot.Uptime}");
-    builder.AppendLine();
-    builder.AppendLine($"Shard ID:: {client.ShardId}");
-    builder.AppendLine($"Latency:: {client.Latency}");
-    builder.AppendLine($"Total Memory Used: {BytesToMemoryValue(GC.GetTotalMemory(false))}");
+    builder.AppendLine("Stats".Bold())
+      .AppendLine($"Connected Servers: {guilds.Count}")
+      .AppendLine($"Visible Users: {users}")
+      .AppendLine($"Visible Channels: {channels}")
+      .AppendLine()
+      .AppendLine($"Start Time: {Bot.StartTime})")
+      .AppendLine($"Uptime: {Bot.Uptime}")
+      .AppendLine()
+      .AppendLine($"Client: Discord .NET v{DiscordConfig.Version} (API v{DiscordConfig.APIVersion}, {DiscordSocketConfig.GatewayEncoding})")
+      .AppendLine($"Shard ID: {client.ShardId}")
+      .AppendLine($"Total Shards: {config.TotalShards}")
+      .AppendLine($"Latency: {client.Latency}ms")
+      .AppendLine($"Total Memory Used: {BytesToMemoryValue(GC.GetTotalMemory(false))}");
     await msg.Respond(builder.ToString());
   }
 
