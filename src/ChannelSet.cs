@@ -3,20 +3,21 @@ using Discord;
 
 namespace DrumBot {
 
-    public class ChannelSet {
+public class ChannelSet {
 
-        readonly Dictionary<ulong, ChannelLog> _channels;
+  readonly Dictionary<ulong, ChannelLog> _channels;
 
-        public ChannelSet() {
-            _channels = new Dictionary<ulong, ChannelLog>();
-        }
+  public ChannelSet() {
+    _channels = new Dictionary<ulong, ChannelLog>();
+  }
 
-        public ChannelLog Get(ITextChannel channel) {
-            ulong id = channel.Id;
-            if (!_channels.ContainsKey(id))
-                _channels[id] = new ChannelLog(channel);
-            return _channels[id];
-        }
+  public ChannelLog Get(ITextChannel channel) {
+    ulong id = channel.Id;
+    if (!_channels.ContainsKey(id))
+      _channels[id] = new ChannelLog(channel);
+    return _channels[id];
+  }
 
-    }
+}
+
 }
