@@ -9,11 +9,6 @@ using Newtonsoft.Json;
 
 namespace DrumBot {
 
-    public enum ServerType {
-        TEST,
-        PROD 
-    }
-
     public interface IEditable {
         event Action OnEdit;
     }
@@ -156,7 +151,6 @@ namespace DrumBot {
 
         [JsonIgnore]
         public ulong ID { get; set; }
-        public ServerType Type { get; set; } = ServerType.PROD;
 
         [JsonProperty]
         Dictionary<ulong, ChannelConfig> ChannelConfigs { get; set; }
@@ -303,23 +297,11 @@ namespace DrumBot {
         public bool AllowCommands {
             get {
 #if DEBUG
-                return Type == ServerType.TEST;
+                return ID == Config.TestServer;
 #else
-                return Type == ServerType.PROD;
+                return ID != Config.TestServer;
 #endif
             }
-        }
-
-
-        public override string ToString() {
-            var builder = new StringBuilder();
-            builder.AppendLine($"ID: {ID}");
-            builder.AppendLine($"Type: {Type}");
-            builder.AppendLine("Roles:");
-            foreach (IRole role in Server.Roles) {
-                builder.AppendLine($"   {role.Name}: {role.Position}, {role.Color}, {role.Id}");
-            }
-            return builder.ToString().Wrap("```");
         }
 
         protected override string DirectoryName => Config.ConfigDirectory;

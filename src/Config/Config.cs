@@ -45,63 +45,49 @@ namespace DrumBot {
             return GetGuildConfig(channel)?.GetChannelConfig(channel);
         }
 
-        /// <summary>
-        /// The login token used by the bot to access Discord 
-        /// </summary>
+        // The login token used by the bot to access Discord 
         [JsonProperty]
         public static string Token { get; set; }
 
-        /// <summary>
-        /// The name of the bot.
-        /// </summary>
+        // The name of the bot.
         [JsonProperty]
         public static string BotName { get; set; }
 
-        /// <summary>
-        /// The owner of the bot's ID.
-        /// </summary>
+        // The owner of the bot's ID.
         [JsonProperty]
         public static ulong Owner { get; set; }
+
+        // The owner of the bot's ID.
+        [JsonProperty]
+        public static ulong TestServer { get; set; }
 
         [JsonProperty]
         public static string Version { get; set; }
 
-        /// <summary>
-        /// The subdirectory name where the logs for each channel is logged.
-        /// </summary>
+        // The subdirectory name where the logs for each channel is logged.
         [JsonProperty]
         public static string LogDirectory { get; set; } = "logs";
 
-        /// <summary>
-        /// The subdirectory where the configs for each guild is stored.
-        /// </summary>
+        // The subdirectory where the configs for each guild is stored.
         [JsonProperty]
         public static string ConfigDirectory { get; set; } = "config";
 
-        /// <summary>
-        /// The subdirectory where the feed is stored.
-        /// </summary>
+        // The subdirectory where the feed is stored.
         [JsonProperty]
         public static string FeedDirectory { get; set; } = "feeds";
 
         [JsonProperty]
         public static string AvatarDirectory { get; set; } = "avatars";
 
-        /// <summary>
-        /// The command prefix that triggers commands specified by the bot
-        /// </summary>
+        // The command prefix that triggers commands specified by the bot
         [JsonProperty]
         public static char CommandPrefix { get; set; } = '~';
 
-        /// <summary>
-        /// What is responded when a command succeeds
-        /// </summary>
+        // What is responded when a command succeeds
         [JsonProperty]
         public static string SuccessResponse { get; set; } = ":thumbsup:";
 
-        /// <summary>
-        /// Maximum number of messages to remove with the prune command.
-        /// </summary>
+        // Maximum number of messages to remove with the prune command.
         [JsonProperty]
         public static int PruneLimit { get; set; } = 100;
 

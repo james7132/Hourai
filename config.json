@@ -1,9 +1,11 @@
 {
-	"Token" : "",
-	"LogDirectory" : "logs",
-	"ConfigDirectory" : "config",
-	"CommandPrefix" :  "~",
-	"Owner": 0,
-	"SuccessResponse": ":thumbsup:",
-	"PruneLimit": 100
+  "Token" : "",
+  "Owner": 151215593553395721,
+  "TestServer": 208460178863947776,
+  "LogDirectory" : "logs",
+  "ConfigDirectory" : "config",
+  "FeedDirectory" : "feeds",
+  "CommandPrefix" :  "~",
+  "SuccessResponse": ":thumbsup:",
+  "PruneLimit": 100
 }

@@ -45,7 +45,6 @@ namespace DrumBot {
             builder.AppendLine($"Roles: {server.Roles.Where(r => r.Id != server.EveryoneRole.Id).Order().Select(r => r.Name.Code()).Join(", ")}");
             builder.AppendLine($"Text Channels: {textChannels.Join(", ")}");
             builder.AppendLine($"Voice Channels: {voiceChannels.Join(", ")}");
-            builder.AppendLine($"Server Type: {config.Type.ToString().Code()}");
             if(!string.IsNullOrEmpty(server.IconUrl))
                 builder.AppendLine(server.IconUrl);
             await message.Respond(builder.ToString());
