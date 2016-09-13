@@ -176,6 +176,9 @@ public class GuildConfig : JsonSaveable {
   public IGuild Server { get; }
   public HashSet<string> Modules { get; set; }
 
+  [JsonProperty]
+  public bool IsBlacklisted { get; set; }
+
   public GuildConfig(IGuild server) {
     Server = server;
     ID = server.Id;

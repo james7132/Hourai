@@ -24,12 +24,6 @@ public class Owner {
     await message.Channel.SendFileRetry(Bot.BotLog);
   }
 
-  [Command("uptime")]
-  [Remarks("Gets the bot's uptime since startup")]
-  public async Task Uptime(IUserMessage message) {
-    await message.Respond($"Start Time: {Bot.StartTime}\nUptime: {Bot.Uptime}");
-  }
-
   [Command("counters")] 
   [Remarks("Gets all of the counters and their values.")]
   public async Task Counter(IUserMessage message) {
@@ -105,6 +99,34 @@ public class Owner {
     int mag = (int) Math.Log(bytes, 1024);
     decimal adjustedSize = (decimal) bytes / (1L << (mag * 10));
     return string.Format("{0:n1}{1}", adjustedSize, SizeSuffixes[mag]);
+  }
+
+  [Command("rename")]
+  [Remarks("Renames the bot a new name.")]
+  public async Task Rename(IUserMessage msg, string name) {
+    await Bot.User.ModifyAsync(u => {
+          u.Username = name;
+        });
+    await msg.Success();
+  }
+
+  [Command("leave")]
+  [Remarks("Makes the bot leave the current server")]
+  public async Task Leave(IUserMessage msg) {
+    var guild = Check.InGuild(msg).Guild;
+    await msg.Success();
+    await guild.LeaveAsync();
+  }
+
+  [Command("blacklist")]
+  [Remarks("Blacklists the current server and makes teh bot leave.")]
+  public async Task Blacklist(IUserMessage msg) {
+    var guild = Check.InGuild(msg).Guild;
+    var config = Config.GetGuildConfig(guild);
+    config.IsBlacklisted = true;
+    config.Save();
+    await msg.Success();
+    await guild.LeaveAsync();
   }
 
 }

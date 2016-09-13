@@ -14,17 +14,17 @@ public class Standard {
 
   [Command("echo")]
   [Remarks("Has the bot repeat what you say")]
-  public async Task Echo(IUserMessage message, [Remainder] string remainder) {
-    await message.Respond(remainder);
+  public Task Echo(IUserMessage message, [Remainder] string remainder) {
+    return message.Respond(remainder);
   }
 
   [Command("avatar")]
   [Remarks("Gets the avatar url of all mentioned users.")]
-  public async Task Avatar(IUserMessage message, params IGuildUser[] users) {
+  public Task Avatar(IUserMessage message, params IGuildUser[] users) {
     IUser[] allUsers = users;
     if (users.Length <= 0)
       allUsers = new[] {message.Author};
-    await message.Respond(allUsers.Select(u => u.AvatarUrl).Join("\n"));
+    return message.Respond(allUsers.Select(u => u.AvatarUrl).Join("\n"));
   }
 
   [Command("serverinfo")]
@@ -52,7 +52,7 @@ public class Standard {
 
   [Command("whois")]
   [Remarks("Gets information on a specified users")]
-  public async Task WhoIs(IUserMessage message, IGuildUser user) {
+  public Task WhoIs(IUserMessage message, IGuildUser user) {
     var builder = new StringBuilder();
     builder.AppendLine($"{message.Author.Mention}:");
     builder.AppendLine($"Username: {user.Username.Code()} {(user.IsBot ? "(BOT)".Code() : string.Empty )}");
@@ -64,7 +64,18 @@ public class Standard {
     builder.AppendLine($"Roles: {user.Roles.Where(r => r.Id != user.Guild.EveryoneRole.Id).Select(r => r.Name.Code()).Join(", ")}");
     if(!string.IsNullOrEmpty(user.AvatarUrl))
       builder.AppendLine(user.AvatarUrl);
-    await message.Channel.SendMessageAsync(builder.ToString());
+    return message.Channel.SendMessageAsync(builder.ToString());
+  }
+
+  [Command("topic")]
+  [Remarks("Returns the mentioned channels' topics. If none are mentioned, the current channel is used.")]
+  public Task Topic(IUserMessage msg, params IGuildChannel[] channels) {
+    if(channels.Length <= 0)
+      channels = new[] { msg.Channel as IGuildChannel };
+    var builder = new StringBuilder();
+    foreach(var channel in channels.OfType<ITextChannel>())
+      builder.AppendLine($"{channel.Name}: {channel.Topic}");
+    return msg.Respond(builder.ToString());
   }
 
 }
