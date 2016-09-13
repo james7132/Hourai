@@ -10,22 +10,19 @@
 </p>
 
 ###Features
-* Per-Channel logging
-* Log searching - search for certain phrases in the current channel or across the server
+* Log searching - Ctrl-F for Discord! Search for messages that meet certain criteria.
 * Administrative - Permission-based text commands that apply administrative actions on 1+ users simultaneously
  * Role Management (Adding/Removing/Nuking)
  * Member Management (Kicking/Banning)
  * (Un)Muting/(Un)Deafening
+ * Nicknaming (Helpful for mobile users)
+* Custom Commands
 * More to come!
 To see a comprehensive list of commands and what they do, please take a look at the [wiki](https://github.com/james7132/DrumBot/wiki).
 
 ### Setup
 Simply click this [link](https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF) to add DrumBot to your server (you need the Manage Server permission to do so)
 
-### Source Setup
-0. Use Nuget to obtain the following packages:
-  * [Discord.Net](https://www.nuget.org/packages/Discord.Net/)
-  * [Discord.Net.Commands](https://www.nuget.org/packages/Discord.Net.Commands/)
-0. Open in Visual Studio.
+By default DrumBot doesn't have many commands to use. The server owner must enable individual modules to allow use. Try using the commands `~module` to list all available modules, and `~module enable <Module>` to enable them.
 
 ### License: [MIT](./LICENSE)
