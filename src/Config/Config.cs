@@ -12,7 +12,7 @@ namespace DrumBot {
 
         static readonly Dictionary<ulong, GuildConfig> _serversConfigs;
 
-        public IEnumerable<GuildConfig> ServerConfigs => _serversConfigs.Values;
+        public static IEnumerable<GuildConfig> ServerConfigs => _serversConfigs.Values;
 
         static Config() {
             _serversConfigs = new Dictionary<ulong, GuildConfig>();

@@ -1,9 +1,11 @@
 using System;
+using System.Net;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Net;
 
 namespace DrumBot {
 
@@ -88,9 +90,14 @@ namespace DrumBot {
         }
 
         async void LogChannelRecent(ITextChannel channel) {
+          try {
             var messages = await channel.GetMessagesAsync();
             foreach (var message in messages.OrderByDescending(m => m.Timestamp))
-                await LogMessage(message);
+              await LogMessage(message);
+          } catch(HttpException httpException) {
+            if(httpException.StatusCode != HttpStatusCode.Forbidden)
+              Log.Error(httpException);
+          }
         }
 
         static string MessageToLog(string message) {
@@ -169,7 +176,6 @@ namespace DrumBot {
         static async Task<string> SearchFile(string path, Func<string, bool> pred) {
             var builder = new StringBuilder();
             Func<Task> read = async delegate {
-
                 using (StreamReader reader = File.OpenText(path)) {
                     while(!reader.EndOfStream) {
                         string line = await reader.ReadLineAsync();
