@@ -56,11 +56,6 @@ namespace DrumBot {
             CommandService = new CommandService();
 
             Log.Info($"Starting {Config.BotName}...");
-            Client.GuildAvailable +=
-                delegate(IGuild g) {
-                    Config.GetGuildConfig(g);
-                    return Task.CompletedTask;
-                };
         }
 
         async Task Initialize() {
