@@ -265,6 +265,18 @@ namespace DrumBot {
       await msg.Success();
     }
 
+    [Command("rename")]
+    [Permission(GuildPermission.ManageRoles)]
+    [Remarks("Renames all mentioned roles" + Requirement)]
+    public async Task Rename(IUserMessage msg, string name, params IRole[] roles) {
+      await Task.WhenAll(roles.Select(delegate(IRole role) {
+            return role.ModifyAsync(r => {
+              r.Name = name;
+            });
+          }));
+      await msg.Success();
+    }
+
     bool TryParseColor(string color, out uint val) {
       if(uint.TryParse(color, 
             NumberStyles.HexNumber,

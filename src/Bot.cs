@@ -60,6 +60,20 @@ class Bot {
     CommandService = new CommandService();
 
     Log.Info($"Starting {Config.BotName}...");
+
+    Client.GuildAvailable += CheckBlacklist;
+    Client.JoinedGuild += CheckBlacklist;
+  }
+
+  async Task CheckBlacklist(IGuild guild) {
+    var config = Config.GetGuildConfig(guild);
+    if(config.IsBlacklisted) {
+      Log.Info($"Added to blacklisted guild {guild.Name} ({guild.Id})");
+      var defaultChannel = (await guild.GetChannelAsync(guild.DefaultChannelId)) as ITextChannel;
+      defaultChannel.Respond("This server has been blacklisted by this bot. " +
+          "Please do not add it again. Leaving...");
+      await guild.LeaveAsync();
+    }
   }
 
   async Task Initialize() {
