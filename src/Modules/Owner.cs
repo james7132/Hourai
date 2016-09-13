@@ -67,6 +67,41 @@ public class Owner {
     await msg.Success();
   }
 
+  [Command("stats")]
+  [Remarks("Gets statistics about the current running bot instance")]
+  public async Task Stats(IUserMessage msg) {
+    var client = Bot.Client;
+    var builder = new StringBuilder();
+    var guilds = await client.GetGuildsAsync();
+    var usersTask = Task.WhenAll(guilds.Select(g => g.GetUsersAsync()));
+    var channelsTask = Task.WhenAll(guilds.Select(g => g.GetChannelsAsync()));
+    var users = (await usersTask).Sum(u => u.Count);
+    var channels = (await channelsTask).Sum(c => c.Count);
+    builder.AppendLine("Stats".Bold());
+    builder.AppendLine($"Connected Servers: {guilds.Count}");
+    builder.AppendLine($"Visible Users: {users}");
+    builder.AppendLine($"Visible Channels: {channels}");
+    builder.AppendLine();
+    builder.AppendLine($"Start Time: {Bot.StartTime})");
+    builder.AppendLine($"Uptime: {Bot.Uptime}");
+    builder.AppendLine();
+    builder.AppendLine($"Shard ID:: {client.ShardId}");
+    builder.AppendLine($"Latency:: {client.Latency}");
+    builder.AppendLine($"Total Memory Used: {BytesToMemoryValue(GC.GetTotalMemory(false))}");
+    await msg.Respond(builder.ToString());
+  }
+
+  static readonly string[] SizeSuffixes = {"B","KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
+
+  static string BytesToMemoryValue(long bytes) {
+    if(bytes < 0) return "-" + BytesToMemoryValue(-bytes);
+    if(bytes == 0) return "0B";
+
+    int mag = (int) Math.Log(bytes, 1024);
+    decimal adjustedSize = (decimal) bytes / (1L << (mag * 10));
+    return string.Format("{0:n1}{1}", adjustedSize, SizeSuffixes[mag]);
+  }
+
 }
 
 }

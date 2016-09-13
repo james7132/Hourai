@@ -16,7 +16,7 @@ public static class UserExtensions {
   public static Task SetNickname(this IGuildUser user, string nickname) => user.ModifyAsync(p => p.Nickname = nickname);
 
   public static bool IsMe(this IUser user) => Bot.User != null && user.Id == Bot.User.Id;
-  public static bool IsBotOwner(this IUser user) => user.Id == Config.Owner;
+  public static bool IsBotOwner(this IUser user) => user.Id == Bot.Owner.Id;
   public static bool IsServerOwner(this IGuildUser user) => user.Guild.OwnerId == user.Id;
 
   public static Task BanAsync(this IGuildUser user) => user.Guild.AddBanAsync(user);

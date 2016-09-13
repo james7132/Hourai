@@ -55,10 +55,6 @@ public class Config {
 
   // The owner of the bot's ID.
   [JsonProperty]
-  public static ulong Owner { get; set; }
-
-  // The owner of the bot's ID.
-  [JsonProperty]
   public static ulong TestServer { get; set; }
 
   [JsonProperty]

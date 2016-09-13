@@ -19,6 +19,7 @@ class Bot {
   public static DiscordSocketClient Client { get; private set; }
   public static CommandService CommandService { get; private set; }
   public static ISelfUser User { get; private set; }
+  public static IUser Owner { get; set; }
   public static CounterSet Counters { get; private set; }
 
   public static string ExecutionDirectory { get; private set; }
@@ -152,7 +153,7 @@ class Bot {
   }
 
   async void SendOwnerErrors() {
-    OwnerChannel = Client.GetDMChannel(Config.Owner);
+    OwnerChannel = Client.GetDMChannel(Owner.Id);
     if (OwnerChannel == null)
       return;
     foreach (string error in _errors)
@@ -167,18 +168,20 @@ class Bot {
     var self = await Client.GetCurrentUserAsync();
     Log.Info($"Logged in as {self.ToIDString()}");
 
+    User = await Client.GetCurrentUserAsync();
+    Owner = (await Client.GetApplicationInfoAsync()).Owner;
+    Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
+
     SendOwnerErrors();
 
-    User = await Client.GetCurrentUserAsync();
-    Log.Info(CommandService.Commands.Select(c => c.Text).Join(", "));
+    Log.Info("Commands: " + CommandService.Commands.Select(c => c.Text).Join(", "));
     while (true) {
       var path = Directory.GetFiles(Path.Combine(ExecutionDirectory, Config.AvatarDirectory)).SelectRandom();
       await Utility.FileIO(async delegate {
         using (var stream = new FileStream(path, FileMode.Open))
-            await User.ModifyAsync(u => { u.Avatar = stream; });
+          await User.ModifyAsync(u => u.Avatar = stream);
       });
-      // Set the game of the bot to the bot's version.
-      // TODO: Client.SetGame(Config.Version);
+      await User.ModifyStatusAsync(u => u.Game = new Game(Config.Version));
       await Task.Delay(300000);
     }
   }
