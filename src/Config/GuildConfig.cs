@@ -6,19 +6,67 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 using Newtonsoft.Json;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DrumBot {
+
+public class BotDbContext : DbContext {
+
+  public DbSet<Guild> Guilds { get; set; }
+  public DbSet<Channel> Channels { get; set; }
+  public DbSet<GuildUser> Users { get; set; }
+
+  protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
+    optionsBuilder.UseSqlite("Filename=./bot.db");
+  }
+
+}
 
 public interface IEditable {
   event Action OnEdit;
 }
 
+public abstract class SnowflakeEntity {
+
+  [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+  public ulong Id { get; set; }
+
+}
+
+public abstract class GuildEntity : SnowflakeEntity {
+
+  public ulong GuildId { get; set; }
+
+}
+
+public class Guild : SnowflakeEntity {
+
+  public bool IsBlacklisted { get; set; }
+
+}
+
+public class Channel : GuildEntity {
+
+  public bool SearchIgnored { get; set; }
+
+}
+
+public class GuildUser : GuildEntity {
+
+  public bool IsBlacklisted { get; set; }
+
+}
+
 public class ChannelConfig : IEditable {
+
+  [JsonIgnore]
+  public ulong Id { get; set; }
+
   [JsonProperty]
   bool isIgnored = false;
 
-  [JsonProperty]
-  ulong? group;
   public event Action OnEdit;
 
   public ChannelConfig(ulong id) { this.Id = id; }
@@ -32,24 +80,6 @@ public class ChannelConfig : IEditable {
       if(changed)
         OnEdit?.Invoke();
     }
-  }
-
-  [JsonIgnore]
-  public ulong? Group {
-    get { return group; }
-    set {
-      bool changed = group == value;
-      group = value;
-      if(changed)
-        OnEdit?.Invoke();
-    }
-  }
-
-  public void CreateGroup() {
-    bool changed = InGroup && group != Id;
-    group = Id; 
-    if(changed)
-      OnEdit?.Invoke();
   }
 
   public void Ignore() {
@@ -66,18 +96,6 @@ public class ChannelConfig : IEditable {
       OnEdit?.Invoke();
   }
 
-  [JsonIgnore]
-  public bool InGroup => group != null;
-
-  [JsonIgnore]
-  public bool IsMainChannel => InGroup && group == Id;
-
-  [JsonIgnore]
-  public bool IsSubchannel => InGroup && group != Id;
-
-  [JsonIgnore]
-  public ulong Id { get; set; }
-
 }
 
 public class UserConfig : IEditable {
@@ -86,12 +104,6 @@ public class UserConfig : IEditable {
 
   [JsonIgnore]
   public ulong Id { get; set; }
-
-  [JsonProperty]
-  bool isNicknameLocked;
-
-  [JsonIgnore]
-  public bool IsNicknameLocked => isNicknameLocked;
 
   [JsonProperty]
   HashSet<ulong> bannedRoles;
@@ -124,6 +136,7 @@ public class UserConfig : IEditable {
       OnEdit?.Invoke();
     return success;
   }
+
 }
 
 public class CustomCommand : IEditable {
@@ -150,6 +163,7 @@ public class CustomCommand : IEditable {
                               .Replace("$user", message.Author.Mention)
                               .Replace("$channel", channel.Mention));
     }
+
 }
 
 public class GuildConfig : JsonSaveable {
