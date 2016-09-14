@@ -23,7 +23,7 @@
       "version": "1.0.0"
     },
     "Microsoft.EntityFrameworkCore": "1.0.0",
-"Microsoft.EntityFrameworkCore.Sqlite": "1.0.0"
+    "Microsoft.EntityFrameworkCore.Sqlite": "1.0.0"
   },
 
   "frameworks": {
