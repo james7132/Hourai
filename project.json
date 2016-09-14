@@ -12,8 +12,8 @@
 	},
 
   "dependencies": {
-    "Discord.Net": "1.0.0-beta-00415",
-    "Discord.Net.Commands": "1.0.0-beta-00415",
+    "Discord.Net": "1.0.0-*",
+    "Discord.Net.Commands": "1.0.0-*",
     "System.Net.WebSockets.Client": "4.0.1-*",
 		"System.Diagnostics.TraceSource": "4.0.0-*",
 		"System.Diagnostics.TextWriterTraceListener": "4.0.0-*",

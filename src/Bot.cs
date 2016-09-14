@@ -22,6 +22,7 @@ class Bot {
   public static ISelfUser User { get; private set; }
   public static IUser Owner { get; set; }
   public static CounterSet Counters { get; private set; }
+  public static ChannelSet Channels { get; private set; }
 
   public static string ExecutionDirectory { get; private set; }
   public static string BotLog { get; private set; }
@@ -29,7 +30,6 @@ class Bot {
   public static DateTime StartTime { get; private set; }
   public static TimeSpan Uptime => DateTime.Now - StartTime;
 
-  ChannelSet Channels { get; }
   IDMChannel OwnerChannel { get; set; }
 
   LogService LogService { get; }
@@ -61,19 +61,30 @@ class Bot {
 
     Log.Info($"Starting {Config.BotName}...");
 
-    Client.GuildAvailable += CheckBlacklist;
-    Client.JoinedGuild += CheckBlacklist;
+    Client.GuildAvailable += CheckBlacklist(false);
+    Client.JoinedGuild += CheckBlacklist(true);
   }
 
-  async Task CheckBlacklist(IGuild guild) {
-    var config = Config.GetGuildConfig(guild);
-    if(config.IsBlacklisted) {
-      Log.Info($"Added to blacklisted guild {guild.Name} ({guild.Id})");
+  Func<IGuild, Task> CheckBlacklist(bool normalJoin) {
+    return async guild => {
+      var config = Config.GetGuildConfig(guild);
       var defaultChannel = (await guild.GetChannelAsync(guild.DefaultChannelId)) as ITextChannel;
-      defaultChannel.Respond("This server has been blacklisted by this bot. " +
-          "Please do not add it again. Leaving...");
-      await guild.LeaveAsync();
-    }
+      if(config.IsBlacklisted) {
+        Log.Info($"Added to blacklisted guild {guild.Name} ({guild.Id})");
+        await defaultChannel.Respond("This server has been blacklisted by this bot. " +
+            "Please do not add it again. Leaving...");
+        await guild.LeaveAsync();
+        return;
+      }
+      if(normalJoin) {
+        var help = $"{Config.CommandPrefix}help".Code();
+        var module = $"{Config.CommandPrefix}module".Code();
+        await defaultChannel.Respond(
+            $"Hello {guild.Name}! {User.Username} has been added to your server!\n" +
+            $"To see available commands, run the command {help}\n" +
+            $"For more information, see https://github.com/james7132/DrumBot");
+      }
+    };
   }
 
   async Task Initialize() {
@@ -86,10 +97,8 @@ class Bot {
 
   async Task InstallCommands(DiscordSocketClient client) {
     client.MessageReceived += HandleMessage;
-    await CommandService.LoadAssembly(Assembly.GetEntryAssembly());
     await CommandService.Load(new Owner(Counters));
-    await CommandService.Load(new Search(Channels));
-    await CommandService.Load(new Module());
+    await CommandService.LoadAssembly(Assembly.GetEntryAssembly());
     await CommandService.Load(new Help());
   }
 

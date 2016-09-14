@@ -201,7 +201,6 @@ public class Feed : IEditable {
 
 [Module]
 [PublicOnly]
-[ModuleCheck]
 public class Feeds {
 
   GuildFeedSet Guilds { get; }

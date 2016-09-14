@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
@@ -9,7 +13,6 @@ using Discord.WebSocket;
 namespace DrumBot {
 
 [Module]
-[ModuleCheck]
 public class Standard {
 
   [Command("echo")]
@@ -77,7 +80,158 @@ public class Standard {
       builder.AppendLine($"{channel.Name}: {channel.Topic}");
     return msg.Respond(builder.ToString());
   }
+  
 
+  [Group("search")]
+  public class Search {
+
+    static Func<string, bool> ExactMatch(IEnumerable<string> matches) {
+      return s => matches.All(s.Contains);
+    }
+
+    static Func<string, bool> RegexMatch(string regex) {
+      return new Regex(regex, RegexOptions.Compiled).IsMatch;
+    }
+
+    [Command]
+    [PublicOnly]
+    [Remarks("Search the history of the current channel for messages that match all of the specfied search terms.")]
+    public async Task SearchChat(IUserMessage message, params string[] terms) {
+      await SearchChannel(message, ExactMatch(terms));
+    }
+
+    [Command("regex")]
+    [PublicOnly]
+    [Remarks("Search the history of the current channel for matches to a specfied regex.")]
+    public async Task SearchRegex(IUserMessage message, string regex) {
+      await SearchChannel(message, RegexMatch(regex));
+    }
+
+    [Command("day")]
+    [PublicOnly]
+    [Remarks("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
+    public async Task Day(IUserMessage message, string day) {
+      var channel = Check.InGuild(message);
+      string path = Bot.Channels.Get(channel).GetPath(day);
+      if (File.Exists(path))
+        await message.SendFileRetry(path);
+      else
+        await message.Respond($"A log for {channel.Mention} on date {day} cannot be found.");
+    }
+
+    [Command("ignore")]
+    [PublicOnly]
+    [Remarks("Mentioned channels will not be searched in ``search all``, except while in said channel. "
+      + "User must have ``Manage Channels`` permission")]
+    public async Task Ignore(IUserMessage message, params IGuildChannel[] channels) {
+      var channel = Check.InGuild(message);
+      var serverConfig = Config.GetGuildConfig(channel.Guild);
+      foreach (var ch in channels)
+        serverConfig.GetChannelConfig(ch).Ignore();
+      await message.Success();
+    }
+
+    [Command("unigore")]
+    [PublicOnly]
+    [Remarks("Mentioned channels will appear in ``search all`` results." 
+      +" User must have ``Manage Channels`` permission")]
+    public async Task Unignore(IUserMessage message, params IGuildChannel[] channels) {
+      var channel = Check.InGuild(message);
+      var serverConfig = Config.GetGuildConfig(channel.Guild);
+      foreach (var ch in channels)
+        serverConfig.GetChannelConfig(ch).Unignore();
+      await message.Success();
+    }
+
+    [Group("all")]
+    public class All {
+
+      [Command]
+      [PublicOnly]
+      [Remarks("Searches the history of all channels in the current server for any of the specfied search terms.")]
+      public async Task SearchAll(IUserMessage message, params string[] terms) {
+        await SearchAll(message, ExactMatch(terms));
+      }
+
+      [Command("regex")]
+      [PublicOnly]
+      [Remarks("Searches the history of all channels in the current server based on a regex.")]
+      public async Task SearchAllRegex(IUserMessage message, string regex) {
+        await SearchAll(message, RegexMatch(regex));
+      }
+
+      async Task SearchAll(IUserMessage message, Func<string, bool> pred) {
+        try {
+          var channel = Check.InGuild(message);
+          string reply = await Bot.Channels.Get(channel).SearchAll(pred);
+          await message.Respond(reply);
+        } catch (Exception e) {
+          Log.Error(e);
+        }
+      }
+    }
+
+    async Task SearchChannel(IUserMessage message, Func<string, bool> pred) {
+      var channel = Check.InGuild(message);
+      string reply = await Bot.Channels.Get(channel).Search(pred);
+      await message.Respond(reply);
+      //await message.Respond($"Matches found in {channel.Name}:\n{reply}");
+    }
+
+  } 
+
+  [Group("module")]
+  public class Module {
+
+    static readonly Type HideType = typeof(HideAttribute);
+    IEnumerable<string> Modules => Bot.CommandService.Modules.Where(m => !m.Source.IsDefined(HideType, false)).Select(m => m.Name).ToList();
+
+    [Command]
+    [PublicOnly]
+    [Alias("list")]
+    [Permission(GuildPermission.ManageGuild, Require.User)]
+    [Remarks("Lists all modules available. Enabled ones are highligted. Requires user to have ``Manage Server`` permission.")]
+    public Task ModuleList(IUserMessage message) {
+      var config = Config.GetGuildConfig(Check.InGuild(message));
+      return message.Respond(Modules.Select(s => (config.IsModuleEnabled(s)) ? s.Bold().Italicize() : s).Join(", "));
+    }
+
+    [Command("enable")]
+    [PublicOnly]
+    [Permission(GuildPermission.ManageGuild, Require.User)]
+    [Remarks("Enables a module for this server. Requires user to have ``Manage Server`` permission.")]
+    public Task ModuleEnable(IUserMessage message, params string[] modules) {
+      var response = new StringBuilder();
+      var config = Config.GetGuildConfig(Check.InGuild(message));
+      foreach (string module in modules) {
+        if(Modules.Contains(module, StringComparer.OrdinalIgnoreCase)) {
+          config.AddModule(module);
+          response.AppendLine($"{Config.SuccessResponse}: Module {module} enabled.");
+        } else {
+          response.AppendLine($"No module named {module} found.");
+        }
+      }
+      return message.Respond(response.ToString());
+    }
+
+    [Command("disable")]
+    [PublicOnly]
+    [Permission(GuildPermission.ManageGuild, Require.User)]
+    [Remarks("Disable a module for this server. Requires user to have ``Manage Server`` permission.")]
+    public Task ModuleDisable(IUserMessage message, params string[] modules) {
+      var response = new StringBuilder();
+      var config = Config.GetGuildConfig(Check.InGuild(message));
+      foreach (string module in modules) {
+        if (Modules.Contains(module, StringComparer.OrdinalIgnoreCase)) {
+          config.RemoveModule(module);
+          response.AppendLine($"{Config.SuccessResponse}: Module {module} disabled.");
+        } else {
+          response.AppendLine($"No module named {module} found.");
+        }
+      }
+      return message.Respond(response.ToString());
+    }
+  }
 }
 
 }
