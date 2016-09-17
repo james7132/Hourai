@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-namespace DrumBot {
+namespace Hourai {
 
 public static class Log {
 

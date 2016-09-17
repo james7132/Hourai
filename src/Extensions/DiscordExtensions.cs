@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 
-namespace DrumBot {
+namespace Hourai {
 
 public static class DiscordExtensions {
 

@@ -4,19 +4,19 @@ using System.IO;
 using Discord;
 using Newtonsoft.Json;
 
-namespace DrumBot {
+namespace Hourai {
 
 public class Config {
 
   public const string ConfigFilePath = "config.json";
 
   public static void Load() {
-    string fullPath = Path.Combine(Bot.ExecutionDirectory,
+    string fullPath = Path.Combine(Bot.GetExecutionDirectory(),
         ConfigFilePath);
-    Log.Info($"Loading DrumBot config from {fullPath}...");
+    Log.Info($"Loading config from {fullPath}...");
     JsonConvert.DeserializeObject<Config>(File.ReadAllText(ConfigFilePath));
     Log.Info($"Setting log directory to: { LogDirectory }");
-    Log.Info($"Setting config directory to: { ConfigDirectory }");
+    Log.Info($"Setting database to: { DbFilename }");
     Log.Info("Config loaded.");
   }
 
@@ -35,16 +35,8 @@ public class Config {
   [JsonProperty]
   public static string LogDirectory { get; set; } = "logs";
 
-  // The subdirectory where the configs for each guild is stored.
   [JsonProperty]
-  public static string ConfigDirectory { get; set; } = "config";
-
-  // The subdirectory where the feed is stored.
-  [JsonProperty]
-  public static string FeedDirectory { get; set; } = "feeds";
-
-  [JsonProperty]
-  public static string AvatarDirectory { get; set; } = "avatars";
+  public static string DbFilename { get; set; } = "./bot.db";
 
   // The command prefix that triggers commands specified by the bot
   [JsonProperty]

@@ -1,6 +1,6 @@
 using System;
 
-namespace DrumBot {
+namespace Hourai {
 
 public class NotFoundException : Exception {
 

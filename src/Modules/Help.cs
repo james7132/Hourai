@@ -7,7 +7,7 @@ using Discord;
 using Discord.Commands;
 using Command = Discord.Commands.Command;
 
-namespace DrumBot {
+namespace Hourai {
 
 /// <summary>
 /// Generates a help method for all of a bot commands.

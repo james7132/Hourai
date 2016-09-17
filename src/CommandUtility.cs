@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Discord;
 
-namespace DrumBot {
+namespace Hourai {
 
 public static class CommandUtility {
 

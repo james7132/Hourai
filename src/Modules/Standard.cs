@@ -10,7 +10,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 
-namespace DrumBot {
+namespace Hourai {
 
 [Module]
 [ModuleCheck(ModuleType.Standard)]

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.Net;
 
-namespace DrumBot {
+namespace Hourai {
 
 public class ChannelLog {
 

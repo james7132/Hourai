@@ -9,7 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace DrumBot {
+namespace Hourai {
 
 public class BotDbContext : DbContext {
 
@@ -22,7 +22,8 @@ public class BotDbContext : DbContext {
   public bool AllowSave { get; set; } = true;
 
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
-    optionsBuilder.UseSqlite("Filename=./bot.db");
+    Config.Load();
+    optionsBuilder.UseSqlite($"Filename={Config.DbFilename}");
   }
 
   protected override void OnModelCreating(ModelBuilder builder) {
