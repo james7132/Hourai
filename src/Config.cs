@@ -10,14 +10,6 @@ public class Config {
 
   public const string ConfigFilePath = "config.json";
 
-  static readonly Dictionary<ulong, GuildConfig> _serversConfigs;
-
-  public static IEnumerable<GuildConfig> ServerConfigs => _serversConfigs.Values;
-
-  static Config() {
-    _serversConfigs = new Dictionary<ulong, GuildConfig>();
-  }
-
   public static void Load() {
     string fullPath = Path.Combine(Bot.ExecutionDirectory,
         ConfigFilePath);
@@ -28,30 +20,9 @@ public class Config {
     Log.Info("Config loaded.");
   }
 
-  public static GuildConfig GetGuildConfig(IGuild guild) {
-    if(!_serversConfigs.ContainsKey(guild.Id))
-      _serversConfigs[guild.Id] = new GuildConfig(guild);
-    return _serversConfigs[guild.Id];
-  }
-
-  public static GuildConfig GetGuildConfig(IChannel channel) {
-    var guildChannel = Check.NotNull(channel) as IGuildChannel;
-    if (guildChannel == null)
-      return null;
-    return GetGuildConfig(guildChannel.Guild);
-  }
-
-  public static ChannelConfig GetChannelConfig(IChannel channel) {
-    return GetGuildConfig(channel)?.GetChannelConfig(channel);
-  }
-
   // The login token used by the bot to access Discord 
   [JsonProperty]
   public static string Token { get; set; }
-
-  // The name of the bot.
-  [JsonProperty]
-  public static string BotName { get; set; }
 
   // The owner of the bot's ID.
   [JsonProperty]

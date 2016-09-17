@@ -13,6 +13,7 @@ using Discord.WebSocket;
 namespace DrumBot {
 
 [Module]
+[ModuleCheck(ModuleType.Standard)]
 public class Standard {
 
   [Command("echo")]
@@ -35,17 +36,20 @@ public class Standard {
   public async Task ServerInfo(IUserMessage message) {
     var builder = new StringBuilder();
     var server = Check.InGuild(message).Guild;
-    var config = Config.GetGuildConfig(server);
+    var guild = await Bot.Database.GetGuild(server);
     var owner = await server.GetUserAsync(server.OwnerId);
     var channels = await server.GetChannelsAsync();
     var textChannels = channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
     var voiceChannels = channels.OfType<IVoiceChannel>().Order().Select(ch => ch.Name.Code());
+    var roles = server.Roles.Where(r => r.Id != server.EveryoneRole.Id);
     builder.AppendLine($"Name: {server.Name.Code()}");
     builder.AppendLine($"ID: {server.Id.ToString().Code()}");
     builder.AppendLine($"Owner: {owner.Username.Code()}");
     builder.AppendLine($"Region: {server.VoiceRegionId.Code()}");
+    builder.AppendLine($"Created: {server.CreatedAt.ToString().Code()}");
     builder.AppendLine($"User Count: {server.GetUserCount().ToString().Code()}");
-    builder.AppendLine($"Roles: {server.Roles.Where(r => r.Id != server.EveryoneRole.Id).Order().Select(r => r.Name.Code()).Join(", ")}");
+    if(roles.Any())
+      builder.AppendLine($"Roles: {roles.Order().Select(r => r.Name.Code()).Join(", ")}");
     builder.AppendLine($"Text Channels: {textChannels.Join(", ")}");
     builder.AppendLine($"Voice Channels: {voiceChannels.Join(", ")}");
     if(!string.IsNullOrEmpty(server.IconUrl))
@@ -64,7 +68,9 @@ public class Standard {
     builder.AppendLine($"ID: {user.Id.ToString().Code()}");
     builder.AppendLine($"Joined on: {user.JoinedAt?.ToString().Code() ?? "N/A".Code()}");
     builder.AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
-    builder.AppendLine($"Roles: {user.Roles.Where(r => r.Id != user.Guild.EveryoneRole.Id).Select(r => r.Name.Code()).Join(", ")}");
+    var roles = user.Roles.Where(r => r.Id != user.Guild.EveryoneRole.Id);
+    if(roles.Any())
+      builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
     if(!string.IsNullOrEmpty(user.AvatarUrl))
       builder.AppendLine(user.AvatarUrl);
     return message.Channel.SendMessageAsync(builder.ToString());
@@ -123,23 +129,23 @@ public class Standard {
     [PublicOnly]
     [Remarks("Mentioned channels will not be searched in ``search all``, except while in said channel. "
       + "User must have ``Manage Channels`` permission")]
-    public async Task Ignore(IUserMessage message, params IGuildChannel[] channels) {
-      var channel = Check.InGuild(message);
-      var serverConfig = Config.GetGuildConfig(channel.Guild);
-      foreach (var ch in channels)
-        serverConfig.GetChannelConfig(ch).Ignore();
-      await message.Success();
+    public Task Ignore(IUserMessage msg, params IGuildChannel[] channels) {
+      return SetIgnore(msg, channels, true);
     }
 
     [Command("unigore")]
     [PublicOnly]
     [Remarks("Mentioned channels will appear in ``search all`` results." 
       +" User must have ``Manage Channels`` permission")]
-    public async Task Unignore(IUserMessage message, params IGuildChannel[] channels) {
+    public Task Unignore(IUserMessage msg, params IGuildChannel[] channels) {
+      return SetIgnore(msg, channels, false);
+    }
+
+    async Task SetIgnore(IUserMessage message, IEnumerable<IGuildChannel> channels, bool value) {
       var channel = Check.InGuild(message);
-      var serverConfig = Config.GetGuildConfig(channel.Guild);
-      foreach (var ch in channels)
-        serverConfig.GetChannelConfig(ch).Unignore();
+      foreach (var ch in channels) 
+        (await Bot.Database.GetChannel(ch)).SearchIgnored = value;
+      await Bot.Database.Save();
       await message.Success();
     }
 
@@ -184,52 +190,64 @@ public class Standard {
   public class Module {
 
     static readonly Type HideType = typeof(HideAttribute);
-    IEnumerable<string> Modules => Bot.CommandService.Modules.Where(m => !m.Source.IsDefined(HideType, false)).Select(m => m.Name).ToList();
+    static readonly Type moduleType = typeof(ModuleCheckAttribute);
+    IEnumerable<string> Modules => Bot.CommandService.Modules
+      .Where(m => !m.Source.IsDefined(HideType, false) &&
+           m.Source.IsDefined(moduleType, false))
+      .Select(m => m.Name).ToList();
 
     [Command]
     [PublicOnly]
-    [Alias("list")]
     [Permission(GuildPermission.ManageGuild, Require.User)]
     [Remarks("Lists all modules available. Enabled ones are highligted. Requires user to have ``Manage Server`` permission.")]
-    public Task ModuleList(IUserMessage message) {
-      var config = Config.GetGuildConfig(Check.InGuild(message));
-      return message.Respond(Modules.Select(s => (config.IsModuleEnabled(s)) ? s.Bold().Italicize() : s).Join(", "));
+    public async Task ModuleList(IUserMessage message) {
+      var config = await Bot.Database.GetGuild(Check.InGuild(message).Guild);
+      var modules = Enum.GetValues(typeof(ModuleType));
+      await message.Respond(modules.OfType<ModuleType>()
+          .Select(m => (config.IsModuleEnabled(m)) 
+            ? m.ToString().Bold().Italicize() 
+            : m.ToString())
+          .Join(", "));
     }
 
     [Command("enable")]
     [PublicOnly]
     [Permission(GuildPermission.ManageGuild, Require.User)]
     [Remarks("Enables a module for this server. Requires user to have ``Manage Server`` permission.")]
-    public Task ModuleEnable(IUserMessage message, params string[] modules) {
+    public async Task ModuleEnable(IUserMessage message, params string[] modules) {
       var response = new StringBuilder();
-      var config = Config.GetGuildConfig(Check.InGuild(message));
-      foreach (string module in modules) {
-        if(Modules.Contains(module, StringComparer.OrdinalIgnoreCase)) {
-          config.AddModule(module);
+      var config = await Bot.Database.GetGuild(Check.InGuild(message).Guild);
+      foreach (var module in modules) {
+        ModuleType type;
+        if(Enum.TryParse(module, true, out type)) {
+          config.AddModule(type);
           response.AppendLine($"{Config.SuccessResponse}: Module {module} enabled.");
         } else {
-          response.AppendLine($"No module named {module} found.");
+          response.AppendLine("Module {module} not found.");
         }
       }
-      return message.Respond(response.ToString());
+      await Bot.Database.Save();
+      await message.Respond(response.ToString());
     }
 
     [Command("disable")]
     [PublicOnly]
     [Permission(GuildPermission.ManageGuild, Require.User)]
     [Remarks("Disable a module for this server. Requires user to have ``Manage Server`` permission.")]
-    public Task ModuleDisable(IUserMessage message, params string[] modules) {
+    public async Task ModuleDisable(IUserMessage message, params string[]  modules) {
       var response = new StringBuilder();
-      var config = Config.GetGuildConfig(Check.InGuild(message));
-      foreach (string module in modules) {
-        if (Modules.Contains(module, StringComparer.OrdinalIgnoreCase)) {
-          config.RemoveModule(module);
+      var config = await Bot.Database.GetGuild(Check.InGuild(message).Guild);
+      foreach (var module in modules) {
+        ModuleType type;
+        if(Enum.TryParse(module, true, out type)) {
+          config.RemoveModule(type);
           response.AppendLine($"{Config.SuccessResponse}: Module {module} disabled.");
         } else {
-          response.AppendLine($"No module named {module} found.");
+          response.AppendLine("Module {module} not found.");
         }
       }
-      return message.Respond(response.ToString());
+      await Bot.Database.Save();
+      await message.Respond(response.ToString());
     }
   }
 }

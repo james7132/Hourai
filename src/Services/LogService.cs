@@ -60,17 +60,14 @@ public class LogService {
     // Log every public message not made by the bot.
     client.MessageReceived += m => {
       var channel = m.Channel as ITextChannel;
-      if (m.Author.IsMe() || channel == null)
+      if (m.Author.IsMe() || m.Author.IsBot ||channel == null)
           return Task.CompletedTask;
       return ChannelSet.Get(channel).LogMessage(m);
     };
 
     //// Make sure that every channel is available on loading up a server.
-    client.GuildAvailable += delegate (IGuild guild) {
-      foreach (ITextChannel channel in guild.GetTextChannels())
-        ChannelSet.Get(channel);
-      return Task.CompletedTask;
-    };
+    client.GuildAvailable += DownloadGuildChatLogs;
+    client.JoinedGuild += DownloadGuildChatLogs;
 
     // Keep up to date with channels
     client.ChannelCreated += channel => {
@@ -86,6 +83,12 @@ public class LogService {
       if (textChannel != null)
         await ChannelSet.Get(textChannel).DeletedChannel(textChannel);
     };
+  }
+
+  async Task DownloadGuildChatLogs(IGuild guild) {
+    foreach (ITextChannel channel in guild.GetTextChannels()) {
+      await ChannelSet.Add(channel);
+    }
   }
 
   Func<IRole, Task> RoleLog(string eventType) {

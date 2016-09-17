@@ -21,7 +21,7 @@ public static class Utility {
 
   public static bool RoleCheck(IGuildUser user, IRole role) {
     int position = role.Position;
-    return user.IsServerOwner() || user.Roles.Max(r => r.Position) > position;
+    return user.IsServerOwner() || user.Roles.Max(r => r.Position) >= position;
   }
 
   public static string DateString(DateTime date) {

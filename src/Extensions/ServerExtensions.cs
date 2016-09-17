@@ -13,8 +13,15 @@ public static class ServerExtensions {
     return role;
   }
 
-  public static bool AllowCommands(this IGuild guild)
-    => guild != null && Config.GetGuildConfig(guild).AllowCommands;
+  public static bool AllowCommands(this IGuild guild)  {
+    if(guild == null)
+      return false;
+#if DEBUG
+    return guild.Id == Config.TestServer;
+#else
+    return guild.Id != Config.TestServer;
+#endif
+  }
 
   public static bool AllowCommands(this IChannel channel) {
     if (channel == null)

@@ -4,6 +4,7 @@
   "LogDirectory" : "logs",
   "ConfigDirectory" : "config",
   "FeedDirectory" : "feeds",
+  "Version": "v0.3.0-alpha",
   "CommandPrefix" :  "~",
   "SuccessResponse": ":thumbsup:",
   "PruneLimit": 100

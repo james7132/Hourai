@@ -10,6 +10,7 @@ namespace DrumBot {
 
 [Module]
 [PublicOnly]
+[ModuleCheck(ModuleType.Admin)]
 public class Admin {
 
   [Command("kick")]
@@ -17,7 +18,7 @@ public class Admin {
   [Remarks("Kicks all mentioned users. Requires ``Kick Members`` permission.")]
   public async Task Kick(IUserMessage msg, 
                          params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "kick", async u => await u.KickAsync());
+    var action = await CommandUtility.Action(msg, "kick", u => u.KickAsync());
     await CommandUtility.ForEvery(msg, users, action);
   }
 
@@ -26,7 +27,20 @@ public class Admin {
   [Remarks("Bans all mentioned users. Requires ``Ban Members`` permission.")]
   public async Task Ban(IUserMessage msg, 
                         params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "ban", async u => await u.BanAsync());
+    var action = await CommandUtility.Action(msg, "ban", u => u.BanAsync());
+    await CommandUtility.ForEvery(msg, users, action);
+  }
+
+  [Command("softban")]
+  [Permission(GuildPermission.BanMembers)]
+  [Remarks("Softbans all mentioned users. Requires ``Ban Members`` permission.")]
+  public async Task Softban(IUserMessage msg, 
+                            params IGuildUser[] users) {
+    var action = await CommandUtility.Action(msg, "ban", async u => {
+        ulong id = u.Id;
+        await u.BanAsync();
+        await u.Guild.RemoveBanAsync(id);
+      });
     await CommandUtility.ForEvery(msg, users, action);
   }
 
@@ -107,16 +121,24 @@ public class Admin {
     [Command("embed")]
     [Permission(GuildPermission.ManageMessages)]
     [Remarks("Removes all messages with embeds or attachments in the last X messages. Requires ``Manage Messages`` permission.")]
-    public Task PruneEmbed(IUserMessage msg, int count = 100) {
+    public Task Embed(IUserMessage msg, int count = 100) {
       return PruneMessages(Check.InGuild(msg), m => m.Embeds.Any() || m.Attachments.Any(), count);
     }
 
     [Command("mine")]
     [Remarks("Removes all messages from the user using the command in the last X messages.")]
-    public Task PruneMine(IUserMessage msg, int count = 100) {
+    public Task Mine(IUserMessage msg, int count = 100) {
       ulong id = msg.Author.Id;
       return PruneMessages(Check.InGuild(msg), m => m.Author.Id == id, count);
     }
+
+    [Command("ping")]
+    [Permission(GuildPermission.ManageMessages)]
+    [Remarks("Removes all messages that mentioned other users or roles the last X messages. Requires ``Manage Messages`` permission.")]
+    public Task Mention(IUserMessage msg, int count = 100) {
+      return PruneMessages(Check.InGuild(msg), m => m.MentionedUsers.Any() || m.MentionedRoles.Any(), count);
+    }
+
 
     [Command("bot")]
     [Permission(GuildPermission.ManageMessages)]
@@ -171,6 +193,15 @@ public class Admin {
         }));
     }
 
+    [Command("list")]
+    [Remarks("Responds with a list of all text channels that the bot can see on this server.")]
+    public async Task ChannelList(IUserMessage msg) {
+      var guild = Check.InGuild(msg).Guild;
+      var channels = (await guild.GetChannelsAsync()).OfType<ITextChannel>();
+      await msg.Respond(channels.OrderBy(c => c.Position)
+          .Select(c => c.Mention).Join(", "));
+    }
+
   }
 
   [Group("role")]
@@ -183,6 +214,16 @@ public class Admin {
     public async Task Add(IUserMessage msg, IRole role, params IGuildUser[] users) {
       var action = await CommandUtility.Action(msg, "add role", async u => await u.AddRolesAsync(role));
       await CommandUtility.ForEvery(msg, users, action);
+    }
+
+    [Command("list")]
+    [Remarks("Lists all roles on this server.")]
+    public async Task List(IUserMessage msg) {
+      var guild = Check.InGuild(msg).Guild;
+      var roles = guild.Roles
+        .Where(r => r.Id != guild.EveryoneRole.Id)
+        .OrderBy(r => r.Position);
+      await msg.Respond(roles.Select(r => r.Name).Join(", "));
     }
 
     [Command("remove")]
@@ -206,12 +247,13 @@ public class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Bans all mentioned users from a specified role." + Requirement)]
     public async Task RoleBan(IUserMessage msg, IRole role, params IGuildUser[] users) {
-      var guildConfig = Config.GetGuildConfig(Check.InGuild(msg).Guild);
       var action = await CommandUtility.Action(msg, "ban",
         async u => {
           await u.RemoveRolesAsync(role);
-          guildConfig.GetUserConfig(u).BanRole(role);
+          var guildUser = await Bot.Database.GetGuildUser(u);
+          guildUser.BanRole(role);
         });
+      await Bot.Database.Save();
       await CommandUtility.ForEvery(msg, users, action);
     }
 
@@ -219,12 +261,12 @@ public class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Unban all mentioned users from a specified role." + Requirement)]
     public async Task RoleUnban(IUserMessage msg, IRole role, params IGuildUser[] users) {
-      var guildConfig = Config.GetGuildConfig(Check.InGuild(msg).Guild);
       var action = await CommandUtility.Action(msg, "ban",
-        u => {
-          guildConfig.GetUserConfig(u).UnbanRole(role);
-          return Task.CompletedTask;
+        async u => {
+          var guildUser = await Bot.Database.GetGuildUser(u);
+          guildUser.UnbanRole(role);
         });
+      await Bot.Database.Save();
       await CommandUtility.ForEvery(msg, users, action);
     }
 
