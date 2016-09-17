@@ -63,22 +63,28 @@ public class ChannelLog {
     return Path.Combine(ChannelDirectory, time) + FileType;
   }
 
+  public bool Initialized => Directory.Exists(ChannelDirectory);
+
+  public async Task Initialize() {
+    if (!Initialized) {
+      Directory.CreateDirectory(ChannelDirectory);
+      Log.Info($"Logs for { Channel.Name } do not exist. Downloading the most recent messages.");
+      LogChannelRecent(Channel);
+      await Task.Delay(400);
+    }
+  }
+
   public ChannelLog(ITextChannel channel) {
     Channel = channel;
     GuildDirectory = GetGuildDirectory(channel.Guild);
     ChannelDirectory = GetChannelDirectory(channel);
-    if (!Directory.Exists(ChannelDirectory)) {
-      Directory.CreateDirectory(ChannelDirectory);
-      Log.Info($"Logs for { channel.Name } do not exist. Downloading the most recent messages.");
-      LogChannelRecent(channel);
-    }
   }
 
   public async Task DeletedChannel(ITextChannel channel) {
     if (!Directory.Exists(ChannelDirectory))
       return;
-    var serverConfig = Config.GetGuildConfig(channel.Guild);
-    if(serverConfig.GetChannelConfig(channel).IsIgnored) {
+    var channelConfig = await Bot.Database.GetChannel(channel);
+    if(channelConfig.SearchIgnored) {
       Log.Info("Ignored channel deleted. Deleting logs...");
       await Utility.FileIO(() => Directory.Delete(ChannelDirectory, true));
     } else {
@@ -141,7 +147,7 @@ public class ChannelLog {
     if(Channel == null)
       throw new InvalidOperationException("A channel must be defined to search the target directory");
     var guild = Channel.Guild;
-    var guildConfig = Config.GetGuildConfig(guild);
+    var guildConfig = await Bot.Database.GetGuild(guild);
     var res =
         from file in Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories).AsParallel()
         from line in File.ReadLines(file)
@@ -154,12 +160,15 @@ public class ChannelLog {
       if (!re.Any())
         continue;
       var name = re.Key;
+      Log.Info(name);
       ulong id;
       if(ulong.TryParse(name, out id)) {
         var channel = await guild.GetChannelAsync(id);
         if (channel != null) {
-          if(channel != Channel && guildConfig.GetChannelConfig(channel).IsIgnored)
+          var config = await Bot.Database.GetChannel(channel);
+          if(channel != Channel && config.SearchIgnored)
             continue;
+          Log.Info(channel.Name + " " + config.SearchIgnored);
           name = channel.Name;
         }
       }

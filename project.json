@@ -5,8 +5,7 @@
 		"emitEntryPoint": true,
 		"copyToOutput": {
 			"include": [
-				"config.json",
-				"avatars/"
+				"config.json"
 			]
 		}
 	},

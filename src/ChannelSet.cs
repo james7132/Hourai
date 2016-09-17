@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Discord;
+using System.Threading.Tasks;
 
 namespace DrumBot {
 
@@ -11,10 +12,17 @@ public class ChannelSet {
     _channels = new Dictionary<ulong, ChannelLog>();
   }
 
+  public async Task Add(ITextChannel channel) {
+    ulong id = channel.Id;
+    bool success = !_channels.ContainsKey(id);
+    if (success)
+      _channels[id] = new ChannelLog(channel);
+    await _channels[id].Initialize();
+  }
+
   public ChannelLog Get(ITextChannel channel) {
     ulong id = channel.Id;
-    if (!_channels.ContainsKey(id))
-      _channels[id] = new ChannelLog(channel);
+    Add(channel);
     return _channels[id];
   }
 

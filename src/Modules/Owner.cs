@@ -1,8 +1,11 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Net;
 using Discord.Rest;
 using Discord.WebSocket;
 using Discord.Commands;
@@ -20,7 +23,7 @@ public class Owner {
 
   [Command("log")]
   [Remarks("Gets the log for the bot.")]
-  public async Task Log(IUserMessage message) {
+  public async Task GetLog(IUserMessage message) {
     await message.Channel.SendFileRetry(Bot.BotLog);
   }
 
@@ -43,8 +46,9 @@ public class Owner {
   [Command("kill")]
   [Remarks("Turns off the bot.")]
   public async Task Kill(IUserMessage message) {
+    await Bot.Database.Save();
     await message.Success();
-    Environment.Exit(-1);
+    Bot.Exit();
   }
 
   [Command("broadcast")]
@@ -58,8 +62,7 @@ public class Owner {
   [Command("save")]
   [Remarks("Forces the bot to flush and save all active information")]
   public async Task SaveAll(IUserMessage msg) {
-    foreach(var config in Config.ServerConfigs)
-      config.Save();
+    await Bot.Database.Save();
     await msg.Success();
   }
 
@@ -90,6 +93,32 @@ public class Owner {
     await msg.Respond(builder.ToString());
   }
 
+  [Command("refresh")]
+  public async Task Refresh(IUserMessage msg) {
+    var client = Bot.Client;
+    var guilds = await client.GetGuildsAsync();
+    var db = Bot.Database;
+    Log.Info("Starting refresh...");
+    foreach(var guild in guilds) {
+      db.AllowSave = false;
+      var guildDb = await Bot.Database.GetGuild(guild);
+      Log.Info($"Refreshing {guild.Name}...");
+      var cTask = guild.GetChannelsAsync();
+      var uTask = guild.GetUsersAsync();
+      await Task.WhenAll(cTask, uTask);
+      var channels = cTask.Result.OfType<ITextChannel>();
+      var users = uTask.Result;
+      foreach(var channel in channels)
+        await db.GetChannel(channel);
+      foreach(var user in users)
+        await db.GetGuildUser(user);
+      Bot.Database.AllowSave = true;
+      await Bot.Database.Save();
+    }
+    Log.Info("Done refreshing.");
+    await msg.Success();
+  }
+
   static readonly string[] SizeSuffixes = {"B","KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
 
   static string BytesToMemoryValue(long bytes) {
@@ -110,6 +139,27 @@ public class Owner {
     await msg.Success();
   }
 
+  [Command("reavatar")]
+  [Remarks("Changes the avatar of the bot.")]
+  public async Task Reavatar(IUserMessage msg, [Remainder] string url = "") {
+    if(msg.Attachments.Any())
+      url = msg.Attachments.First().Url;
+    if(msg.Embeds.Any())
+      url = msg.Embeds.First().Url;
+    if(string.IsNullOrEmpty(url)) {
+      await msg.Respond("No provided image.");
+      return;
+    }
+    Log.Info(url);
+    using(var client = new HttpClient())
+    using(var contentStream = await client.GetStreamAsync(url)) {
+      await Bot.User.ModifyAsync(u => {
+          u.Avatar = contentStream;
+        });
+    }
+    await msg.Success();
+  }
+
   [Command("leave")]
   [Remarks("Makes the bot leave the current server")]
   public async Task Leave(IUserMessage msg) {
@@ -122,11 +172,11 @@ public class Owner {
   [Remarks("Blacklists the current server and makes teh bot leave.")]
   public async Task Blacklist(IUserMessage msg) {
     var guild = Check.InGuild(msg).Guild;
-    var config = Config.GetGuildConfig(guild);
+    var config = await Bot.Database.GetGuild(guild);
     config.IsBlacklisted = true;
-    config.Save();
     await msg.Success();
     await guild.LeaveAsync();
+    await Bot.Database.Save();
   }
 
 }

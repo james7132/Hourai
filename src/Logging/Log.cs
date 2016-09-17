@@ -3,39 +3,39 @@ using System.Diagnostics;
 
 namespace DrumBot {
 
-public enum LogLevel {
-  Debug = 0,
-  Info = 1,
-  Warning = 2,
-  Error = 3
-}
-
 public static class Log {
 
+  public enum Level {
+    Debug = 0,
+    Info = 1,
+    Warning = 2,
+    Error = 3
+  }
+
 #if DEBUG
-  public static LogLevel Level = LogLevel.Debug;
+  public static Level LogLevel = Level.Debug;
 #else
-  public static LogLevel Level = LogLevel.Info;
+  public static Level LogLevel = Level.Info;
 #endif
 
   public static void Info(object value) {
-      LogValue(LogLevel.Info, value);
+      LogValue(Level.Info, value);
   }
 
   public static void Debug(object value) {
-      LogValue(LogLevel.Debug, value);
+      LogValue(Level.Debug, value);
   }
 
   public static void Warning(object value) {
-      LogValue(LogLevel.Warning, value);
+      LogValue(Level.Warning, value);
   }
 
   public static void Error(object value) {
-      LogValue(LogLevel.Error, value);
+      LogValue(Level.Error, value);
   }
 
-  static void LogValue(LogLevel level, object value) {
-      if (level < Level)
+  static void LogValue(Level level, object value) {
+      if (level < LogLevel)
           return;
       Trace.WriteLine($"[{level}] {Utility.DateString(DateTime.Now)}: {value}");
   }

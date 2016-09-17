@@ -11,9 +11,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 
-
 namespace DrumBot {
-
 
 class Bot {
 
@@ -26,6 +24,7 @@ class Bot {
   public static IUser Owner { get; set; }
   public static CounterSet Counters { get; private set; }
   public static ChannelSet Channels { get; private set; }
+  public static BotDbContext Database { get; private set; }
 
   public static string ExecutionDirectory { get; private set; }
   public static string BotLog { get; private set; }
@@ -38,6 +37,8 @@ class Bot {
   LogService LogService { get; }
   CounterService CounterService { get; }
   readonly List<string> _errors;
+  static bool Exited { get; set; }
+  static TaskCompletionSource<object> ExitSource { get; set; }
 
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
@@ -49,6 +50,7 @@ class Bot {
     Channels = new ChannelSet();
     Counters = new CounterSet(new ActivatorFactory<SimpleCounter>());
     _errors = new List<string>();
+    ExitSource = new TaskCompletionSource<object>();
 
     ExecutionDirectory = GetExecutionDirectory();
     SetupLogs();
@@ -61,16 +63,15 @@ class Bot {
     LogService = new LogService(Client, Channels);
     CounterService = new CounterService(Client, Counters);
     CommandService = new CommandService();
-
-    Log.Info($"Starting {Config.BotName}...");
-
     Client.GuildAvailable += CheckBlacklist(false);
     Client.JoinedGuild += CheckBlacklist(true);
+
+    Log.Info($"Starting...");
   }
 
   Func<IGuild, Task> CheckBlacklist(bool normalJoin) {
     return async guild => {
-      var config = Config.GetGuildConfig(guild);
+      var config = await Database.GetGuild(guild);
       var defaultChannel = (await guild.GetChannelAsync(guild.DefaultChannelId)) as ITextChannel;
       if(config.IsBlacklisted) {
         Log.Info($"Added to blacklisted guild {guild.Name} ({guild.Id})");
@@ -88,6 +89,12 @@ class Bot {
             $"For more information, see https://github.com/james7132/DrumBot");
       }
     };
+  }
+
+  public static void Exit() {
+    Exited = true;
+    Log.Info("Bot exit has registered. Will exit on next cycle.");
+    ExitSource.SetResult(new object());
   }
 
   async Task Initialize() {
@@ -172,7 +179,10 @@ class Bot {
       return false;
     var commandName = customCommandCheck[0];
     argPos += commandName.Length;
-    var command = Config.GetGuildConfig(msg.Channel)?.GetCustomCommand(commandName);
+    var guild = (msg.Channel as ITextChannel)?.Guild;
+    if(guild == null)
+      return false;
+    var command = Bot.Database.Commands.FirstOrDefault(c => c.GuildId == guild.Id && c.Name == commandName);
     if (command == null)
       return false;
     await command.Execute(msg, msg.Content.Substring(argPos));
@@ -191,7 +201,7 @@ class Bot {
 
   async Task MainLoop() {
     Log.Info("Connecting to Discord...");
-    await Client.LoginAsync(TokenType.Bot, Config.Token);
+    await Client.LoginAsync(TokenType.Bot, Config.Token, false);
     await Client.ConnectAsync();
     var self = await Client.GetCurrentUserAsync();
     Log.Info($"Logged in as {self.ToIDString()}");
@@ -203,25 +213,23 @@ class Bot {
     SendOwnerErrors();
 
     Log.Info("Commands: " + CommandService.Commands.Select(c => c.Text).Join(", "));
-    while (true) {
-      var path = Directory.GetFiles(Path.Combine(ExecutionDirectory, Config.AvatarDirectory)).SelectRandom();
-      await Utility.FileIO(async delegate {
-        using (var stream = new FileStream(path, FileMode.Open))
-          await User.ModifyAsync(u => u.Avatar = stream);
-      });
+    while (!Exited) {
       await User.ModifyStatusAsync(u => u.Game = new Game(Config.Version));
-      await Task.Delay(300000);
+      await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
+      await Database.Save();
     }
   }
 
   public async Task Run() {
     await Initialize();
-    while (true) {
-      try {
-        await MainLoop();
-      } catch (Exception error) {
-        Log.Error(error);
-        _errors.Add(error.Message);
+    using(Database = new BotDbContext()) {
+      while (!Exited) {
+        try {
+          await MainLoop();
+        } catch (Exception error) {
+          Log.Error(error);
+          _errors.Add(error.Message);
+        }
       }
     }
   }

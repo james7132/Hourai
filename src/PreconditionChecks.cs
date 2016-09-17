@@ -1,8 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using Discord;
-using Discord.Commands;
-
+using Discord; using Discord.Commands; 
 namespace DrumBot {
 
     public class PublicOnlyAttribute : PreconditionAttribute {
@@ -33,19 +31,33 @@ namespace DrumBot {
         }
     }
 
+    public enum ModuleType : long{
+      Standard = 1 << 0,
+      Admin = 1 << 1,
+      Command = 1 << 2,
+      Feeds = 1 << 3
+    }
+
     public class ModuleCheckAttribute : PublicOnlyAttribute {
-        public override async Task<PreconditionResult> CheckPermissions(
-            IUserMessage context,
-            Command executingCommand,
-            object moduleInstance) {
-            var baseCheck = await base.CheckPermissions(context, executingCommand, moduleInstance);
-            if (!baseCheck.IsSuccess)
-                return baseCheck;
-            var config = Config.GetGuildConfig(QCheck.InGuild(context).Guild);
-            if (config.IsModuleEnabled(executingCommand.Module.Name))
-                return PreconditionResult.FromSuccess();
-            return PreconditionResult.FromError($"Module \"{executingCommand.Module.Name}\" is not enabled.");
-        }
+
+      public ModuleType Module { get; }
+
+      public ModuleCheckAttribute(ModuleType module) {
+        Module = module;
+      }
+
+      public override async Task<PreconditionResult> CheckPermissions(
+          IUserMessage context,
+          Command executingCommand,
+          object moduleInstance) {
+        var baseCheck = await base.CheckPermissions(context, executingCommand, moduleInstance);
+        if (!baseCheck.IsSuccess)
+            return baseCheck;
+        var guild = await Bot.Database.GetGuild(Check.InGuild(context).Guild);
+        if (guild.IsModuleEnabled(Module))
+            return PreconditionResult.FromSuccess();
+        return PreconditionResult.FromError($"Module \"{executingCommand.Module.Name}\" is not enabled.");
+      }
     }
 
     public class BotOwnerAttribute : PreconditionAttribute {
@@ -160,16 +172,21 @@ namespace DrumBot {
             if (QCheck.InGuild(context) == null)
                 return Task.FromResult(PreconditionResult.FromError("Not in server."));
             var user = context.Author as IGuildUser;
-            if (!user.IsServerOwner())
+            if (!user.IsServerOwner() && !user.IsBotOwner())
                 return Task.FromResult(PreconditionResult.FromError($"{user.Username} you are not the owner of this server, and thus cannot run {executingCommand.Text.Code()}"));
             return Task.FromResult(PreconditionResult.FromSuccess());
         }
     }
 
-    public class MinimumRoleAttribute : PreconditionAttribute {
-        readonly string _roleType;
+    [Flags]
+    public enum MinimumRole : long {
+      Command = 1 << 0
+    }
 
-        public MinimumRoleAttribute(string roleType) { this._roleType = roleType; }
+    public class MinimumRoleAttribute : PreconditionAttribute {
+        readonly MinimumRole _roleType;
+
+        public MinimumRoleAttribute(MinimumRole role) { this._roleType = role; }
 
         public override async Task<PreconditionResult> CheckPermissions(
             IUserMessage context,
@@ -182,14 +199,14 @@ namespace DrumBot {
             if (user.IsBotOwner() || user.IsServerOwner())
                 return PreconditionResult.FromSuccess();
             var server = user.Guild;
-            var serverConfig = Config.GetGuildConfig(server);
-            ulong? minRole = serverConfig.GetMinimumRole(_roleType);
+            var guild = await Bot.Database.GetGuild(server);
+            ulong? minRole = guild.GetMinimumRole(_roleType);
             if (minRole == null)
-                return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.Code()} is set.");
+                return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.ToString().Code()} is set.");
             var role = server.GetRole(minRole.Value);
             if (role == null) {
                 var owner = await server.GetOwnerAsync();
-                return PreconditionResult.FromError($"{owner.Mention} the role for {_roleType.Code()} no longer exists, and you are the only one who can now run it.");
+                return PreconditionResult.FromError($"{owner.Mention} the role for {_roleType.ToString().Code()} no longer exists, and you are the only one who can now run it.");
             }
             if (!Utility.RoleCheck(user, role))
                 return PreconditionResult.FromError($"{user.Mention} you do not have the minimum role to run this command. You need at least the {role.Name.Code()} to run it.");

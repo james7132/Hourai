@@ -149,11 +149,11 @@ public class Help {
   [Command("help")]
   [Remarks("Gets information about commands")]
   public async Task HelpCommand(IUserMessage message, [Remainder] string command = "") {
-    if(command.IsNullOrEmpty()) {
-      await message.Respond(await GetGeneralHelp(message));
-      return;
-    }
     try {
+      if(command.IsNullOrEmpty()) {
+        await message.Respond(await GetGeneralHelp(message));
+        return;
+      }
       foreach (CommandGroup commandGroup in Modules.Values) {
         string specificHelp = await commandGroup.GetSpecficHelp(message, command);
         if (specificHelp.IsNullOrEmpty())
@@ -177,9 +177,13 @@ public class Help {
         builder.Append((name + ": ").Bold());
       builder.AppendLine(await kvp.Value.ListSubcommands(message));
     }
-    var guildConfig = Config.GetGuildConfig(message.Channel);
-    if(guildConfig != null && guildConfig.CustomCommands.Count > 0)
-      builder.AppendLine($"{"Custom: ".Bold()} {guildConfig.CustomCommands.Select(c => c.Key.Code()).Join(", ")}");
+    var channel = message.Channel as ITextChannel;
+    if(channel != null) {
+      var guild = await Bot.Database.GetGuild(channel.Guild);
+      var commands = guild.Commands;
+      if(commands != null && commands.Count > 0)
+        builder.AppendLine($"{"Custom: ".Bold()} {commands.Select(c => c.Name.Code()).Join(", ")}");
+    }
     return $"{message.Author.Mention} here are the commands you can use:\n{builder}\nRun ``help <command>`` for more information";
   }
 
