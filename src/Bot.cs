@@ -11,7 +11,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 
-namespace DrumBot {
+namespace Hourai {
 
 class Bot {
 
@@ -86,7 +86,7 @@ class Bot {
         await defaultChannel.Respond(
             $"Hello {guild.Name}! {User.Username} has been added to your server!\n" +
             $"To see available commands, run the command {help}\n" +
-            $"For more information, see https://github.com/james7132/DrumBot");
+            $"For more information, see https://github.com/james7132/Hourai");
       }
     };
   }
@@ -112,7 +112,7 @@ class Bot {
     await CommandService.Load(new Help());
   }
 
-  static string GetExecutionDirectory() {
+  public static string GetExecutionDirectory() {
     var uri = new UriBuilder(Assembly.GetEntryAssembly().CodeBase);
     string path = Uri.UnescapeDataString(uri.Path);
     return Path.GetDirectoryName(path);

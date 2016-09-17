@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Discord;
 
-namespace DrumBot {
+namespace Hourai {
 
 public static class UserExtensions {
 

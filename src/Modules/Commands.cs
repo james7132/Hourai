@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 
-namespace DrumBot {
+namespace Hourai {
 
 [Module("command")]
 [PublicOnly]

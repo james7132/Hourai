@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Discord;
 
-namespace DrumBot {
+namespace Hourai {
 
 public static class ServerExtensions {
 

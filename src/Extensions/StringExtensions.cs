@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using Discord;
 
-namespace DrumBot {
+namespace Hourai {
 
 public static class StringExtensions {
 

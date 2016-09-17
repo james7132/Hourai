@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Discord;
 using System.Threading.Tasks;
 
-namespace DrumBot {
+namespace Hourai {
 
 public class ChannelSet {
 
