@@ -1,4 +1,4 @@
-# DrumBot - A bot for Discord
+# Hourai - A Discord Bot
 
 <p align="center">
     <a href="https://opensource.org/licenses/mit-license.php">
