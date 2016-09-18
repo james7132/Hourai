@@ -22,7 +22,7 @@ public class ChannelSet {
 
   public ChannelLog Get(ITextChannel channel) {
     ulong id = channel.Id;
-    Add(channel);
+    Add(channel).Wait();
     return _channels[id];
   }
 

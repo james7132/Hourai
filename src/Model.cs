@@ -16,6 +16,7 @@ public class BotDbContext : DbContext {
   public DbSet<Guild> Guilds { get; set; }
   public DbSet<Channel> Channels { get; set; }
   public DbSet<User> Users { get; set; }
+  public DbSet<Username> Usernames { get; set; }
   public DbSet<GuildUser> GuildUsers { get; set; }
   public DbSet<CustomCommand> Commands { get; set; }
 
@@ -73,7 +74,8 @@ public class BotDbContext : DbContext {
 
   public User FindUser(IUser iuser) {
     Check.NotNull(iuser);
-    return Users.FirstOrDefault(u => u.Id == iuser.Id);
+    return Users.Include(u => u.Usernames)
+      .FirstOrDefault(u => u.Id == iuser.Id);
   }
 
   public async Task<User> GetUser(IUser iuser) {
@@ -254,24 +256,35 @@ public class User {
   [DatabaseGenerated(DatabaseGeneratedOption.None)]
   public ulong Id { get; set; }
   [Required]
+  public string Username { get; set; }
+  [Required]
   public ICollection<Username> Usernames { get; set; }
   [Required]
   public ICollection<GuildUser> GuildUsers { get; set; }
   public bool IsBlacklisted { get; set; }
 
-  public User()  {
+  public User() {
   }
 
   public User(IUser user) : this() {
     Check.NotNull(user);
     Id = user.Id;
-    Usernames = new List<Username> { 
-      new Username {
-        User = this,
-        Date = DateTimeOffset.Now,
-        Name = user.Username
-      }
+    Usernames = new List<Username>();
+    AddName(user.Username);
+  }
+
+  public void AddName(string name) {
+    if(Username == name)
+      return;
+    Log.Info($"User updated username: {Username} => {name} ({Id})");
+    Username = name;
+    var newUsername = new Username {
+       User = this,
+       Date = DateTimeOffset.Now,
+       Name = Username 
     };
+    Usernames.Add(newUsername);
+    Bot.Database.Usernames.Add(newUsername);
   }
 
 }
@@ -343,8 +356,10 @@ public class Username {
 
   [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
   public ulong UserId { get; set; }
-  public DateTimeOffset Date { get; set; }
+  [Required]
   public string Name { get; set; }
+  [Required]
+  public DateTimeOffset Date { get; set; }
 
   [ForeignKey("UserId")]
   public User User { get; set; }
@@ -357,7 +372,9 @@ public class CustomCommand {
   [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
   public ulong GuildId { get; set; }
   public Guild Guild { get; set; }
+  [Required]
   public string Name { get; set; }
+  [Required]
   public string Response { get; set; }
 
   public CustomCommand() {
