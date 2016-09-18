@@ -19,7 +19,6 @@ class Bot {
 
   public static DiscordSocketClient Client { get; private set; }
   public static DiscordSocketConfig ClientConfig { get; private set; }
-  public static CommandService CommandService { get; private set; }
   public static ISelfUser User { get; private set; }
   public static IUser Owner { get; set; }
   public static CounterSet Counters { get; private set; }
@@ -34,8 +33,11 @@ class Bot {
 
   IDMChannel OwnerChannel { get; set; }
 
+  public static CommandService CommandService { get; private set; }
   LogService LogService { get; }
   CounterService CounterService { get; }
+  DatabaseService DatabaseService { get; set; }
+
   readonly List<string> _errors;
   static bool Exited { get; set; }
   static TaskCompletionSource<object> ExitSource { get; set; }
@@ -223,6 +225,7 @@ class Bot {
   public async Task Run() {
     await Initialize();
     using(Database = new BotDbContext()) {
+      DatabaseService = new DatabaseService(Database, Client);
       while (!Exited) {
         try {
           await MainLoop();
