@@ -112,27 +112,27 @@ public class Standard {
     [Command]
     [PublicOnly]
     [Remarks("Search the history of the current channel for messages that match all of the specfied search terms.")]
-    public async Task SearchChat(IUserMessage message, params string[] terms) {
-      await SearchChannel(message, ExactMatch(terms));
+    public Task SearchChat(IUserMessage message, params string[] terms) {
+      return SearchChannel(message, ExactMatch(terms));
     }
 
     [Command("regex")]
     [PublicOnly]
     [Remarks("Search the history of the current channel for matches to a specfied regex.")]
-    public async Task SearchRegex(IUserMessage message, string regex) {
-      await SearchChannel(message, RegexMatch(regex));
+    public Task SearchRegex(IUserMessage message, string regex) {
+      return SearchChannel(message, RegexMatch(regex));
     }
 
     [Command("day")]
     [PublicOnly]
     [Remarks("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
-    public async Task Day(IUserMessage message, string day) {
+    public Task Day(IUserMessage message, string day) {
       var channel = Check.InGuild(message);
       string path = Bot.Logs.GetChannel(channel).GetPath(day);
       if (File.Exists(path))
-        await message.SendFileRetry(path);
+        return message.SendFileRetry(path);
       else
-        await message.Respond($"A log for {channel.Mention} on date {day} cannot be found.");
+        return message.Respond($"A log for {channel.Mention} on date {day} cannot be found.");
     }
 
     [Command("ignore")]
@@ -188,10 +188,13 @@ public class Standard {
     }
 
     async Task SearchChannel(IUserMessage message, Func<string, bool> pred) {
-      var channel = Check.InGuild(message);
-      string reply = await Bot.Logs.GetChannel(channel).Search(pred);
-      await message.Respond(reply);
-      //await message.Respond($"Matches found in {channel.Name}:\n{reply}");
+      try {
+        var channel = Check.InGuild(message);
+        string reply = await Bot.Logs.GetChannel(channel).Search(pred);
+        await message.Respond(reply);
+      } catch(Exception e) {
+        Log.Error(e);
+      }
     }
 
   } 

@@ -118,7 +118,7 @@ public class ChannelLog : AbstractDiscordLog {
     var guild = Channel.Guild;
     var guildConfig = await Bot.Database.GetGuild(guild);
     var res =
-        from file in Directory.EnumerateFiles(directory, "/*/*.*", SearchOption.AllDirectories).AsParallel()
+        from file in Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories).AsParallel()
         from line in File.ReadLines(file)
         where pred(line)
         group line by Directory.GetParent(file).Name into g
