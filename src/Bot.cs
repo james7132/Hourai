@@ -22,7 +22,7 @@ class Bot {
   public static ISelfUser User { get; private set; }
   public static IUser Owner { get; set; }
   public static CounterSet Counters { get; private set; }
-  public static ChannelSet Channels { get; private set; }
+  public static LogSet Logs { get; private set; }
   public static BotDbContext Database { get; private set; }
 
   public static string ExecutionDirectory { get; private set; }
@@ -49,7 +49,7 @@ class Bot {
   public Bot() {
     _initialized = false;
     StartTime = DateTime.Now;
-    Channels = new ChannelSet();
+    Logs = new LogSet();
     Counters = new CounterSet(new ActivatorFactory<SimpleCounter>());
     _errors = new List<string>();
     ExitSource = new TaskCompletionSource<object>();
@@ -62,7 +62,7 @@ class Bot {
 
     ClientConfig = new DiscordSocketConfig();
     Client = new DiscordSocketClient(ClientConfig);
-    LogService = new LogService(Client, Channels);
+    LogService = new LogService(Client, Logs);
     CounterService = new CounterService(Client, Counters);
     CommandService = new CommandService();
     Client.GuildAvailable += CheckBlacklist(false);

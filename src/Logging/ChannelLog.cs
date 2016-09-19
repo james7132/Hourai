@@ -9,7 +9,7 @@ using Discord.Net;
 
 namespace Hourai {
 
-public class ChannelLog {
+public class ChannelLog : AbstractDiscordLog {
 
   /// <summary>
   /// A replacement for all new lines to keep all messages on one line while logging.
@@ -21,40 +21,14 @@ public class ChannelLog {
   /// <summary>
   /// The directory where all of the logs for specifically the channel described here is stored.
   /// </summary>
-  public string GuildDirectory { get; }
-
-  /// <summary>
-  /// The directory where all of the logs for specifically the channel described here is stored.
-  /// </summary>
   public string ChannelDirectory { get; }
-
-  const string DateFormat = "yyyy-MM-dd";
-  const string FileType = ".log";
-
-  /// <summary>
-  /// The absolute path to the directory where all of the logs are stored.
-  /// </summary>
-  public static readonly string LogDirectory;
-
-  static ChannelLog() {
-    LogDirectory = Path.Combine(Bot.ExecutionDirectory, Config.LogDirectory);
-    Log.Info($"Chat Log Directory: { LogDirectory }");
-  }
-
-  public static string GetGuildDirectory(IGuild guild) {
-    return Path.Combine(LogDirectory, Check.NotNull(guild).Id.ToString());
-  }
-
-  public static string GetChannelDirectory(IGuildChannel channel) {
-    return Path.Combine(GetGuildDirectory(channel.Guild), channel.Id.ToString());
-  }
 
   /// <summary>
   /// Gets the path of the log file for this channel on a certain day.
   /// </summary>
   /// <param name="time">the day specified</param>
   /// <returns>the path to the log file</returns>
-  public string GetPath(DateTimeOffset time) {
+  public override string GetPath(DateTimeOffset time) {
     return GetPath(time.ToString(DateFormat));
   }
 
@@ -78,6 +52,7 @@ public class ChannelLog {
     Channel = channel;
     GuildDirectory = GetGuildDirectory(channel.Guild);
     ChannelDirectory = GetChannelDirectory(channel);
+    SaveDirectory = ChannelDirectory;
   }
 
   public async Task DeletedChannel(ITextChannel channel) {
@@ -118,15 +93,9 @@ public class ChannelLog {
   /// Logs a message.
   /// </summary>
   /// <param name="message">the message to log</param>
-  public async Task LogMessage(IMessage message) {
-    if(message == null)
-      throw new ArgumentNullException();
-    var timestamp = message.Timestamp;
-    var path = GetPath(timestamp);
-    await Utility.FileIO(async delegate {
-      using (StreamWriter writer = File.AppendText(path))
-        await writer.WriteLineAsync(MessageToLog($"{Utility.DateString(timestamp)} - { message.ToProcessedString() }"));
-    });
+  public Task LogMessage(IMessage message) {
+    Check.NotNull(message);
+    return LogEvent(MessageToLog(message.ToProcessedString()), message.Timestamp);
   }
 
   /// <summary>
@@ -149,7 +118,7 @@ public class ChannelLog {
     var guild = Channel.Guild;
     var guildConfig = await Bot.Database.GetGuild(guild);
     var res =
-        from file in Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories).AsParallel()
+        from file in Directory.EnumerateFiles(directory, "/*/*.*", SearchOption.AllDirectories).AsParallel()
         from line in File.ReadLines(file)
         where pred(line)
         group line by Directory.GetParent(file).Name into g
@@ -168,7 +137,6 @@ public class ChannelLog {
           var config = await Bot.Database.GetChannel(channel);
           if(channel != Channel && config.SearchIgnored)
             continue;
-          Log.Info(channel.Name + " " + config.SearchIgnored);
           name = channel.Name;
         }
       }
