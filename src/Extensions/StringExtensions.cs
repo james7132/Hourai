@@ -95,11 +95,13 @@ public static class StringExtensions {
     => CamelCaseRegex.Replace(str, $"$1{delimiter}");
 
   public static string ToIDString(this IGuildChannel channel) 
-    => $"#{channel.Name} ({channel.Id})";
-  public static string ToIDString(this IGuild server) 
-    => $"{server.Name} ({server.Id})";
+    => channel != null ? $"#{channel.Name} ({channel.Id})" : "N/A";
+  public static string ToIDString(this IGuild guild) 
+    => guild != null ? $"{guild.Name} ({guild.Id})" : "N/A";
   public static string ToIDString(this IUser user) 
-    => $"{user.Username} ({user.Id})";
+    => user != null ? $"{user.Username} ({user.Id})" : "N/A";
+  public static string ToIDString(this IRole role) 
+    => role != null ? $"{role.Name} ({role.Id})" : "N/A";
 }
 
 }

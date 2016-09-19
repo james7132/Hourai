@@ -32,6 +32,7 @@ public class Standard {
   }
 
   [Command("serverinfo")]
+  [PublicOnly]
   [Remarks("Gets general information about the current server")]
   public async Task ServerInfo(IUserMessage message) {
     var builder = new StringBuilder();
@@ -55,6 +56,15 @@ public class Standard {
     if(!string.IsNullOrEmpty(server.IconUrl))
       builder.AppendLine(server.IconUrl);
     await message.Respond(builder.ToString());
+  }
+
+  [Command("channelinfo")]
+  [PublicOnly]
+  [Remarks("Gets information on a specified channel")]
+  public Task ChannelInfo(IUserMessage msg, IGuildChannel channel = null) {
+    if(channel == null)
+      channel = Check.InGuild(msg);
+    return msg.Respond($"ID: {channel.Id.ToString().Code()}");
   }
 
   [Command("whois")]
@@ -118,7 +128,7 @@ public class Standard {
     [Remarks("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
     public async Task Day(IUserMessage message, string day) {
       var channel = Check.InGuild(message);
-      string path = Bot.Channels.Get(channel).GetPath(day);
+      string path = Bot.Logs.GetChannel(channel).GetPath(day);
       if (File.Exists(path))
         await message.SendFileRetry(path);
       else
@@ -169,7 +179,7 @@ public class Standard {
       async Task SearchAll(IUserMessage message, Func<string, bool> pred) {
         try {
           var channel = Check.InGuild(message);
-          string reply = await Bot.Channels.Get(channel).SearchAll(pred);
+          string reply = await Bot.Logs.GetChannel(channel).SearchAll(pred);
           await message.Respond(reply);
         } catch (Exception e) {
           Log.Error(e);
@@ -179,7 +189,7 @@ public class Standard {
 
     async Task SearchChannel(IUserMessage message, Func<string, bool> pred) {
       var channel = Check.InGuild(message);
-      string reply = await Bot.Channels.Get(channel).Search(pred);
+      string reply = await Bot.Logs.GetChannel(channel).Search(pred);
       await message.Respond(reply);
       //await message.Respond($"Matches found in {channel.Name}:\n{reply}");
     }
