@@ -51,8 +51,6 @@ public class LogService {
     client.UserBanned += (u, g) => UserLog("banned")(u);
     client.UserUnbanned += (u, g) => UserLog("unbanned")(u);
 
-    client.MessageDeleted += (i, u) => MessageLog("deleted")(u.IsSpecified ? u.Value : null);
-
     // Log every public message not made by the bot.
     client.MessageReceived += m => {
       var channel = m.Channel as ITextChannel;
@@ -82,7 +80,6 @@ public class LogService {
 
     client.GuildUpdated += GuildUpdated;
     client.UserUpdated += UserUpdated;
-    client.MessageUpdated += (b, a) => MessageLog("updated")(a);
     client.RoleUpdated += RoleUpdated; 
     client.ChannelUpdated += ChannelUpdated;
   }

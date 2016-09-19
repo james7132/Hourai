@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -80,7 +81,9 @@ public class Owner {
     builder.AppendLine("Stats".Bold())
       .AppendLine($"Connected Servers: {guilds.Count}")
       .AppendLine($"Visible Users: {users}")
+      .AppendLine($"Stored Users {Bot.Database.Users.Count()}")
       .AppendLine($"Visible Channels: {channels}")
+      .AppendLine($"Stored Users {Bot.Database.Channels.Count()}")
       .AppendLine()
       .AppendLine($"Start Time: {Bot.StartTime})")
       .AppendLine($"Uptime: {Bot.Uptime}")
@@ -88,8 +91,11 @@ public class Owner {
       .AppendLine($"Client: Discord .NET v{DiscordConfig.Version} (API v{DiscordConfig.APIVersion}, {DiscordSocketConfig.GatewayEncoding})")
       .AppendLine($"Shard ID: {client.ShardId}")
       .AppendLine($"Total Shards: {config.TotalShards}")
-      .AppendLine($"Latency: {client.Latency}ms")
-      .AppendLine($"Total Memory Used: {BytesToMemoryValue(GC.GetTotalMemory(false))}");
+      .AppendLine($"Latency: {client.Latency}ms");
+    using(Process proc = Process.GetCurrentProcess()) {
+      proc.Refresh();
+      builder.AppendLine($"Total Memory Used: {BytesToMemoryValue(proc.PrivateMemorySize64)}");
+    }
     await msg.Respond(builder.ToString());
   }
 

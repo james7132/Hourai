@@ -276,6 +276,7 @@ public class User {
   public void AddName(string name) {
     if(Username == name)
       return;
+    Check.NotNull(name);
     Log.Info($"User updated username: {Username} => {name} ({Id})");
     Username = name;
     var newUsername = new Username {
