@@ -24,7 +24,6 @@ public class Config {
   [JsonProperty]
   public static string Token { get; set; }
 
-  // The owner of the bot's ID.
   [JsonProperty]
   public static ulong TestServer { get; set; }
 

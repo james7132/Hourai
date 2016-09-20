@@ -1,5 +1,6 @@
 {
   "Token" : "",
+  "BotListingToken": "",
   "TestServer": 208460178863947776,
   "LogDirectory" : "logs",
   "DbFilename" : "/db/bot_prod.db",

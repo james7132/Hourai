@@ -174,15 +174,44 @@ public class Owner {
     await guild.LeaveAsync();
   }
 
-  [Command("blacklist")]
-  [Remarks("Blacklists the current server and makes teh bot leave.")]
-  public async Task Blacklist(IUserMessage msg) {
-    var guild = Check.InGuild(msg).Guild;
-    var config = await Bot.Database.GetGuild(guild);
-    config.IsBlacklisted = true;
-    await msg.Success();
-    await guild.LeaveAsync();
-    await Bot.Database.Save();
+  [Group("blacklist")]
+  public class BlacklistGroup {
+
+    static bool SettingToBlacklist(string setting) {
+      if(setting == "-")
+        return false;
+      return true;
+    }
+
+    [Command("server")]
+    [Remarks("Blacklists the current server and makes the bot leave.")]
+    public async Task Server(IUserMessage msg, string setting = "+") {
+      var guild = Check.InGuild(msg).Guild;
+      var config = await Bot.Database.GetGuild(guild);
+      config.IsBlacklisted = true;
+      await Bot.Database.Save();
+      await msg.Success();
+      await guild.LeaveAsync();
+    }
+
+    [Command("user")]
+    [Remarks("Blacklist user(s) and prevent them from using commands.")]
+    public async Task User(IUserMessage msg, string setting, params IGuildUser[] users) {
+      var blacklisted = SettingToBlacklist(setting);
+      foreach(var user in users) {
+        var uConfig = await Bot.Database.GetUser(user);
+        if(uConfig == null)
+          continue;
+        uConfig.IsBlacklisted = blacklisted;
+        if(!blacklisted)
+          continue;
+        var dmChannel = await user.CreateDMChannelAsync();
+        await dmChannel.Respond("You have been blacklisted. The bot will no longer respond to your commands.");
+      }
+      await Bot.Database.Save();
+      await msg.Success();
+    }
+
   }
 
 }
