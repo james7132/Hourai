@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -137,6 +138,10 @@ class Bot {
     var msg = m as IUserMessage;
     if (msg == null || msg.Author.IsBot || msg.Author.IsMe())
       return;
+    var user = await Database.GetUser(msg.Author);
+    if(user.IsBlacklisted)
+      return;
+
     // Marks where the command begins
     var argPos = 0;
 

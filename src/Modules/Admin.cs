@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -98,6 +99,18 @@ public class Admin {
 
     var action = await CommandUtility.Action(msg, "nickname", async u => await u.SetNickname(nickname));
     await CommandUtility.ForEvery(msg, allUsers, action);
+  }
+
+  [Command("modlog")]
+  [Remarks("Gets the most recent changes on the server")]
+  public Task Modlog(IUserMessage msg) {
+    var guild = Check.InGuild(msg).Guild;
+    var log = Bot.Logs.GetGuild(guild);
+    var path =  log.GetPath(DateTimeOffset.Now);
+    if(File.Exists(path))
+      return Utility.FileIO(() => msg.Channel.SendFileAsync(path));
+    else
+      return msg.Respond("No mod events logged thus far.");
   }
 
   [Group("prune")]
