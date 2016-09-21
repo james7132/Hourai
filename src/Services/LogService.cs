@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Collections.Generic;
+using System.Text;
 using Discord;
 using Discord.WebSocket;
 
@@ -10,10 +13,39 @@ namespace Hourai {
 public class LogService {
 
   public LogSet Logs { get; }
+  public DiscordSocketClient Client { get; } 
+  public string BaseDirectory { get; } 
+  public string BotLog { get; private set; }
+  const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
-  public LogService(DiscordSocketClient client, LogSet set) {
-    Logs = set;
-    client.Log += delegate(LogMessage message) {
+  public LogService(DiscordSocketClient client, string directory) {
+    BaseDirectory = directory;
+    Logs = new LogSet();
+    Client = client;
+    SetupBotLog();
+    ClientLogs();
+    GuildLogs();
+    ChannelLogs();
+    RoleLogs();
+    UserLogs();
+    MessageLogs();
+  }
+
+  void SetupBotLog() {
+    Console.OutputEncoding = Encoding.UTF8;
+    var logDirectory = Path.Combine(BaseDirectory, Config.LogDirectory);
+    if(!Directory.Exists(logDirectory))
+      Directory.CreateDirectory(logDirectory);
+    BotLog = Path.Combine(logDirectory, DateTime.Now.ToString(LogStringFormat) + ".log");
+    Trace.Listeners.Clear();
+    var botLogFile = new FileStream(BotLog, FileMode.Create, FileAccess.Write, FileShare.Read);
+    Trace.Listeners.Add(new TextWriterTraceListener(botLogFile) {TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime});
+    Trace.Listeners.Add(new TextWriterTraceListener(Console.Out) {TraceOutputOptions = TraceOptions.DateTime});
+    Trace.AutoFlush = true;
+  }
+
+  void ClientLogs() {
+    Client.Log += delegate(LogMessage message) {
       switch (message.Severity) {
         case LogSeverity.Critical:
         case LogSeverity.Error:
@@ -36,35 +68,51 @@ public class LogService {
         Log.Error(message.Exception);
       return Task.CompletedTask;
     };
+  }
 
-    client.GuildAvailable += GuildLog("Discovered");
-    client.GuildUnavailable += GuildLog("Lost");
 
-    client.ChannelCreated += ChannelLog("created");
-    client.ChannelDestroyed += ChannelLog("removed");
+  void GuildLogs() {
+    Client.GuildAvailable += GuildLog("Discovered");
+    Client.GuildUnavailable += GuildLog("Lost");
+    Client.GuildUpdated += GuildUpdated;
+  }
 
-    client.RoleCreated += RoleLog("created");
-    client.RoleDeleted += RoleLog("deleted");
+  void ChannelLogs() {
+    Client.ChannelCreated += ChannelLog("created");
+    Client.ChannelDestroyed += ChannelLog("removed");
+    Client.ChannelUpdated += ChannelUpdated;
 
-    client.UserJoined += UserLog("joined");
-    client.UserLeft += UserLog("left");
-    client.UserBanned += (u, g) => UserLog("banned")(u);
-    client.UserUnbanned += (u, g) => UserLog("unbanned")(u);
+  }
 
+  void RoleLogs() {
+    Client.RoleCreated += RoleLog("created");
+    Client.RoleDeleted += RoleLog("deleted");
+    Client.RoleUpdated += RoleUpdated; 
+  }
+
+  void UserLogs() {
+    Client.UserJoined += UserLog("joined");
+    Client.UserLeft += UserLog("left");
+    Client.UserBanned += (u, g) => UserLog("banned")(u);
+    Client.UserUnbanned += (u, g) => UserLog("unbanned")(u);
+    Client.UserUpdated += UserUpdated;
+  }
+
+  void MessageLogs() {
     // Log every public message not made by the bot.
-    client.MessageReceived += m => {
+    Client.MessageReceived += m => {
       var channel = m.Channel as ITextChannel;
       if (m.Author.IsMe() || m.Author.IsBot ||channel == null)
-          return Task.CompletedTask;
+        return Task.CompletedTask;
       return Logs.GetChannel(channel).LogMessage(m);
     };
 
     //// Make sure that every channel is available on loading up a server.
-    client.GuildAvailable += DownloadGuildChatLogs;
-    client.JoinedGuild += DownloadGuildChatLogs;
+    Client.GuildAvailable += DownloadGuildChatLogs;
+    Client.JoinedGuild += DownloadGuildChatLogs;
 
     // Keep up to date with channels
-    client.ChannelCreated += channel => {
+    Client.ChannelCreated += channel => {
       var textChannel = channel as ITextChannel;
       if (textChannel != null)
         Logs.GetChannel(textChannel);
@@ -72,16 +120,11 @@ public class LogService {
     };
 
     // Preserve logs from deleted channels
-    client.ChannelDestroyed += async channel => {
+    Client.ChannelDestroyed += async channel => {
       var textChannel = channel as ITextChannel;
       if (textChannel != null)
         await Logs.GetChannel(textChannel).DeletedChannel(textChannel);
     };
-
-    client.GuildUpdated += GuildUpdated;
-    client.UserUpdated += UserUpdated;
-    client.RoleUpdated += RoleUpdated; 
-    client.ChannelUpdated += ChannelUpdated;
   }
 
   Task LogChange<T, TA>(GuildLog log,

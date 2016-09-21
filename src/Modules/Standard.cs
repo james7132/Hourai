@@ -128,7 +128,7 @@ public class Standard {
     [Remarks("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
     public Task Day(IUserMessage message, string day) {
       var channel = Check.InGuild(message);
-      string path = Bot.Logs.GetChannel(channel).GetPath(day);
+      string path = Bot.Get<LogService>().Logs.GetChannel(channel).GetPath(day);
       if (File.Exists(path))
         return message.SendFileRetry(path);
       else
@@ -179,7 +179,7 @@ public class Standard {
       async Task SearchAll(IUserMessage message, Func<string, bool> pred) {
         try {
           var channel = Check.InGuild(message);
-          string reply = await Bot.Logs.GetChannel(channel).SearchAll(pred);
+          string reply = await Bot.Get<LogService>().Logs.GetChannel(channel).SearchAll(pred);
           await message.Respond(reply);
         } catch (Exception e) {
           Log.Error(e);
@@ -190,7 +190,7 @@ public class Standard {
     async Task SearchChannel(IUserMessage message, Func<string, bool> pred) {
       try {
         var channel = Check.InGuild(message);
-        string reply = await Bot.Logs.GetChannel(channel).Search(pred);
+        string reply = await Bot.Get<LogService>().Logs.GetChannel(channel).Search(pred);
         await message.Respond(reply);
       } catch(Exception e) {
         Log.Error(e);
