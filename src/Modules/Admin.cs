@@ -105,7 +105,7 @@ public class Admin {
   [Remarks("Gets the most recent changes on the server")]
   public Task Modlog(IUserMessage msg) {
     var guild = Check.InGuild(msg).Guild;
-    var log = Bot.Logs.GetGuild(guild);
+    var log = Bot.Get<LogService>().Logs.GetGuild(guild);
     var path =  log.GetPath(DateTimeOffset.Now);
     if(File.Exists(path))
       return Utility.FileIO(() => msg.Channel.SendFileAsync(path));

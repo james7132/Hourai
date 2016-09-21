@@ -25,7 +25,7 @@ public class Owner {
   [Command("log")]
   [Remarks("Gets the log for the bot.")]
   public async Task GetLog(IUserMessage message) {
-    await message.Channel.SendFileRetry(Bot.BotLog);
+    await message.Channel.SendFileRetry(Bot.Get<LogService>().BotLog);
   }
 
   [Command("counters")] 
