@@ -17,6 +17,8 @@ public class DatabaseService {
     Database = db;
     Client.MessageReceived += async m => {
       var author = m.Author;
+      if(author.Username == null)
+        return;
       var user = await Database.GetUser(author);
       user.AddName(author.Username);
       await Database.Save();

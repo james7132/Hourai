@@ -76,8 +76,14 @@ namespace Hourai {
     }
 
     public enum Require {
+        // Requires only the bot to have the permission
         Bot,
+        // Requires only the user to have the permission
         User,
+        // Requires both the bot and the user to have the permission
+        // However provides a override for the bot owner
+        BotOwnerOverride,
+        // Requires both the bot and the user to have it.
         Both
     }
 
@@ -86,25 +92,25 @@ namespace Hourai {
         public GuildPermission[] GuildPermission { get; }
         public ChannelPermission[] ChannelPermission { get; }
 
-        public Permission(GuildPermission permission, Require requirement = Require.Both) {
+        public Permission(GuildPermission permission, Require requirement = Require.BotOwnerOverride) {
             Requirement = requirement;
             GuildPermission = new [] {permission};
             ChannelPermission = null;
         }
 
-        public Permission(ChannelPermission permission, Require requirement = Require.Both) {
+        public Permission(ChannelPermission permission, Require requirement = Require.BotOwnerOverride) {
             Requirement = requirement;
             ChannelPermission = new[] {permission};
             GuildPermission = null;
         }
 
-        public Permission(GuildPermission[] permission, Require requirement = Require.Both) {
+        public Permission(GuildPermission[] permission, Require requirement = Require.BotOwnerOverride) {
             Requirement = requirement;
             GuildPermission = permission;
             ChannelPermission = null;
         }
 
-        public Permission(ChannelPermission[] permission, Require requirement = Require.Both) {
+        public Permission(ChannelPermission[] permission, Require requirement = Require.BotOwnerOverride) {
             Requirement = requirement;
             ChannelPermission = permission;
             GuildPermission = null;
@@ -146,20 +152,29 @@ namespace Hourai {
 
         public override async Task<PreconditionResult> CheckPermissions(IUserMessage context, Command executingCommand, object moduleInstance) {
             // Check if the bot needs/has the permissions
-            if(Requirement != Require.User) {
+            switch(Requirement) {
+              case Require.Bot:
+              case Require.BotOwnerOverride:
+              case Require.Both:
                 IUser botUser = Bot.User;
                 var guild = (context.Channel as IGuildChannel)?.Guild;
                 if (guild != null)
-                    botUser = await guild.GetCurrentUserAsync();
+                  botUser = await guild.GetCurrentUserAsync();
                 var result = CheckUser(botUser, context.Channel);
                 if(!result.IsSuccess)
-                    return PreconditionResult.FromError(result);
+                  return PreconditionResult.FromError(result);
+                break;
             }
-            // Check if the user has permissions. (Bot Owner gets override over this)
-            if(Requirement != Require.Bot && !context.Author.IsBotOwner()) {
+            switch(Requirement) {
+              case Require.User:
+              case Require.BotOwnerOverride:
+              case Require.Both:
+                if(Requirement == Require.BotOwnerOverride && context.Author.IsBotOwner())
+                  break;
                 var result = CheckUser(context.Author, context.Channel);
                 if(!result.IsSuccess)
-                    return PreconditionResult.FromError(result);
+                  return PreconditionResult.FromError(result);
+                break;
             }
             return PreconditionResult.FromSuccess();
         }
