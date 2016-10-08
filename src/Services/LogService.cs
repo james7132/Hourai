@@ -141,8 +141,8 @@ public class LogService {
 
   Task LogSetChange<T, TA>(GuildLog log,
                           string change,
-                          T a,
                           T b,
+                          T a,
                           Func<T, IEnumerable<TA>> check,
                           Func<TA, string> toString) {
     var ia = check(a);

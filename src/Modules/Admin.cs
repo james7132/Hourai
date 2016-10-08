@@ -187,7 +187,7 @@ public class Admin {
   public class ChannelGroup {
 
     [Command("create")]
-    [Permission(GuildPermission.ManageChannels)]
+    [Permission(GuildPermission.ManageChannels, Require.Both)]
     [Remarks("Creates a public channel with a specified name. Requires ``Manage Channels`` permission.")]
     public async Task Create(IUserMessage msg, string name) {
       var guild = Check.InGuild(msg).Guild;
@@ -196,7 +196,7 @@ public class Admin {
     }
 
     [Command("delete")]
-    [Permission(GuildPermission.ManageChannels)]
+    [Permission(GuildPermission.ManageChannels, Require.Both)]
     [Remarks("Deletes all mentioned channels. Requires ``Manage Channels`` permission.")]
     public Task Delete(IUserMessage msg, params IGuildChannel[] channels) {
       return CommandUtility.ForEvery(msg, channels, CommandUtility.Action(

@@ -23,6 +23,7 @@ public class Commands {
         return;
       }
       guild.Commands.Remove(command);
+      Bot.Database.Commands.Remove(command);
       await message.Respond($"Custom command {name.Code()} has been deleted.");
       return;
     }

@@ -262,6 +262,7 @@ public class User {
   [Required]
   public ICollection<GuildUser> GuildUsers { get; set; }
   public bool IsBlacklisted { get; set; }
+  //public ICollection<TempBan> TempBans;
 
   public User() {
   }
@@ -289,6 +290,23 @@ public class User {
   }
 
 }
+
+//[Table("temp_bans")]
+//public class TempBan {
+  //[DatabaseGenerated(DatabaseGeneratedOption.None)]
+  //public ulong Id { get; set; }
+  //public ulong GuildId { get; set; }
+  //public DateTimeOffset StartDate { get; set; }
+  //public DateTimeOffset EndDate { get; set; }
+
+  //[Required]
+  //[ForeignKey("Id")]
+  //public User User;
+
+  //[Required]
+  //[ForeignKey("GuildId")]
+  //public Guild Guild;
+//}
 
 [Table("guild_users")]
 public class GuildUser {
