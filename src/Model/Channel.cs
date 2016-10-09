@@ -1,0 +1,30 @@
+using Discord;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Hourai {
+
+[Table("channels")]
+public class Channel {
+
+  [DatabaseGenerated(DatabaseGeneratedOption.None)]
+  public ulong Id { get; set; }
+  public ulong GuildId { get; set; }
+  [Required]
+  public Guild Guild { get; set; } 
+  public bool SearchIgnored { get; set; }
+  public bool JoinMessage { get; set; } 
+  public bool LeaveMessage { get; set; } 
+  public bool BanMessage { get; set; } 
+
+  public Channel() {
+  }
+
+  public Channel(IGuildChannel channel) {
+    Id = Check.NotNull(channel).Id;
+    GuildId = channel.Guild.Id;
+  }
+
+}
+
+}

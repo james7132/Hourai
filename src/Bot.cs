@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
@@ -78,6 +79,25 @@ class Bot {
     return _services[typeof(T)] as T;
   }
 
+  async Task CheckTempBans() {
+    var bans = Bot.Database.TempBans.OrderByDescending(b => b.End);
+    var now = DateTimeOffset.Now;
+    var unbans = new List<TempBan>();
+    foreach(var ban in bans) {
+      Log.Info($"({ban.GuildId}, {ban.Id}): {ban.Start}, {ban.End}, {ban.End - now}");
+      if(ban.End >= now)
+        break;
+      var guild = await Client.GetGuildAsync(ban.GuildId);
+      await guild.RemoveBanAsync(ban.Id);
+      unbans.Add(ban);
+      Log.Info($"{ban.Id}'s temp ban from {ban.GuildId} has been lifted.");
+    }
+    if(unbans.Count > 0) {
+      Bot.Database.TempBans.RemoveRange(unbans);
+      await Bot.Database.Save();
+    }
+  }
+
   async Task MainLoop() {
     Log.Info("Connecting to Discord...");
     await Client.LoginAsync(TokenType.Bot, Config.Token, false);
@@ -91,6 +111,7 @@ class Bot {
 
     Log.Info("Commands: " + CommandService.Commands.Select(c => c.Text).Join(", "));
     while (!ExitSource.Task.IsCompleted) {
+      await CheckTempBans();
       await User.ModifyStatusAsync(u => u.Game = new Game(Config.Version));
       await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
       await Database.Save();
