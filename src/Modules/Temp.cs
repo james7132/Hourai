@@ -12,39 +12,77 @@ public partial class Admin {
   [Group("temp")]
   public class TempGroup {
 
+    static async Task TempAction(IUserMessage msg, 
+        TimeSpan time, 
+        Func<IGuildUser, Task<AbstractTempAction>> action, 
+        IEnumerable<IGuildUser> users,
+        Func<IGuildUser, AbstractTempAction, Task> postAction = null) {
+      Check.NotNull(action);
+      var start = DateTimeOffset.Now;
+      var end = DateTimeOffset.Now + time;
+      var commandAction = await CommandUtility.Action(msg, "temp ban",
+          async delegate(IGuildUser user) {
+          var tempAction = await action(user);
+          tempAction.Start = start;
+          tempAction.End = end;
+          Bot.Database.TempActions.Add(tempAction);
+          await Bot.Database.Save();
+          if(postAction != null)
+            await postAction(user, tempAction);
+          await tempAction.Apply(Bot.Client);
+          });
+      await CommandUtility.ForEvery(msg, users, commandAction);
+    }
+
     [Command("ban")]
     [Permission(GuildPermission.BanMembers)]
     [Remarks("Temporarily bans user(s) from the server. Requires ``Ban Members`` server permission")]
-    public async Task Ban(IUserMessage msg, string time, params IGuildUser[] users) {
+    public Task Ban(IUserMessage msg, string time, params IGuildUser[] users) {
       var guild = Check.InGuild(msg).Guild;
       TimeSpan timespan;
       if(!TimeSpan.TryParse(time, out timespan)) {
-        await msg.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
-        return;
+        return msg.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
       }
-      var start = DateTimeOffset.Now;
-      var end = DateTimeOffset.Now + timespan;
-      var action = await CommandUtility.Action(msg, "temp ban",
-          async delegate(IGuildUser user) {
-            var tempBan = new TempBan {
-              Id = user.Id,
-              GuildId = user.Guild.Id,
-              User = await Bot.Database.GetUser(user),
-              Guild = await Bot.Database.GetGuild(user.Guild),
-              Start = start,
-              End = end
-            };
-            Bot.Database.TempBans.Add(tempBan);
-            await Bot.Database.Save();
-            try {
-              var dmChannel = await user.CreateDMChannelAsync();
-              await dmChannel.Respond($"You have been temporarily banned from {guild.Name}. You will be unbanned at {end} UTC.");
-            } catch(Exception e) {
-              Log.Error(e);
-            }
-            await user.BanAsync();
-          });
-      await CommandUtility.ForEvery(msg, users, action);
+      Func<IGuildUser, Task<AbstractTempAction>> action = async user => new TempBan {
+         UserId = user.Id,
+         GuildId = user.Guild.Id,
+         User = await Bot.Database.GetUser(user),
+         Guild = await Bot.Database.GetGuild(user.Guild),
+      };
+      Func<IGuildUser, AbstractTempAction, Task> postAction = async (user, tempAction) => {
+        try {
+          var dmChannel = await user.CreateDMChannelAsync();
+          await dmChannel.Respond
+            ($"You have been temporarily banned from {guild.Name}. " +
+             $"You will be unbanned at {tempAction.End} UTC.");
+        } catch(Exception e) {
+          Log.Error(e);
+        }
+      };
+      return TempAction(msg, timespan, action, users, postAction);
+    }
+  
+    [Group("role")]
+    public class RoleGroup {
+
+      [Command("add")]
+      [Permission(GuildPermission.ManageRoles)]
+      public Task Add(IUserMessage msg, IRole role, string time, params IGuildUser[] users) {
+        var guild = Check.InGuild(msg).Guild;
+        TimeSpan timespan;
+        if(!TimeSpan.TryParse(time, out timespan)) {
+          return msg.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
+        }
+        Func<IGuildUser, Task<AbstractTempAction>> action = async user => new TempRole {
+           UserId = user.Id,
+           GuildId = user.Guild.Id,
+           User = await Bot.Database.GetUser(user),
+           Guild = await Bot.Database.GetGuild(user.Guild),
+           RoleId = role.Id,
+        };
+        return TempAction(msg, timespan, action, users);
+      }
+
     }
 
   }

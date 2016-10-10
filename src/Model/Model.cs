@@ -20,7 +20,9 @@ public class BotDbContext : DbContext {
   public DbSet<GuildUser> GuildUsers { get; set; }
   public DbSet<CustomCommand> Commands { get; set; }
 
+  public DbSet<AbstractTempAction> TempActions { get; set; }
   public DbSet<TempBan> TempBans { get; set; }
+  public DbSet<TempRole> TempRole { get; set; }
 
   public bool AllowSave { get; set; } = true;
 
@@ -38,6 +40,9 @@ public class BotDbContext : DbContext {
       .HasKey(c => new { c.GuildId, c.Name });
     builder.Entity<Username>()
       .HasKey(c => new { c.UserId, c.Date });
+    builder.Entity<AbstractTempAction>()
+      .HasIndex(t => t.End)
+        .HasName("IX_temp_actions_End");
   }
 
   public async Task Save() {
