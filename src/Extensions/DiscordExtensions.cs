@@ -77,27 +77,33 @@ public static class DiscordExtensions {
   }
   
   public static string ToProcessedString(this IMessage message) {
-      var content = message.Content;
-      var guildChannel = message.Channel as IGuildChannel;
-      var guild = guildChannel?.Guild;
-      foreach (IUser user in message.MentionedUsers) {
-        var mention = $"@{user.Username}";
-        content = content.Replace($"<@{user.Id}>", mention)
-                         .Replace($"<@!{user.Id}>", mention);
-      }
-      if(guild != null) {
-        foreach (ulong id in message.MentionedChannelIds) {
-          var channel = guild.GetChannel(id);
-          content = content.Replace($"<#{id}>", $"#{channel.Name}");
-        }
-      }
-      foreach (IRole role in message.MentionedRoles) {
-        content = content.Replace($"<@&{role.Id}", $"@{role.Name}");
-      }
-      var baseLog = $"{message.Author?.Username ?? "Unknown User"}: {content}";
-      var attachments = message.Attachments.Select(a => a.Url).Join(" ");
-      var embeds = message.Embeds.Select(a => a.Url).Join(" ");
-      return baseLog + attachments + embeds;
+    var userMessage = message as IUserMessage;
+    if(userMessage == null)
+      return message.Content;
+    var content = userMessage.Resolve(UserMentionHandling.Name,
+        ChannelMentionHandling.Name,
+        RoleMentionHandling.Name,
+        EveryoneMentionHandling.Sanitize);
+    var guildChannel = message.Channel as IGuildChannel;
+    var guild = guildChannel?.Guild;
+    //foreach (IUser user in message.MentionedUsers) {
+      //var mention = $"@{user.Username}";
+      //content = content.Replace($"<@{user.Id}>", mention)
+                       //.Replace($"<@!{user.Id}>", mention);
+    //}
+    //if(guild != null) {
+      //foreach (ulong id in message.MentionedChannelIds) {
+        //var channel = guild.GetChannel(id);
+        //content = content.Replace($"<#{id}>", $"#{channel.Name}");
+      //}
+    //}
+    //foreach (IRole role in message.MentionedRoles) {
+      //content = content.Replace($"<@&{role.Id}", $"@{role.Name}");
+    //}
+    var baseLog = $"{message.Author?.Username ?? "Unknown User"}: {content}";
+    var attachments = message.Attachments.Select(a => a.Url).Join(" ");
+    var embeds = message.Embeds.Select(a => a.Url).Join(" ");
+    return baseLog + attachments + embeds;
   }
 
   /// <summary>

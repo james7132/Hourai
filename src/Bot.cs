@@ -79,21 +79,19 @@ class Bot {
     return _services[typeof(T)] as T;
   }
 
-  async Task CheckTempBans() {
-    var bans = Bot.Database.TempBans.OrderByDescending(b => b.End);
+  async Task CheckTempActions() {
+    var actions = Bot.Database.TempActions.OrderByDescending(b => b.End);
     var now = DateTimeOffset.Now;
-    var unbans = new List<TempBan>();
-    foreach(var ban in bans) {
-      Log.Info($"({ban.GuildId}, {ban.Id}): {ban.Start}, {ban.End}, {ban.End - now}");
-      if(ban.End >= now)
+    var done = new List<AbstractTempAction>();
+    foreach(var action in actions) {
+      Log.Info($"({action.GuildId}, {action.Id}): {action.Start}, {action.End}, {action.End - now}");
+      if(action.End >= now)
         break;
-      var guild = await Client.GetGuildAsync(ban.GuildId);
-      await guild.RemoveBanAsync(ban.Id);
-      unbans.Add(ban);
-      Log.Info($"{ban.Id}'s temp ban from {ban.GuildId} has been lifted.");
+      await action.Unapply(Client);
+      done.Add(action);
     }
-    if(unbans.Count > 0) {
-      Bot.Database.TempBans.RemoveRange(unbans);
+    if(done.Count > 0) {
+      Bot.Database.TempActions.RemoveRange(done);
       await Bot.Database.Save();
     }
   }
@@ -111,7 +109,7 @@ class Bot {
 
     Log.Info("Commands: " + CommandService.Commands.Select(c => c.Text).Join(", "));
     while (!ExitSource.Task.IsCompleted) {
-      await CheckTempBans();
+      await CheckTempActions();
       await User.ModifyStatusAsync(u => u.Game = new Game(Config.Version));
       await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
       await Database.Save();

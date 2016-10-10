@@ -135,7 +135,7 @@ public class LogService {
     var valA = check(a);
     var valB = check(b);
     if(!EqualityComparer<TA>.Default.Equals(valA, valB))
-      return log.LogEvent($"{change} changed: \"{valA}\" => \"{valB}\"");
+      return log.LogEvent($"{change} changed: \"{valB}\" => \"{valA}\"");
     return Task.CompletedTask;
   }
 
@@ -152,9 +152,9 @@ public class LogService {
     if(bIa.Any() || aIb.Any()) {
       var roleLog = $"{change} changed:";
       if(aIb.Any())
-        roleLog += $" -[{aIb.Select(toString).Join(", ")}]";
+        roleLog += $" +[{aIb.Select(toString).Join(", ")}]";
       if(bIa.Any())
-        roleLog += $" +[{bIa.Select(toString).Join(", ")}]";
+        roleLog += $" -[{bIa.Select(toString).Join(", ")}]";
       return log.LogEvent(roleLog);
     }
     return Task.CompletedTask;
