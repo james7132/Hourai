@@ -13,6 +13,7 @@ public class DatabaseService {
   public DiscordSocketClient Client { get; }
 
   public DatabaseService(BotDbContext db, DiscordSocketClient client) {
+    Bot.RegularTasks += Bot.Database.Save;
     Client = client;
     Database = db;
     Client.MessageReceived += async m => {
