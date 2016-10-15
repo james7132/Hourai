@@ -33,11 +33,20 @@ class Bot {
   static TaskCompletionSource<object> ExitSource { get; set; }
   bool _initialized;
 
+  public static event Func<Task> RegularTasks {
+    add { _regularTasks.Add(Check.NotNull(value)); }
+    remove { _regularTasks.Remove(value); }
+  }
+
+  static List<Func<Task>> _regularTasks;
+
   public Bot() {
     StartTime = DateTime.Now;
     _services = new ConcurrentDictionary<Type, object>();
     Counters = new CounterSet(new ActivatorFactory<SimpleCounter>());
     ExitSource = new TaskCompletionSource<object>();
+
+    _regularTasks = new List<Func<Task>>();
 
     ExecutionDirectory = GetExecutionDirectory();
     ClientConfig = new DiscordSocketConfig();
@@ -79,23 +88,6 @@ class Bot {
     return _services[typeof(T)] as T;
   }
 
-  async Task CheckTempActions() {
-    var actions = Bot.Database.TempActions.OrderByDescending(b => b.End);
-    var now = DateTimeOffset.Now;
-    var done = new List<AbstractTempAction>();
-    foreach(var action in actions) {
-      Log.Info($"({action.GuildId}, {action.Id}): {action.Start}, {action.End}, {action.End - now}");
-      if(action.End >= now)
-        break;
-      await action.Unapply(Client);
-      done.Add(action);
-    }
-    if(done.Count > 0) {
-      Bot.Database.TempActions.RemoveRange(done);
-      await Bot.Database.Save();
-    }
-  }
-
   async Task MainLoop() {
     Log.Info("Connecting to Discord...");
     await Client.LoginAsync(TokenType.Bot, Config.Token, false);
@@ -109,10 +101,9 @@ class Bot {
 
     Log.Info("Commands: " + CommandService.Commands.Select(c => c.Text).Join(", "));
     while (!ExitSource.Task.IsCompleted) {
-      await CheckTempActions();
+      await Task.WhenAll(_regularTasks.Select(t => t()));
       await User.ModifyStatusAsync(u => u.Game = new Game(Config.Version));
       await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
-      await Database.Save();
     }
   }
 

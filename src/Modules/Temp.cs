@@ -12,6 +12,29 @@ public partial class Admin {
   [Group("temp")]
   public class TempGroup {
 
+    public TempGroup() {
+      Log.Info("INIT TEMP GROUP");
+      Bot.RegularTasks += CheckTempActions;
+    }
+
+    async Task CheckTempActions() {
+      Log.Info("CHECKING TEMP ACTIONS");
+      var actions = Bot.Database.TempActions.OrderByDescending(b => b.End);
+      var now = DateTimeOffset.Now;
+      var done = new List<AbstractTempAction>();
+      foreach(var action in actions) {
+        Log.Info($"({action.GuildId}, {action.Id}): {action.Start}, {action.End}, {action.End - now}");
+        if(action.End >= now)
+          break;
+        await action.Unapply(Bot.Client);
+        done.Add(action);
+      }
+      if(done.Count > 0) {
+        Bot.Database.TempActions.RemoveRange(done);
+        await Bot.Database.Save();
+      }
+    }
+
     static async Task TempAction(IUserMessage msg, 
         TimeSpan time, 
         Func<IGuildUser, Task<AbstractTempAction>> action, 
