@@ -10,9 +10,9 @@ namespace Hourai {
 public partial class Admin : HouraiModule {
 
   [Group("temp")]
-  public class TempGroup : HouraiModule {
+  public class Temp : HouraiModule {
 
-    public TempGroup() {
+    public Temp() {
       Log.Info("INIT TEMP GROUP");
       Bot.RegularTasks += CheckTempActions;
     }

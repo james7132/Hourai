@@ -10,7 +10,7 @@ namespace Hourai {
 public partial class Admin {
 
   [Group("prune")]
-  public class PruneGroup : HouraiModule {
+  public class Prune : HouraiModule {
 
     [Command]
     [Permission(GuildPermission.ManageMessages)]

@@ -23,8 +23,7 @@ public class BotCommandService : IService {
     var map = new DependencyMap();
     map.Add(Bot.Counters);
     Log.Info("HELLO");
-    await Commands.AddModule<Owner>(map);
-    await Commands.AddModules(Assembly.GetEntryAssembly());
+    await Commands.AddModules(Assembly.GetEntryAssembly(), map);
     await Commands.AddModule<Help>(map);
     foreach(var module in Commands.Modules)
       Log.Info(module.Name);

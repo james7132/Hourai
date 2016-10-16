@@ -12,6 +12,7 @@ namespace Hourai {
 /// Generates a help method for all of a bot commands.
 /// Cannot be automatically installed and must be installed after all other modules have been installed.
 /// </summary>
+[DontAutoLoad]
 public class Help : HouraiModule {
 
   readonly Dictionary<ModuleInfo, CommandGroup> Modules;

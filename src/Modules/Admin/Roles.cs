@@ -10,7 +10,7 @@ namespace Hourai {
 public partial class Admin {
 
   [Group("role")]
-  public class RoleGroup : HouraiModule {
+  public class Roles : HouraiModule {
     const string Requirement = " Requires ``Manage Role`` permission for both user and bot.";
 
     [Command("add")]
