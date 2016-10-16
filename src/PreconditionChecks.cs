@@ -92,19 +92,19 @@ namespace Hourai {
     public GuildPermission[] GuildPermission { get; }
     public ChannelPermission[] ChannelPermission { get; }
 
-    public Permission(GuildPermission permission, Require requirement = Require.BotOwnerOverride) {
+    public Permission(GuildPermission permission, Require requirement = Require.Both) {
       Requirement = requirement;
       GuildPermission = new [] {permission};
       ChannelPermission = null;
     }
 
-    public Permission(ChannelPermission permission, Require requirement = Require.BotOwnerOverride) {
+    public Permission(ChannelPermission permission, Require requirement = Require.Both) {
       Requirement = requirement;
       ChannelPermission = new[] {permission};
       GuildPermission = null;
     }
 
-    public Permission(GuildPermission[] permission, Require requirement = Require.BotOwnerOverride) {
+    public Permission(GuildPermission[] permission, Require requirement = Require.Both) {
       Requirement = requirement;
       GuildPermission = permission;
       ChannelPermission = null;

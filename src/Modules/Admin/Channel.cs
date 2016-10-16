@@ -12,7 +12,7 @@ public partial class Admin {
   public class Channel : HouraiModule {
 
     [Command("create")]
-    [Permission(GuildPermission.ManageChannels, Require.Both)]
+    [Permission(GuildPermission.ManageChannels)]
     [Remarks("Creates a public channel with a specified name. Requires ``Manage Channels`` permission.")]
     public async Task Create(string name) {
       var guild = Check.InGuild(Context.Message).Guild;
@@ -21,7 +21,7 @@ public partial class Admin {
     }
 
     [Command("delete")]
-    [Permission(GuildPermission.ManageChannels, Require.Both)]
+    [Permission(GuildPermission.ManageChannels)]
     [Remarks("Deletes all mentioned channels. Requires ``Manage Channels`` permission.")]
     public Task Delete(params IGuildChannel[] channels) {
       return CommandUtility.ForEvery(Context, channels, CommandUtility.Action(
