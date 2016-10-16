@@ -1,3 +1,5 @@
+using Discord;
+using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -5,8 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text;
-using Discord;
-using Discord.WebSocket;
 
 namespace Hourai {
 
@@ -195,11 +195,11 @@ public class LogService {
     await LogChange(log, $"User {userString} Username", b, a, u => u.Username);
     await LogChange(log, $"User {userString} Nickname", b, a, u => u.Nickname);
     await LogSetChange(log, $"User {userString} Roles", b, a,
-        u => u.Roles, r => r.ToIDString());
+        u => u.GetRoles(), r => r.ToIDString());
   }
 
   async Task RoleUpdated(IRole b, IRole a) {
-    var guild = await Bot.Client.GetGuildAsync(a.GuildId);
+    var guild = a.Guild;
     if(guild == null)
       return;
     var log = Logs.GetGuild(guild);
@@ -223,7 +223,8 @@ public class LogService {
   }
 
   async Task DownloadGuildChatLogs(IGuild guild) {
-    foreach (ITextChannel channel in guild.GetTextChannels())
+    var textChannels = await guild.GetTextChannelsAsync();
+    foreach (ITextChannel channel in textChannels)
       await Logs.AddChannel(channel);
   }
 
@@ -233,8 +234,7 @@ public class LogService {
         Log.Info($"Role {eventType}.");
         return;
       }
-      var guild = await Bot.Client.GetGuildAsync(role.GuildId);
-      await Logs.GetGuild(guild).LogEvent($"Role {eventType}: { role.Name }");
+      await Logs.GetGuild(role.Guild).LogEvent($"Role {eventType}: { role.Name }");
     };
   }
 

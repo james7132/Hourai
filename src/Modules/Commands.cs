@@ -4,27 +4,27 @@ using Discord.Commands;
 
 namespace Hourai {
 
-[Module("command")]
+[Group("command")]
+[Hide]
 [PublicOnly]
 [ModuleCheck(ModuleType.Command)]
-public class Commands {
+public class Commands : HouraiModule {
 
   [Command]
   [MinimumRole(MinimumRole.Command)]
   [Remarks("Creates a custom command. Deletes an existing one if response is empty.")]
-  public async Task CreateCommand(IUserMessage message, 
-                                  string name, 
+  public async Task CreateCommand(string name, 
                                   [Remainder] string response = "") {
-    var guild = await Bot.Database.GetGuild(Check.InGuild(message).Guild);
+    var guild = await Bot.Database.GetGuild(Check.InGuild(Context.Message).Guild);
     var command = guild.GetCustomCommand(name);
     if (string.IsNullOrEmpty(response)) {
       if (command == null) {
-        await message.Respond($"CommandUtility {name.Code()} does not exist and thus cannot be deleted.");
+        await RespondAsync($"CommandUtility {name.Code()} does not exist and thus cannot be deleted.");
         return;
       }
       guild.Commands.Remove(command);
       Bot.Database.Commands.Remove(command);
-      await message.Respond($"Custom command {name.Code()} has been deleted.");
+      await RespondAsync($"Custom command {name.Code()} has been deleted.");
       return;
     }
     string action;
@@ -41,16 +41,16 @@ public class Commands {
       action = "updated";
     }
     await Bot.Database.Save();
-    await message.Success($"CommandUtility {name.Code()} {action} with response {response}.");
+    await Success($"CommandUtility {name.Code()} {action} with response {response}.");
   }
 
   [Command("role")]
   [ServerOwner]
   [Remarks("Sets the minimum role for creating custom commands.")]
-  public async Task CommandRole(IUserMessage message, IRole role) {
-    var guild = await Bot.Database.GetGuild(Check.InGuild(message).Guild);
+  public async Task CommandRole(IRole role) {
+    var guild = await Bot.Database.GetGuild(Check.InGuild(Context.Message).Guild);
     guild.SetMinimumRole(MinimumRole.Command, role);
-    await message.Success($"Set {role.Name.Code()} as the minimum role to create custom commnds");
+    await Success($"Set {role.Name.Code()} as the minimum role to create custom commnds");
   }
 
 }

@@ -13,6 +13,7 @@ namespace Hourai {
 
 public class BotDbContext : DbContext {
 
+  // Discord Data
   public DbSet<Guild> Guilds { get; set; }
   public DbSet<Channel> Channels { get; set; }
   public DbSet<User> Users { get; set; }
@@ -20,6 +21,7 @@ public class BotDbContext : DbContext {
   public DbSet<GuildUser> GuildUsers { get; set; }
   public DbSet<CustomCommand> Commands { get; set; }
 
+  // Temporary Action Data
   public DbSet<AbstractTempAction> TempActions { get; set; }
   public DbSet<TempBan> TempBans { get; set; }
   public DbSet<TempRole> TempRole { get; set; }

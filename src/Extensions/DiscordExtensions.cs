@@ -80,10 +80,10 @@ public static class DiscordExtensions {
     var userMessage = message as IUserMessage;
     if(userMessage == null)
       return message.Content;
-    var content = userMessage.Resolve(UserMentionHandling.Name,
-        ChannelMentionHandling.Name,
-        RoleMentionHandling.Name,
-        EveryoneMentionHandling.Sanitize);
+    var content = userMessage.Resolve(TagHandling.Name,
+        TagHandling.Name,
+        TagHandling.Name,
+        TagHandling.Sanitize);
     var guildChannel = message.Channel as IGuildChannel;
     var guild = guildChannel?.Guild;
     //foreach (IUser user in message.MentionedUsers) {
@@ -106,12 +106,16 @@ public static class DiscordExtensions {
     return baseLog + attachments + embeds;
   }
 
+  public static IEnumerable<IRole> GetRoles(this IGuildUser user) {
+    return Check.NotNull(user).RoleIds.Select(r => user.Guild.GetRole(r));
+  }
+
   /// <summary>
   /// Compares two users. Favors the channel with the higher highest role.
   /// </summary>
   public static int CompareTo(this IGuildUser u1, IGuildUser u2) {
     Func<IRole, int> rolePos = role => role.Position;
-    return u1.Roles.Max(rolePos).CompareTo(u2.Roles.Max(rolePos));
+    return u1.GetRoles().Max(rolePos).CompareTo(u2.GetRoles().Max(rolePos));
   } 
 
 }

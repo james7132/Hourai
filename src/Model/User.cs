@@ -114,14 +114,14 @@ public class GuildUser {
 public class Username {
 
   [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public ulong UserId { get; set; }
+  public ulong UserId { get; set; }
   [Required]
-    public string Name { get; set; }
+  public string Name { get; set; }
   [Required]
-    public DateTimeOffset Date { get; set; }
+  public DateTimeOffset Date { get; set; }
 
   [ForeignKey("UserId")]
-    public User User { get; set; }
+  public User User { get; set; }
 
 }
 

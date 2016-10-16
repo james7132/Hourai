@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Threading.Tasks;
 
 namespace Hourai {
 
@@ -44,6 +45,10 @@ public class Guild {
 
   public Guild(IGuild guild) : this() {
     Id = Check.NotNull(guild).Id;
+  }
+
+  public IGuild GetDiscordGuild() {
+    return Bot.Client.GetGuild(Id);
   }
 
   public bool AddModule(ModuleType module) {

@@ -46,12 +46,12 @@ public class AbstractTempAction {
 public class TempBan : AbstractTempAction {
 
   public override async Task Apply(DiscordSocketClient client) {
-    var guild = await client.GetGuildAsync(GuildId);
+    var guild = client.GetGuild(GuildId);
     await guild.AddBanAsync(UserId);
   }
 
   public override async Task Unapply(DiscordSocketClient client) {
-    var guild = await client.GetGuildAsync(GuildId);
+    var guild = client.GetGuild(GuildId);
     await guild.RemoveBanAsync(UserId);
     Log.Info($"{UserId}'s temp ban from {GuildId} has been lifted.");
   }
@@ -64,8 +64,8 @@ public class TempRole : AbstractTempAction {
   public ulong RoleId { get; set; }
 
   public override async Task Apply(DiscordSocketClient client) {
-    var guild = await client.GetGuildAsync(GuildId);
-    var user = await guild.GetUserAsync(UserId);
+    var guild = client.GetGuild(GuildId);
+    var user = guild.GetUser(UserId);
     var role = guild.GetRole(RoleId);
     if(role == null)
       return;
@@ -73,8 +73,8 @@ public class TempRole : AbstractTempAction {
   }
 
   public override async Task Unapply(DiscordSocketClient client) {
-    var guild = await client.GetGuildAsync(GuildId);
-    var user = await guild.GetUserAsync(UserId);
+    var guild = client.GetGuild(GuildId);
+    var user = guild.GetUser(UserId);
     var role = guild.GetRole(RoleId);
     if(role == null)
       return;
