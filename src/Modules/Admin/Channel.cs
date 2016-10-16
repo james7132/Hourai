@@ -9,7 +9,7 @@ namespace Hourai {
 public partial class Admin {
 
   [Group("channel")]
-  public class ChannelGroup : HouraiModule {
+  public class Channel : HouraiModule {
 
     [Command("create")]
     [Permission(GuildPermission.ManageChannels, Require.Both)]
