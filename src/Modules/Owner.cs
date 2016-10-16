@@ -13,10 +13,10 @@ using Discord.Commands;
 
 namespace Hourai {
 
-[Module(AutoLoad = false)]
 [Hide]
 [BotOwner]
-public class Owner {
+[DontAutoLoad]
+public class Owner : HouraiModule {
 
   readonly CounterSet Counters;
 
@@ -24,13 +24,13 @@ public class Owner {
 
   [Command("log")]
   [Remarks("Gets the log for the bot.")]
-  public async Task GetLog(IUserMessage message) {
-    await message.Channel.SendFileRetry(Bot.Get<LogService>().BotLog);
+  public async Task GetLog() {
+    await Context.Channel.SendFileRetry(Bot.Get<LogService>().BotLog);
   }
 
   [Command("counters")] 
   [Remarks("Gets all of the counters and their values.")]
-  public async Task Counter(IUserMessage message) {
+  public async Task Counter() {
     var response = new StringBuilder();
     var results = from counter in Counters
                   orderby (counter.Value as IReadableCounter)?.Value descending
@@ -41,48 +41,44 @@ public class Owner {
           continue;
       response.AppendLine($"{counter.name}: {readable.Value}");
     }
-    await message.Respond(response.ToString());
+    await RespondAsync(response.ToString());
   }
 
   [Command("kill")]
   [Remarks("Turns off the bot.")]
-  public async Task Kill(IUserMessage message) {
+  public async Task Kill() {
     await Bot.Database.Save();
-    await message.Success();
+    await Success();
     Bot.Exit();
   }
 
   [Command("broadcast")]
   [Remarks("Broadcasts a message to the default channel of all servers the bot is connected to.")]
-  public async Task Broadcast(IUserMessage message, [Remainder] string broadcast) {
-    var guilds = await Bot.Client.GetGuildsAsync();
+  public async Task Broadcast([Remainder] string broadcast) {
+    var guilds = Bot.Client.Guilds;
     var defaultChannels = await Task.WhenAll(guilds.Select(g => g.GetDefaultChannelAsync()));
     await Task.WhenAll(defaultChannels.Select(c => c.Respond(broadcast)));
   }
 
   [Command("save")]
   [Remarks("Forces the bot to flush and save all active information")]
-  public async Task SaveAll(IUserMessage msg) {
+  public async Task SaveAll() {
     await Bot.Database.Save();
-    await msg.Success();
+    await Success();
   }
 
   [Command("stats")]
   [Remarks("Gets statistics about the current running bot instance")]
-  public async Task Stats(IUserMessage msg) {
+  public async Task Stats() {
     var client = Bot.Client;
     var config = Bot.ClientConfig;
     var builder = new StringBuilder();
-    var guilds = await client.GetGuildsAsync();
-    var usersTask = Task.WhenAll(guilds.Select(g => g.GetUsersAsync()));
-    var channelsTask = Task.WhenAll(guilds.Select(g => g.GetChannelsAsync()));
-    var users = (await usersTask).Sum(u => u.Count);
-    var channels = (await channelsTask).Sum(c => c.Count);
+    var guilds = client.Guilds;
     builder.AppendLine("Stats".Bold())
       .AppendLine($"Connected Servers: {guilds.Count}")
-      .AppendLine($"Visible Users: {users}")
+      .AppendLine($"Visible Users: {client.Guilds.Sum(g => g.Users.Count)}")
       .AppendLine($"Stored Users {Bot.Database.Users.Count()}")
-      .AppendLine($"Visible Channels: {channels}")
+      .AppendLine($"Visible Channels: {client.Guilds.Sum(g => g.Channels.Count)}")
       .AppendLine($"Stored Users {Bot.Database.Channels.Count()}")
       .AppendLine()
       .AppendLine($"Start Time: {Bot.StartTime})")
@@ -96,33 +92,28 @@ public class Owner {
       proc.Refresh();
       builder.AppendLine($"Total Memory Used: {BytesToMemoryValue(proc.PrivateMemorySize64)}");
     }
-    await msg.Respond(builder.ToString());
+    await Context.Message.Respond(builder.ToString());
   }
 
   [Command("refresh")]
-  public async Task Refresh(IUserMessage msg) {
+  public async Task Refresh() {
     var client = Bot.Client;
-    var guilds = await client.GetGuildsAsync();
     var db = Bot.Database;
     Log.Info("Starting refresh...");
-    foreach(var guild in guilds) {
+    foreach(var guild in client.Guilds) {
       db.AllowSave = false;
       var guildDb = await Bot.Database.GetGuild(guild);
       Log.Info($"Refreshing {guild.Name}...");
-      var cTask = guild.GetChannelsAsync();
-      var uTask = guild.GetUsersAsync();
-      await Task.WhenAll(cTask, uTask);
-      var channels = cTask.Result.OfType<ITextChannel>();
-      var users = uTask.Result;
+      var channels = await guild.GetTextChannelsAsync();
       foreach(var channel in channels)
         await db.GetChannel(channel);
-      foreach(var user in users)
+      foreach(var user in guild.Users)
         await db.GetGuildUser(user);
       Bot.Database.AllowSave = true;
       await Bot.Database.Save();
     }
     Log.Info("Done refreshing.");
-    await msg.Success();
+    await Success();
   }
 
   static readonly string[] SizeSuffixes = {"B","KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
@@ -138,44 +129,44 @@ public class Owner {
 
   [Command("rename")]
   [Remarks("Renames the bot a new name.")]
-  public async Task Rename(IUserMessage msg, string name) {
+  public async Task Rename(string name) {
     await Bot.User.ModifyAsync(u => {
           u.Username = name;
         });
-    await msg.Success();
+    await Success();
   }
 
   [Command("reavatar")]
   [Remarks("Changes the avatar of the bot.")]
-  public async Task Reavatar(IUserMessage msg, [Remainder] string url = "") {
-    if(msg.Attachments.Any())
-      url = msg.Attachments.First().Url;
-    if(msg.Embeds.Any())
-      url = msg.Embeds.First().Url;
+  public async Task Reavatar([Remainder] string url = "") {
+    if(Context.Message.Attachments.Any())
+      url = Context.Message.Attachments.First().Url;
+    if(Context.Message.Embeds.Any())
+      url = Context.Message.Embeds.First().Url;
     if(string.IsNullOrEmpty(url)) {
-      await msg.Respond("No provided image.");
+      await Context.Message.Respond("No provided image.");
       return;
     }
     Log.Info(url);
     using(var client = new HttpClient())
     using(var contentStream = await client.GetStreamAsync(url)) {
       await Bot.User.ModifyAsync(u => {
-          u.Avatar = contentStream;
+          u.Avatar = new Discord.API.Image(contentStream);
         });
     }
-    await msg.Success();
+    await Success();
   }
 
   [Command("leave")]
   [Remarks("Makes the bot leave the current server")]
-  public async Task Leave(IUserMessage msg) {
-    var guild = Check.InGuild(msg).Guild;
-    await msg.Success();
+  public async Task Leave() {
+    var guild = Check.InGuild(Context.Message).Guild;
+    await Success();
     await guild.LeaveAsync();
   }
 
   [Group("blacklist")]
-  public class BlacklistGroup {
+  public class BlacklistGroup : HouraiModule {
 
     static bool SettingToBlacklist(string setting) {
       if(setting == "-")
@@ -185,18 +176,18 @@ public class Owner {
 
     [Command("server")]
     [Remarks("Blacklists the current server and makes the bot leave.")]
-    public async Task Server(IUserMessage msg, string setting = "+") {
-      var guild = Check.InGuild(msg).Guild;
+    public async Task Server(string setting = "+") {
+      var guild = Check.InGuild(Context.Message).Guild;
       var config = await Bot.Database.GetGuild(guild);
       config.IsBlacklisted = true;
       await Bot.Database.Save();
-      await msg.Success();
+      await Success();
       await guild.LeaveAsync();
     }
 
     [Command("user")]
     [Remarks("Blacklist user(s) and prevent them from using commands.")]
-    public async Task User(IUserMessage msg, string setting, params IGuildUser[] users) {
+    public async Task User(string setting, params IGuildUser[] users) {
       var blacklisted = SettingToBlacklist(setting);
       foreach(var user in users) {
         var uConfig = await Bot.Database.GetUser(user);
@@ -209,7 +200,7 @@ public class Owner {
         await dmChannel.Respond("You have been blacklisted. The bot will no longer respond to your commands.");
       }
       await Bot.Database.Save();
-      await msg.Success();
+      await Success();
     }
 
   }

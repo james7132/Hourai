@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public partial class Admin {
+public partial class Admin : HouraiModule {
 
   [Group("temp")]
-  public class TempGroup {
+  public class TempGroup : HouraiModule {
 
     public TempGroup() {
       Log.Info("INIT TEMP GROUP");
@@ -35,7 +35,8 @@ public partial class Admin {
       }
     }
 
-    static async Task TempAction(IUserMessage msg, 
+    static async Task TempAction(
+        CommandContext context, 
         TimeSpan time, 
         Func<IGuildUser, Task<AbstractTempAction>> action, 
         IEnumerable<IGuildUser> users,
@@ -43,7 +44,7 @@ public partial class Admin {
       Check.NotNull(action);
       var start = DateTimeOffset.Now;
       var end = DateTimeOffset.Now + time;
-      var commandAction = await CommandUtility.Action(msg, "temp ban",
+      var commandAction = await CommandUtility.Action(context, "temp ban",
           async delegate(IGuildUser user) {
           var tempAction = await action(user);
           tempAction.Start = start;
@@ -54,17 +55,17 @@ public partial class Admin {
             await postAction(user, tempAction);
           await tempAction.Apply(Bot.Client);
           });
-      await CommandUtility.ForEvery(msg, users, commandAction);
+      await CommandUtility.ForEvery(context, users, commandAction);
     }
 
     [Command("ban")]
     [Permission(GuildPermission.BanMembers)]
     [Remarks("Temporarily bans user(s) from the server. Requires ``Ban Members`` server permission")]
-    public Task Ban(IUserMessage msg, string time, params IGuildUser[] users) {
-      var guild = Check.InGuild(msg).Guild;
+    public Task Ban(string time, params IGuildUser[] users) {
+      var guild = Check.InGuild(Context.Message).Guild;
       TimeSpan timespan;
       if(!TimeSpan.TryParse(time, out timespan)) {
-        return msg.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
+        return Context.Channel.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
       }
       Func<IGuildUser, Task<AbstractTempAction>> action = async user => new TempBan {
          UserId = user.Id,
@@ -82,19 +83,19 @@ public partial class Admin {
           Log.Error(e);
         }
       };
-      return TempAction(msg, timespan, action, users, postAction);
+      return TempAction(Context, timespan, action, users, postAction);
     }
   
     [Group("role")]
-    public class RoleGroup {
+    public class RoleGroup : HouraiModule {
 
       [Command("add")]
       [Permission(GuildPermission.ManageRoles)]
-      public Task Add(IUserMessage msg, IRole role, string time, params IGuildUser[] users) {
-        var guild = Check.InGuild(msg).Guild;
+      public Task Add(IRole role, string time, params IGuildUser[] users) {
+        var guild = Check.InGuild(Context.Message).Guild;
         TimeSpan timespan;
         if(!TimeSpan.TryParse(time, out timespan)) {
-          return msg.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
+          return Context.Channel.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
         }
         Func<IGuildUser, Task<AbstractTempAction>> action = async user => new TempRole {
            UserId = user.Id,
@@ -103,7 +104,7 @@ public partial class Admin {
            Guild = await Bot.Database.GetGuild(user.Guild),
            RoleId = role.Id,
         };
-        return TempAction(msg, timespan, action, users);
+        return TempAction(Context, timespan, action, users);
       }
 
     }

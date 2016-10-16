@@ -9,118 +9,114 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-[Module]
 [PublicOnly]
 [ModuleCheck(ModuleType.Admin)]
-public partial class Admin {
+public partial class Admin : HouraiModule {
 
   [Command("kick")]
   [Permission(GuildPermission.KickMembers)]
   [Remarks("Kicks all mentioned users. Requires ``Kick Members`` permission.")]
-  public async Task Kick(IUserMessage msg, 
-                         params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "kick", u => u.KickAsync());
-    await CommandUtility.ForEvery(msg, users, action);
+  public async Task Kick(params IGuildUser[] users) {
+    var action = await CommandUtility.Action(Context, "kick", u => u.KickAsync());
+    await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("ban")]
   [Permission(GuildPermission.BanMembers)]
   [Remarks("Bans all mentioned users. Requires ``Ban Members`` permission.")]
-  public async Task Ban(IUserMessage msg, 
-                        params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "ban", u => u.BanAsync());
-    await CommandUtility.ForEvery(msg, users, action);
+  public async Task Ban(params IGuildUser[] users) {
+    var action = await CommandUtility.Action(Context, "ban", u => u.BanAsync());
+    await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("softban")]
   [Permission(GuildPermission.BanMembers)]
   [Remarks("Softbans all mentioned users. Requires ``Ban Members`` permission.")]
-  public async Task Softban(IUserMessage msg, 
-                            params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "ban", async u => {
+  public async Task Softban(params IGuildUser[] users) {
+    var action = await CommandUtility.Action(Context, "ban", async u => {
         ulong id = u.Id;
         await u.BanAsync(7); // Prune 7 day's worth of messages
         await u.Guild.RemoveBanAsync(id);
       });
-    await CommandUtility.ForEvery(msg, users, action);
+    await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("mute")]
   [Permission(GuildPermission.MuteMembers)]
   [Remarks("Server mutes all mentioned users. Requires ``Mute Members`` permission.")]
-  public async Task Mute(IUserMessage msg, params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "mute", async u => await u.MuteAsync());
-    await CommandUtility.ForEvery(msg, users, action);
+  public async Task Mute(params IGuildUser[] users) {
+    var action = await CommandUtility.Action(Context, "mute", async u => await u.MuteAsync());
+    await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("unmute")]
   [Permission(GuildPermission.MuteMembers)]
   [Remarks( "Server unmutes all mentioned users. Requires ``Mute Members`` permission.")]
-  public async Task Unmute(IUserMessage msg, params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "unmute", async u => await u.UnmuteAsync());
-    await CommandUtility.ForEvery(msg, users, action);
+  public async Task Unmute(params IGuildUser[] users) {
+    var action = await CommandUtility.Action(Context, "unmute", async u => await u.UnmuteAsync());
+    await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("deafen")]
   [Permission(GuildPermission.DeafenMembers)]
   [Remarks( "Server deafens all mentioned users. Requires ``Deafen Members`` permission.")]
-  public async Task Deafen(IUserMessage msg, params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "deafen", async u => await u.DeafenAsync());
-    await CommandUtility.ForEvery(msg, users, action);
+  public async Task Deafen(params IGuildUser[] users) {
+    var action = await CommandUtility.Action(Context, "deafen", async u => await u.DeafenAsync());
+    await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("undeafen")]
   [Permission(GuildPermission.DeafenMembers)]
   [Remarks( "Server undeafens all mentioned users. Requires ``Deafen Members`` permission.")]
-  public async Task Undeafen(IUserMessage msg, params IGuildUser[] users) {
-    var action = await CommandUtility.Action(msg, "undeafen", async u => await u.UndeafenAsync());
-    await CommandUtility.ForEvery(msg, users, action);
+  public async Task Undeafen(params IGuildUser[] users) {
+    var action = await CommandUtility.Action(Context, "undeafen", async u => await u.UndeafenAsync());
+    await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("nickname")]
   [Remarks("Sets the nickname of all mentioned users, or nicknames yourself.\nIf no ``users`` is empty, nicknames the user who used the command"
   + "and requires the ``Change Nickname`` permission.\nIf at least one ``user`` is specified, nicknames the mentioned users and requires the "
   + "``Manage Nicknames`` permission.")]
-  public async Task Nickname(IUserMessage msg, string nickname, params IGuildUser[] users) {
-    Check.InGuild(msg);
-    var author = msg.Author as IGuildUser;
+  public async Task Nickname(string nickname, params IGuildUser[] users) {
+    Check.InGuild(Context.Message);
+    var author = Context.Message.Author as IGuildUser;
     IGuildUser[] allUsers = users;
     if (allUsers.Length <= 0) {
       if(!author.GuildPermissions.ChangeNickname) {
-        await msg.Respond($"{author.Mention} you do not have the ``Change Nickname`` permission. See ``{Config.CommandPrefix}help nickname``");
+        await RespondAsync($"{author.Mention} you do not have the ``Change Nickname`` permission. See ``{Config.CommandPrefix}help nickname``");
         return;
       }
-      allUsers = new[] {msg.Author as IGuildUser};
+      allUsers = new[] { author };
     }
     if(!author.GuildPermissions.ManageNicknames) {
-      await msg.Respond($"{author.Mention} you do not have the ``Manage Nicknames`` permission. See ``{Config.CommandPrefix}help nickname``");
+      await RespondAsync($"{author.Mention} you do not have the ``Manage Nicknames`` permission. See ``{Config.CommandPrefix}help nickname``");
       return;
     }
 
-    var action = await CommandUtility.Action(msg, "nickname", async u => await u.SetNickname(nickname));
-    await CommandUtility.ForEvery(msg, allUsers, action);
+    var action = await CommandUtility.Action(Context, "nickname", async u => await u.SetNickname(nickname));
+    await CommandUtility.ForEvery(Context, allUsers, action);
   }
 
   [Command("modlog")]
   [Remarks("Gets the most recent changes on the server")]
-  public Task Modlog(IUserMessage msg) {
-    var guild = Check.InGuild(msg).Guild;
+  public Task Modlog() {
+    var guild = Check.InGuild(Context.Message).Guild;
     var log = Bot.Get<LogService>().Logs.GetGuild(guild);
     var path =  log.GetPath(DateTimeOffset.Now);
     if(File.Exists(path))
-      return Utility.FileIO(() => msg.Channel.SendFileAsync(path));
+      return Utility.FileIO(() => Context.Channel.SendFileAsync(path));
     else
-      return msg.Respond("No mod events logged thus far.");
+      return RespondAsync("No mod events logged thus far.");
   }
 
   [Group("server")]
-  public class ServerGroup {
+  public class ServerGroup : HouraiModule {
 
     [Command("permissions")]
     [Remarks("Shows the channel permissions for one user on the current channel.\nShows your permisisons if no other user is specified")]
-    public async Task Permissions(IUserMessage msg, IGuildUser user = null) {
-      user = user ?? (msg.Author as IGuildUser);
-      await msg.Respond(user.GuildPermissions.ToList()
+    public async Task Permissions(IGuildUser user = null) {
+      user = user ?? (Context.Message.Author as IGuildUser);
+      await RespondAsync(user.GuildPermissions.ToList()
           .Select(p => p.ToString())
           .OrderBy(s => s)
           .Join(", "));
@@ -128,16 +124,17 @@ public partial class Admin {
 
   }
 
-  static async Task RoleCommand(IUserMessage m, IRole role, string action, IEnumerable<IGuildUser> users, Func<IGuildUser, IRole, Task> task) {
-    var guild = Check.InGuild(m).Guild;
-    var selfUser = await Bot.Client.GetCurrentUserAsync();
+  static async Task RoleCommand(CommandContext context, IRole role, string action, IEnumerable<IGuildUser> users, Func<IGuildUser, IRole, Task> task) {
+    var guild = Check.InGuild(context.Message).Guild;
+    var selfUser = Bot.Client.CurrentUser;
     var guildBot = await guild.GetUserAsync(selfUser.Id);
+    var message = context.Message;
     if (!Utility.RoleCheck(guildBot, role))
       throw new RoleRankException($"{guildBot.Username} cannot {action} role \"{role.Name}\", as it is above my roles.");
-    if (!Utility.RoleCheck(m.Author as IGuildUser, role))
-      throw new RoleRankException($"{m.Author.Username}, you cannot {action} role \"{role.Name}\", as it is above their roles.");
-    await CommandUtility.ForEvery(m, users,
-      await CommandUtility.Action(m, action + " role", user => task(user, role)));
+    if (!Utility.RoleCheck(message.Author as IGuildUser, role))
+      throw new RoleRankException($"{message.Author.Username}, you cannot {action} role \"{role.Name}\", as it is above their roles.");
+    await CommandUtility.ForEvery(context, users,
+      await CommandUtility.Action(context, action + " role", user => task(user, role)));
     }
   }
 

@@ -72,9 +72,10 @@ public class ChannelLog : AbstractDiscordLog {
 
   async void LogChannelRecent(ITextChannel channel) {
     try {
-      var messages = await channel.GetMessagesAsync();
-      foreach (var message in messages.OrderByDescending(m => m.Timestamp))
-        await LogMessage(message);
+      await channel.GetMessagesAsync()
+        .SelectMany(m => m.ToAsyncEnumerable())
+        .OrderByDescending(m => m.Timestamp)
+        .ForEachAsync(async m => await LogMessage(m));
     } catch(HttpException httpException) {
       if(httpException.StatusCode != HttpStatusCode.Forbidden)
         Log.Error(httpException);

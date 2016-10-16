@@ -7,10 +7,9 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-[Module]
 [PublicOnly]
 [ModuleCheck(ModuleType.Feeds)]
-public class Feeds {
+public partial class Feeds : HouraiModule {
 
   public Feeds() {
     const string JoinMsg = "$mention has joined the server.";
@@ -42,42 +41,6 @@ public class Feeds {
   string ProcessMessage(string message, IUser user) {
     return message.Replace("$user", user.Username)
       .Replace("$mention", user.Mention);
-  }
-
-  [Group("announce")]
-  public class Announce {
-
-    static string Status(bool status) {
-      return status ? "enabled" : "disabled";
-    }
-
-    [Command("join")]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
-    public async Task Join(IUserMessage msg) {
-      var channel = await Bot.Database.GetChannel(msg.Channel as ITextChannel);
-      channel.JoinMessage = !channel.JoinMessage;
-      await Bot.Database.Save();
-      await msg.Success($"Join message {Status(channel.JoinMessage)}");
-    }
-
-    [Command("leave")]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
-    public async Task Leave(IUserMessage msg) {
-      var channel = await Bot.Database.GetChannel(msg.Channel as ITextChannel);
-      channel.LeaveMessage = !channel.LeaveMessage;
-      await Bot.Database.Save();
-      await msg.Success($"Leave message {Status(channel.LeaveMessage)}");
-    }
-
-    [Command("ban")]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
-    public async Task Ban(IUserMessage msg) {
-      var channel = await Bot.Database.GetChannel(msg.Channel as ITextChannel);
-      channel.BanMessage = !channel.BanMessage;
-      await Bot.Database.Save();
-      await msg.Success($"Ban message {Status(channel.BanMessage)}");
-    }
-
   }
 
 }

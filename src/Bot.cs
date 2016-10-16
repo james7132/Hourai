@@ -92,17 +92,20 @@ class Bot {
     Log.Info("Connecting to Discord...");
     await Client.LoginAsync(TokenType.Bot, Config.Token, false);
     await Client.ConnectAsync();
-    var self = await Client.GetCurrentUserAsync();
-    Log.Info($"Logged in as {self.ToIDString()}");
+    User = Client.CurrentUser;
+    Log.Info($"Logged in as {User.ToIDString()}");
 
-    User = await Client.GetCurrentUserAsync();
     Owner = (await Client.GetApplicationInfoAsync()).Owner;
     Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
 
     Log.Info("Commands: " + CommandService.Commands.Select(c => c.Text).Join(", "));
     while (!ExitSource.Task.IsCompleted) {
       await Task.WhenAll(_regularTasks.Select(t => t()));
-      await User.ModifyStatusAsync(u => u.Game = new Game(Config.Version));
+      await User.ModifyStatusAsync(u => u.Game = new Discord.API.Game {
+          Name = Config.Version,
+          StreamUrl = string.Empty,
+          StreamType = StreamType.NotStreaming
+        });
       await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
     }
   }

@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
-using Command = Discord.Commands.Command;
 
 namespace Hourai {
 
@@ -13,10 +12,9 @@ namespace Hourai {
 /// Generates a help method for all of a bot commands.
 /// Cannot be automatically installed and must be installed after all other modules have been installed.
 /// </summary>
-[Module(AutoLoad = false)]
-public class Help {
+public class Help : HouraiModule {
 
-  readonly Dictionary<Discord.Commands.Module, CommandGroup> Modules;
+  readonly Dictionary<ModuleInfo, CommandGroup> Modules;
 
   static Queue<string> SplitComamnd(string input) {
     return new Queue<string>(input.SplitWhitespace());
@@ -25,17 +23,17 @@ public class Help {
   public class CommandGroup {
 
     public string Name{  get; }
-    public Command Command { get; }
+    public CommandInfo Command { get; }
     public Dictionary<string, CommandGroup> Subcommands { get; }
 
     CommandGroup() {
       Subcommands = new Dictionary<string, CommandGroup>();
     }
 
-    public CommandGroup(IEnumerable<Command> commands) : this() {
+    public CommandGroup(IEnumerable<CommandInfo> commands) : this() {
       Name = string.Empty;
       Command = null;
-      foreach (Command command in commands.EmptyIfNull())
+      foreach (CommandInfo command in commands.EmptyIfNull())
         AddCommand(command);
     }
 
@@ -43,16 +41,16 @@ public class Help {
       Name = name;
     }
 
-    CommandGroup(Command command, string name) : this(name) {
+    CommandGroup(CommandInfo command, string name) : this(name) {
       Name = name;
       Command = command;
     }
 
-    void AddCommand(Command command) {
+    void AddCommand(CommandInfo command) {
       AddCommand(SplitComamnd(command.Text), command);
     }
 
-    void AddCommand(Queue<string> names, Command command) {
+    void AddCommand(Queue<string> names, CommandInfo command) {
       Check.NotNull(names);
       if (names.Count == 0)
         return;
@@ -68,23 +66,23 @@ public class Help {
       }
     }
 
-    public Task<string> GetSpecficHelp(IUserMessage message, string command) {
-      return GetSpecficHelp(message, SplitComamnd(command));
+    public Task<string> GetSpecficHelp(CommandContext context, string command) {
+      return GetSpecficHelp(context, SplitComamnd(command));
     }
 
-    Task<string> GetSpecficHelp(IUserMessage message, Queue<string> names) {
+    Task<string> GetSpecficHelp(CommandContext context, Queue<string> names) {
       if (names.Count == 0)
-        return GetSpecficHelp(message);
+        return GetSpecficHelp(context);
       var prefix = names.Dequeue();
       // Recurse as needed
       if (Subcommands.ContainsKey(prefix))
-        return Subcommands[prefix].GetSpecficHelp(message, names);
+        return Subcommands[prefix].GetSpecficHelp(context, names);
       return Task.FromResult<string>(null);
     }
 
-    async Task<string> GetSpecficHelp(IUserMessage message) {
+    async Task<string> GetSpecficHelp(CommandContext context) {
       var builder = new StringBuilder();
-      Command c = Command;
+      CommandInfo c = Command;
       using (builder.Code()) {
         builder.Append(Name);
         if(c != null) {
@@ -103,29 +101,29 @@ public class Help {
       if (c != null)
         builder.AppendLine(c.Remarks);
       if(Subcommands.Count > 0) {
-        builder.AppendLine("Available Subcommands:");
-        builder.AppendLine(await ListSubcommands(message));
+        builder.AppendLine("Available Subcommands:")
+          .AppendLine(await ListSubcommands(context));
       }
       return builder.ToString();
     }
 
-    public async Task<string> ListSubcommands(IUserMessage message) {
+    public async Task<string> ListSubcommands(CommandContext context) {
       var usable = new List<string>();
       foreach (var commandGroup in Subcommands.Values) {
-        if(await commandGroup.CanUse(message))
+        if(await commandGroup.CanUse(context))
           usable.Add(commandGroup.ToString().Code());
       }
       return usable.Join(", ");
     }
 
-    public async Task<bool> CanUse(IUserMessage message) {
+    public async Task<bool> CanUse(CommandContext context) {
       if (Command != null) {
-        var result = await Command.CheckPreconditions(message);
+        var result = await Command.CheckPreconditions(context);
         if (result.IsSuccess)
           return true;
       }
       foreach (CommandGroup commandGroup in Subcommands.Values) {
-        if (await commandGroup.CanUse(message))
+        if (await commandGroup.CanUse(context))
           return true;
       }
       return false;
@@ -148,43 +146,44 @@ public class Help {
 
   [Command("help")]
   [Remarks("Gets information about commands")]
-  public async Task HelpCommand(IUserMessage message, [Remainder] string command = "") {
+  public async Task HelpCommand([Remainder] string command = "") {
     try {
+      var message = Context.Message;
       if(command.IsNullOrEmpty()) {
-        await message.Respond(await GetGeneralHelp(message));
+        await RespondAsync(await GetGeneralHelp(Context));
         return;
       }
       foreach (CommandGroup commandGroup in Modules.Values) {
-        string specificHelp = await commandGroup.GetSpecficHelp(message, command);
+        string specificHelp = await commandGroup.GetSpecficHelp(Context, command);
         if (specificHelp.IsNullOrEmpty())
           continue;
-        await message.Respond(specificHelp);
+        await RespondAsync(specificHelp);
         return;
       }
-      await message.Respond($"{message.Author.Mention}: No command named {command.DoubleQuote()} found");
+      await RespondAsync($"{message.Author.Mention}: No command named {command.DoubleQuote()} found");
     } catch(Exception e) {
         Log.Error(e + e.StackTrace);
     }
   }
 
-  async Task<string> GetGeneralHelp(IUserMessage message) {
+  async Task<string> GetGeneralHelp(CommandContext context) {
     var builder = new StringBuilder();
     foreach (var kvp in Modules.OrderBy(k => k.Key.Name)) {
-      if (!await kvp.Value.CanUse(message))
+      if (!await kvp.Value.CanUse(context))
         continue;
       var name = kvp.Key.Name;
       if (!name.IsNullOrEmpty())
         builder.Append((name + ": ").Bold());
-      builder.AppendLine(await kvp.Value.ListSubcommands(message));
+      builder.AppendLine(await kvp.Value.ListSubcommands(context));
     }
-    var channel = message.Channel as ITextChannel;
+    var channel = context.Channel as ITextChannel;
     if(channel != null) {
       var guild = await Bot.Database.GetGuild(channel.Guild);
       var commands = guild.Commands;
       if(commands != null && commands.Count > 0)
         builder.AppendLine($"{"Custom: ".Bold()} {commands.Select(c => c.Name.Code()).Join(", ")}");
     }
-    return $"{message.Author.Mention} here are the commands you can use:\n{builder}\nRun ``help <command>`` for more information";
+    return $"{context.Message.Author.Mention} here are the commands you can use:\n{builder}\nRun ``help <command>`` for more information";
   }
 
 }

@@ -27,10 +27,10 @@ public class CounterService {
         var um = m as IUserMessage;
         if (um == null || m.Author.IsMe())
             return Task.CompletedTask;
-        var text =  um.Resolve(UserMentionHandling.Remove, 
-                            ChannelMentionHandling.Remove, 
-                            RoleMentionHandling.Remove, 
-                            EveryoneMentionHandling.Remove)
+        var text =  um.Resolve(TagHandling.Remove, 
+                            TagHandling.Remove, 
+                            TagHandling.Remove, 
+                            TagHandling.Remove)
                         .ToLowerInvariant();
         text = UrlRegex.Replace(text, string.Empty);
         text = PunctuationRegex.Replace(text, string.Empty);
@@ -41,9 +41,9 @@ public class CounterService {
         Counters.Get("messages-recieved").Increment();
         Counters.Get("messages-attachments").IncrementBy((ulong) um.Attachments.Count);
         Counters.Get("messages-embeds").IncrementBy((ulong) um.Embeds.Count);
-        Counters.Get("messages-user-mentions").IncrementBy((ulong) um.MentionedUsers.Count);
+        Counters.Get("messages-user-mentions").IncrementBy((ulong) um.MentionedUserIds.Count);
         Counters.Get("messages-channel-mentions").IncrementBy((ulong) um.MentionedChannelIds.Count);
-        Counters.Get("messages-role-mentions").IncrementBy((ulong) um.MentionedRoles.Count);
+        Counters.Get("messages-role-mentions").IncrementBy((ulong) um.MentionedRoleIds.Count);
         if(m.IsTTS)
             Counters.Get("messages-text-to-speech").Increment();
         return Task.CompletedTask;

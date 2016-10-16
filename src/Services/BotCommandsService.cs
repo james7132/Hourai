@@ -20,9 +20,14 @@ public class BotCommandService : IService {
 
   public async Task Initialize() {
     Client.MessageReceived += HandleMessage;
-    await Commands.Load(new Owner(Bot.Counters));
-    await Commands.LoadAssembly(Assembly.GetEntryAssembly());
-    await Commands.Load(new Help());
+    var map = new DependencyMap();
+    map.Add(Bot.Counters);
+    Log.Info("HELLO");
+    await Commands.AddModule<Owner>(map);
+    await Commands.AddModules(Assembly.GetEntryAssembly());
+    await Commands.AddModule<Help>(map);
+    foreach(var module in Commands.Modules)
+      Log.Info(module.Name);
   }
 
   public async Task HandleMessage(IMessage m) {
@@ -47,10 +52,11 @@ public class BotCommandService : IService {
 
     // Execute the command. (result does not indicate a return value, 
     // rather an object stating if the command executed succesfully)
-    var result = await Commands.Execute(msg, argPos);
+    var context = new CommandContext(Bot.Client, msg);
+    var result = await Commands.Execute(context, argPos);
     var guildChannel = msg.Channel as ITextChannel;
     string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}." 
-      : $"in private channel with {(await msg.Channel.GetUsersAsync()).Select(u => u.Username).Join(", ")}.";
+      : "in private channel.";
     if (result.IsSuccess) {
       Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
       Bot.Counters.Get("command-success").Increment();
