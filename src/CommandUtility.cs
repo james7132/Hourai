@@ -36,7 +36,7 @@ public static class CommandUtility {
                                                 string action,
                                                 Func<IGuildUser, Task> task,
                                                 bool ignoreErrors = false) {
-    var guild = Check.NotNull(Context?.Guild);
+    var guild = Check.NotNull(context.Guild);
     var botUser = await guild.GetCurrentUserAsync();
     return async delegate (IGuildUser user) {
       if (user.IsServerOwner())

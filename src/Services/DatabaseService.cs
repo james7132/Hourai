@@ -1,4 +1,5 @@
 using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
@@ -9,13 +10,13 @@ namespace Hourai {
 
 public class DatabaseService {
 
-  public BotDbContext Database { get; }
-  public DiscordSocketClient Client { get; }
+  BotDbContext Database { get; }
+  DiscordSocketClient Client { get; }
 
-  public DatabaseService(BotDbContext db, DiscordSocketClient client) {
-    Bot.RegularTasks += Bot.Database.Save;
-    Client = client;
-    Database = db;
+  public DatabaseService(IDependencyMap map) {
+    Client = map.Get<DiscordSocketClient>();
+    Database = map.Get<BotDbContext>();
+    Bot.RegularTasks += Database.Save;
     Client.MessageReceived += async m => {
       var author = m.Author;
       if(author.Username == null)

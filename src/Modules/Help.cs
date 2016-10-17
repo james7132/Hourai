@@ -13,9 +13,10 @@ namespace Hourai {
 /// Cannot be automatically installed and must be installed after all other modules have been installed.
 /// </summary>
 [DontAutoLoad]
-public class Help : HouraiModule {
+public class Help : DatabaseHouraiModule {
 
-  readonly Dictionary<ModuleInfo, CommandGroup> Modules;
+  IDependencyMap Map { get; } 
+  Dictionary<ModuleInfo, CommandGroup> Modules { get; }
 
   static Queue<string> SplitComamnd(string input) {
     return new Queue<string>(input.SplitWhitespace());
@@ -67,21 +68,21 @@ public class Help : HouraiModule {
       }
     }
 
-    public Task<string> GetSpecficHelp(CommandContext context, string command) {
-      return GetSpecficHelp(context, SplitComamnd(command));
+    public Task<string> GetSpecficHelp(CommandContext context, IDependencyMap map, string command) {
+      return GetSpecficHelp(context, map, SplitComamnd(command));
     }
 
-    Task<string> GetSpecficHelp(CommandContext context, Queue<string> names) {
+    Task<string> GetSpecficHelp(CommandContext context, IDependencyMap map, Queue<string> names) {
       if (names.Count == 0)
-        return GetSpecficHelp(context);
+        return GetSpecficHelp(context, map);
       var prefix = names.Dequeue();
       // Recurse as needed
       if (Subcommands.ContainsKey(prefix))
-        return Subcommands[prefix].GetSpecficHelp(context, names);
+        return Subcommands[prefix].GetSpecficHelp(context, map, names);
       return Task.FromResult<string>(null);
     }
 
-    async Task<string> GetSpecficHelp(CommandContext context) {
+    async Task<string> GetSpecficHelp(CommandContext context, IDependencyMap map) {
       var builder = new StringBuilder();
       CommandInfo c = Command;
       using (builder.Code()) {
@@ -103,28 +104,28 @@ public class Help : HouraiModule {
         builder.AppendLine(c.Remarks);
       if(Subcommands.Count > 0) {
         builder.AppendLine("Available Subcommands:")
-          .AppendLine(await ListSubcommands(context));
+          .AppendLine(await ListSubcommands(context, map));
       }
       return builder.ToString();
     }
 
-    public async Task<string> ListSubcommands(CommandContext context) {
+    public async Task<string> ListSubcommands(CommandContext context, IDependencyMap map) {
       var usable = new List<string>();
       foreach (var commandGroup in Subcommands.Values) {
-        if(await commandGroup.CanUse(context))
+        if(await commandGroup.CanUse(context, map))
           usable.Add(commandGroup.ToString().Code());
       }
       return usable.Join(", ");
     }
 
-    public async Task<bool> CanUse(CommandContext context) {
+    public async Task<bool> CanUse(CommandContext context, IDependencyMap map) {
       if (Command != null) {
-        var result = await Command.CheckPreconditions(context);
+        var result = await Command.CheckPreconditions(context, map);
         if (result.IsSuccess)
           return true;
       }
       foreach (CommandGroup commandGroup in Subcommands.Values) {
-        if (await commandGroup.CanUse(context))
+        if (await commandGroup.CanUse(context, map))
           return true;
       }
       return false;
@@ -138,8 +139,9 @@ public class Help : HouraiModule {
     }
   }
 
-  public Help() {
-    var modules = Bot.CommandService?.Modules;
+  public Help(DependencyMap map, CommandService commands, BotDbContext db) : base(db) {
+    var modules = commands?.Modules;
+    Map = map;
     if(modules == null)
       throw new InvalidOperationException("Cannot create a help command if there is no command service");
     Modules = modules.ToDictionary(g => g, g => new CommandGroup(g.Commands));
@@ -155,7 +157,7 @@ public class Help : HouraiModule {
         return;
       }
       foreach (CommandGroup commandGroup in Modules.Values) {
-        string specificHelp = await commandGroup.GetSpecficHelp(Context, command);
+        string specificHelp = await commandGroup.GetSpecficHelp(Context, Map, command);
         if (specificHelp.IsNullOrEmpty())
           continue;
         await RespondAsync(specificHelp);
@@ -170,16 +172,16 @@ public class Help : HouraiModule {
   async Task<string> GetGeneralHelp(CommandContext context) {
     var builder = new StringBuilder();
     foreach (var kvp in Modules.OrderBy(k => k.Key.Name)) {
-      if (!await kvp.Value.CanUse(context))
+      if (!await kvp.Value.CanUse(context, Map))
         continue;
       var name = kvp.Key.Name;
       if (!name.IsNullOrEmpty())
         builder.Append((name + ": ").Bold());
-      builder.AppendLine(await kvp.Value.ListSubcommands(context));
+      builder.AppendLine(await kvp.Value.ListSubcommands(context, Map));
     }
     var channel = context.Channel as ITextChannel;
     if(channel != null) {
-      var guild = await Bot.Database.GetGuild(channel.Guild);
+      var guild = await Database.GetGuild(channel.Guild);
       var commands = guild.Commands;
       if(commands != null && commands.Count > 0)
         builder.AppendLine($"{"Custom: ".Bold()} {commands.Select(c => c.Name.Code()).Join(", ")}");

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 
 namespace Hourai {
@@ -20,8 +21,9 @@ public class CounterService {
      return Task.CompletedTask;
   }
 
-  public CounterService(DiscordSocketClient client, CounterSet counters) {
-    Counters = counters;
+  public CounterService(IDependencyMap map) {
+    Counters = map.Get<CounterSet>();
+    var client = map.Get<DiscordSocketClient>();
 
     client.MessageReceived += m => {
         var um = m as IUserMessage;

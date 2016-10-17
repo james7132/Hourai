@@ -43,7 +43,6 @@ public class User {
            Name = Username 
     };
     Usernames.Add(newUsername);
-    Bot.Database.Usernames.Add(newUsername);
   }
 
 }

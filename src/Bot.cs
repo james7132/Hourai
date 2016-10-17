@@ -15,20 +15,15 @@ class Bot {
 
   static void Main() => new Bot().Run().GetAwaiter().GetResult();
 
-  public static DiscordSocketClient Client { get; private set; }
-  public static DiscordSocketConfig ClientConfig { get; private set; }
   public static ISelfUser User { get; private set; }
   public static IUser Owner { get; set; }
-  public static CounterSet Counters { get; private set; }
-  public static BotDbContext Database { get; private set; }
 
   public static string ExecutionDirectory { get; private set; }
 
   public static DateTime StartTime { get; private set; }
   public static TimeSpan Uptime => DateTime.Now - StartTime;
 
-  public static CommandService CommandService { get; private set; }
-  static ConcurrentDictionary<Type, object> _services;
+  DiscordSocketClient Client { get; set; }
 
   static TaskCompletionSource<object> ExitSource { get; set; }
   bool _initialized;
@@ -42,20 +37,11 @@ class Bot {
 
   public Bot() {
     StartTime = DateTime.Now;
-    _services = new ConcurrentDictionary<Type, object>();
-    Counters = new CounterSet(new ActivatorFactory<SimpleCounter>());
     ExitSource = new TaskCompletionSource<object>();
 
     _regularTasks = new List<Func<Task>>();
 
     ExecutionDirectory = GetExecutionDirectory();
-    ClientConfig = new DiscordSocketConfig();
-    Client = new DiscordSocketClient(ClientConfig);
-    CommandService = new CommandService();
-    Add(new LogService(Client, ExecutionDirectory));
-    Add(new CounterService(Client, Counters));
-    Add(new BlacklistService(Client, Database));
-    Add(new BotCommandService(Client, CommandService));
     Log.Info($"Execution Directory: { ExecutionDirectory }");
     Config.Load();
   }
@@ -65,12 +51,35 @@ class Bot {
     ExitSource.SetResult(new object());
   }
 
-  async Task Initialize() {
+  async Task Initialize(BotDbContext db) {
     if (_initialized)
       return;
     Log.Info("Initializing...");
-    foreach(var service in _services.Values.OfType<IService>())
-      await service.Initialize();
+    var config = new DiscordSocketConfig();
+    Client = new DiscordSocketClient(config);
+    var CommandService = new CommandService();
+    var map = new DependencyMap();
+    map.Add(this);
+    map.Add(map);
+    map.Add(Client);
+    map.Add(CommandService);
+
+    map.Add(db);
+    map.Add(new CounterSet(new ActivatorFactory<SimpleCounter>()));
+    map.Add(new LogSet());
+
+    map.Add(new LogService(map, ExecutionDirectory));
+    map.Add(new CounterService(map));
+    map.Add(new DatabaseService(map));
+    map.Add(new BlacklistService(map));
+    map.Add(new BotCommandService(map));
+    map.Add(new SearchService(map));
+
+    Log.Info(map.Get<BotDbContext>());
+
+    await CommandService.AddModules(Assembly.GetEntryAssembly(), map);
+    await CommandService.AddModule<Help>(map);
+
     _initialized = true;
   }
 
@@ -78,14 +87,6 @@ class Bot {
     var uri = new UriBuilder(Assembly.GetEntryAssembly().CodeBase);
     string path = Uri.UnescapeDataString(uri.Path);
     return Path.GetDirectoryName(path);
-  }
-
-  public static void Add<T>(T service) where T : class {
-    _services[typeof(T)] = service;
-  }
-
-  public static T Get<T>() where T : class {
-    return _services[typeof(T)] as T;
   }
 
   async Task MainLoop() {
@@ -97,8 +98,6 @@ class Bot {
 
     Owner = (await Client.GetApplicationInfoAsync()).Owner;
     Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
-
-    Log.Info("Commands: " + CommandService.Commands.Select(c => c.Text).Join(", "));
     while (!ExitSource.Task.IsCompleted) {
       await Task.WhenAll(_regularTasks.Select(t => t()));
       await User.ModifyStatusAsync(u => u.Game = new Discord.API.Game {
@@ -111,10 +110,9 @@ class Bot {
   }
 
   public async Task Run() {
-    await Initialize();
     Log.Info($"Starting...");
-    using(Database = new BotDbContext()) {
-      Add(new DatabaseService(Database, Client));
+    using(var database = new BotDbContext()) {
+      await Initialize(database);
       while (!ExitSource.Task.IsCompleted) {
         try {
           await MainLoop();

@@ -1,4 +1,5 @@
 using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using System;
 using System.Threading.Tasks;
@@ -7,17 +8,19 @@ namespace Hourai {
 
 public class BlacklistService {
 
-  public DiscordSocketClient Client { get; }
+  DiscordSocketClient Client { get; }
+  BotDbContext Database { get; }
 
-  public BlacklistService(DiscordSocketClient client, BotDbContext db) {
-    Client = client;
+  public BlacklistService(IDependencyMap dependencies) {
+    Client = dependencies.Get<DiscordSocketClient>();
+    Database = dependencies.Get<BotDbContext>();
     Client.GuildAvailable += CheckBlacklist(false);
     Client.JoinedGuild += CheckBlacklist(true);
   }
 
   Func<IGuild, Task> CheckBlacklist(bool normalJoin) {
     return async guild => {
-      var config = await Bot.Database.GetGuild(guild);
+      var config = await Database.GetGuild(guild);
       var defaultChannel = (await guild.GetChannelAsync(guild.DefaultChannelId)) as ITextChannel;
       if(config.IsBlacklisted) {
         Log.Info($"Added to blacklisted guild {guild.Name} ({guild.Id})");

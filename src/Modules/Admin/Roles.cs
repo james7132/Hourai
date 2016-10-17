@@ -10,8 +10,11 @@ namespace Hourai {
 public partial class Admin {
 
   [Group("role")]
-  public class Roles : HouraiModule {
+  public class Roles : DatabaseHouraiModule {
     const string Requirement = " Requires ``Manage Role`` permission for both user and bot.";
+
+    public Roles(BotDbContext db) : base(db) {
+    }
 
     [Command("add")]
     [Permission(GuildPermission.ManageRoles)]
@@ -24,7 +27,7 @@ public partial class Admin {
     [Command("list")]
     [Remarks("Lists all roles on this server.")]
     public async Task List() {
-      var guild = Check.NotNull(Context?.Guild);
+      var guild = Check.NotNull(Context.Guild);
       var roles = guild.Roles
         .Where(r => r.Id != guild.EveryoneRole.Id)
         .OrderBy(r => r.Position);
@@ -43,7 +46,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Removes a role to all users on the server." + Requirement)]
     public async Task Nuke(params IRole[] roles) {
-      var users = await Check.NotNull(Context?.Guild).GetUsersAsync();
+      var users = await Check.NotNull(Context.Guild).GetUsersAsync();
       var action = await CommandUtility.Action(Context, "remove role", async u => await u.RemoveRolesAsync(roles));
       await CommandUtility.ForEvery(Context, users, action);
     }
@@ -55,10 +58,10 @@ public partial class Admin {
       var action = await CommandUtility.Action(Context, "ban",
         async u => {
           await u.RemoveRolesAsync(role);
-          var guildUser = await Bot.Database.GetGuildUser(u);
+          var guildUser = await Database.GetGuildUser(u);
           guildUser.BanRole(role);
         });
-      await Bot.Database.Save();
+      await Database.Save();
       await CommandUtility.ForEvery(Context, users, action);
     }
 
@@ -68,10 +71,10 @@ public partial class Admin {
     public async Task RoleUnban(IRole role, params IGuildUser[] users) {
       var action = await CommandUtility.Action(Context, "ban",
         async u => {
-          var guildUser = await Bot.Database.GetGuildUser(u);
+          var guildUser = await Database.GetGuildUser(u);
           guildUser.UnbanRole(role);
         });
-      await Bot.Database.Save();
+      await Database.Save();
       await CommandUtility.ForEvery(Context, users, action);
     }
 
@@ -79,7 +82,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Creates a mentionable role and applies it to all mentioned users")]
     public async Task RoleCreate(string name) {
-      await Check.NotNull(Context?.Guild).CreateRoleAsync(name);
+      await Check.NotNull(Context.Guild).CreateRoleAsync(name);
       await Success();
     }
 

@@ -54,7 +54,7 @@ namespace Hourai {
       var baseCheck = await base.CheckPermissions(context, commandInfo, dependencies);
       if (!baseCheck.IsSuccess)
           return baseCheck;
-      var guild = await Bot.Database.GetGuild(Check.InGuild(context.Message).Guild);
+      var guild = await dependencies.Get<BotDbContext>().GetGuild(Check.NotNull(context.Guild));
       if (guild.IsModuleEnabled(Module))
           return PreconditionResult.FromSuccess();
       return PreconditionResult.FromError($"Module \"{commandInfo.Module.Name}\" is not enabled.");
@@ -218,7 +218,7 @@ namespace Hourai {
       if (user.IsBotOwner() || user.IsServerOwner())
         return PreconditionResult.FromSuccess();
       var server = user.Guild;
-      var guild = await Bot.Database.GetGuild(server);
+      var guild = await dependencies.Get<BotDbContext>().GetGuild(server);
       ulong? minRole = guild.GetMinimumRole(_roleType);
       if (minRole == null)
         return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.ToString().Code()} is set.");
