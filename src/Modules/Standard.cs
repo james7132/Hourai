@@ -35,7 +35,7 @@ public class Standard : HouraiModule {
   [Remarks("Gets general information about the current server")]
   public async Task ServerInfo() {
     var builder = new StringBuilder();
-    var server = Check.InGuild(Context.Message).Guild;
+    var server = Check.NotNull(Context?.Guild);
     var guild = await Bot.Database.GetGuild(server);
     var owner = await server.GetUserAsync(server.OwnerId);
     var channels = await server.GetChannelsAsync();
@@ -214,7 +214,7 @@ public class Standard : HouraiModule {
     [Permission(GuildPermission.ManageGuild, Require.User)]
     [Remarks("Lists all modules available. Enabled ones are highligted. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleList() {
-      var config = await Bot.Database.GetGuild(Check.InGuild(Context.Message).Guild);
+      var config = await Bot.Database.GetGuild(Check.NotNull(Context?.Guild));
       var modules = Enum.GetValues(typeof(ModuleType));
       await Context.Message.Respond(modules.OfType<ModuleType>()
           .Select(m => (config.IsModuleEnabled(m)) 
@@ -229,7 +229,7 @@ public class Standard : HouraiModule {
     [Remarks("Enables a module for this server. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleEnable(params string[] modules) {
       var response = new StringBuilder();
-      var config = await Bot.Database.GetGuild(Check.InGuild(Context.Message).Guild);
+      var config = await Bot.Database.GetGuild(Check.NotNull(Context?.Guild));
       foreach (var module in modules) {
         ModuleType type;
         if(Enum.TryParse(module, true, out type)) {
@@ -249,7 +249,7 @@ public class Standard : HouraiModule {
     [Remarks("Disable a module for this server. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleDisable(params string[]  modules) {
       var response = new StringBuilder();
-      var config = await Bot.Database.GetGuild(Check.InGuild(Context.Message).Guild);
+      var config = await Bot.Database.GetGuild(Check.NotNull(Context?.Guild));
       foreach (var module in modules) {
         ModuleType type;
         if(Enum.TryParse(module, true, out type)) {

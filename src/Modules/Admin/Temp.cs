@@ -62,7 +62,7 @@ public partial class Admin : HouraiModule {
     [Permission(GuildPermission.BanMembers)]
     [Remarks("Temporarily bans user(s) from the server. Requires ``Ban Members`` server permission")]
     public Task Ban(string time, params IGuildUser[] users) {
-      var guild = Check.InGuild(Context.Message).Guild;
+      var guild = Check.NotNull(Context?.Guild);
       TimeSpan timespan;
       if(!TimeSpan.TryParse(time, out timespan)) {
         return Context.Channel.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
@@ -92,7 +92,7 @@ public partial class Admin : HouraiModule {
       [Command("add")]
       [Permission(GuildPermission.ManageRoles)]
       public Task Add(IRole role, string time, params IGuildUser[] users) {
-        var guild = Check.InGuild(Context.Message).Guild;
+        var guild = Check.NotNull(Context?.Guild);
         TimeSpan timespan;
         if(!TimeSpan.TryParse(time, out timespan)) {
           return Context.Channel.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");

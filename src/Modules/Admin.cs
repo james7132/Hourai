@@ -4,7 +4,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Collections.Generic;
-Using System.Linq;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hourai {
@@ -78,7 +78,7 @@ public partial class Admin : HouraiModule {
   + "and requires the ``Change Nickname`` permission.\nIf at least one ``user`` is specified, nicknames the mentioned users and requires the "
   + "``Manage Nicknames`` permission.")]
   public async Task Nickname(string nickname, params IGuildUser[] users) {
-    Check.InGuild(Context.Message);
+    Check.NotNull(Context?.Guild);
     var author = Context.Message.Author as IGuildUser;
     IGuildUser[] allUsers = users;
     if (allUsers.Length <= 0) {
@@ -100,7 +100,7 @@ public partial class Admin : HouraiModule {
   [Command("modlog")]
   [Remarks("Gets the most recent changes on the server")]
   public Task Modlog() {
-    var guild = Check.InGuild(Context.Message).Guild;
+    var guild = Check.NotNull(Context?.Guild);
     var log = Bot.Get<LogService>().Logs.GetGuild(guild);
     var path =  log.GetPath(DateTimeOffset.Now);
     if(File.Exists(path))
@@ -125,7 +125,7 @@ public partial class Admin : HouraiModule {
   }
 
   static async Task RoleCommand(CommandContext context, IRole role, string action, IEnumerable<IGuildUser> users, Func<IGuildUser, IRole, Task> task) {
-    var guild = Check.InGuild(context.Message).Guild;
+    var guild = Check.NotNull(Context?.Guild);
     var selfUser = Bot.Client.CurrentUser;
     var guildBot = await guild.GetUserAsync(selfUser.Id);
     var message = context.Message;

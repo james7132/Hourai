@@ -160,13 +160,13 @@ public class Owner : HouraiModule {
   [Command("leave")]
   [Remarks("Makes the bot leave the current server")]
   public async Task Leave() {
-    var guild = Check.InGuild(Context.Message).Guild;
+    var guild = Check.NotNull(Context?.Guild);
     await Success();
     await guild.LeaveAsync();
   }
 
   [Group("blacklist")]
-  public class BlacklistGroup : HouraiModule {
+  public class Blacklist : HouraiModule {
 
     static bool SettingToBlacklist(string setting) {
       if(setting == "-")
@@ -177,7 +177,7 @@ public class Owner : HouraiModule {
     [Command("server")]
     [Remarks("Blacklists the current server and makes the bot leave.")]
     public async Task Server(string setting = "+") {
-      var guild = Check.InGuild(Context.Message).Guild;
+      var guild = Check.NotNull(Context?.Guild);
       var config = await Bot.Database.GetGuild(guild);
       config.IsBlacklisted = true;
       await Bot.Database.Save();

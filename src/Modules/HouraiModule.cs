@@ -6,8 +6,6 @@ namespace Hourai {
 
 public abstract class HouraiModule : ModuleBase {
 
-  public IGuild CurrentGuild => QCheck.InGuild(Context.Message)?.Guild;
-
   public Task Success(string response = "") {
     return ReplyAsync(response.IsNullOrEmpty() ? Config.SuccessResponse :
         Config.SuccessResponse + ": " + response);
