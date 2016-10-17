@@ -15,17 +15,25 @@ namespace Hourai {
 
 [Hide]
 [BotOwner]
-[DontAutoLoad]
-public class Owner : HouraiModule {
+public class Owner : DatabaseHouraiModule {
 
-  readonly CounterSet Counters;
+  DiscordSocketClient Client { get; }
+  CounterSet Counters { get; }
+  LogService LogService { get; }
 
-  public Owner(CounterSet counters) { Counters = counters; }
+  public Owner(CounterSet counters, 
+               BotDbContext db,
+               LogService logs,
+               DiscordSocketClient client) : base(db) { 
+    Counters = counters; 
+    LogService = logs;
+    Client = client;
+  }
 
   [Command("log")]
   [Remarks("Gets the log for the bot.")]
   public async Task GetLog() {
-    await Context.Channel.SendFileRetry(Bot.Get<LogService>().BotLog);
+    await Context.Channel.SendFileRetry(LogService.BotLog);
   }
 
   [Command("counters")] 
@@ -47,7 +55,7 @@ public class Owner : HouraiModule {
   [Command("kill")]
   [Remarks("Turns off the bot.")]
   public async Task Kill() {
-    await Bot.Database.Save();
+    await Database.Save();
     await Success();
     Bot.Exit();
   }
@@ -55,7 +63,7 @@ public class Owner : HouraiModule {
   [Command("broadcast")]
   [Remarks("Broadcasts a message to the default channel of all servers the bot is connected to.")]
   public async Task Broadcast([Remainder] string broadcast) {
-    var guilds = Bot.Client.Guilds;
+    var guilds = Client.Guilds;
     var defaultChannels = await Task.WhenAll(guilds.Select(g => g.GetDefaultChannelAsync()));
     await Task.WhenAll(defaultChannels.Select(c => c.Respond(broadcast)));
   }
@@ -63,31 +71,27 @@ public class Owner : HouraiModule {
   [Command("save")]
   [Remarks("Forces the bot to flush and save all active information")]
   public async Task SaveAll() {
-    await Bot.Database.Save();
+    await Database.Save();
     await Success();
   }
 
   [Command("stats")]
   [Remarks("Gets statistics about the current running bot instance")]
   public async Task Stats() {
-    var client = Bot.Client;
-    var config = Bot.ClientConfig;
     var builder = new StringBuilder();
-    var guilds = client.Guilds;
+    var guilds = Client.Guilds;
     builder.AppendLine("Stats".Bold())
       .AppendLine($"Connected Servers: {guilds.Count}")
-      .AppendLine($"Visible Users: {client.Guilds.Sum(g => g.Users.Count)}")
-      .AppendLine($"Stored Users {Bot.Database.Users.Count()}")
-      .AppendLine($"Visible Channels: {client.Guilds.Sum(g => g.Channels.Count)}")
-      .AppendLine($"Stored Users {Bot.Database.Channels.Count()}")
+      .AppendLine($"Visible Users: {Client.Guilds.Sum(g => g.Users.Count)}")
+      .AppendLine($"Stored Users {Database.Users.Count()}")
+      .AppendLine($"Visible Channels: {Client.Guilds.Sum(g => g.Channels.Count)}")
+      .AppendLine($"Stored Users {Database.Channels.Count()}")
       .AppendLine()
       .AppendLine($"Start Time: {Bot.StartTime})")
       .AppendLine($"Uptime: {Bot.Uptime}")
       .AppendLine()
       .AppendLine($"Client: Discord .NET v{DiscordConfig.Version} (API v{DiscordConfig.APIVersion}, {DiscordSocketConfig.GatewayEncoding})")
-      .AppendLine($"Shard ID: {client.ShardId}")
-      .AppendLine($"Total Shards: {config.TotalShards}")
-      .AppendLine($"Latency: {client.Latency}ms");
+      .AppendLine($"Latency: {Client.Latency}ms");
     using(Process proc = Process.GetCurrentProcess()) {
       proc.Refresh();
       builder.AppendLine($"Total Memory Used: {BytesToMemoryValue(proc.PrivateMemorySize64)}");
@@ -97,20 +101,18 @@ public class Owner : HouraiModule {
 
   [Command("refresh")]
   public async Task Refresh() {
-    var client = Bot.Client;
-    var db = Bot.Database;
     Log.Info("Starting refresh...");
-    foreach(var guild in client.Guilds) {
-      db.AllowSave = false;
-      var guildDb = await Bot.Database.GetGuild(guild);
+    foreach(var guild in Client.Guilds) {
+      Database.AllowSave = false;
+      var guildDb = await Database.GetGuild(guild);
       Log.Info($"Refreshing {guild.Name}...");
       var channels = await guild.GetTextChannelsAsync();
       foreach(var channel in channels)
-        await db.GetChannel(channel);
+        await Database.GetChannel(channel);
       foreach(var user in guild.Users)
-        await db.GetGuildUser(user);
-      Bot.Database.AllowSave = true;
-      await Bot.Database.Save();
+        await Database.GetGuildUser(user);
+      Database.AllowSave = true;
+      await Database.Save();
     }
     Log.Info("Done refreshing.");
     await Success();
@@ -160,13 +162,16 @@ public class Owner : HouraiModule {
   [Command("leave")]
   [Remarks("Makes the bot leave the current server")]
   public async Task Leave() {
-    var guild = Check.NotNull(Context?.Guild);
+    var guild = Check.NotNull(Context.Guild);
     await Success();
     await guild.LeaveAsync();
   }
 
   [Group("blacklist")]
-  public class Blacklist : HouraiModule {
+  public class Blacklist : DatabaseHouraiModule {
+
+    public Blacklist(BotDbContext db) : base(db) {
+    }
 
     static bool SettingToBlacklist(string setting) {
       if(setting == "-")
@@ -177,10 +182,10 @@ public class Owner : HouraiModule {
     [Command("server")]
     [Remarks("Blacklists the current server and makes the bot leave.")]
     public async Task Server(string setting = "+") {
-      var guild = Check.NotNull(Context?.Guild);
-      var config = await Bot.Database.GetGuild(guild);
+      var guild = Check.NotNull(Context.Guild);
+      var config = await Database.GetGuild(guild);
       config.IsBlacklisted = true;
-      await Bot.Database.Save();
+      await Database.Save();
       await Success();
       await guild.LeaveAsync();
     }
@@ -190,7 +195,7 @@ public class Owner : HouraiModule {
     public async Task User(string setting, params IGuildUser[] users) {
       var blacklisted = SettingToBlacklist(setting);
       foreach(var user in users) {
-        var uConfig = await Bot.Database.GetUser(user);
+        var uConfig = await Database.GetUser(user);
         if(uConfig == null)
           continue;
         uConfig.IsBlacklisted = blacklisted;
@@ -199,7 +204,7 @@ public class Owner : HouraiModule {
         var dmChannel = await user.CreateDMChannelAsync();
         await dmChannel.Respond("You have been blacklisted. The bot will no longer respond to your commands.");
       }
-      await Bot.Database.Save();
+      await Database.Save();
       await Success();
     }
 

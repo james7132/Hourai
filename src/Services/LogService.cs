@@ -1,4 +1,5 @@
 using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
@@ -18,10 +19,10 @@ public class LogService {
   public string BotLog { get; private set; }
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
-  public LogService(DiscordSocketClient client, string directory) {
+  public LogService(IDependencyMap map, string directory) {
     BaseDirectory = directory;
-    Logs = new LogSet();
-    Client = client;
+    Client = map.Get<DiscordSocketClient>();
+    Logs = map.Get<LogSet>();
     SetupBotLog();
     ClientLogs();
     GuildLogs();

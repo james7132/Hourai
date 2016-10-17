@@ -13,7 +13,13 @@ using Discord.WebSocket;
 namespace Hourai {
 
 [ModuleCheck(ModuleType.Standard)]
-public class Standard : HouraiModule {
+public partial class Standard : DatabaseHouraiModule {
+
+  LogSet Logs { get; } 
+
+  public Standard(BotDbContext db, LogSet logs) : base(db) {
+    Logs = logs;
+  }
 
   [Command("echo")]
   [Remarks("Has the bot repeat what you say")]
@@ -35,8 +41,8 @@ public class Standard : HouraiModule {
   [Remarks("Gets general information about the current server")]
   public async Task ServerInfo() {
     var builder = new StringBuilder();
-    var server = Check.NotNull(Context?.Guild);
-    var guild = await Bot.Database.GetGuild(server);
+    var server = Check.NotNull(Context.Guild);
+    var guild = await Database.GetGuild(server);
     var owner = await server.GetUserAsync(server.OwnerId);
     var channels = await server.GetChannelsAsync();
     var textChannels = channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
@@ -96,115 +102,20 @@ public class Standard : HouraiModule {
       builder.AppendLine($"{channel.Name}: {channel.Topic}");
     return Context.Message.Respond(builder.ToString());
   }
-  
 
-  [Group("search")]
-  public class Search : HouraiModule {
-
-    static Func<string, bool> ExactMatch(IEnumerable<string> matches) {
-      return s => matches.All(s.Contains);
-    }
-
-    static Func<string, bool> RegexMatch(string regex) {
-      return new Regex(regex, RegexOptions.Compiled).IsMatch;
-    }
-
-    [Command]
-    [PublicOnly]
-    [Remarks("Search the history of the current channel for messages that match all of the specfied search terms.")]
-    public Task SearchChat(params string[] terms) {
-      return SearchChannel(ExactMatch(terms));
-    }
-
-    [Command("regex")]
-    [PublicOnly]
-    [Remarks("Search the history of the current channel for matches to a specfied regex.")]
-    public Task SearchRegex(string regex) {
-      return SearchChannel(RegexMatch(regex));
-    }
-
-    [Command("day")]
-    [PublicOnly]
-    [Remarks("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
-    public Task Day(string day) {
-      var channel = Check.InGuild(Context.Message);
-      string path = Bot.Get<LogService>().Logs.GetChannel(channel).GetPath(day);
-      if (File.Exists(path))
-        return Context.Message.SendFileRetry(path);
-      else
-        return RespondAsync($"A log for {channel.Mention} on date {day} cannot be found.");
-    }
-
-    [Command("ignore")]
-    [PublicOnly]
-    [Remarks("Mentioned channels will not be searched in ``search all``, except while in said channel. "
-      + "User must have ``Manage Channels`` permission")]
-    public Task Ignore(params IGuildChannel[] channels) {
-      return SetIgnore(channels, true);
-    }
-
-    [Command("unigore")]
-    [PublicOnly]
-    [Remarks("Mentioned channels will appear in ``search all`` results." 
-      +" User must have ``Manage Channels`` permission")]
-    public Task Unignore(params IGuildChannel[] channels) {
-      return SetIgnore(channels, false);
-    }
-
-    async Task SetIgnore(IEnumerable<IGuildChannel> channels, bool value) {
-      var channel = Check.InGuild(Context.Message);
-      foreach (var ch in channels) 
-        (await Bot.Database.GetChannel(ch)).SearchIgnored = value;
-      await Bot.Database.Save();
-      await Success();
-    }
-
-    [Group("all")]
-    public class All : HouraiModule {
-
-      [Command]
-      [PublicOnly]
-      [Remarks("Searches the history of all channels in the current server for any of the specfied search terms.")]
-      public async Task SearchAll(params string[] terms) {
-        await SearchAll(ExactMatch(terms));
-      }
-
-      [Command("regex")]
-      [PublicOnly]
-      [Remarks("Searches the history of all channels in the current server based on a regex.")]
-      public async Task SearchAllRegex(string regex) {
-        await SearchAll(RegexMatch(regex));
-      }
-
-      async Task SearchAll(Func<string, bool> pred) {
-        try {
-          var channel = Check.InGuild(Context.Message);
-          string reply = await Bot.Get<LogService>().Logs.GetChannel(channel).SearchAll(pred);
-          await Context.Message.Respond(reply);
-        } catch (Exception e) {
-          Log.Error(e);
-        }
-      }
-    }
-
-    async Task SearchChannel(Func<string, bool> pred) {
-      try {
-        var channel = Check.InGuild(Context.Message);
-        string reply = await Bot.Get<LogService>().Logs.GetChannel(channel).Search(pred);
-        await Context.Message.Respond(reply);
-      } catch(Exception e) {
-        Log.Error(e);
-      }
-    }
-
-  } 
 
   [Group("module")]
-  public class Module : HouraiModule {
+  public class Module : DatabaseHouraiModule {
+
+    CommandService Commands { get; }
+
+    public Module(CommandService commands, BotDbContext db) : base(db) {
+      Commands = commands;
+    }
 
     static readonly Type HideType = typeof(HideAttribute);
     static readonly Type moduleType = typeof(ModuleCheckAttribute);
-    IEnumerable<string> Modules => Bot.CommandService.Modules
+    IEnumerable<string> Modules => Commands.Modules
       .Where(m => !m.Source.IsDefined(HideType, false) &&
            m.Source.IsDefined(moduleType, false))
       .Select(m => m.Name).ToList();
@@ -214,7 +125,7 @@ public class Standard : HouraiModule {
     [Permission(GuildPermission.ManageGuild, Require.User)]
     [Remarks("Lists all modules available. Enabled ones are highligted. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleList() {
-      var config = await Bot.Database.GetGuild(Check.NotNull(Context?.Guild));
+      var config = await Database.GetGuild(Check.NotNull(Context.Guild));
       var modules = Enum.GetValues(typeof(ModuleType));
       await Context.Message.Respond(modules.OfType<ModuleType>()
           .Select(m => (config.IsModuleEnabled(m)) 
@@ -229,7 +140,7 @@ public class Standard : HouraiModule {
     [Remarks("Enables a module for this server. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleEnable(params string[] modules) {
       var response = new StringBuilder();
-      var config = await Bot.Database.GetGuild(Check.NotNull(Context?.Guild));
+      var config = await Database.GetGuild(Check.NotNull(Context.Guild));
       foreach (var module in modules) {
         ModuleType type;
         if(Enum.TryParse(module, true, out type)) {
@@ -239,7 +150,7 @@ public class Standard : HouraiModule {
           response.AppendLine("Module {module} not found.");
         }
       }
-      await Bot.Database.Save();
+      await Database.Save();
       await Context.Message.Respond(response.ToString());
     }
 
@@ -249,7 +160,7 @@ public class Standard : HouraiModule {
     [Remarks("Disable a module for this server. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleDisable(params string[]  modules) {
       var response = new StringBuilder();
-      var config = await Bot.Database.GetGuild(Check.NotNull(Context?.Guild));
+      var config = await Database.GetGuild(Check.NotNull(Context.Guild));
       foreach (var module in modules) {
         ModuleType type;
         if(Enum.TryParse(module, true, out type)) {
@@ -259,7 +170,7 @@ public class Standard : HouraiModule {
           response.AppendLine("Module {module} not found.");
         }
       }
-      await Bot.Database.Save();
+      await Database.Save();
       await Context.Message.Respond(response.ToString());
     }
   }

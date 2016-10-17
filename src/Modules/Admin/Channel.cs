@@ -15,7 +15,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageChannels)]
     [Remarks("Creates a public channel with a specified name. Requires ``Manage Channels`` permission.")]
     public async Task Create(string name) {
-      var channel = await Check.NotNull(Context?.Guild).CreateTextChannelAsync(name); 
+      var channel = await Check.NotNull(Context.Guild).CreateTextChannelAsync(name); 
       await Success($"{channel.Mention} created.");
     }
 
@@ -32,7 +32,7 @@ public partial class Admin {
     [Command("list")]
     [Remarks("Responds with a list of all text channels that the bot can see on this server.")]
     public async Task List() {
-      var channels = await Check.NotNull(Context?.Guild).GetTextChannelsAsync();
+      var channels = await Check.NotNull(Context.Guild).GetTextChannelsAsync();
       await RespondAsync(channels.OrderBy(c => c.Position).Select(c => c.Mention).Join(", "));
     }
 

@@ -30,10 +30,6 @@ public class Channel {
     GuildId = channel.Guild.Id;
   }
 
-  public SocketChannel GetDiscordChannel() {
-    return Bot.Client.GetChannel(Id);
-  }
-
 }
 
 }

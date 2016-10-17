@@ -8,14 +8,17 @@ namespace Hourai {
 [Hide]
 [PublicOnly]
 [ModuleCheck(ModuleType.Command)]
-public class Commands : HouraiModule {
+public class Commands : DatabaseHouraiModule {
+
+  public Commands(BotDbContext db) : base(db) {
+  }
 
   [Command]
   [MinimumRole(MinimumRole.Command)]
   [Remarks("Creates a custom command. Deletes an existing one if response is empty.")]
   public async Task CreateCommand(string name, 
                                   [Remainder] string response = "") {
-    var guild = await Bot.Database.GetGuild(Check.NotNull(Context?.Guild));
+    var guild = await Database.GetGuild(Check.NotNull(Context.Guild));
     var command = guild.GetCustomCommand(name);
     if (string.IsNullOrEmpty(response)) {
       if (command == null) {
@@ -23,7 +26,7 @@ public class Commands : HouraiModule {
         return;
       }
       guild.Commands.Remove(command);
-      Bot.Database.Commands.Remove(command);
+      Database.Commands.Remove(command);
       await RespondAsync($"Custom command {name.Code()} has been deleted.");
       return;
     }
@@ -40,7 +43,7 @@ public class Commands : HouraiModule {
       command.Response = response;
       action = "updated";
     }
-    await Bot.Database.Save();
+    await Database.Save();
     await Success($"CommandUtility {name.Code()} {action} with response {response}.");
   }
 
@@ -48,7 +51,7 @@ public class Commands : HouraiModule {
   [ServerOwner]
   [Remarks("Sets the minimum role for creating custom commands.")]
   public async Task CommandRole(IRole role) {
-    var guild = await Bot.Database.GetGuild(Check.NotNull(Context?.Guild));
+    var guild = await Database.GetGuild(Check.NotNull(Context.Guild));
     guild.SetMinimumRole(MinimumRole.Command, role);
     await Success($"Set {role.Name.Code()} as the minimum role to create custom commnds");
   }

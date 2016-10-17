@@ -47,10 +47,6 @@ public class Guild {
     Id = Check.NotNull(guild).Id;
   }
 
-  public IGuild GetDiscordGuild() {
-    return Bot.Client.GetGuild(Id);
-  }
-
   public bool AddModule(ModuleType module) {
     var before = Modules;
     Modules |= module;

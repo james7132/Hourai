@@ -8,32 +8,26 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class BotCommandService : IService {
+public class BotCommandService {
 
-  public DiscordSocketClient Client { get; }
-  public CommandService Commands { get; } 
+  DiscordSocketClient Client { get; }
+  CommandService Commands { get; } 
+  BotDbContext Database  { get; }
+  CounterSet Counters { get; }
 
-  public BotCommandService(DiscordSocketClient client, CommandService command) {
-    Client = client;
-    Commands = command;
-  }
-
-  public async Task Initialize() {
+  public BotCommandService(IDependencyMap dependencies) {
+    Client = dependencies.Get<DiscordSocketClient>();
     Client.MessageReceived += HandleMessage;
-    var map = new DependencyMap();
-    map.Add(Bot.Counters);
-    Log.Info("HELLO");
-    await Commands.AddModules(Assembly.GetEntryAssembly(), map);
-    await Commands.AddModule<Help>(map);
-    foreach(var module in Commands.Modules)
-      Log.Info(module.Name);
+    Commands = dependencies.Get<CommandService>();
+    Database = dependencies.Get<BotDbContext>();
+    Counters = dependencies.Get<CounterSet>();
   }
 
   public async Task HandleMessage(IMessage m) {
     var msg = m as IUserMessage;
     if (msg == null || msg.Author.IsBot || msg.Author.IsMe())
       return;
-    var user = await Bot.Database.GetUser(msg.Author);
+    var user = await Database.GetUser(msg.Author);
     if(user.IsBlacklisted)
       return;
 
@@ -51,20 +45,20 @@ public class BotCommandService : IService {
 
     // Execute the command. (result does not indicate a return value, 
     // rather an object stating if the command executed succesfully)
-    var context = new CommandContext(Bot.Client, msg);
+    var context = new CommandContext(Client, msg);
     var result = await Commands.Execute(context, argPos);
     var guildChannel = msg.Channel as ITextChannel;
     string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}." 
       : "in private channel.";
     if (result.IsSuccess) {
       Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
-      Bot.Counters.Get("command-success").Increment();
+      Counters.Get("command-success").Increment();
       return;
     }
     if (await CustomCommandCheck(msg, argPos))
       return;
     Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
-    Bot.Counters.Get("command-failed").Increment();
+    Counters.Get("command-failed").Increment();
     switch (result.Error) {
       // Ignore these kinds of errors, no need for response.
       case CommandError.UnknownCommand:
@@ -85,14 +79,13 @@ public class BotCommandService : IService {
     var guild = (msg.Channel as ITextChannel)?.Guild;
     if(guild == null)
       return false;
-    var command = Bot.Database.Commands.FirstOrDefault(c => c.GuildId == guild.Id && c.Name == commandName);
+    var command = Database.Commands.FirstOrDefault(c => c.GuildId == guild.Id && c.Name == commandName);
     if (command == null)
       return false;
     await command.Execute(msg, msg.Content.Substring(argPos));
-    Bot.Counters.Get("custom-command-executed").Increment();
+    Counters.Get("custom-command-executed").Increment();
     return true;
   }
-
 
 }
 
