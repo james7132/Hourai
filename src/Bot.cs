@@ -62,17 +62,21 @@ class Bot {
     map.Add(this);
     map.Add(map);
     map.Add(Client);
-    map.Add(CommandService);
 
     map.Add(db);
     map.Add(new CounterSet(new ActivatorFactory<SimpleCounter>()));
     map.Add(new LogSet());
 
+    map.Add(new DatabaseService(map));
+
     map.Add(new LogService(map, ExecutionDirectory));
     map.Add(new CounterService(map));
-    map.Add(new DatabaseService(map));
-    map.Add(new BlacklistService(map));
+
+    map.Add(CommandService);
     map.Add(new BotCommandService(map));
+
+    map.Add(new BlacklistService(map));
+    map.Add(new AnnounceService(map));
     map.Add(new SearchService(map));
 
     Log.Info(map.Get<BotDbContext>());
