@@ -24,7 +24,7 @@ public partial class Admin {
     [Command("list")]
     [Remarks("Lists all roles on this server.")]
     public async Task List() {
-      var guild = Check.InGuild(Context.Message).Guild;
+      var guild = Check.NotNull(Context?.Guild);
       var roles = guild.Roles
         .Where(r => r.Id != guild.EveryoneRole.Id)
         .OrderBy(r => r.Position);
@@ -43,7 +43,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Removes a role to all users on the server." + Requirement)]
     public async Task Nuke(params IRole[] roles) {
-      var users = await Check.InGuild(Context.Message).Guild.GetUsersAsync();
+      var users = await Check.NotNull(Context?.Guild).GetUsersAsync();
       var action = await CommandUtility.Action(Context, "remove role", async u => await u.RemoveRolesAsync(roles));
       await CommandUtility.ForEvery(Context, users, action);
     }
@@ -79,8 +79,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Creates a mentionable role and applies it to all mentioned users")]
     public async Task RoleCreate(string name) {
-      var guild = Check.InGuild(Context.Message).Guild;
-      await guild.CreateRoleAsync(name);
+      await Check.NotNull(Context?.Guild).CreateRoleAsync(name);
       await Success();
     }
 
@@ -103,7 +102,7 @@ public partial class Admin {
         await RespondAsync($"Could not parse {color} to a proper color value");
         return;
       }
-      await Task.WhenAll(roles.Select(delegate(IRole role) {
+      await Task.WhenAll(roles.Select(role => {
         return role.ModifyAsync(r => { r.Color = colorVal; });
       }));
       await Success();
@@ -113,7 +112,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Renames all mentioned roles" + Requirement)]
     public async Task Rename(string name, params IRole[] roles) {
-      await Task.WhenAll(roles.Select(delegate(IRole role) {
+      await Task.WhenAll(roles.Select(role => {
           return role.ModifyAsync(r => { r.Name = name; });
         }));
       await Success();

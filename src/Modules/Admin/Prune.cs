@@ -15,13 +15,12 @@ public partial class Admin {
     [Command]
     [Permission(GuildPermission.ManageMessages)]
     [Remarks("Removes the last X messages from the current channel. Requires ``Manage Messages`` permission.")]
-    public Task Prune(int count = 100) => 
-      PruneMessages(m => true, count);
+    public Task Default(int count = 100) => PruneMessages(m => true, count);
 
     [Command("user")]
     [Permission(GuildPermission.ManageMessages)]
     [Remarks("Removes all messages from all mentioned users in the last 100 messages. Requires ``Manage Messages`` permission.")]
-    public Task PruneUser(params IGuildUser[] users) {
+    public Task User(params IGuildUser[] users) {
       var userSet = new HashSet<IUser>(users);
       return PruneMessages(m => userSet.Contains(m.Author));
     }
@@ -48,7 +47,7 @@ public partial class Admin {
     [Command("bot")]
     [Permission(GuildPermission.ManageMessages)]
     [Remarks("Removes all messages from all bots in the last X messages. Requires ``Manage Messages`` permission.")]
-    public Task PruneBot(int count = 100) =>
+    public Task Bot(int count = 100) =>
       PruneMessages(m => m.Author.IsBot, count);
 
     async Task PruneMessages(Func<IMessage, bool> pred = null,
