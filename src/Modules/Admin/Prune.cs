@@ -32,9 +32,7 @@ public partial class Admin {
       PruneMessages(m => m.Embeds.Any() || m.Attachments.Any(), count);
 
     [Command("mine")]
-    [Remarks("Removes all messages from the user using the command in the last X messages.")]
-    public Task Mine(int count = 100) {
-      ulong id = Context.Message.Author.Id;
+    [Remarks("Removes all messages from the user using the command in the last X messages.")] public Task Mine(int count = 100) { ulong id = Context.Message.Author.Id;
       return PruneMessages(m => m.Author.Id == id, count);
     }
 
@@ -64,8 +62,8 @@ public partial class Admin {
           IEnumerable<IMessage> messages = m;
           if (pred != null)
             messages = m.Where(pred);
-          actualCount += m.Count();
-          await channel.DeleteMessagesAsync(m);
+          actualCount += messages.Count();
+          await channel.DeleteMessagesAsync(messages);
         });
       await Success($"Deleted {actualCount} messages.");
     }
