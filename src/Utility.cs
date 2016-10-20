@@ -74,6 +74,8 @@ public static class Utility {
           failure?.Invoke();
           throw;
         }
+      } catch(Exception e) {
+        Log.Error(e);
       }
     }
   }

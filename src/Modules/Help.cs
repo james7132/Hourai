@@ -1,192 +1,123 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Generic; 
+using System.Linq; 
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 
-namespace Hourai {
+namespace Hourai { 
 
 /// <summary>
 /// Generates a help method for all of a bot commands.
 /// Cannot be automatically installed and must be installed after all other modules have been installed.
 /// </summary>
-[DontAutoLoad]
+[Hide]
 public class Help : DatabaseHouraiModule {
 
   IDependencyMap Map { get; } 
-  Dictionary<ModuleInfo, CommandGroup> Modules { get; }
+  CommandService Commands { get; }
 
-  static Queue<string> SplitComamnd(string input) {
-    return new Queue<string>(input.SplitWhitespace());
-  }
+  const char CommandGroupChar = '*';
 
-  public class CommandGroup {
-
-    public string Name{  get; }
-    public CommandInfo Command { get; }
-    public Dictionary<string, CommandGroup> Subcommands { get; }
-
-    CommandGroup() {
-      Subcommands = new Dictionary<string, CommandGroup>();
-    }
-
-    public CommandGroup(IEnumerable<CommandInfo> commands) : this() {
-      Name = string.Empty;
-      Command = null;
-      foreach (CommandInfo command in commands.EmptyIfNull())
-        AddCommand(command);
-    }
-
-    CommandGroup(string name) : this() {
-      Name = name;
-    }
-
-    CommandGroup(CommandInfo command, string name) : this(name) {
-      Name = name;
-      Command = command;
-    }
-
-    void AddCommand(CommandInfo command) {
-      AddCommand(SplitComamnd(command.Text), command);
-    }
-
-    void AddCommand(Queue<string> names, CommandInfo command) {
-      Check.NotNull(names);
-      if (names.Count == 0)
-        return;
-      var name = names.Dequeue();
-      if (names.Count == 0) {
-        if (Subcommands.ContainsKey(name))
-          throw new Exception("Cannot register two commands to the same name");
-        Subcommands.Add(name, new CommandGroup(command, name));
-      } else {
-        if(!Subcommands.ContainsKey(name))
-          Subcommands[name] = new CommandGroup(name);
-        Subcommands[name].AddCommand(names, command);
-      }
-    }
-
-    public Task<string> GetSpecficHelp(CommandContext context, IDependencyMap map, string command) {
-      return GetSpecficHelp(context, map, SplitComamnd(command));
-    }
-
-    Task<string> GetSpecficHelp(CommandContext context, IDependencyMap map, Queue<string> names) {
-      if (names.Count == 0)
-        return GetSpecficHelp(context, map);
-      var prefix = names.Dequeue();
-      // Recurse as needed
-      if (Subcommands.ContainsKey(prefix))
-        return Subcommands[prefix].GetSpecficHelp(context, map, names);
-      return Task.FromResult<string>(null);
-    }
-
-    async Task<string> GetSpecficHelp(CommandContext context, IDependencyMap map) {
-      var builder = new StringBuilder();
-      CommandInfo c = Command;
-      using (builder.Code()) {
-        builder.Append(Name);
-        if(c != null) {
-          foreach (CommandParameter parameter in c.Parameters) {
-            var name = parameter.Name;
-            if(parameter.IsMultiple || parameter.IsRemainder)
-              name += "...";
-            if (parameter.IsOptional || parameter.IsRemainder || parameter.IsMultiple)
-              name = $"[{name}]";
-            if (!name.IsNullOrEmpty())
-              builder.Append(" ").Append(name);
-          }
-        }
-      }
-      builder.AppendLine();
-      if (c != null)
-        builder.AppendLine(c.Remarks);
-      if(Subcommands.Count > 0) {
-        builder.AppendLine("Available Subcommands:")
-          .AppendLine(await ListSubcommands(context, map));
-      }
-      return builder.ToString();
-    }
-
-    public async Task<string> ListSubcommands(CommandContext context, IDependencyMap map) {
-      var usable = new List<string>();
-      foreach (var commandGroup in Subcommands.Values) {
-        if(await commandGroup.CanUse(context, map))
-          usable.Add(commandGroup.ToString().Code());
-      }
-      return usable.Join(", ");
-    }
-
-    public async Task<bool> CanUse(CommandContext context, IDependencyMap map) {
-      if (Command != null) {
-        var result = await Command.CheckPreconditions(context, map);
-        if (result.IsSuccess)
-          return true;
-      }
-      foreach (CommandGroup commandGroup in Subcommands.Values) {
-        if (await commandGroup.CanUse(context, map))
-          return true;
-      }
-      return false;
-    }
-
-    public override string ToString() {
-      var str = Name.ToLowerInvariant();
-      if (Subcommands.Count > 0)
-        str += "*";
-      return str;
-    }
-  }
-
-  public Help(DependencyMap map, CommandService commands, BotDbContext db) : base(db) {
-    var modules = commands?.Modules;
+  public Help(IDependencyMap map, CommandService commands, BotDbContext db) : base(db) { var modules = commands?.Modules;
     Map = map;
-    if(modules == null)
-      throw new InvalidOperationException("Cannot create a help command if there is no command service");
-    Modules = modules.ToDictionary(g => g, g => new CommandGroup(g.Commands));
+    Commands = commands;
   }
 
   [Command("help")]
-  [Remarks("Gets information about commands")]
-  public async Task HelpCommand([Remainder] string command = "") {
-    try {
-      var message = Context.Message;
-      if(command.IsNullOrEmpty()) {
-        await RespondAsync(await GetGeneralHelp(Context));
-        return;
-      }
-      foreach (CommandGroup commandGroup in Modules.Values) {
-        string specificHelp = await commandGroup.GetSpecficHelp(Context, Map, command);
-        if (specificHelp.IsNullOrEmpty())
-          continue;
-        await RespondAsync(specificHelp);
-        return;
-      }
-      await RespondAsync($"{message.Author.Mention}: No command named {command.DoubleQuote()} found");
-    } catch(Exception e) {
-        Log.Error(e + e.StackTrace);
+  public Task GetHelp([Remainder] string command = "") {
+    if(string.IsNullOrEmpty(command))
+      return GeneralHelp();
+    return SpecficHelp(command);
+  }
+
+  async Task GeneralHelp() {
+    var builder = new StringBuilder();
+    foreach(var module in Commands.Modules
+        .Where(m => !m.Source.IsNested && 
+          m.Source.GetCustomAttribute<HideAttribute>() == null)
+        .OrderBy(m => m.Name)) {
+      var commands = await GetUsableCommands(module);
+      if(commands.Count <= 0)
+        continue;
+      var commandStrings = commands
+        // Group by first prefix
+        .GroupBy(c => c.Text.Split(null).First(), c => c)
+        // Check if there is more than one with the same prefix.
+        .Select(g => ((g.Skip(1).Any()) ? g.Key + CommandGroupChar : g.First().Text).Code())
+        .Join(", ");
+      builder.AppendLine($"{module.Name.Bold()}: {commandStrings}");
+    }
+    var result = builder.ToString();
+    if(!string.IsNullOrEmpty(result))
+      await RespondAsync($"{Context.Message.Author.Mention}, here are the " +
+          $"commands you can currently use\n{result}\nUse ``~help <command>`` for more information.");
+    else
+      await RespondAsync($"{Context.Message.Author.Mention}, there are no commands that you are allowed to use.");
+  }
+
+  async Task SpecficHelp(string command) {
+    Log.Debug(command);
+    command = command.Trim();
+    var searchResults = Commands.Search(Context, command);
+    if(searchResults.IsSuccess) {
+      await RespondAsync(await GetCommandInfo(searchResults.Commands)).ConfigureAwait(false);
+    } else {
+      await RespondAsync(searchResults.ErrorReason).ConfigureAwait(false);
     }
   }
 
-  async Task<string> GetGeneralHelp(CommandContext context) {
-    var builder = new StringBuilder();
-    foreach (var kvp in Modules.OrderBy(k => k.Key.Name)) {
-      if (!await kvp.Value.CanUse(context, Map))
-        continue;
-      var name = kvp.Key.Name;
-      if (!name.IsNullOrEmpty())
-        builder.Append((name + ": ").Bold());
-      builder.AppendLine(await kvp.Value.ListSubcommands(context, Map));
+  async Task<List<CommandInfo>> GetUsableCommands(ModuleInfo module) {
+    var usableCommands = new List<CommandInfo>();
+    foreach(var command in module.Commands) {
+      var result = await command.CheckPreconditions(Context, Map);
+      if(result.IsSuccess)
+        usableCommands.Add(command);
     }
-    var channel = context.Channel as ITextChannel;
-    if(channel != null) {
-      var guild = await Database.GetGuild(channel.Guild);
-      var commands = guild.Commands;
-      if(commands != null && commands.Count > 0)
-        builder.AppendLine($"{"Custom: ".Bold()} {commands.Select(c => c.Name.Code()).Join(", ")}");
+    return usableCommands;
+  }
+
+  // Generates help description from a set of search results
+  async Task<string> GetCommandInfo(IEnumerable<CommandInfo> commands) {
+    // Reverse the commands. Order goes from least specific to most specfic.
+    commands = commands.Reverse();
+    if(commands.Any()) {
+      var builder = new StringBuilder();
+      var command = commands.First();
+      using(builder.Code()) {
+        builder.Append(Config.CommandPrefix)
+          .Append(command.Text)
+          .Append(" ")
+          .AppendLine(command.Parameters.Select(p => {
+                var param = p.Name;
+                var defaultString = p.DefaultValue as string;
+                if(p.DefaultValue != null || !string.IsNullOrEmpty(defaultString))
+                  param += $" = {p.DefaultValue}";
+                if(p.IsRemainder || p.IsMultiple)
+                  param += "...";
+                if(p.IsOptional)
+                  param = param.SquareBracket();
+                else
+                  param = param.AngleBracket();
+                return param;
+              }).Join(" "));
+      }
+      builder.AppendLine().AppendLine(command.Remarks);
+      // If it is a subgroup with a prefix, add all commands from that module to
+      // the related commands
+      var module = command.Module;
+      if(!string.IsNullOrEmpty(module.Prefix) && module.Source.IsNested)
+        commands = commands.Concat(await GetUsableCommands(module));
+      var other = commands.Skip(1);
+      if(other.Any()) {
+        builder.Append("Related commands:")
+          .AppendLine(other.Select(c => c.Text.Code()).Distinct().Join(", "));
+      }
+      return builder.ToString();
     }
-    return $"{context.Message.Author.Mention} here are the commands you can use:\n{builder}\nRun ``help <command>`` for more information";
+    return "No such command found";
   }
 
 }

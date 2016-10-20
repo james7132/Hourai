@@ -15,9 +15,10 @@
     "Discord.Net.Commands": "1.0.0-*",
     "System.Net.WebSockets.Client": "4.0.1-*",
     "System.Collections.Concurrent": "4.0.12-*",
-    "System.Interactive.Async": "3.0.0-*",
 		"System.Diagnostics.TraceSource": "4.0.0-*",
 		"System.Diagnostics.TextWriterTraceListener": "4.0.0-*",
+    "System.Interactive.Async": "3.0.0-*",
+    "System.Reflection.Extensions": "4.0.1-*",
     "Microsoft.Extensions.Logging": "1.0.0-*",
     "Microsoft.NETCore.App": {
       "type": "platform",

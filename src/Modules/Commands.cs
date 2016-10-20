@@ -22,7 +22,7 @@ public class Commands : DatabaseHouraiModule {
     var command = guild.GetCustomCommand(name);
     if (string.IsNullOrEmpty(response)) {
       if (command == null) {
-        await RespondAsync($"CommandUtility {name.Code()} does not exist and thus cannot be deleted.");
+        await RespondAsync($"Command {name.Code()} does not exist and thus cannot be deleted.");
         return;
       }
       guild.Commands.Remove(command);
@@ -44,7 +44,7 @@ public class Commands : DatabaseHouraiModule {
       action = "updated";
     }
     await Database.Save();
-    await Success($"CommandUtility {name.Code()} {action} with response {response}.");
+    await Success($"Command {name.Code()} {action} with response {response}.");
   }
 
   [Command("role")]

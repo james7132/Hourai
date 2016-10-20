@@ -14,11 +14,12 @@ namespace Hourai {
 [ModuleCheck(ModuleType.Admin)]
 public partial class Admin : HouraiModule {
 
-  LogService LogService { get; }
+  LogSet Logs { get; }
   DiscordSocketClient Client { get; }
 
-  public Admin(DiscordSocketClient client, LogService log) {
+  public Admin(DiscordSocketClient client, LogSet log) {
     Client = client;
+    Logs = log;
   }
 
   [Command("kick")]
@@ -108,13 +109,20 @@ public partial class Admin : HouraiModule {
   [Command("modlog")]
   [Remarks("Gets the most recent changes on the server")]
   public Task Modlog() {
-    var guild = Check.NotNull(Context.Guild);
-    var log = LogService.Logs.GetGuild(guild);
-    var path =  log.GetPath(DateTimeOffset.Now);
-    if(File.Exists(path))
-      return Utility.FileIO(() => Context.Channel.SendFileAsync(path));
-    else
-      return RespondAsync("No mod events logged thus far.");
+    try  {
+      var guild = Check.NotNull(Context.Guild);
+      var log = Logs.GetGuild(guild);
+      var path =  log.GetPath(DateTimeOffset.Now);
+      if(File.Exists(path))
+        return Utility.FileIO(() => Context.Channel.SendFileAsync(path));
+      else
+        return RespondAsync("No mod events logged thus far.");
+    } catch(Exception e) {
+      Log.Error("hello");
+      Log.Error(e);
+    }
+    Log.Error("Done");
+    return Task.CompletedTask;
   }
 
   [Group("server")]

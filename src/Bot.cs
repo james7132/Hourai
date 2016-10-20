@@ -73,16 +73,12 @@ class Bot {
     map.Add(new CounterService(map));
 
     map.Add(CommandService);
+    await CommandService.AddModules(Assembly.GetEntryAssembly());
     map.Add(new BotCommandService(map));
 
     map.Add(new BlacklistService(map));
     map.Add(new AnnounceService(map));
     map.Add(new SearchService(map));
-
-    Log.Info(map.Get<BotDbContext>());
-
-    await CommandService.AddModules(Assembly.GetEntryAssembly(), map);
-    await CommandService.AddModule<Help>(map);
 
     _initialized = true;
   }
