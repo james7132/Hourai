@@ -14,6 +14,7 @@ public class BotCommandService {
   CommandService Commands { get; } 
   BotDbContext Database  { get; }
   CounterSet Counters { get; }
+  IDependencyMap Map { get; }
 
   public BotCommandService(IDependencyMap dependencies) {
     Client = dependencies.Get<DiscordSocketClient>();
@@ -21,6 +22,7 @@ public class BotCommandService {
     Commands = dependencies.Get<CommandService>();
     Database = dependencies.Get<BotDbContext>();
     Counters = dependencies.Get<CounterSet>();
+    Map = dependencies.Get<DependencyMap>();
   }
 
   public async Task HandleMessage(IMessage m) {
@@ -46,7 +48,7 @@ public class BotCommandService {
     // Execute the command. (result does not indicate a return value, 
     // rather an object stating if the command executed succesfully)
     var context = new CommandContext(Client, msg);
-    var result = await Commands.Execute(context, argPos);
+    var result = await Commands.Execute(context, argPos, Map);
     var guildChannel = msg.Channel as ITextChannel;
     string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}." 
       : "in private channel.";

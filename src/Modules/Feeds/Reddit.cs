@@ -11,15 +11,18 @@ public partial class Feeds {
 
     [Command("add")]
     [Alias("+")]
+    [Permission(GuildPermission.ManageGuild)]
     public async Task Add(string subreddit) {
     }
 
     [Command("remove")]
     [Alias("-")]
+    [Permission(GuildPermission.ManageGuild)]
     public async Task Remove(string subreddit) {
     }
 
     [Command("list")]
+    [Permission(GuildPermission.ManageGuild)]
     public async Task List() {
     }
 

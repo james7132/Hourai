@@ -81,21 +81,16 @@ public class Owner : DatabaseHouraiModule {
     var builder = new StringBuilder();
     var guilds = Client.Guilds;
     builder.AppendLine("Stats".Bold())
-      .AppendLine($"Connected Servers: {guilds.Count}")
-      .AppendLine($"Visible Users: {Client.Guilds.Sum(g => g.Users.Count)}")
-      .AppendLine($"Stored Users {Database.Users.Count()}")
-      .AppendLine($"Visible Channels: {Client.Guilds.Sum(g => g.Channels.Count)}")
-      .AppendLine($"Stored Users {Database.Channels.Count()}")
+      .AppendLine($"Guilds: Visible: {guilds.Count}, Stored: {Database.Guilds.Count()}")
+      .AppendLine($"Users: Visible: {Client.Guilds.Sum(g => g.Users.Count)}, Stored: {Database.Users.Count()}")
+      .AppendLine($"Channels: Visible: {Client.Guilds.Sum(g => g.Channels.Count)}, Stored: {Database.Channels.Count()}")
       .AppendLine()
-      .AppendLine($"Start Time: {Bot.StartTime})")
+      .AppendLine($"Start Time: {Bot.StartTime}")
       .AppendLine($"Uptime: {Bot.Uptime}")
       .AppendLine()
       .AppendLine($"Client: Discord .NET v{DiscordConfig.Version} (API v{DiscordConfig.APIVersion}, {DiscordSocketConfig.GatewayEncoding})")
-      .AppendLine($"Latency: {Client.Latency}ms");
-    using(Process proc = Process.GetCurrentProcess()) {
-      proc.Refresh();
-      builder.AppendLine($"Total Memory Used: {BytesToMemoryValue(proc.PrivateMemorySize64)}");
-    }
+      .AppendLine($"Latency: {Client.Latency}ms")
+      .AppendLine($"Total Memory Used: {BytesToMemoryValue(GC.GetTotalMemory(false))}");
     await Context.Message.Respond(builder.ToString());
   }
 

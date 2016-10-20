@@ -50,17 +50,17 @@ public class LogService {
       switch (message.Severity) {
         case LogSeverity.Critical:
         case LogSeverity.Error:
-          Log.Error(message.Message);
+          Log.Error(message.ToString());
           break;
         case LogSeverity.Warning:
-          Log.Warning(message.Message);
+          Log.Warning(message.ToString());
           break;
         case LogSeverity.Info:
-          Log.Info(message.Message);
+          Log.Info(message.ToString());
           break;
         case LogSeverity.Verbose:
         case LogSeverity.Debug:
-          Log.Debug(message.Message);
+          Log.Debug(message.ToString());
           break;
         default:
           throw new ArgumentOutOfRangeException();
