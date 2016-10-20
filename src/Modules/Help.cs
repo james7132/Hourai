@@ -50,10 +50,15 @@ public class Help : DatabaseHouraiModule {
         .Join(", ");
       builder.AppendLine($"{module.Name.Bold()}: {commandStrings}");
     }
+    if(Context.Guild != null) {
+      var guild = await Database.GetGuild(Context.Guild);
+      if(guild.Commands.Any())
+        builder.AppendLine($"{"Custom".Bold()}: {guild.Commands.Select(c => c.Name.Code()).Join(", ")}");
+    }
     var result = builder.ToString();
     if(!string.IsNullOrEmpty(result))
       await RespondAsync($"{Context.Message.Author.Mention}, here are the " +
-          $"commands you can currently use\n{result}\nUse ``~help <command>`` for more information.");
+          $"commands you can currently use\n{result}Use ``~help <command>`` for more information.");
     else
       await RespondAsync($"{Context.Message.Author.Mention}, there are no commands that you are allowed to use.");
   }
