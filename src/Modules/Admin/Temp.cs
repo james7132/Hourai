@@ -45,27 +45,6 @@ public partial class Admin : HouraiModule {
   public class Temp : TempModule {
 
     public Temp(DiscordSocketClient client, BotDbContext db) : base(client, db) {
-      //TODO(james7132): move this to a service
-      Log.Info("INIT TEMP GROUP");
-      Bot.RegularTasks += CheckTempActions;
-    }
-
-    async Task CheckTempActions() {
-      Log.Info("CHECKING TEMP ACTIONS");
-      var actions = Database.TempActions.OrderByDescending(b => b.End);
-      var now = DateTimeOffset.Now;
-      var done = new List<AbstractTempAction>();
-      foreach(var action in actions) {
-        Log.Info($"({action.GuildId}, {action.Id}): {action.Start}, {action.End}, {action.End - now}");
-        if(action.End >= now)
-          break;
-        await action.Unapply(Client);
-        done.Add(action);
-      }
-      if(done.Count > 0) {
-        Database.TempActions.RemoveRange(done);
-        await Database.Save();
-      }
     }
 
     [Command("ban")]

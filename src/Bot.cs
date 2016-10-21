@@ -11,7 +11,7 @@ using Discord.WebSocket;
 
 namespace Hourai {
 
-class Bot {
+public class Bot {
 
   static void Main() => new Bot().Run().GetAwaiter().GetResult();
 
@@ -20,8 +20,8 @@ class Bot {
 
   public static string ExecutionDirectory { get; private set; }
 
-  public static DateTime StartTime { get; private set; }
-  public static TimeSpan Uptime => DateTime.Now - StartTime;
+  public DateTime StartTime { get; private set; }
+  public TimeSpan Uptime => DateTime.Now - StartTime;
 
   DiscordSocketClient Client { get; set; }
 
@@ -36,7 +36,6 @@ class Bot {
   static List<Func<Task>> _regularTasks;
 
   public Bot() {
-    StartTime = DateTime.Now;
     ExitSource = new TaskCompletionSource<object>();
 
     _regularTasks = new List<Func<Task>>();
@@ -54,6 +53,7 @@ class Bot {
   async Task Initialize(BotDbContext db) {
     if (_initialized)
       return;
+    StartTime = DateTime.Now;
     Log.Info("Initializing...");
     var config = new DiscordSocketConfig();
     Client = new DiscordSocketClient(config);
@@ -76,6 +76,7 @@ class Bot {
     await CommandService.AddModules(Assembly.GetEntryAssembly());
     map.Add(new BotCommandService(map));
 
+    map.Add(new TempService(map));
     map.Add(new BlacklistService(map));
     map.Add(new AnnounceService(map));
     map.Add(new SearchService(map));
@@ -109,7 +110,7 @@ class Bot {
     }
   }
 
-  public async Task Run() {
+  async Task Run() {
     Log.Info($"Starting...");
     using(var database = new BotDbContext()) {
       await Initialize(database);
