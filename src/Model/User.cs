@@ -51,15 +51,15 @@ public class User {
 public class GuildUser {
 
   [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public ulong Id { get; set; }
+  public ulong Id { get; set; }
   public ulong GuildId { get; set; }
 
   [Required]
-    [ForeignKey("Id")]
-      public User User;
+  [ForeignKey("Id")]
+  public User User;
   [Required]
-    [ForeignKey("GuildId")]
-      public Guild Guild { get; set; }
+  [ForeignKey("GuildId")]
+  public Guild Guild { get; set; }
 
   private HashSet<ulong> _bannedRoles;
   public string  BannedRoles {

@@ -5,7 +5,8 @@
 		"emitEntryPoint": true,
 		"copyToOutput": {
 			"include": [
-				"config.json"
+				"config.json",
+        "appsettings.json"
 			]
 		}
 	},

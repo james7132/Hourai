@@ -20,8 +20,6 @@ public class Channel {
   public bool LeaveMessage { get; set; } 
   public bool BanMessage { get; set; } 
 
-  //public ICollection<SubredditChannel> Subreddits { get; set; } 
-
   public Channel() {
   }
 

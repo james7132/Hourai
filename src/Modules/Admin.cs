@@ -16,10 +16,12 @@ public partial class Admin : HouraiModule {
 
   LogSet Logs { get; }
   DiscordSocketClient Client { get; }
+  BotDbContext Database { get; }
 
-  public Admin(DiscordSocketClient client, LogSet log) {
+  public Admin(DiscordSocketClient client, LogSet log, BotDbContext db) {
     Client = client;
     Logs = log;
+    Database = db;
   }
 
   [Command("kick")]
@@ -87,18 +89,18 @@ public partial class Admin : HouraiModule {
   + "and requires the ``Change Nickname`` permission.\nIf at least one ``user`` is specified, nicknames the mentioned users and requires the "
   + "``Manage Nicknames`` permission.")]
   public async Task Nickname(string nickname, params IGuildUser[] users) {
-    Check.NotNull(Context.Guild);
+    var guild = await Database.GetGuild(Check.InGuild(Context.Message).Guild);
     var author = Context.Message.Author as IGuildUser;
     IGuildUser[] allUsers = users;
     if (allUsers.Length <= 0) {
       if(!author.GuildPermissions.ChangeNickname) {
-        await RespondAsync($"{author.Mention} you do not have the ``Change Nickname`` permission. See ``{Config.CommandPrefix}help nickname``");
+        await RespondAsync($"{author.Mention} you do not have the ``Change Nickname`` permission. See ``{guild.Prefix}help nickname``");
         return;
       }
       allUsers = new[] { author };
     }
     if(!author.GuildPermissions.ManageNicknames) {
-      await RespondAsync($"{author.Mention} you do not have the ``Manage Nicknames`` permission. See ``{Config.CommandPrefix}help nickname``");
+      await RespondAsync($"{author.Mention} you do not have the ``Manage Nicknames`` permission. See ``{guild.Prefix}help nickname``");
       return;
     }
 

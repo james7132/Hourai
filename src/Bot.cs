@@ -101,11 +101,7 @@ public class Bot {
     Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
     while (!ExitSource.Task.IsCompleted) {
       await Task.WhenAll(_regularTasks.Select(t => t()));
-      await User.ModifyStatusAsync(u => u.Game = new Discord.API.Game {
-          Name = Config.Version,
-          StreamUrl = string.Empty,
-          StreamType = StreamType.NotStreaming
-        });
+      await Client.SetGame(Config.Version); 
       await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
     }
   }

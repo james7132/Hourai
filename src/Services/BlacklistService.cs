@@ -30,8 +30,8 @@ public class BlacklistService {
         return;
       }
       if(normalJoin) {
-        var help = $"{Config.CommandPrefix}help".Code();
-        var module = $"{Config.CommandPrefix}module".Code();
+        var help = $"{config.Prefix}help".Code();
+        var module = $"{config.Prefix}module".Code();
         await defaultChannel.Respond(
             $"Hello {guild.Name}! {Bot.User.Username} has been added to your server!\n" +
             $"To see available commands, run the command {help}\n" +

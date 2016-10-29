@@ -59,6 +59,7 @@ public partial class Standard : DatabaseHouraiModule {
       builder.AppendLine($"Roles: {roles.Order().Select(r => r.Name.Code()).Join(", ")}");
     builder.AppendLine($"Text Channels: {textChannels.Join(", ")}");
     builder.AppendLine($"Voice Channels: {voiceChannels.Join(", ")}");
+    builder.AppendLine($"Bot Command Prefix: {guild.Prefix}");
     if(!string.IsNullOrEmpty(server.IconUrl))
       builder.AppendLine(server.IconUrl);
     await Context.Message.Respond(builder.ToString());
