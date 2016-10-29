@@ -14,7 +14,7 @@ public partial class Admin {
 
     public ConfigGroup(BotDbContext db) {
       Database = db;
-    }      
+    }
 
     [Command("prefix")]
     [Remarks("Sets the bot's command prefix for this server.")]
