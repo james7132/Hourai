@@ -20,7 +20,7 @@ public class BlacklistService {
 
   Func<IGuild, Task> CheckBlacklist(bool normalJoin) {
     return async guild => {
-      var config = await Database.GetGuild(guild);
+      var config = Database.GetGuild(guild);
       var defaultChannel = (await guild.GetChannelAsync(guild.DefaultChannelId)) as ITextChannel;
       if(config.IsBlacklisted) {
         Log.Info($"Added to blacklisted guild {guild.Name} ({guild.Id})");

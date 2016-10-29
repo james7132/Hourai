@@ -29,7 +29,7 @@ public class BotCommandService {
     var msg = m as IUserMessage;
     if (msg == null || msg.Author.IsBot || msg.Author.IsMe())
       return;
-    var user = await Database.GetUser(msg.Author);
+    var user = Database.GetUser(msg.Author);
     if(user.IsBlacklisted)
       return;
 
@@ -37,21 +37,23 @@ public class BotCommandService {
     var argPos = 0;
     
     var guild = (m.Channel as IGuildChannel)?.Guild;
-    string prefix;
+    char prefix;
     if(guild == null) {
-      prefix = Config.CommandPrefix.ToString();
+      prefix = Config.CommandPrefix;
     } else {
-      var dbGuild = await Database.GetGuild(guild);
-      prefix = dbGuild.Prefix;
-      if(string.IsNullOrEmpty(prefix)) {
-        prefix = Config.CommandPrefix.ToString();
+      var dbGuild = Database.GetGuild(guild);
+      var prefixString = dbGuild.Prefix;
+      if(string.IsNullOrEmpty(prefixString)) {
+        prefix = Config.CommandPrefix;
         dbGuild.Prefix = prefix.ToString();
         await Database.Save();
+      } else {
+        prefix = prefixString[0];
       }
     }
 
     // Determine if the msg is a command, based on if it starts with the defined command prefix 
-    if (!msg.HasCharPrefix(prefix[0], ref argPos))
+    if (!msg.HasCharPrefix(prefix, ref argPos))
       return;
 
     if (!msg.Channel.AllowCommands()) {
@@ -80,7 +82,11 @@ public class BotCommandService {
       case CommandError.UnknownCommand:
         return;
       default:
-        Log.Info(result.ErrorReason);
+        if(result is ExecuteResult) {
+          Log.Error(((ExecuteResult) result).Exception);
+        } else {
+          Log.Error(result.ErrorReason);
+        }
         await msg.Respond(result.ErrorReason);
         break;
     }

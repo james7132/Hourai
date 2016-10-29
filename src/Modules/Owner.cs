@@ -102,13 +102,13 @@ public class Owner : DatabaseHouraiModule {
     Log.Info("Starting refresh...");
     foreach(var guild in Client.Guilds) {
       Database.AllowSave = false;
-      var guildDb = await Database.GetGuild(guild);
+      var guildDb = Database.GetGuild(guild);
       Log.Info($"Refreshing {guild.Name}...");
       var channels = await guild.GetTextChannelsAsync();
       foreach(var channel in channels)
-        await Database.GetChannel(channel);
+        Database.GetChannel(channel);
       foreach(var user in guild.Users)
-        await Database.GetGuildUser(user);
+        Database.GetGuildUser(user);
       Database.AllowSave = true;
       await Database.Save();
     }
@@ -181,7 +181,7 @@ public class Owner : DatabaseHouraiModule {
     [Remarks("Blacklists the current server and makes the bot leave.")]
     public async Task Server(string setting = "+") {
       var guild = Check.NotNull(Context.Guild);
-      var config = await Database.GetGuild(guild);
+      var config = Database.GetGuild(guild);
       config.IsBlacklisted = true;
       await Database.Save();
       await Success();
@@ -193,7 +193,7 @@ public class Owner : DatabaseHouraiModule {
     public async Task User(string setting, params IGuildUser[] users) {
       var blacklisted = SettingToBlacklist(setting);
       foreach(var user in users) {
-        var uConfig = await Database.GetUser(user);
+        var uConfig = Database.GetUser(user);
         if(uConfig == null)
           continue;
         uConfig.IsBlacklisted = blacklisted;

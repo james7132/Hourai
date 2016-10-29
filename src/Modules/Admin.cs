@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-[PublicOnly]
+[RequireContext(ContextType.Guild)]
 [ModuleCheck(ModuleType.Admin)]
 public partial class Admin : HouraiModule {
 
@@ -89,7 +89,7 @@ public partial class Admin : HouraiModule {
   + "and requires the ``Change Nickname`` permission.\nIf at least one ``user`` is specified, nicknames the mentioned users and requires the "
   + "``Manage Nicknames`` permission.")]
   public async Task Nickname(string nickname, params IGuildUser[] users) {
-    var guild = await Database.GetGuild(Check.InGuild(Context.Message).Guild);
+    var guild = Database.GetGuild(Context.Guild);
     var author = Context.Message.Author as IGuildUser;
     IGuildUser[] allUsers = users;
     if (allUsers.Length <= 0) {

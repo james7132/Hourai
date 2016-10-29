@@ -75,22 +75,20 @@ public class BotDbContext : DbContext {
     //return name.Trim().ToLower();
   //}
 
-  public async Task<Guild> GetGuild(IGuild iguild) {
+  public Guild GetGuild(IGuild iguild) {
     var guild = FindGuild(iguild);
     if(guild == null) { 
       guild = new Guild(iguild); 
       Guilds.Add(guild);
-      await Save();
     }
     return guild;
   }
 
-  public async Task<bool> RemoveGuild(IGuild iguild) {
+  public bool RemoveGuild(IGuild iguild) {
     var guild = FindGuild(iguild);
     if(guild == null)
       return false;
     Guilds.Remove(guild);
-    await Save();
     return true;
   }
 
@@ -100,22 +98,20 @@ public class BotDbContext : DbContext {
       .FirstOrDefault(u => u.Id == iuser.Id);
   }
 
-  public async Task<User> GetUser(IUser iuser) {
+  public User GetUser(IUser iuser) {
     var user = FindUser(iuser);
     if(user == null) {
       user = new User(iuser);
       Users.Add(user);
-      await Save();
     }
     return user;
   }
 
-  public async Task<bool> RemoveUser(IUser iuser) {
+  public bool RemoveUser(IUser iuser) {
     var user = FindUser(iuser);
     if(user == null)
       return false;
     Users.Remove(user);
-    await Save();
     return true;
   }
 
@@ -125,7 +121,7 @@ public class BotDbContext : DbContext {
         (u.Id == iuser.Id) && (u.GuildId == iuser.Guild.Id));
   }
 
-  public async Task<GuildUser> GetGuildUser(IGuildUser iuser) {
+  public GuildUser GetGuildUser(IGuildUser iuser) {
     var user = FindGuildUser(iuser);
     if(user == null) {
       user = new GuildUser(iuser);
@@ -135,17 +131,15 @@ public class BotDbContext : DbContext {
         Users.Add(user.User);
       }
       GuildUsers.Add(user);
-      await Save();
     }
     return user;
   }
 
-  public async Task<bool> RemoveGuildUser(IGuildUser iuser) {
+  public bool RemoveGuildUser(IGuildUser iuser) {
     var user = FindGuildUser(iuser);
     if(user == null)
       return false;
     GuildUsers.Remove(user);
-    await Save();
     return true;
   }
 
@@ -155,22 +149,20 @@ public class BotDbContext : DbContext {
         (c.Id == ichannel.Id) && (c.GuildId == ichannel.Guild.Id));
   }
 
-  public async Task<Channel> GetChannel(IGuildChannel ichannel) {
+  public Channel GetChannel(IGuildChannel ichannel) {
     var channel = FindChannel(ichannel);
     if(channel == null) {
       channel = new Channel(ichannel);
       Channels.Add(channel);
-      await Save();
     }
     return channel;
   }
 
-  public async Task<bool> RemoveChannel(IGuildChannel ichannel) {
+  public bool RemoveChannel(IGuildChannel ichannel) {
     var channel = FindChannel(ichannel);
     if(channel == null)
       return false;
     Channels.Remove(channel);
-    await Save();
     return true;
   }
 

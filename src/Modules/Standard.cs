@@ -37,12 +37,12 @@ public partial class Standard : DatabaseHouraiModule {
   }
 
   [Command("serverinfo")]
-  [PublicOnly]
+  [RequireContext(ContextType.Guild)]
   [Remarks("Gets general information about the current server")]
   public async Task ServerInfo() {
     var builder = new StringBuilder();
     var server = Check.NotNull(Context.Guild);
-    var guild = await Database.GetGuild(server);
+    var guild = Database.GetGuild(server);
     var owner = await server.GetUserAsync(server.OwnerId);
     var channels = await server.GetChannelsAsync();
     var textChannels = channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
@@ -66,7 +66,7 @@ public partial class Standard : DatabaseHouraiModule {
   }
 
   [Command("channelinfo")]
-  [PublicOnly]
+  [RequireContext(ContextType.Guild)]
   [Remarks("Gets information on a specified channel")]
   public Task ChannelInfo(IGuildChannel channel = null) {
     if(channel == null)
@@ -106,6 +106,8 @@ public partial class Standard : DatabaseHouraiModule {
 
 
   [Group("module")]
+  [RequireContext(ContextType.Guild)]
+  [Permission(GuildPermission.ManageGuild, Require.User)]
   public class Module : DatabaseHouraiModule {
 
     CommandService Commands { get; }
@@ -122,11 +124,9 @@ public partial class Standard : DatabaseHouraiModule {
       .Select(m => m.Name).ToList();
 
     [Command]
-    [PublicOnly]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
     [Remarks("Lists all modules available. Enabled ones are highligted. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleList() {
-      var config = await Database.GetGuild(Check.NotNull(Context.Guild));
+      var config = Database.GetGuild(Check.NotNull(Context.Guild));
       var modules = Enum.GetValues(typeof(ModuleType));
       await Context.Message.Respond(modules.OfType<ModuleType>()
           .Select(m => (config.IsModuleEnabled(m)) 
@@ -136,12 +136,10 @@ public partial class Standard : DatabaseHouraiModule {
     }
 
     [Command("enable")]
-    [PublicOnly]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
     [Remarks("Enables a module for this server. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleEnable(params string[] modules) {
       var response = new StringBuilder();
-      var config = await Database.GetGuild(Check.NotNull(Context.Guild));
+      var config = Database.GetGuild(Check.NotNull(Context.Guild));
       foreach (var module in modules) {
         ModuleType type;
         if(Enum.TryParse(module, true, out type)) {
@@ -156,12 +154,10 @@ public partial class Standard : DatabaseHouraiModule {
     }
 
     [Command("disable")]
-    [PublicOnly]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
     [Remarks("Disable a module for this server. Requires user to have ``Manage Server`` permission.")]
     public async Task ModuleDisable(params string[]  modules) {
       var response = new StringBuilder();
-      var config = await Database.GetGuild(Check.NotNull(Context.Guild));
+      var config = Database.GetGuild(Check.NotNull(Context.Guild));
       foreach (var module in modules) {
         ModuleType type;
         if(Enum.TryParse(module, true, out type)) {

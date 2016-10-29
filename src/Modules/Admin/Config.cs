@@ -7,27 +7,28 @@ namespace Hourai {
 public partial class Admin {
 
   [Group("config")]
+  [RequireContext(ContextType.Guild)]
   public class ConfigGroup : HouraiModule {
 
-    //BotDbContext Database { get; }
+    BotDbContext Database { get; }
 
-    //public ConfigGroup(BotDbContext db) {
-      //Database = db;
-    //}      
+    public ConfigGroup(BotDbContext db) {
+      Database = db;
+    }      
 
-    //[Command("prefix")]
-    //[PublicOnly, Permission(GuildPermission.ManageGuild)]
-    //[Remarks("Sets the bot's command prefix for this server.")]
-    //public async Task Prefix(string prefix) {
-      //if(string.IsNullOrEmpty(prefix)) {
-        //await RespondAsync("Cannot set bot prefix to an empty result");
-        //return;
-      //}
-      //var guild = await Database.GetGuild(Check.InGuild(Context.Message).Guild);
-      //guild.Prefix = prefix[0];
-      //await Database.Save();
-      //await Success($"Bot command prefix set to {guild.Prefix}");
-    //}
+    [Command("prefix")]
+    [Remarks("Sets the bot's command prefix for this server.")]
+    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    public async Task Prefix([Remainder] string prefix) {
+      if(string.IsNullOrEmpty(prefix)) {
+        await RespondAsync("Cannot set bot prefix to an empty result");
+        return;
+      }
+      var guild = Database.GetGuild(Context.Guild);
+      guild.Prefix = prefix.Substring(0, 1);
+      await Database.Save();
+      await Success($"Bot command prefix set to {guild.Prefix.ToString().Code()}");
+    }
 
   }
 

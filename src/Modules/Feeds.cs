@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-[PublicOnly]
+[RequireContext(ContextType.Guild)]
 [ModuleCheck(ModuleType.Feeds)]
 public partial class Feeds : HouraiModule {
 }
