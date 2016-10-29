@@ -37,7 +37,8 @@ public class Config {
   [JsonProperty]
   public static string DbFilename { get; set; } = "./bot.db";
 
-  // The command prefix that triggers commands specified by the bot
+  // The default command prefix that triggers commands specified by the bot
+  // This is override-able on a per-guild basis via "config prefix <x>"
   [JsonProperty]
   public static char CommandPrefix { get; set; } = '~';
 

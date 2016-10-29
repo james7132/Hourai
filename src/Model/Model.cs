@@ -8,7 +8,6 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Threading.Tasks;
-
 namespace Hourai {
 
 public class BotDbContext : DbContext {
@@ -26,6 +25,10 @@ public class BotDbContext : DbContext {
   public DbSet<TempBan> TempBans { get; set; }
   public DbSet<TempRole> TempRole { get; set; }
 
+  // Service Data
+  //public DbSet<Subreddit> Subreddits { get; set; }
+  //public DbSet<SubredditChannel> SubredditChannels { get; set; }
+
   public bool AllowSave { get; set; } = true;
 
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
@@ -34,14 +37,20 @@ public class BotDbContext : DbContext {
   }
 
   protected override void OnModelCreating(ModelBuilder builder) {
-    builder.Entity<Channel>()
-      .HasKey(c => new { c.Id, c.GuildId });
+    builder.Entity<Guild>(b => {
+        b.Property(g => g.Prefix)
+          .HasDefaultValue("~");
+      });
     builder.Entity<GuildUser>()
       .HasKey(u => new { u.Id, u.GuildId });
+    builder.Entity<Channel>()
+      .HasKey(c => new { c.Id, c.GuildId });
     builder.Entity<CustomCommand>()
       .HasKey(c => new { c.GuildId, c.Name });
     builder.Entity<Username>()
       .HasKey(c => new { c.UserId, c.Date });
+    //builder.Entity<SubredditChannel>()
+      //.HasKey(s => new { s.Name, s.ChannelId });
     builder.Entity<AbstractTempAction>()
       .HasIndex(t => t.End)
         .HasName("IX_temp_actions_End");
@@ -61,6 +70,10 @@ public class BotDbContext : DbContext {
       .Include(g => g.Channels)
       .FirstOrDefault(g => g.Id == iguild.Id); 
   }
+
+  //string SanitizeSubredditName(string name) {
+    //return name.Trim().ToLower();
+  //}
 
   public async Task<Guild> GetGuild(IGuild iguild) {
     var guild = FindGuild(iguild);
@@ -160,6 +173,21 @@ public class BotDbContext : DbContext {
     await Save();
     return true;
   }
+
+  //public Subreddit FindSubreddit(string name) {
+    //name = SanitizeSubredditName(name);
+    //return Subreddits.Include(s => s.Channels).FirstOrDefault(s => s.Name == name);
+  //}
+
+  //public async Task<Subreddit> GetSubreddit(string name) {
+    //var subreddit = FindSubreddit(name);
+    //if(subreddit == null) {
+      //subreddit = new Subreddit { Name = SanitizeSubredditName(name) };
+      //Subreddits.Add(subreddit);
+      //await Save();
+    //}
+    //return subreddit;
+  //}
 
 }
 

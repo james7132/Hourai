@@ -1,5 +1,6 @@
 using Discord;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -21,6 +22,11 @@ public class Guild {
   [Required]
   public List<CustomCommand> Commands { get; set; }
 
+  [DatabaseGenerated(DatabaseGeneratedOption.None)]
+  [Required]
+  [MaxLength(1)]
+  public string Prefix { get; set; }
+
   private Dictionary<MinimumRole, ulong> _minimumRoles;
   public string MinRoles {
     get { 
@@ -41,6 +47,7 @@ public class Guild {
 
   public Guild() {
     Modules = (ModuleType) ~0L;
+    Prefix = Config.CommandPrefix.ToString();
   }
 
   public Guild(IGuild guild) : this() {

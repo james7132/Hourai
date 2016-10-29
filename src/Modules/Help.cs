@@ -89,10 +89,11 @@ public class Help : DatabaseHouraiModule {
     // Reverse the commands. Order goes from least specific to most specfic.
     commands = commands.Reverse();
     if(commands.Any()) {
+      var guild = await Database.GetGuild(Check.InGuild(Context.Message).Guild);
       var builder = new StringBuilder();
       var command = commands.First();
       using(builder.Code()) {
-        builder.Append(Config.CommandPrefix)
+        builder.Append(guild.Prefix)
           .Append(command.Text)
           .Append(" ")
           .AppendLine(command.Parameters.Select(p => {

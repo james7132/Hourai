@@ -35,9 +35,23 @@ public class BotCommandService {
 
     // Marks where the command begins
     var argPos = 0;
+    
+    var guild = (m.Channel as IGuildChannel)?.Guild;
+    string prefix;
+    if(guild == null) {
+      prefix = Config.CommandPrefix.ToString();
+    } else {
+      var dbGuild = await Database.GetGuild(guild);
+      prefix = dbGuild.Prefix;
+      if(string.IsNullOrEmpty(prefix)) {
+        prefix = Config.CommandPrefix.ToString();
+        dbGuild.Prefix = prefix.ToString();
+        await Database.Save();
+      }
+    }
 
     // Determine if the msg is a command, based on if it starts with the defined command prefix 
-    if (!msg.HasCharPrefix(Config.CommandPrefix, ref argPos))
+    if (!msg.HasCharPrefix(prefix[0], ref argPos))
       return;
 
     if (!msg.Channel.AllowCommands()) {

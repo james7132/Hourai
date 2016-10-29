@@ -17,14 +17,17 @@ namespace Hourai {
 [BotOwner]
 public class Owner : DatabaseHouraiModule {
 
+  Bot Bot { get; }
   DiscordSocketClient Client { get; }
   CounterSet Counters { get; }
   LogService LogService { get; }
 
-  public Owner(CounterSet counters, 
+  public Owner(Bot bot,
+               CounterSet counters, 
                BotDbContext db,
                LogService logs,
                DiscordSocketClient client) : base(db) { 
+    Bot = bot;
     Counters = counters; 
     LogService = logs;
     Client = client;
