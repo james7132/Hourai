@@ -13,7 +13,6 @@ using Discord.Commands;
 
 namespace Hourai {
 
-[Hide]
 [BotOwner]
 public class Owner : DatabaseHouraiModule {
 
