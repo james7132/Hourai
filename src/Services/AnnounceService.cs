@@ -30,7 +30,7 @@ public class AnnounceService {
 
   Func<IUser, IGuild, Task> GuildMessage(Func<Channel, bool> msg, string defaultMsg) {
     return async (u, g) => {
-      var guildConfig = await Database.GetGuild(g);
+      var guildConfig = Database.GetGuild(g);
       foreach(var channel in guildConfig.Channels.ToArray()) {
         if(!msg(channel))
           continue;

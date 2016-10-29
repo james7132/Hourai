@@ -1,49 +1,22 @@
 using System;
 using System.Threading.Tasks;
-using Discord; using Discord.Commands; 
+using Discord; 
+using Discord.Commands; 
 
 namespace Hourai {
 
-  public class PublicOnlyAttribute : PreconditionAttribute {
-    public override Task<PreconditionResult> CheckPermissions(
-        CommandContext context,
-        CommandInfo commandInfo,
-        IDependencyMap dependencies) {
-      PreconditionResult result;
-      if (!(context.Channel is IGuildChannel))
-          result = PreconditionResult.FromError("Command must be executed in a public channel");
-      else 
-          result = PreconditionResult.FromSuccess();
-      return Task.FromResult(result);
-    }
-  }
-
-  public class PrivateOnlyAttribute : PreconditionAttribute {
-    public override Task<PreconditionResult> CheckPermissions(
-        CommandContext context,
-        CommandInfo commandInfo,
-        IDependencyMap dependencies) {
-      PreconditionResult result;
-      if (!(context.Channel is IDMChannel))
-          result = PreconditionResult.FromError("Command must be executed in a private chat.");
-      else 
-          result = PreconditionResult.FromSuccess();
-      return Task.FromResult(result);
-    }
-  }
-
-  public enum ModuleType : long{
+  public enum ModuleType : long {
     Standard = 1 << 0,
     Admin = 1 << 1,
     Command = 1 << 2,
     Feeds = 1 << 3
   }
 
-  public class ModuleCheckAttribute : PublicOnlyAttribute {
+  public class ModuleCheckAttribute : RequireContextAttribute {
 
     public ModuleType Module { get; }
 
-    public ModuleCheckAttribute(ModuleType module) {
+    public ModuleCheckAttribute(ModuleType module) : base(ContextType.Guild) {
       Module = module;
     }
 
@@ -54,7 +27,7 @@ namespace Hourai {
       var baseCheck = await base.CheckPermissions(context, commandInfo, dependencies);
       if (!baseCheck.IsSuccess)
           return baseCheck;
-      var guild = await dependencies.Get<BotDbContext>().GetGuild(Check.NotNull(context.Guild));
+      var guild = dependencies.Get<BotDbContext>().GetGuild(context.Guild);
       if (guild.IsModuleEnabled(Module))
           return PreconditionResult.FromSuccess();
       return PreconditionResult.FromError($"Module \"{commandInfo.Module.Name}\" is not enabled.");
@@ -218,7 +191,7 @@ namespace Hourai {
       if (user.IsBotOwner() || user.IsServerOwner())
         return PreconditionResult.FromSuccess();
       var server = user.Guild;
-      var guild = await dependencies.Get<BotDbContext>().GetGuild(server);
+      var guild = dependencies.Get<BotDbContext>().GetGuild(server);
       ulong? minRole = guild.GetMinimumRole(_roleType);
       if (minRole == null)
         return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.ToString().Code()} is set.");

@@ -21,7 +21,7 @@ public class DatabaseService {
       var author = m.Author;
       if(author.Username == null)
         return;
-      var user = await Database.GetUser(author);
+      var user = Database.GetUser(author);
       user.AddName(author.Username);
       await Database.Save();
     };

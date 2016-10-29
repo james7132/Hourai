@@ -58,7 +58,7 @@ public partial class Admin {
       var action = await CommandUtility.Action(Context, "ban",
         async u => {
           await u.RemoveRolesAsync(role);
-          var guildUser = await Database.GetGuildUser(u);
+          var guildUser = Database.GetGuildUser(u);
           guildUser.BanRole(role);
         });
       await Database.Save();
@@ -70,9 +70,10 @@ public partial class Admin {
     [Remarks("Unban all mentioned users from a specified role." + Requirement)]
     public async Task RoleUnban(IRole role, params IGuildUser[] users) {
       var action = await CommandUtility.Action(Context, "ban",
-        async u => {
-          var guildUser = await Database.GetGuildUser(u);
+        u => {
+          var guildUser = Database.GetGuildUser(u);
           guildUser.UnbanRole(role);
+          return Task.CompletedTask;
         });
       await Database.Save();
       await CommandUtility.ForEvery(Context, users, action);

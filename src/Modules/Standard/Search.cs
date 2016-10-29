@@ -12,6 +12,7 @@ namespace Hourai {
 public partial class Standard {
 
   [Group("search")]
+  [RequireContext(ContextType.Guild)]
   public class Search : DatabaseHouraiModule {
 
     LogSet Logs { get; }
@@ -31,21 +32,18 @@ public partial class Standard {
     }
 
     [Command]
-    [PublicOnly]
     [Remarks("Search the history of the current channel for messages that match all of the specfied search terms.")]
     public Task SearchChat(params string[] terms) {
       return SearchChannel(ExactMatch(terms));
     }
 
     [Command("regex")]
-    [PublicOnly]
     [Remarks("Search the history of the current channel for matches to a specfied regex.")]
     public Task SearchRegex(string regex) {
       return SearchChannel(RegexMatch(regex));
     }
 
     [Command("day")]
-    [PublicOnly]
     [Remarks("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
     public Task Day(string day) {
       var channel = Check.InGuild(Context.Message);
@@ -57,13 +55,11 @@ public partial class Standard {
     }
 
     [Command("ignore")]
-    [PublicOnly]
     [Remarks("Mentioned channels will not be searched in ``search all``, except while in said channel. "
       + "User must have ``Manage Channels`` permission")]
     public Task Ignore(params IGuildChannel[] channels) => SetIgnore(channels, true);
 
     [Command("unigore")]
-    [PublicOnly]
     [Remarks("Mentioned channels will appear in ``search all`` results." 
       +" User must have ``Manage Channels`` permission")]
     public Task Unignore(params IGuildChannel[] channels) => SetIgnore(channels, false);
@@ -71,12 +67,13 @@ public partial class Standard {
     async Task SetIgnore(IEnumerable<IGuildChannel> channels, bool value) {
       var channel = Check.InGuild(Context.Message);
       foreach (var ch in channels) 
-        (await Database.GetChannel(ch)).SearchIgnored = value;
+        Database.GetChannel(ch).SearchIgnored = value;
       await Database.Save();
       await Success();
     }
 
     [Group("all")]
+    [RequireContext(ContextType.Guild)]
     public class All : HouraiModule {
 
       LogSet Logs { get; }
@@ -88,12 +85,10 @@ public partial class Standard {
       }
 
       [Command]
-      [PublicOnly]
       [Remarks("Searches the history of all channels in the current server for any of the specfied search terms.")]
       public Task SearchAll(params string[] terms) => SearchAll(ExactMatch(terms));
 
       [Command("regex")]
-      [PublicOnly]
       [Remarks("Searches the history of all channels in the current server based on a regex.")]
       public async Task SearchAllRegex(string regex) => await SearchAll(RegexMatch(regex));
 

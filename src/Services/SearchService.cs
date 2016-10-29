@@ -38,7 +38,7 @@ public class SearchService {
     if (!Directory.Exists(directory))
       return string.Empty;
     var guild = Check.NotNull(context.Guild);
-    var guildConfig = await Database.GetGuild(guild);
+    var guildConfig = Database.GetGuild(guild);
     var res =
       from file in Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories).AsParallel()
       from line in File.ReadLines(file)
@@ -56,7 +56,7 @@ public class SearchService {
       if(ulong.TryParse(name, out id)) {
         var channel = await guild.GetChannelAsync(id);
         if (channel != null) {
-          var config = await Database.GetChannel(channel);
+          var config = Database.GetChannel(channel);
           if(channel.Id != context.Channel.Id && config.SearchIgnored)
             continue;
           name = channel.Name;

@@ -51,7 +51,7 @@ public class Help : DatabaseHouraiModule {
       builder.AppendLine($"{module.Name.Bold()}: {commandStrings}");
     }
     if(Context.Guild != null) {
-      var guild = await Database.GetGuild(Context.Guild);
+      var guild = Database.GetGuild(Context.Guild);
       if(guild.Commands.Any())
         builder.AppendLine($"{"Custom".Bold()}: {guild.Commands.Select(c => c.Name.Code()).Join(", ")}");
     }
@@ -89,7 +89,7 @@ public class Help : DatabaseHouraiModule {
     // Reverse the commands. Order goes from least specific to most specfic.
     commands = commands.Reverse();
     if(commands.Any()) {
-      var guild = await Database.GetGuild(Check.InGuild(Context.Message).Guild);
+      var guild = Database.GetGuild(Context.Guild);
       var builder = new StringBuilder();
       var command = commands.First();
       using(builder.Code()) {

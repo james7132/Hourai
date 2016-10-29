@@ -16,6 +16,12 @@ public abstract class TempModule : DatabaseHouraiModule {
     Client = client;
   }
 
+  protected Task TempAction(TimeSpan time, 
+      Func<IGuildUser, AbstractTempAction> action, 
+      IEnumerable<IGuildUser> users,
+      Func<IGuildUser, AbstractTempAction, Task> postAction = null) =>
+    TempAction(time, u => Task.FromResult(action(u)), users, postAction);
+
   protected async Task TempAction(TimeSpan time, 
       Func<IGuildUser, Task<AbstractTempAction>> action, 
       IEnumerable<IGuildUser> users,
@@ -56,11 +62,11 @@ public partial class Admin : HouraiModule {
       if(!TimeSpan.TryParse(time, out timespan)) {
         return Context.Channel.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
       }
-      Func<IGuildUser, Task<AbstractTempAction>> action = async user => new TempBan {
+      Func<IGuildUser, AbstractTempAction> action = user => new TempBan {
          UserId = user.Id,
          GuildId = user.Guild.Id,
-         User = await Database.GetUser(user),
-         Guild = await Database.GetGuild(user.Guild),
+         User = Database.GetUser(user),
+         Guild = Database.GetGuild(user.Guild),
       };
       Func<IGuildUser, AbstractTempAction, Task> postAction = async (user, tempAction) => {
         try {
@@ -89,11 +95,11 @@ public partial class Admin : HouraiModule {
         if(!TimeSpan.TryParse(time, out timespan)) {
           return Context.Channel.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
         }
-        Func<IGuildUser, Task<AbstractTempAction>> action = async user => new TempRole {
+        Func<IGuildUser, AbstractTempAction> action = user => new TempRole {
            UserId = user.Id,
            GuildId = user.Guild.Id,
-           User = await Database.GetUser(user),
-           Guild = await Database.GetGuild(user.Guild),
+           User = Database.GetUser(user),
+           Guild = Database.GetGuild(user.Guild),
            RoleId = role.Id,
         };
         return TempAction(timespan, action, users);
