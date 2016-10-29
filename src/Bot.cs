@@ -16,7 +16,7 @@ public class Bot {
   static void Main() => new Bot().Run().GetAwaiter().GetResult();
 
   public static ISelfUser User { get; private set; }
-  public static IUser Owner { get; set; }
+  public static IUser Owner { get; private set; }
 
   public static string ExecutionDirectory { get; private set; }
 

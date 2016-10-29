@@ -83,7 +83,7 @@ namespace Hourai {
       ChannelPermission = null;
     }
 
-    public Permission(ChannelPermission[] permission, Require requirement = Require.BotOwnerOverride) {
+    public Permission(ChannelPermission[] permission, Require requirement = Require.Both) {
       Requirement = requirement;
       ChannelPermission = permission;
       GuildPermission = null;
@@ -130,7 +130,6 @@ namespace Hourai {
       // Check if the bot needs/has the permissions
       switch(Requirement) {
         case Require.Bot:
-        case Require.BotOwnerOverride:
         case Require.Both:
           IUser botUser = Bot.User;
           var guild = (context.Channel as IGuildChannel)?.Guild;
@@ -146,7 +145,7 @@ namespace Hourai {
         case Require.BotOwnerOverride:
         case Require.Both:
           var author = context.Message.Author;
-          if(Requirement == Require.BotOwnerOverride && author.IsBotOwner())
+          if(Requirement == Require.BotOwnerOverride && context.User.IsBotOwner())
             break;
           var result = CheckUser(author, context.Channel);
           if(!result.IsSuccess)
