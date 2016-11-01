@@ -48,18 +48,19 @@ public partial class Standard : DatabaseHouraiModule {
     var textChannels = channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
     var voiceChannels = channels.OfType<IVoiceChannel>().Order().Select(ch => ch.Name.Code());
     var roles = server.Roles.Where(r => r.Id != server.EveryoneRole.Id);
-    var users = await server.GetUsersAsync();
-    builder.AppendLine($"Name: {server.Name.Code()}");
-    builder.AppendLine($"ID: {server.Id.ToString().Code()}");
-    builder.AppendLine($"Owner: {owner.Username.Code()}");
-    builder.AppendLine($"Region: {server.VoiceRegionId.Code()}");
-    builder.AppendLine($"Created: {server.CreatedAt.ToString().Code()}");
-    builder.AppendLine($"User Count: {users.Count.ToString().Code()}");
+    var socketServer = server as SocketGuild;
+    var userCount = socketServer?.MemberCount ?? (await server.GetUsersAsync()).Count;
+    builder.AppendLine($"Name: {server.Name.Code()}")
+      .AppendLine($"ID: {server.Id.ToString().Code()}")
+      .AppendLine($"Owner: {owner.Username.Code()}")
+      .AppendLine($"Region: {server.VoiceRegionId.Code()}")
+      .AppendLine($"Created: {server.CreatedAt.ToString().Code()}")
+      .AppendLine($"User Count: {userCount.ToString().Code()}");
     if(roles.Any())
       builder.AppendLine($"Roles: {roles.Order().Select(r => r.Name.Code()).Join(", ")}");
-    builder.AppendLine($"Text Channels: {textChannels.Join(", ")}");
-    builder.AppendLine($"Voice Channels: {voiceChannels.Join(", ")}");
-    builder.AppendLine($"Bot Command Prefix: {guild.Prefix}");
+    builder.AppendLine($"Text Channels: {textChannels.Join(", ")}")
+      .AppendLine($"Voice Channels: {voiceChannels.Join(", ")}")
+      .AppendLine($"Bot Command Prefix: {guild.Prefix}");
     if(!string.IsNullOrEmpty(server.IconUrl))
       builder.AppendLine(server.IconUrl);
     await Context.Message.Respond(builder.ToString());
