@@ -78,7 +78,7 @@ public partial class Standard : DatabaseHouraiModule {
   [Command("whois")]
   [Remarks("Gets information on a specified users")]
   public Task WhoIs(IGuildUser user) {
-    const int spacing = 100;
+    const int spacing = 120;
     var dbUser = Database.GetUser(user);
     var builder = new StringBuilder()
       .AppendLine($"{Context.Message.Author.Mention}:")
@@ -88,21 +88,21 @@ public partial class Standard : DatabaseHouraiModule {
       .AppendLine($"ID: {user.Id.ToString().Code()}")
       .AppendLine($"Joined on: {user.JoinedAt?.ToString().Code() ?? "N/A".Code()}")
       .AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
-    var usernames = dbUser.Usernames.Where(u => u.Name != user.Username);
-    if(usernames.Any()) {
-      using(builder.MultilineCode()) {
-        foreach(var username in usernames.OrderBy(u => u.Date)) {
-          builder.Append(username.Name);
-          builder.Append(new string(' ', spacing - username.Name.Length));
-          builder.Append(username.Date.ToString("yyyy-mm-dd"));
-        }
-      }
-    }
     var roles = user.GetRoles().Where(r => r.Id != user.Guild.EveryoneRole.Id);
     if(roles.Any())
       builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
     if(!string.IsNullOrEmpty(user.AvatarUrl))
       builder.AppendLine(user.AvatarUrl);
+    var usernames = dbUser.Usernames.Where(u => u.Name != user.Username);
+    if(usernames.Any()) {
+      using(builder.MultilineCode()) {
+        foreach(var username in usernames.OrderByDescending(u => u.Date)) {
+          builder.Append(username.Name);
+          builder.Append(new string(' ', spacing - username.Name.Length));
+          builder.AppendLine(username.Date.ToString("yyyy-MM-dd"));
+        }
+      }
+    }
     return Context.Message.Channel.SendMessageAsync(builder.ToString());
   }
 
