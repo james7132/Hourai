@@ -11,13 +11,13 @@ namespace Hourai {
 public class User {
 
   [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public ulong Id { get; set; }
+  public ulong Id { get; set; }
   [Required]
-    public string Username { get; set; }
+  public string Username { get; set; }
   [Required]
-    public ICollection<Username> Usernames { get; set; }
+  public ICollection<Username> Usernames { get; set; }
   [Required]
-    public ICollection<GuildUser> GuildUsers { get; set; }
+  public ICollection<GuildUser> GuildUsers { get; set; }
   public bool IsBlacklisted { get; set; }
   public ICollection<TempBan> TempBans;
 

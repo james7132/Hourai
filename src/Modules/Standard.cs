@@ -78,15 +78,27 @@ public partial class Standard : DatabaseHouraiModule {
   [Command("whois")]
   [Remarks("Gets information on a specified users")]
   public Task WhoIs(IGuildUser user) {
-    var builder = new StringBuilder();
-    builder.AppendLine($"{Context.Message.Author.Mention}:");
-    builder.AppendLine($"Username: {user.Username.Code()} {(user.IsBot ? "(BOT)".Code() : string.Empty )}");
-    builder.AppendLine($"Nickname: {user.Nickname.NullIfEmpty()?.Code() ?? "N/A".Code()}");
-    builder.AppendLine($"Current Game: {user.Game?.Name.Code() ?? "N/A".Code()}");
-    builder.AppendLine($"ID: {user.Id.ToString().Code()}");
-    builder.AppendLine($"Joined on: {user.JoinedAt?.ToString().Code() ?? "N/A".Code()}");
-    builder.AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
-    var roles = user.GetRoles();
+    const int spacing = 100;
+    var dbUser = Database.GetUser(user);
+    var builder = new StringBuilder()
+      .AppendLine($"{Context.Message.Author.Mention}:")
+      .AppendLine($"Username: {user.Username.Code()} {(user.IsBot ? "(BOT)".Code() : string.Empty )}")
+      .AppendLine($"Nickname: {user.Nickname.NullIfEmpty()?.Code() ?? "N/A".Code()}")
+      .AppendLine($"Current Game: {user.Game?.Name.Code() ?? "N/A".Code()}")
+      .AppendLine($"ID: {user.Id.ToString().Code()}")
+      .AppendLine($"Joined on: {user.JoinedAt?.ToString().Code() ?? "N/A".Code()}")
+      .AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
+    var usernames = dbUser.Usernames.Where(u => u.Name != user.Username);
+    if(usernames.Any()) {
+      using(builder.MultilineCode()) {
+        foreach(var username in usernames.OrderBy(u => u.Date)) {
+          builder.Append(username.Name);
+          builder.Append(new string(' ', spacing - username.Name.Length));
+          builder.Append(username.Date.ToString("yyyy-mm-dd"));
+        }
+      }
+    }
+    var roles = user.GetRoles().Where(r => r.Id != user.Guild.EveryoneRole.Id);
     if(roles.Any())
       builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
     if(!string.IsNullOrEmpty(user.AvatarUrl))
