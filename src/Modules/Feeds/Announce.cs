@@ -14,16 +14,20 @@ public partial class Feeds {
     }
 
     [Command("join")]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
+    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Join() => SetMessage(c => c.JoinMessage = !c.JoinMessage, "Join");
 
     [Command("leave")]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
+    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Leave() => SetMessage(c => c.LeaveMessage = !c.LeaveMessage, "Leave");
 
     [Command("ban")]
-    [Permission(GuildPermission.ManageGuild, Require.User)]
+    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Ban() => SetMessage(c => c.BanMessage = !c.BanMessage, "Ban");
+
+    [Command("voice")]
+    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    public Task Voice() => SetMessage(c => c.VoiceMessage = !c.VoiceMessage, "Voice");
 
     static string Status(bool status) => status ? "enabled" : "disabled";
 
