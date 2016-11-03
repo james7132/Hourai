@@ -16,9 +16,11 @@ public class Channel {
   [Required]
   public Guild Guild { get; set; } 
   public bool SearchIgnored { get; set; }
+
   public bool JoinMessage { get; set; } 
   public bool LeaveMessage { get; set; } 
   public bool BanMessage { get; set; } 
+  public bool VoiceMessage { get; set; }
 
   public Channel() {
   }
