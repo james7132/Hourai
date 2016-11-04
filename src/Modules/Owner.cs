@@ -104,12 +104,20 @@ public class Owner : DatabaseHouraiModule {
       var guildDb = Database.GetGuild(guild);
       Log.Info($"Refreshing {guild.Name}...");
       var channels = await guild.GetTextChannelsAsync();
-      foreach(var channel in channels)
-        Database.GetChannel(channel);
-      foreach(var user in guild.Users)
-        Database.GetGuildUser(user);
-      Database.AllowSave = true;
-      await Database.Save();
+      try {
+        foreach(var channel in channels)
+          Database.GetChannel(channel);
+        foreach(var user in guild.Users) {
+          if(user.Username == null) {
+            Log.Error($"Found user {user.Id} without a username");
+            continue;
+          }
+          Database.GetGuildUser(user);
+        }
+      } finally {
+        Database.AllowSave = true;
+        await Database.Save();
+      }
     }
     Log.Info("Done refreshing.");
     await Success();
