@@ -27,6 +27,7 @@ public class Commands : DatabaseHouraiModule {
       }
       guild.Commands.Remove(command);
       Database.Commands.Remove(command);
+      await Database.Save();
       await RespondAsync($"Custom command {name.Code()} has been deleted.");
       return;
     }
