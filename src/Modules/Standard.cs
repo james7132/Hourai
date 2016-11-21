@@ -132,8 +132,9 @@ public partial class Standard : DatabaseHouraiModule {
     static readonly Type HideType = typeof(HideAttribute);
     static readonly Type moduleType = typeof(ModuleCheckAttribute);
     IEnumerable<string> Modules => Commands.Modules
-      .Where(m => !m.Source.IsDefined(HideType, false) &&
-           m.Source.IsDefined(moduleType, false))
+      //TODO(james7132): Figure a way around the lack of a Source property
+      //.Where(m => !m.Source.IsDefined(HideType, false) &&
+           //m.Source.IsDefined(moduleType, false))
       .Select(m => m.Name).ToList();
 
     [Command]

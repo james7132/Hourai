@@ -73,7 +73,7 @@ public class Bot {
     map.Add(new CounterService(map));
 
     map.Add(CommandService);
-    await CommandService.AddModules(Assembly.GetEntryAssembly());
+    await CommandService.AddModulesAsync(Assembly.GetEntryAssembly());
     map.Add(new BotCommandService(map));
 
     map.Add(new TempService(map));

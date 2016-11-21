@@ -36,17 +36,18 @@ public class Help : DatabaseHouraiModule {
   async Task GeneralHelp() {
     var builder = new StringBuilder();
     foreach(var module in Commands.Modules
-        .Where(m => !m.Source.IsNested && 
-          m.Source.GetCustomAttribute<HideAttribute>() == null)
+        //TODO(james7132): Figure a way around the lack of a Source property
+        //.Where(m => !m.Source.IsNested && 
+          //m.Source.GetCustomAttribute<HideAttribute>() == null)
         .OrderBy(m => m.Name)) {
       var commands = await GetUsableCommands(module);
       if(commands.Count <= 0)
         continue;
       var commandStrings = commands
         // Group by first prefix
-        .GroupBy(c => c.Text.Split(null).First(), c => c)
+        .GroupBy(c => c.Name.Split(null).First(), c => c)
         // Check if there is more than one with the same prefix.
-        .Select(g => ((g.Skip(1).Any()) ? g.Key + CommandGroupChar : g.First().Text).Code())
+        .Select(g => ((g.Skip(1).Any()) ? g.Key + CommandGroupChar : g.First().Name).Code())
         .Join(", ");
       builder.AppendLine($"{module.Name.Bold()}: {commandStrings}");
     }
@@ -77,7 +78,7 @@ public class Help : DatabaseHouraiModule {
   async Task<List<CommandInfo>> GetUsableCommands(ModuleInfo module) {
     var usableCommands = new List<CommandInfo>();
     foreach(var command in module.Commands) {
-      var result = await command.CheckPreconditions(Context, Map);
+      var result = await command.CheckPreconditionsAsync(Context, Map);
       if(result.IsSuccess)
         usableCommands.Add(command);
     }
@@ -94,7 +95,7 @@ public class Help : DatabaseHouraiModule {
       var command = commands.First();
       using(builder.Code()) {
         builder.Append(guild.Prefix)
-          .Append(command.Text)
+          .Append(command.Name)
           .Append(" ")
           .AppendLine(command.Parameters.Select(p => {
                 var param = p.Name;
@@ -114,12 +115,13 @@ public class Help : DatabaseHouraiModule {
       // If it is a subgroup with a prefix, add all commands from that module to
       // the related commands
       var module = command.Module;
-      if(!string.IsNullOrEmpty(module.Prefix) && module.Source.IsNested)
+      //TODO(james7132): Figure a way around the lack of a Source module
+      //if(!string.IsNullOrEmpty(module.Prefix) [>&& module.Source.IsNested<])
         commands = commands.Concat(await GetUsableCommands(module));
       var other = commands.Skip(1);
       if(other.Any()) {
         builder.Append("Related commands:")
-          .AppendLine(other.Select(c => c.Text.Code()).Distinct().Join(", "));
+          .AppendLine(other.Select(c => c.Name.Code()).Distinct().Join(", "));
       }
       return builder.ToString();
     }

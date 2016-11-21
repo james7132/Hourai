@@ -64,7 +64,7 @@ public class BotCommandService {
     // Execute the command. (result does not indicate a return value, 
     // rather an object stating if the command executed succesfully)
     var context = new CommandContext(Client, msg);
-    var result = await Commands.Execute(context, argPos, Map);
+    var result = await Commands.ExecuteAsync(context, argPos, Map);
     var guildChannel = msg.Channel as ITextChannel;
     string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}." 
       : "in private channel.";
