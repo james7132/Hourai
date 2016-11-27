@@ -15,7 +15,7 @@ namespace Hourai {
 [ModuleCheck(ModuleType.Standard)]
 public partial class Standard : DatabaseHouraiModule {
 
-  LogSet Logs { get; } 
+  LogSet Logs { get; }
 
   public Standard(BotDbContext db, LogSet logs) : base(db) {
     Logs = logs;
@@ -129,12 +129,7 @@ public partial class Standard : DatabaseHouraiModule {
       Commands = commands;
     }
 
-    static readonly Type HideType = typeof(HideAttribute);
-    static readonly Type moduleType = typeof(ModuleCheckAttribute);
     IEnumerable<string> Modules => Commands.Modules
-      //TODO(james7132): Figure a way around the lack of a Source property
-      //.Where(m => !m.Source.IsDefined(HideType, false) &&
-           //m.Source.IsDefined(moduleType, false))
       .Select(m => m.Name).ToList();
 
     [Command]
@@ -143,8 +138,8 @@ public partial class Standard : DatabaseHouraiModule {
       var config = Database.GetGuild(Check.NotNull(Context.Guild));
       var modules = Enum.GetValues(typeof(ModuleType));
       await Context.Message.Respond(modules.OfType<ModuleType>()
-          .Select(m => (config.IsModuleEnabled(m)) 
-            ? m.ToString().Bold().Italicize() 
+          .Select(m => (config.IsModuleEnabled(m))
+            ? m.ToString().Bold().Italicize()
             : m.ToString())
           .Join(", "));
     }
