@@ -1,22 +1,21 @@
 using System;
-using System.Collections.Generic; 
-using System.Linq; 
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 
-namespace Hourai { 
+namespace Hourai {
 
 /// <summary>
 /// Generates a help method for all of a bot commands.
 /// Cannot be automatically installed and must be installed after all other modules have been installed.
 /// </summary>
-[Hide]
 public class Help : DatabaseHouraiModule {
 
-  IDependencyMap Map { get; } 
+  IDependencyMap Map { get; }
   CommandService Commands { get; }
 
   const char CommandGroupChar = '*';
@@ -35,19 +34,14 @@ public class Help : DatabaseHouraiModule {
 
   async Task GeneralHelp() {
     var builder = new StringBuilder();
-    foreach(var module in Commands.Modules
-        //TODO(james7132): Figure a way around the lack of a Source property
-        //.Where(m => !m.Source.IsNested && 
-          //m.Source.GetCustomAttribute<HideAttribute>() == null)
-        .OrderBy(m => m.Name)) {
+    foreach(var module in Commands.Modules.OrderBy(m => m.Name)) {
       var commands = await GetUsableCommands(module);
       if(commands.Count <= 0)
         continue;
       var commandStrings = commands
-        // Group by first prefix
-        .GroupBy(c => c.Name.Split(null).First(), c => c)
-        // Check if there is more than one with the same prefix.
-        .Select(g => ((g.Skip(1).Any()) ? g.Key + CommandGroupChar : g.First().Name).Code())
+        .Select(c => c.Name)
+        .Concat(module.Submodules.Select(m => m.Name + "*"))
+        .Select(n => n.Code())
         .Join(", ");
       builder.AppendLine($"{module.Name.Bold()}: {commandStrings}");
     }
