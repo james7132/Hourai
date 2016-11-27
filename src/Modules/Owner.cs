@@ -13,7 +13,7 @@ using Discord.Commands;
 
 namespace Hourai {
 
-[BotOwner]
+[RequireOwner]
 public class Owner : DatabaseHouraiModule {
 
   Bot Bot { get; }
@@ -22,23 +22,22 @@ public class Owner : DatabaseHouraiModule {
   LogService LogService { get; }
 
   public Owner(Bot bot,
-               CounterSet counters, 
+               CounterSet counters,
                BotDbContext db,
                LogService logs,
-               DiscordSocketClient client) : base(db) { 
+               DiscordSocketClient client) : base(db) {
     Bot = bot;
-    Counters = counters; 
+    Counters = counters;
     LogService = logs;
     Client = client;
   }
 
   [Command("log")]
   [Remarks("Gets the log for the bot.")]
-  public async Task GetLog() {
-    await Context.Channel.SendFileRetry(LogService.BotLog);
-  }
+  public Task GetLog() =>
+    Context.Channel.SendFileRetry(LogService.BotLog);
 
-  [Command("counters")] 
+  [Command("counters")]
   [Remarks("Gets all of the counters and their values.")]
   public async Task Counter() {
     var response = new StringBuilder();

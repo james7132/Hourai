@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
-using Discord; 
-using Discord.Commands; 
+using Discord;
+using Discord.Commands;
 
 namespace Hourai {
 
@@ -31,20 +31,6 @@ namespace Hourai {
       if (guild.IsModuleEnabled(Module))
           return PreconditionResult.FromSuccess();
       return PreconditionResult.FromError($"Module \"{commandInfo.Module.Name}\" is not enabled.");
-    }
-  }
-
-  public class BotOwnerAttribute : PreconditionAttribute {
-    public override Task<PreconditionResult> CheckPermissions(
-        CommandContext context,
-        CommandInfo commandInfo,
-        IDependencyMap dependencies) {
-      PreconditionResult result;
-      if (context.Message.Author.IsBotOwner())
-        result = PreconditionResult.FromSuccess();
-      else 
-        result = PreconditionResult.FromError("");
-      return Task.FromResult(result);
     }
   }
 
@@ -91,11 +77,11 @@ namespace Hourai {
 
     PreconditionResult CheckUser(IUser user, IChannel channel) {
       var guildUser = user as IGuildUser;
-      
+
       // If user is server owner or has the administrator role
       // they get a free pass.
-      if(guildUser != null && 
-          (guildUser.IsServerOwner() || 
+      if(guildUser != null &&
+          (guildUser.IsServerOwner() ||
           guildUser.GuildPermissions
           .Has(Discord.GuildPermission.Administrator)))
         return PreconditionResult.FromSuccess();

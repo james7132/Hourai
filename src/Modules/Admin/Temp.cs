@@ -16,14 +16,14 @@ public abstract class TempModule : DatabaseHouraiModule {
     Client = client;
   }
 
-  protected Task TempAction(TimeSpan time, 
-      Func<IGuildUser, AbstractTempAction> action, 
+  protected Task TempAction(TimeSpan time,
+      Func<IGuildUser, AbstractTempAction> action,
       IEnumerable<IGuildUser> users,
       Func<IGuildUser, AbstractTempAction, Task> postAction = null) =>
     TempAction(time, u => Task.FromResult(action(u)), users, postAction);
 
-  protected async Task TempAction(TimeSpan time, 
-      Func<IGuildUser, Task<AbstractTempAction>> action, 
+  protected async Task TempAction(TimeSpan time,
+      Func<IGuildUser, Task<AbstractTempAction>> action,
       IEnumerable<IGuildUser> users,
       Func<IGuildUser, AbstractTempAction, Task> postAction = null) {
     Check.NotNull(action);
@@ -80,15 +80,15 @@ public partial class Admin : HouraiModule {
       };
       return TempAction(timespan, action, users, postAction);
     }
-  
+
     [Group("role")]
+    [Permission(GuildPermission.ManageRoles)]
     public class Roles : TempModule {
 
       public Roles(DiscordSocketClient client, BotDbContext db) : base(client, db) {
       }
 
       [Command("add")]
-      [Permission(GuildPermission.ManageRoles)]
       public Task Add(IRole role, string time, params IGuildUser[] users) {
         var guild = Check.NotNull(Context.Guild);
         TimeSpan timespan;

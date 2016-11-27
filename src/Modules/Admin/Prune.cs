@@ -32,14 +32,16 @@ public partial class Admin {
       PruneMessages(m => m.Embeds.Any() || m.Attachments.Any(), count);
 
     [Command("mine")]
-    [Remarks("Removes all messages from the user using the command in the last X messages.")] public Task Mine(int count = 100) { ulong id = Context.Message.Author.Id;
+    [Remarks("Removes all messages from the user using the command in the last X messages.")]
+    public Task Mine(int count = 100) {
+      ulong id = Context.Message.Author.Id;
       return PruneMessages(m => m.Author.Id == id, count);
     }
 
     [Command("ping")]
     [Permission(GuildPermission.ManageMessages)]
     [Remarks("Removes all messages that mentioned other users or roles the last X messages. Requires ``Manage Messages`` permission.")]
-    public Task Mention(int count = 100) => 
+    public Task Mention(int count = 100) =>
       PruneMessages(m => m.MentionedUserIds.Any() || m.MentionedRoleIds.Any(), count);
 
     [Command("bot")]
