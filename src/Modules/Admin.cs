@@ -142,18 +142,6 @@ public partial class Admin : HouraiModule {
 
   }
 
-  async Task RoleCommand(CommandContext context, IRole role, string action, IEnumerable<IGuildUser> users, Func<IGuildUser, IRole, Task> task) {
-    var guild = Check.NotNull(context.Guild);
-    var selfUser = Client.CurrentUser;
-    var guildBot = await guild.GetUserAsync(selfUser.Id);
-    var message = context.Message;
-    if (!Utility.RoleCheck(guildBot, role))
-      throw new RoleRankException($"{guildBot.Username} cannot {action} role \"{role.Name}\", as it is above my roles.");
-    if (!Utility.RoleCheck(message.Author as IGuildUser, role))
-      throw new RoleRankException($"{message.Author.Username}, you cannot {action} role \"{role.Name}\", as it is above their roles.");
-    await CommandUtility.ForEvery(context, users,
-      await CommandUtility.Action(context, action + " role", user => task(user, role)));
-    }
-  }
+}
 
 }

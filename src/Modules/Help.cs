@@ -38,8 +38,10 @@ public class Help : DatabaseHouraiModule {
       var commands = await GetUsableCommands(module);
       if(commands.Count <= 0)
         continue;
-      var commandStrings = commands
-        .Select(c => c.Name)
+      var commandStrings =
+        // Add Commands
+        commands .Select(c => c.Name)
+        // Add modules
         .Concat(module.Submodules.Select(m => m.Name + "*"))
         .Select(n => n.Code())
         .Join(", ");
@@ -109,9 +111,7 @@ public class Help : DatabaseHouraiModule {
       // If it is a subgroup with a prefix, add all commands from that module to
       // the related commands
       var module = command.Module;
-      //TODO(james7132): Figure a way around the lack of a Source module
-      //if(!string.IsNullOrEmpty(module.Prefix) [>&& module.Source.IsNested<])
-        commands = commands.Concat(await GetUsableCommands(module));
+      commands = commands.Concat(await GetUsableCommands(module));
       var other = commands.Skip(1);
       if(other.Any()) {
         builder.Append("Related commands:")
