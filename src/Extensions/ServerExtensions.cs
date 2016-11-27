@@ -6,13 +6,6 @@ namespace Hourai {
 
 public static class ServerExtensions {
 
-  public static IRole GetRole(this IGuild server, string roleName) {
-    IRole role = server.Roles.FirstOrDefault(r => r.Name == roleName);
-    if (role == null)
-      throw new NotFoundException("role", roleName);
-    return role;
-  }
-
   public static bool AllowCommands(this IGuild guild)  {
     if(guild == null)
       return false;
@@ -30,16 +23,16 @@ public static class ServerExtensions {
     return gChannel == null || gChannel.Guild.AllowCommands();
   }
 
-  public static IEnumerable<IRole> Order(this IEnumerable<IRole> roles) => 
+  public static IEnumerable<IRole> Order(this IEnumerable<IRole> roles) =>
     roles.OrderByDescending(r => r.Position);
 
-  public static IEnumerable<IRole> OrderAlpha(this IEnumerable<IRole> roles) => 
+  public static IEnumerable<IRole> OrderAlpha(this IEnumerable<IRole> roles) =>
     roles.OrderBy(r => r.Name);
 
-  public static IEnumerable<IGuildChannel> Order(this IEnumerable<IGuildChannel> channels) => 
+  public static IEnumerable<IGuildChannel> Order(this IEnumerable<IGuildChannel> channels) =>
     channels.OrderBy(c => c.Position);
 
-  public static IEnumerable<IGuildChannel> OrderAlpha(this IEnumerable<IGuildChannel> channels) => 
+  public static IEnumerable<IGuildChannel> OrderAlpha(this IEnumerable<IGuildChannel> channels) =>
     channels.OrderBy(c => c.Name);
 
 }
