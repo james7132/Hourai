@@ -8,8 +8,7 @@ namespace Hourai {
   public enum ModuleType : long {
     Standard = 1 << 0,
     Admin = 1 << 1,
-    Command = 1 << 2,
-    Feeds = 1 << 3
+    Feeds = 1 << 2
   }
 
   public class ModuleCheckAttribute : RequireContextAttribute {
