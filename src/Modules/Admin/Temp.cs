@@ -56,12 +56,8 @@ public partial class Admin : HouraiModule {
     [Command("ban")]
     [Permission(GuildPermission.BanMembers)]
     [Remarks("Temporarily bans user(s) from the server. Requires ``Ban Members`` server permission")]
-    public Task Ban(string time, params IGuildUser[] users) {
+    public Task Ban(TimeSpan time, params IGuildUser[] users) {
       var guild = Check.NotNull(Context.Guild);
-      TimeSpan timespan;
-      if(!TimeSpan.TryParse(time, out timespan)) {
-        return Context.Channel.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
-      }
       Func<IGuildUser, AbstractTempAction> action = user => new TempBan {
          UserId = user.Id,
          GuildId = user.Guild.Id,
@@ -78,7 +74,7 @@ public partial class Admin : HouraiModule {
           Log.Error(e);
         }
       };
-      return TempAction(timespan, action, users, postAction);
+      return TempAction(time, action, users, postAction);
     }
 
     [Group("role")]
@@ -89,12 +85,8 @@ public partial class Admin : HouraiModule {
       }
 
       [Command("add")]
-      public Task Add(IRole role, string time, params IGuildUser[] users) {
+      public Task Add(IRole role, TimeSpan time, params IGuildUser[] users) {
         var guild = Check.NotNull(Context.Guild);
-        TimeSpan timespan;
-        if(!TimeSpan.TryParse(time, out timespan)) {
-          return Context.Channel.Respond($"Could not convert \"{time}\" into a valid timespan. See https://msdn.microsoft.com/en-us/library/se73z7b9(v=vs.110).aspx#Anchor_2 for more details");
-        }
         Func<IGuildUser, AbstractTempAction> action = user => new TempRole {
            UserId = user.Id,
            GuildId = user.Guild.Id,
@@ -102,7 +94,7 @@ public partial class Admin : HouraiModule {
            Guild = Database.GetGuild(user.Guild),
            RoleId = role.Id,
         };
-        return TempAction(timespan, action, users);
+        return TempAction(time, action, users);
       }
 
     }
