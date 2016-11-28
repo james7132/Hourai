@@ -20,7 +20,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Adds a role to all mentioned users." + Requirement)]
     public async Task Add(IRole role, params IGuildUser[] users) {
-      var action = CommandUtility.Action(Context, "add role", async u => await u.AddRolesAsync(role));
+      var action = CommandUtility.Action(async u => await u.AddRolesAsync(role));
       await CommandUtility.ForEvery(Context, users, action);
     }
 
@@ -38,7 +38,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Removes a role to all mentioned users." + Requirement)]
     public async Task Remove(IRole role, params IGuildUser[] users) {
-      var action = CommandUtility.Action(Context, "remove role", async u => await u.RemoveRolesAsync(role));
+      var action = CommandUtility.Action(async u => await u.RemoveRolesAsync(role));
       await CommandUtility.ForEvery(Context, users, action);
     }
 
@@ -47,7 +47,7 @@ public partial class Admin {
     [Remarks("Removes a role to all users on the server." + Requirement)]
     public async Task Nuke(params IRole[] roles) {
       var users = await Check.NotNull(Context.Guild).GetUsersAsync();
-      var action = CommandUtility.Action(Context, "remove role", async u => await u.RemoveRolesAsync(roles));
+      var action = CommandUtility.Action( async u => await u.RemoveRolesAsync(roles));
       await CommandUtility.ForEvery(Context, users, action);
     }
 
@@ -55,7 +55,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Bans all mentioned users from a specified role." + Requirement)]
     public async Task RoleBan(IRole role, params IGuildUser[] users) {
-      var action = CommandUtility.Action(Context, "ban",
+      var action = CommandUtility.Action(
         async u => {
           await u.RemoveRolesAsync(role);
           var guildUser = Database.GetGuildUser(u);
@@ -69,7 +69,7 @@ public partial class Admin {
     [Permission(GuildPermission.ManageRoles)]
     [Remarks("Unban all mentioned users from a specified role." + Requirement)]
     public async Task RoleUnban(IRole role, params IGuildUser[] users) {
-      var action = CommandUtility.Action(Context, "ban",
+      var action = CommandUtility.Action(
         u => {
           var guildUser = Database.GetGuildUser(u);
           guildUser.UnbanRole(role);

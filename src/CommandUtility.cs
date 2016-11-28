@@ -12,7 +12,7 @@ namespace Hourai {
 public static class CommandUtility {
 
   const string FailureResponse =
-      "No target specified. Please specify at least one target user.";
+      "No target specified. Please specify at least one target.";
 
   public static async Task ForEvery<T>(CommandContext e,
                                        IEnumerable<T> enumeration,
@@ -34,15 +34,13 @@ public static class CommandUtility {
     await e.Channel.Respond(response);
   }
 
-  public static Func<IGuildUser, Task<string>> Action(CommandContext context,
-                                                string action,
-                                                Func<IGuildUser, Task> task,
-                                                bool ignoreErrors = false) {
-    var guild = Check.NotNull(context.Guild);
-    return async delegate (IGuildUser user) {
+  static Func<T, Task<string>> Action<T>( Func<T, Task> task,
+      bool ignoreErrors,
+      Func<T, string> name) {
+    return async delegate (T obj) {
       string result = string.Empty;
       try {
-        await task(user);
+        await task(obj);
       } catch (HttpException httpException) {
         if(httpException.StatusCode == HttpStatusCode.Forbidden)
           result = "Bot has insufficient permissions.";
@@ -52,45 +50,22 @@ public static class CommandUtility {
         result = exception.Message;
       }
       if (string.IsNullOrEmpty(result) || ignoreErrors)
-        return $"{user.Username}: { Config.SuccessResponse }";
-      return $"{user.Username}: {result}";
+        return $"{name(obj)}: { Config.SuccessResponse }";
+      return $"{name(obj)}: {result}";
     };
   }
+
+  public static Func<IGuildUser, Task<string>> Action( Func<IGuildUser, Task> task,
+                                                bool ignoreErrors = false)
+    => Action(task, ignoreErrors, u => u.Username);
 
   public static Func<IRole, Task<string>> Action(Func<IRole, Task> task,
-                                                 bool ignoreErrors = false) {
-    return async delegate (IRole role) {
-      string result = string.Empty;
-      try {
-        await task(role);
-      } catch (HttpException httpException) {
-        if(httpException.StatusCode == HttpStatusCode.Forbidden)
-          result = $"{role.Name}: Bot has insufficient permissions.";
-        else
-          result = httpException.Message;
-      } catch (Exception exception) {
-        result = exception.Message;
-      }
-      if (string.IsNullOrEmpty(result) || ignoreErrors)
-        return $"{role.Name}: { Config.SuccessResponse }";
-      return $"{role.Name}: {result}";
-    };
-  }
+                                                 bool ignoreErrors = false)
+    => Action(task, ignoreErrors, r => r.Name);
 
   public static Func<IGuildChannel, Task<string>> Action(Func<IGuildChannel, Task> task,
-                                                       bool ignoreErrors = false) {
-    return async delegate (IGuildChannel targetChannel) {
-      string result = string.Empty;
-      try {
-        await task(targetChannel);
-      } catch (Exception exception) {
-        result = exception.Message;
-      }
-      if (string.IsNullOrEmpty(result) || ignoreErrors)
-        return $"{targetChannel.Name}: { Config.SuccessResponse }";
-      return $"{targetChannel.Name}: {result}";
-    };
-  }
+                                                       bool ignoreErrors = false)
+    => Action(task, ignoreErrors, c => c.Name);
 
 }
 

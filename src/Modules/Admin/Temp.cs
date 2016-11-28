@@ -31,8 +31,7 @@ public abstract class TempModule : DatabaseHouraiModule {
     Check.NotNull(action);
     var start = DateTimeOffset.Now;
     var end = DateTimeOffset.Now + time;
-    var commandAction = CommandUtility.Action(Context, "temp " + actionType,
-      async delegate(IGuildUser user) {
+    var commandAction = CommandUtility.Action(async delegate(IGuildUser user) {
         var tempAction = await action(user);
         tempAction.Start = start;
         tempAction.End = end;
