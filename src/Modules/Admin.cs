@@ -7,11 +7,12 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 [RequireContext(ContextType.Guild)]
-[ModuleCheck(ModuleType.Admin)]
+[RequireModule(ModuleType.Admin)]
 public partial class Admin : HouraiModule {
 
   LogSet Logs { get; }
