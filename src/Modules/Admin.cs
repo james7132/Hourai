@@ -29,7 +29,7 @@ public partial class Admin : HouraiModule {
   [Permission(GuildPermission.KickMembers)]
   [Remarks("Kicks all mentioned users. Requires ``Kick Members`` permission.")]
   public async Task Kick(params IGuildUser[] users) {
-    var action = await CommandUtility.Action(Context, "kick", u => u.KickAsync());
+    var action = CommandUtility.Action(Context, "kick", u => u.KickAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
@@ -37,7 +37,7 @@ public partial class Admin : HouraiModule {
   [Permission(GuildPermission.BanMembers)]
   [Remarks("Bans all mentioned users. Requires ``Ban Members`` permission.")]
   public async Task Ban(params IGuildUser[] users) {
-    var action = await CommandUtility.Action(Context, "ban", u => u.BanAsync());
+    var action = CommandUtility.Action(Context, "ban", u => u.BanAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
@@ -45,7 +45,7 @@ public partial class Admin : HouraiModule {
   [Permission(GuildPermission.BanMembers)]
   [Remarks("Softbans all mentioned users. Requires ``Ban Members`` permission.")]
   public async Task Softban(params IGuildUser[] users) {
-    var action = await CommandUtility.Action(Context, "ban", async u => {
+    var action = CommandUtility.Action(Context, "ban", async u => {
         ulong id = u.Id;
         await u.BanAsync(7); // Prune 7 day's worth of messages
         await u.Guild.RemoveBanAsync(id);
@@ -57,7 +57,7 @@ public partial class Admin : HouraiModule {
   [Permission(GuildPermission.MuteMembers)]
   [Remarks("Server mutes all mentioned users. Requires ``Mute Members`` permission.")]
   public async Task Mute(params IGuildUser[] users) {
-    var action = await CommandUtility.Action(Context, "mute", async u => await u.MuteAsync());
+    var action = CommandUtility.Action(Context, "mute", async u => await u.MuteAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
@@ -65,7 +65,7 @@ public partial class Admin : HouraiModule {
   [Permission(GuildPermission.MuteMembers)]
   [Remarks( "Server unmutes all mentioned users. Requires ``Mute Members`` permission.")]
   public async Task Unmute(params IGuildUser[] users) {
-    var action = await CommandUtility.Action(Context, "unmute", async u => await u.UnmuteAsync());
+    var action = CommandUtility.Action(Context, "unmute", async u => await u.UnmuteAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
@@ -73,7 +73,7 @@ public partial class Admin : HouraiModule {
   [Permission(GuildPermission.DeafenMembers)]
   [Remarks( "Server deafens all mentioned users. Requires ``Deafen Members`` permission.")]
   public async Task Deafen(params IGuildUser[] users) {
-    var action = await CommandUtility.Action(Context, "deafen", async u => await u.DeafenAsync());
+    var action = CommandUtility.Action(Context, "deafen", async u => await u.DeafenAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
@@ -81,7 +81,7 @@ public partial class Admin : HouraiModule {
   [Permission(GuildPermission.DeafenMembers)]
   [Remarks( "Server undeafens all mentioned users. Requires ``Deafen Members`` permission.")]
   public async Task Undeafen(params IGuildUser[] users) {
-    var action = await CommandUtility.Action(Context, "undeafen", async u => await u.UndeafenAsync());
+    var action = CommandUtility.Action(Context, "undeafen", async u => await u.UndeafenAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
@@ -105,7 +105,7 @@ public partial class Admin : HouraiModule {
       return;
     }
 
-    var action = await CommandUtility.Action(Context, "nickname", async u => await u.SetNickname(nickname));
+    var action = CommandUtility.Action(Context, "nickname", async u => await u.SetNickname(nickname));
     await CommandUtility.ForEvery(Context, allUsers, action);
   }
 

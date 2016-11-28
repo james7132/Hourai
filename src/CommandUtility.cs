@@ -1,6 +1,8 @@
 using Discord;
+using Discord.Net;
 using Discord.Commands;
 using System;
+using System.Net;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -32,20 +34,20 @@ public static class CommandUtility {
     await e.Channel.Respond(response);
   }
 
-  public static async Task<Func<IGuildUser, Task<string>>> Action(CommandContext context,
+  public static Func<IGuildUser, Task<string>> Action(CommandContext context,
                                                 string action,
                                                 Func<IGuildUser, Task> task,
                                                 bool ignoreErrors = false) {
     var guild = Check.NotNull(context.Guild);
-    var botUser = await guild.GetCurrentUserAsync();
     return async delegate (IGuildUser user) {
-      if (user.IsServerOwner())
-        return $"{user.Username}: User is server's owner. Cannot { action }.";
-      if (botUser.CompareTo(user) <= 0)
-        return $"{user.Username}: User has higher roles than {botUser.Username}. Cannot {action}.";
       string result = string.Empty;
       try {
         await task(user);
+      } catch (HttpException httpException) {
+        if(httpException.StatusCode == HttpStatusCode.Forbidden)
+          result = $"{user.Username}: Bot has insufficient permissions.";
+        else
+          result = httpException.Message;
       } catch (Exception exception) {
         result = exception.Message;
       }
@@ -61,6 +63,11 @@ public static class CommandUtility {
       string result = string.Empty;
       try {
         await task(role);
+      } catch (HttpException httpException) {
+        if(httpException.StatusCode == HttpStatusCode.Forbidden)
+          result = $"{role.Name}: Bot has insufficient permissions.";
+        else
+          result = httpException.Message;
       } catch (Exception exception) {
         result = exception.Message;
       }
