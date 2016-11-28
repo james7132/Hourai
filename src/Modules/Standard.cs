@@ -9,10 +9,11 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Hourai.Preconditions;
 
 namespace Hourai {
 
-[ModuleCheck(ModuleType.Standard)]
+[RequireModule(ModuleType.Standard)]
 public partial class Standard : DatabaseHouraiModule {
 
   LogSet Logs { get; }

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
 namespace Hourai {
 
@@ -29,10 +30,10 @@ public class Guild {
 
   private Dictionary<MinimumRole, ulong> _minimumRoles;
   public string MinRoles {
-    get { 
+    get {
       if(_minimumRoles == null || _minimumRoles.Count <= 0)
         return null;
-      return JsonConvert.SerializeObject(_minimumRoles); 
+      return JsonConvert.SerializeObject(_minimumRoles);
     }
     set {
       if(string.IsNullOrEmpty(value))

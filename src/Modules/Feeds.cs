@@ -4,11 +4,12 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 [RequireContext(ContextType.Guild)]
-[ModuleCheck(ModuleType.Feeds)]
+[RequireModule(ModuleType.Feeds)]
 public partial class Feeds : HouraiModule {
 }
 
