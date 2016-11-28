@@ -5,7 +5,6 @@ using Discord.Commands;
 
 namespace Hourai {
 
-
   public enum Require {
       // Requires only the bot to have the permission
       Bot,
