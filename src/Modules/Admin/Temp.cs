@@ -16,20 +16,22 @@ public abstract class TempModule : DatabaseHouraiModule {
     Client = client;
   }
 
-  protected Task TempAction(TimeSpan time,
+  protected Task TempAction(string actionType,
+      TimeSpan time,
+      IEnumerable<IGuildUser> users,
       Func<IGuildUser, AbstractTempAction> action,
-      IEnumerable<IGuildUser> users,
       Func<IGuildUser, AbstractTempAction, Task> postAction = null) =>
-    TempAction(time, u => Task.FromResult(action(u)), users, postAction);
+    TempAction(actionType, time, users, u => Task.FromResult(action(u)), postAction);
 
-  protected async Task TempAction(TimeSpan time,
-      Func<IGuildUser, Task<AbstractTempAction>> action,
+  protected async Task TempAction(string actionType,
+      TimeSpan time,
       IEnumerable<IGuildUser> users,
+      Func<IGuildUser, Task<AbstractTempAction>> action,
       Func<IGuildUser, AbstractTempAction, Task> postAction = null) {
     Check.NotNull(action);
     var start = DateTimeOffset.Now;
     var end = DateTimeOffset.Now + time;
-    var commandAction = await CommandUtility.Action(Context, "temp ban",
+    var commandAction = await CommandUtility.Action(Context, "temp " + actionType,
       async delegate(IGuildUser user) {
         var tempAction = await action(user);
         tempAction.Start = start;
@@ -74,7 +76,7 @@ public partial class Admin : HouraiModule {
           Log.Error(e);
         }
       };
-      return TempAction(time, action, users, postAction);
+      return TempAction("ban", time, users, action, postAction);
     }
 
     [Group("role")]
@@ -87,14 +89,13 @@ public partial class Admin : HouraiModule {
       [Command("add")]
       public Task Add(IRole role, TimeSpan time, params IGuildUser[] users) {
         var guild = Check.NotNull(Context.Guild);
-        Func<IGuildUser, AbstractTempAction> action = user => new TempRole {
+        return TempAction("add role", time, users, user => new TempRole {
            UserId = user.Id,
            GuildId = user.Guild.Id,
            User = Database.GetUser(user),
            Guild = Database.GetGuild(user.Guild),
            RoleId = role.Id,
-        };
-        return TempAction(time, action, users);
+        });
       }
 
     }
