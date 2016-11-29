@@ -17,7 +17,7 @@ namespace Hourai.Preconditions {
       Time = DateTimeOffset.UtcNow;
     }
 
-    public bool Check(int limit, float time) {
+    public bool Check(int limit, double time) {
       lock(_lock) {
         var now = DateTimeOffset.UtcNow;
         if(now > Time + TimeSpan.FromSeconds(time)) {
@@ -34,12 +34,12 @@ namespace Hourai.Preconditions {
   public abstract class RateLimitAttribute : DocumentedPreconditionAttribute {
 
     public int Limit { get; }
-    public float Time { get; }
+    public double Time { get; }
 
     readonly ConcurrentDictionary<ulong, RateLimitCounter> _counters;
     Func<ulong, RateLimitCounter> counterFactory = id => new RateLimitCounter();
 
-    public RateLimitAttribute(int limit, float time) {
+    public RateLimitAttribute(int limit, double time) {
       Limit = limit;
       Time = time;
       _counters = new ConcurrentDictionary<ulong, RateLimitCounter>();
@@ -71,7 +71,7 @@ namespace Hourai.Preconditions {
 
   public class UserRateLimitAttribute : RateLimitAttribute {
 
-    public UserRateLimitAttribute(int limit, float time) : base(limit, time) {
+    public UserRateLimitAttribute(int limit, double time) : base(limit, time) {
     }
 
     protected override string LimitType => "User";
@@ -81,7 +81,7 @@ namespace Hourai.Preconditions {
 
   public class ChannelRateLimitAttribute : RateLimitAttribute {
 
-    public ChannelRateLimitAttribute(int limit, float time) : base(limit, time) {
+    public ChannelRateLimitAttribute(int limit, double time) : base(limit, time) {
     }
 
     protected override string LimitType => "Channel";
@@ -91,7 +91,7 @@ namespace Hourai.Preconditions {
 
   public class GuildRateLimitAttribute : RateLimitAttribute {
 
-    public GuildRateLimitAttribute(int limit, float time) : base(limit, time) {
+    public GuildRateLimitAttribute(int limit, double time) : base(limit, time) {
     }
 
     protected override string LimitType => "Server";
