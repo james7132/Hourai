@@ -15,6 +15,7 @@ public partial class Feeds {
     }
 
     [Command("join")]
+    [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server join messages in the current channel")]
     [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Join() => SetMessage(c => c.JoinMessage = !c.JoinMessage,
@@ -22,6 +23,7 @@ public partial class Feeds {
         "Join");
 
     [Command("leave")]
+    [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server leave messages in the current channel")]
     [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Leave() => SetMessage(c => c.LeaveMessage = !c.LeaveMessage,
@@ -29,6 +31,7 @@ public partial class Feeds {
         "Leave");
 
     [Command("ban")]
+    [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server ban messages in the current channel")]
     [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Ban() => SetMessage(c => c.BanMessage = !c.BanMessage,
@@ -36,6 +39,7 @@ public partial class Feeds {
         "Ban");
 
     [Command("voice")]
+    [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables voice messages in the current channel")]
     [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Voice() => SetMessage(c => c.VoiceMessage = !c.VoiceMessage,

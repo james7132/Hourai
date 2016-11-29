@@ -56,6 +56,7 @@ public partial class Admin : HouraiModule {
     }
 
     [Command("ban")]
+    [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.BanMembers)]
     [Remarks("Temporarily bans user(s) from the server.")]
     public Task Ban(TimeSpan time, params IGuildUser[] users) {
@@ -87,6 +88,7 @@ public partial class Admin : HouraiModule {
       }
 
       [Command("add")]
+      [GuildRateLimit(1, 1)]
       public Task Add(IRole role, TimeSpan time, params IGuildUser[] users) {
         var guild = Check.NotNull(Context.Guild);
         return TempAction("add role", time, users, user => new TempRole {

@@ -25,6 +25,7 @@ public class Help : DatabaseHouraiModule {
   }
 
   [Command("help")]
+  [UserRateLimit(1, 5)]
   public Task GetHelp([Remainder] string command = "") {
     if(string.IsNullOrEmpty(command))
       return GeneralHelp();
@@ -106,10 +107,11 @@ public class Help : DatabaseHouraiModule {
                 return param;
               }).Join(" "));
       }
-      var docPreconditions = command.Preconditions.OfType<DocumentedPreconditionAttribute>()
-        .Select(d => d.GetDocumentation()).Join(" ");
+      var docPreconditions = command.Preconditions
+        .OfType<DocumentedPreconditionAttribute>()
+        .Select(d => d.GetDocumentation()).Join("\n");
       builder.AppendLine()
-        .Append(command.Remarks)
+        .AppendLine(command.Remarks)
         .AppendLine(docPreconditions);
       // If it is a subgroup with a prefix, add all commands from that module to
       // the related commands

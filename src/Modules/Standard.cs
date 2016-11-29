@@ -23,12 +23,14 @@ public partial class Standard : DatabaseHouraiModule {
   }
 
   [Command("echo")]
+  [ChannelRateLimit(3, 1)]
   [Remarks("Has the bot repeat what you say")]
   public Task Echo([Remainder] string remainder) {
     return RespondAsync(remainder);
   }
 
   [Command("avatar")]
+  [ChannelRateLimit(3, 1)]
   [Remarks("Gets the avatar url of all mentioned users.")]
   public Task Avatar(params IGuildUser[] users) {
     IUser[] allUsers = users;
@@ -38,6 +40,7 @@ public partial class Standard : DatabaseHouraiModule {
   }
 
   [Command("serverinfo")]
+  [ChannelRateLimit(3, 1)]
   [RequireContext(ContextType.Guild)]
   [Remarks("Gets general information about the current server")]
   public async Task ServerInfo() {
@@ -68,6 +71,7 @@ public partial class Standard : DatabaseHouraiModule {
   }
 
   [Command("channelinfo")]
+  [ChannelRateLimit(3, 1)]
   [RequireContext(ContextType.Guild)]
   [Remarks("Gets information on a specified channel")]
   public Task ChannelInfo(IGuildChannel channel = null) {
@@ -77,6 +81,7 @@ public partial class Standard : DatabaseHouraiModule {
   }
 
   [Command("whois")]
+  [ChannelRateLimit(3, 1)]
   [Remarks("Gets information on a specified users")]
   public Task WhoIs(IGuildUser user) {
     const int spacing = 120;
@@ -108,6 +113,7 @@ public partial class Standard : DatabaseHouraiModule {
   }
 
   [Command("topic")]
+  [ChannelRateLimit(3, 1)]
   [Remarks("Returns the mentioned channels' topics. If none are mentioned, the current channel is used.")]
   public Task Topic(params IGuildChannel[] channels) {
     if(channels.Length <= 0)
@@ -134,6 +140,7 @@ public partial class Standard : DatabaseHouraiModule {
       .Select(m => m.Name).ToList();
 
     [Command]
+    [ChannelRateLimit(3, 1)]
     [Remarks("Lists all modules available. Enabled ones are highligted.")]
     public async Task ModuleList() {
       var config = Database.GetGuild(Check.NotNull(Context.Guild));
@@ -146,6 +153,7 @@ public partial class Standard : DatabaseHouraiModule {
     }
 
     [Command("enable")]
+    [GuildRateLimit(2, 60)]
     [Remarks("Enables a module for this server.")]
     public async Task ModuleEnable(params string[] modules) {
       var response = new StringBuilder();
@@ -164,6 +172,7 @@ public partial class Standard : DatabaseHouraiModule {
     }
 
     [Command("disable")]
+    [GuildRateLimit(2, 60)]
     [Remarks("Disable a module for this server.")]
     public async Task ModuleDisable(params string[]  modules) {
       var response = new StringBuilder();

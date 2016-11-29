@@ -15,6 +15,7 @@ public partial class Standard {
     }
 
     [Command]
+    [GuildRateLimit(1, 1)]
     [MinimumRole(MinimumRole.Command)]
     [Remarks("Creates a custom command. Deletes an existing one if response is empty.")]
     public async Task CreateCommand(string name,

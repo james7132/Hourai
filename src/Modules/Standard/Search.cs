@@ -6,8 +6,9 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 public partial class Standard {
 
@@ -32,18 +33,27 @@ public partial class Standard {
     }
 
     [Command]
+    [UserRateLimit(1, 1)]
+    [ChannelRateLimit(5, 5)]
+    [GuildRateLimit(20, 30)]
     [Remarks("Search the history of the current channel for messages that match all of the specfied search terms.")]
     public Task SearchChat(params string[] terms) {
       return SearchChannel(ExactMatch(terms));
     }
 
     [Command("regex")]
+    [UserRateLimit(1, 1)]
+    [ChannelRateLimit(5, 5)]
+    [GuildRateLimit(20, 30)]
     [Remarks("Search the history of the current channel for matches to a specfied regex.")]
     public Task SearchRegex(string regex) {
       return SearchChannel(RegexMatch(regex));
     }
 
     [Command("day")]
+    [UserRateLimit(1, 1)]
+    [ChannelRateLimit(5, 5)]
+    [GuildRateLimit(20, 30)]
     [Remarks("SearchChat the log of the the current channel on a certain day. Day must be of the format ``yyyy-mm-dd``")]
     public Task Day(string day) {
       var channel = Check.InGuild(Context.Message);
@@ -55,18 +65,20 @@ public partial class Standard {
     }
 
     [Command("ignore")]
+    [ChannelRateLimit(1, 60)]
     [Remarks("Mentioned channels will not be searched in ``search all``, except while in said channel. "
       + "User must have ``Manage Channels`` permission")]
     public Task Ignore(params IGuildChannel[] channels) => SetIgnore(channels, true);
 
     [Command("unigore")]
-    [Remarks("Mentioned channels will appear in ``search all`` results." 
+    [ChannelRateLimit(1, 60)]
+    [Remarks("Mentioned channels will appear in ``search all`` results."
       +" User must have ``Manage Channels`` permission")]
     public Task Unignore(params IGuildChannel[] channels) => SetIgnore(channels, false);
 
     async Task SetIgnore(IEnumerable<IGuildChannel> channels, bool value) {
       var channel = Check.InGuild(Context.Message);
-      foreach (var ch in channels) 
+      foreach (var ch in channels)
         Database.GetChannel(ch).SearchIgnored = value;
       await Database.Save();
       await Success();
@@ -77,7 +89,7 @@ public partial class Standard {
     public class All : HouraiModule {
 
       LogSet Logs { get; }
-      SearchService SearchService { get; } 
+      SearchService SearchService { get; }
 
       public All(LogSet logs, SearchService search) {
         Logs = logs;
@@ -85,10 +97,12 @@ public partial class Standard {
       }
 
       [Command]
+      [GuildRateLimit(5, 30)]
       [Remarks("Searches the history of all channels in the current server for any of the specfied search terms.")]
       public Task SearchAll(params string[] terms) => SearchAll(ExactMatch(terms));
 
       [Command("regex")]
+      [GuildRateLimit(5, 30)]
       [Remarks("Searches the history of all channels in the current server based on a regex.")]
       public async Task SearchAllRegex(string regex) => await SearchAll(RegexMatch(regex));
 
@@ -114,7 +128,7 @@ public partial class Standard {
       }
     }
 
-  } 
+  }
 
 }
 

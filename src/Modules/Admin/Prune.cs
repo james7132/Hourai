@@ -14,11 +14,13 @@ public partial class Admin {
   public class Prune : HouraiModule {
 
     [Command]
+    [ChannelRateLimit(5, 30)]
     [RequirePermission(GuildPermission.ManageMessages)]
     [Remarks("Removes the last X messages from the current channel.")]
     public Task Default(int count = 100) => PruneMessages(m => true, count);
 
     [Command("user")]
+    [ChannelRateLimit(5, 30)]
     [RequirePermission(GuildPermission.ManageMessages)]
     [Remarks("Removes all messages from all mentioned users in the last 100 messages.")]
     public Task User(params IGuildUser[] users) {
@@ -27,12 +29,14 @@ public partial class Admin {
     }
 
     [Command("embed")]
+    [ChannelRateLimit(5, 30)]
     [RequirePermission(GuildPermission.ManageMessages)]
     [Remarks("Removes all messages with embeds or attachments in the last X messages.")]
     public Task Embed(int count = 100) =>
       PruneMessages(m => m.Embeds.Any() || m.Attachments.Any(), count);
 
     [Command("mine")]
+    [UserRateLimit(1, 5)]
     [Remarks("Removes all messages from the user using the command in the last X messages.")]
     public Task Mine(int count = 100) {
       ulong id = Context.Message.Author.Id;
@@ -40,12 +44,14 @@ public partial class Admin {
     }
 
     [Command("ping")]
+    [ChannelRateLimit(5, 30)]
     [RequirePermission(GuildPermission.ManageMessages)]
     [Remarks("Removes all messages that mentioned other users or roles the last X messages.")]
     public Task Mention(int count = 100) =>
       PruneMessages(m => m.MentionedUserIds.Any() || m.MentionedRoleIds.Any(), count);
 
     [Command("bot")]
+    [ChannelRateLimit(5, 30)]
     [RequirePermission(GuildPermission.ManageMessages)]
     [Remarks("Removes all messages from all bots in the last X messages.")]
     public Task Bot(int count = 100) =>

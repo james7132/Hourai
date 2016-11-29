@@ -17,6 +17,7 @@ public partial class Admin {
     }
 
     [Command("add")]
+    [GuildRateLimit(1, 0.5)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Adds a role to all mentioned users.")]
     public async Task Add(IRole role, params IGuildUser[] users) {
@@ -25,6 +26,8 @@ public partial class Admin {
     }
 
     [Command("list")]
+    [ChannelRateLimit(1, 1)]
+    [GuildRateLimit(1, 0.5)]
     [Remarks("Lists all roles on this server.")]
     public async Task List() {
       var guild = Check.NotNull(Context.Guild);
@@ -35,6 +38,7 @@ public partial class Admin {
     }
 
     [Command("remove")]
+    [GuildRateLimit(1, 0.5)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Removes a role to all mentioned users.")]
     public async Task Remove(IRole role, params IGuildUser[] users) {
@@ -43,6 +47,7 @@ public partial class Admin {
     }
 
     [Command("nuke")]
+    [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Removes all roles from provided users.")]
     public async Task Nuke(params IGuildUser[] users) {
@@ -51,6 +56,7 @@ public partial class Admin {
     }
 
     [Command("ban")]
+    [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Bans all mentioned users from a specified role.")]
     public async Task RoleBan(IRole role, params IGuildUser[] users) {
@@ -65,6 +71,7 @@ public partial class Admin {
     }
 
     [Command("unban")]
+    [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Unban all mentioned users from a specified role.")]
     public async Task RoleUnban(IRole role, params IGuildUser[] users) {
@@ -79,6 +86,7 @@ public partial class Admin {
     }
 
     [Command("create")]
+    [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Creates a mentionable role and applies it to all mentioned users")]
     public async Task RoleCreate(string name) {
@@ -87,6 +95,7 @@ public partial class Admin {
     }
 
     [Command("delete")]
+    [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Deletes a role and removes it from all users.")]
     public Task RoleDelete(params IRole[] roles) {
@@ -97,6 +106,7 @@ public partial class Admin {
     }
 
     [Command("color")]
+    [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Sets a role's color.")]
     public async Task RoleColor(string color, params IRole[] roles) {
@@ -112,6 +122,7 @@ public partial class Admin {
     }
 
     [Command("rename")]
+    [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Renames all mentioned roles")]
     public async Task Rename(string name, params IRole[] roles) {
