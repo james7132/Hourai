@@ -4,21 +4,21 @@ using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 public partial class Admin {
 
   [Group("role")]
   public class Roles : DatabaseHouraiModule {
-    const string Requirement = " Requires ``Manage Role`` permission for both user and bot.";
 
     public Roles(BotDbContext db) : base(db) {
     }
 
     [Command("add")]
-    [Permission(GuildPermission.ManageRoles)]
-    [Remarks("Adds a role to all mentioned users." + Requirement)]
+    [RequirePermission(GuildPermission.ManageRoles)]
+    [Remarks("Adds a role to all mentioned users.")]
     public async Task Add(IRole role, params IGuildUser[] users) {
       var action = CommandUtility.Action(async u => await u.AddRolesAsync(role));
       await CommandUtility.ForEvery(Context, users, action);
@@ -35,16 +35,16 @@ public partial class Admin {
     }
 
     [Command("remove")]
-    [Permission(GuildPermission.ManageRoles)]
-    [Remarks("Removes a role to all mentioned users." + Requirement)]
+    [RequirePermission(GuildPermission.ManageRoles)]
+    [Remarks("Removes a role to all mentioned users.")]
     public async Task Remove(IRole role, params IGuildUser[] users) {
       var action = CommandUtility.Action(async u => await u.RemoveRolesAsync(role));
       await CommandUtility.ForEvery(Context, users, action);
     }
 
     [Command("nuke")]
-    [Permission(GuildPermission.ManageRoles)]
-    [Remarks("Removes a role to all users on the server." + Requirement)]
+    [RequirePermission(GuildPermission.ManageRoles)]
+    [Remarks("Removes a role to all users on the server.")]
     public async Task Nuke(params IRole[] roles) {
       var users = await Check.NotNull(Context.Guild).GetUsersAsync();
       var action = CommandUtility.Action( async u => await u.RemoveRolesAsync(roles));
@@ -52,8 +52,8 @@ public partial class Admin {
     }
 
     [Command("ban")]
-    [Permission(GuildPermission.ManageRoles)]
-    [Remarks("Bans all mentioned users from a specified role." + Requirement)]
+    [RequirePermission(GuildPermission.ManageRoles)]
+    [Remarks("Bans all mentioned users from a specified role.")]
     public async Task RoleBan(IRole role, params IGuildUser[] users) {
       var action = CommandUtility.Action(
         async u => {
@@ -66,8 +66,8 @@ public partial class Admin {
     }
 
     [Command("unban")]
-    [Permission(GuildPermission.ManageRoles)]
-    [Remarks("Unban all mentioned users from a specified role." + Requirement)]
+    [RequirePermission(GuildPermission.ManageRoles)]
+    [Remarks("Unban all mentioned users from a specified role.")]
     public async Task RoleUnban(IRole role, params IGuildUser[] users) {
       var action = CommandUtility.Action(
         u => {
@@ -80,7 +80,7 @@ public partial class Admin {
     }
 
     [Command("create")]
-    [Permission(GuildPermission.ManageRoles)]
+    [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Creates a mentionable role and applies it to all mentioned users")]
     public async Task RoleCreate(string name) {
       await Check.NotNull(Context.Guild).CreateRoleAsync(name);
@@ -88,7 +88,7 @@ public partial class Admin {
     }
 
     [Command("delete")]
-    [Permission(GuildPermission.ManageRoles)]
+    [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Deletes a role and removes it from all users.")]
     public Task RoleDelete(params IRole[] roles) {
       return CommandUtility.ForEvery(Context, roles, CommandUtility.Action(
@@ -98,8 +98,8 @@ public partial class Admin {
     }
 
     [Command("color")]
-    [Permission(GuildPermission.ManageRoles)]
-    [Remarks("Sets a role's color." + Requirement)]
+    [RequirePermission(GuildPermission.ManageRoles)]
+    [Remarks("Sets a role's color.")]
     public async Task RoleColor(string color, params IRole[] roles) {
       uint colorVal;
       if(!TryParseColor(color, out colorVal)) {
@@ -113,8 +113,8 @@ public partial class Admin {
     }
 
     [Command("rename")]
-    [Permission(GuildPermission.ManageRoles)]
-    [Remarks("Renames all mentioned roles" + Requirement)]
+    [RequirePermission(GuildPermission.ManageRoles)]
+    [Remarks("Renames all mentioned roles")]
     public async Task Rename(string name, params IRole[] roles) {
       await Task.WhenAll(roles.Select(role => {
           return role.ModifyAsync(r => { r.Name = name; });
