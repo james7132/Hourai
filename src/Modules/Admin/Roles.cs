@@ -44,10 +44,9 @@ public partial class Admin {
 
     [Command("nuke")]
     [RequirePermission(GuildPermission.ManageRoles)]
-    [Remarks("Removes a role to all users on the server.")]
-    public async Task Nuke(params IRole[] roles) {
-      var users = await Check.NotNull(Context.Guild).GetUsersAsync();
-      var action = CommandUtility.Action( async u => await u.RemoveRolesAsync(roles));
+    [Remarks("Removes all roles from provided users.")]
+    public async Task Nuke(params IGuildUser[] users) {
+      var action = CommandUtility.Action(async u => await u.RemoveRolesAsync());
       await CommandUtility.ForEvery(Context, users, action);
     }
 
