@@ -11,7 +11,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 [RequireModule(ModuleType.Standard)]
 public partial class Standard : DatabaseHouraiModule {
