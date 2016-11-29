@@ -5,8 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 public abstract class TempModule : DatabaseHouraiModule {
 
@@ -55,8 +56,8 @@ public partial class Admin : HouraiModule {
     }
 
     [Command("ban")]
-    [Permission(GuildPermission.BanMembers)]
-    [Remarks("Temporarily bans user(s) from the server. Requires ``Ban Members`` server permission")]
+    [RequirePermission(GuildPermission.BanMembers)]
+    [Remarks("Temporarily bans user(s) from the server.")]
     public Task Ban(TimeSpan time, params IGuildUser[] users) {
       var guild = Check.NotNull(Context.Guild);
       Func<IGuildUser, AbstractTempAction> action = user => new TempBan {
@@ -79,7 +80,7 @@ public partial class Admin : HouraiModule {
     }
 
     [Group("role")]
-    [Permission(GuildPermission.ManageRoles)]
+    [RequirePermission(GuildPermission.ManageRoles)]
     public class Roles : TempModule {
 
       public Roles(DiscordSocketClient client, BotDbContext db) : base(client, db) {

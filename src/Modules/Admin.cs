@@ -26,24 +26,24 @@ public partial class Admin : HouraiModule {
   }
 
   [Command("kick")]
-  [Permission(GuildPermission.KickMembers)]
-  [Remarks("Kicks all mentioned users. Requires ``Kick Members`` permission.")]
+  [RequirePermission(GuildPermission.KickMembers)]
+  [Remarks("Kicks all mentioned users.")]
   public async Task Kick(params IGuildUser[] users) {
     var action = CommandUtility.Action(u => u.KickAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("ban")]
-  [Permission(GuildPermission.BanMembers)]
-  [Remarks("Bans all mentioned users. Requires ``Ban Members`` permission.")]
+  [RequirePermission(GuildPermission.BanMembers)]
+  [Remarks("Bans all mentioned users.")]
   public async Task Ban(params IGuildUser[] users) {
     var action = CommandUtility.Action(u => u.BanAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("softban")]
-  [Permission(GuildPermission.BanMembers)]
-  [Remarks("Softbans all mentioned users. Requires ``Ban Members`` permission.")]
+  [RequirePermission(GuildPermission.BanMembers)]
+  [Remarks("Softbans all mentioned users.")]
   public async Task Softban(params IGuildUser[] users) {
     var action = CommandUtility.Action(async u => {
         ulong id = u.Id;
@@ -54,32 +54,32 @@ public partial class Admin : HouraiModule {
   }
 
   [Command("mute")]
-  [Permission(GuildPermission.MuteMembers)]
-  [Remarks("Server mutes all mentioned users. Requires ``Mute Members`` permission.")]
+  [RequirePermission(GuildPermission.MuteMembers)]
+  [Remarks("Server mutes all mentioned users.")]
   public async Task Mute(params IGuildUser[] users) {
     var action = CommandUtility.Action(async u => await u.MuteAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("unmute")]
-  [Permission(GuildPermission.MuteMembers)]
-  [Remarks( "Server unmutes all mentioned users. Requires ``Mute Members`` permission.")]
+  [RequirePermission(GuildPermission.MuteMembers)]
+  [Remarks( "Server unmutes all mentioned users.")]
   public async Task Unmute(params IGuildUser[] users) {
     var action = CommandUtility.Action(async u => await u.UnmuteAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("deafen")]
-  [Permission(GuildPermission.DeafenMembers)]
-  [Remarks( "Server deafens all mentioned users. Requires ``Deafen Members`` permission.")]
+  [RequirePermission(GuildPermission.DeafenMembers)]
+  [Remarks( "Server deafens all mentioned users.")]
   public async Task Deafen(params IGuildUser[] users) {
     var action = CommandUtility.Action(async u => await u.DeafenAsync());
     await CommandUtility.ForEvery(Context, users, action);
   }
 
   [Command("undeafen")]
-  [Permission(GuildPermission.DeafenMembers)]
-  [Remarks( "Server undeafens all mentioned users. Requires ``Deafen Members`` permission.")]
+  [RequirePermission(GuildPermission.DeafenMembers)]
+  [Remarks( "Server undeafens all mentioned users. ")]
   public async Task Undeafen(params IGuildUser[] users) {
     var action = CommandUtility.Action(async u => await u.UndeafenAsync());
     await CommandUtility.ForEvery(Context, users, action);

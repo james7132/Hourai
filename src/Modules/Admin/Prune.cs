@@ -4,8 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 public partial class Admin {
 
@@ -13,21 +14,21 @@ public partial class Admin {
   public class Prune : HouraiModule {
 
     [Command]
-    [Permission(GuildPermission.ManageMessages)]
-    [Remarks("Removes the last X messages from the current channel. Requires ``Manage Messages`` permission.")]
+    [RequirePermission(GuildPermission.ManageMessages)]
+    [Remarks("Removes the last X messages from the current channel.")]
     public Task Default(int count = 100) => PruneMessages(m => true, count);
 
     [Command("user")]
-    [Permission(GuildPermission.ManageMessages)]
-    [Remarks("Removes all messages from all mentioned users in the last 100 messages. Requires ``Manage Messages`` permission.")]
+    [RequirePermission(GuildPermission.ManageMessages)]
+    [Remarks("Removes all messages from all mentioned users in the last 100 messages.")]
     public Task User(params IGuildUser[] users) {
       var userSet = new HashSet<IUser>(users);
       return PruneMessages(m => userSet.Contains(m.Author));
     }
 
     [Command("embed")]
-    [Permission(GuildPermission.ManageMessages)]
-    [Remarks("Removes all messages with embeds or attachments in the last X messages. Requires ``Manage Messages`` permission.")]
+    [RequirePermission(GuildPermission.ManageMessages)]
+    [Remarks("Removes all messages with embeds or attachments in the last X messages.")]
     public Task Embed(int count = 100) =>
       PruneMessages(m => m.Embeds.Any() || m.Attachments.Any(), count);
 
@@ -39,14 +40,14 @@ public partial class Admin {
     }
 
     [Command("ping")]
-    [Permission(GuildPermission.ManageMessages)]
-    [Remarks("Removes all messages that mentioned other users or roles the last X messages. Requires ``Manage Messages`` permission.")]
+    [RequirePermission(GuildPermission.ManageMessages)]
+    [Remarks("Removes all messages that mentioned other users or roles the last X messages.")]
     public Task Mention(int count = 100) =>
       PruneMessages(m => m.MentionedUserIds.Any() || m.MentionedRoleIds.Any(), count);
 
     [Command("bot")]
-    [Permission(GuildPermission.ManageMessages)]
-    [Remarks("Removes all messages from all bots in the last X messages. Requires ``Manage Messages`` permission.")]
+    [RequirePermission(GuildPermission.ManageMessages)]
+    [Remarks("Removes all messages from all bots in the last X messages.")]
     public Task Bot(int count = 100) =>
       PruneMessages(m => m.Author.IsBot, count);
 

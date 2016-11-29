@@ -2,8 +2,9 @@ using Discord;
 using Discord.Commands;
 using System;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 public partial class Feeds {
 
@@ -15,29 +16,29 @@ public partial class Feeds {
 
     [Command("join")]
     [Remarks("Enables or disables server join messages in the current channel")]
-    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
-    public Task Join() => SetMessage(c => c.JoinMessage = !c.JoinMessage, 
+    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    public Task Join() => SetMessage(c => c.JoinMessage = !c.JoinMessage,
         c => c.JoinMessage,
         "Join");
 
     [Command("leave")]
     [Remarks("Enables or disables server leave messages in the current channel")]
-    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
-    public Task Leave() => SetMessage(c => c.LeaveMessage = !c.LeaveMessage, 
+    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    public Task Leave() => SetMessage(c => c.LeaveMessage = !c.LeaveMessage,
         c => c.LeaveMessage,
         "Leave");
 
     [Command("ban")]
     [Remarks("Enables or disables server ban messages in the current channel")]
-    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
-    public Task Ban() => SetMessage(c => c.BanMessage = !c.BanMessage, 
+    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    public Task Ban() => SetMessage(c => c.BanMessage = !c.BanMessage,
         c => c.BanMessage,
         "Ban");
 
     [Command("voice")]
     [Remarks("Enables or disables voice messages in the current channel")]
-    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
-    public Task Voice() => SetMessage(c => c.VoiceMessage = !c.VoiceMessage, 
+    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    public Task Voice() => SetMessage(c => c.VoiceMessage = !c.VoiceMessage,
         c => c.VoiceMessage,
         "Voice");
 

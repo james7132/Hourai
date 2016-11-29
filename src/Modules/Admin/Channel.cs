@@ -3,8 +3,9 @@ using Discord.Commands;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 public partial class Admin {
 
@@ -12,16 +13,16 @@ public partial class Admin {
   public class Channel : HouraiModule {
 
     [Command("create")]
-    [Permission(GuildPermission.ManageChannels)]
-    [Remarks("Creates a public channel with a specified name. Requires ``Manage Channels`` permission.")]
+    [RequirePermission(GuildPermission.ManageChannels)]
+    [Remarks("Creates a public channel with a specified name. ")]
     public async Task Create(string name) {
-      var channel = await Check.NotNull(Context.Guild).CreateTextChannelAsync(name); 
+      var channel = await Check.NotNull(Context.Guild).CreateTextChannelAsync(name);
       await Success($"{channel.Mention} created.");
     }
 
     [Command("delete")]
-    [Permission(GuildPermission.ManageChannels)]
-    [Remarks("Deletes all mentioned channels. Requires ``Manage Channels`` permission.")]
+    [RequirePermission(GuildPermission.ManageChannels)]
+    [Remarks("Deletes all mentioned channels.")]
     public Task Delete(params IGuildChannel[] channels) {
       return CommandUtility.ForEvery(Context, channels, CommandUtility.Action(
             delegate(IGuildChannel channel) {

@@ -4,10 +4,9 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using Discord;
-using Discord.Commands;
+using Discord; using Discord.Commands; using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 /// <summary>
 /// Generates a help method for all of a bot commands.
@@ -107,7 +106,11 @@ public class Help : DatabaseHouraiModule {
                 return param;
               }).Join(" "));
       }
-      builder.AppendLine().AppendLine(command.Remarks);
+      var docPreconditions = command.Preconditions.OfType<DocumentedPreconditionAttribute>()
+        .Select(d => d.GetDocumentation()).Join(" ");
+      builder.AppendLine()
+        .Append(command.Remarks)
+        .AppendLine(docPreconditions);
       // If it is a subgroup with a prefix, add all commands from that module to
       // the related commands
       var module = command.Module;

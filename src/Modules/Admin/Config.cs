@@ -1,8 +1,9 @@
 using Discord;
 using Discord.Commands;
 using System.Threading.Tasks;
+using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Modules {
 
 public partial class Admin {
 
@@ -18,7 +19,7 @@ public partial class Admin {
 
     [Command("prefix")]
     [Remarks("Sets the bot's command prefix for this server.")]
-    [Permission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public async Task Prefix([Remainder] string prefix) {
       if(string.IsNullOrEmpty(prefix)) {
         await RespondAsync("Cannot set bot prefix to an empty result");
