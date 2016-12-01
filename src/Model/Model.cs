@@ -1,13 +1,11 @@
 using Discord;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+
 namespace Hourai {
 
 public class BotDbContext : DbContext {
@@ -66,9 +64,9 @@ public class BotDbContext : DbContext {
 
   public Guild FindGuild(IGuild iguild) {
     Check.NotNull(iguild);
-    return Guilds.Include(g => g.Commands) 
+    return Guilds.Include(g => g.Commands)
       .Include(g => g.Channels)
-      .FirstOrDefault(g => g.Id == iguild.Id); 
+      .FirstOrDefault(g => g.Id == iguild.Id);
   }
 
   //string SanitizeSubredditName(string name) {
@@ -77,8 +75,8 @@ public class BotDbContext : DbContext {
 
   public Guild GetGuild(IGuild iguild) {
     var guild = FindGuild(iguild);
-    if(guild == null) { 
-      guild = new Guild(iguild); 
+    if(guild == null) {
+      guild = new Guild(iguild);
       Guilds.Add(guild);
     }
     return guild;
@@ -117,7 +115,7 @@ public class BotDbContext : DbContext {
 
   public GuildUser FindGuildUser(IGuildUser iuser) {
     Check.NotNull(iuser);
-    return GuildUsers.FirstOrDefault(u => 
+    return GuildUsers.FirstOrDefault(u =>
         (u.Id == iuser.Id) && (u.GuildId == iuser.Guild.Id));
   }
 
@@ -145,7 +143,7 @@ public class BotDbContext : DbContext {
 
   public Channel FindChannel(IGuildChannel ichannel) {
     Check.NotNull(ichannel);
-    return Channels.FirstOrDefault(c => 
+    return Channels.FirstOrDefault(c =>
         (c.Id == ichannel.Id) && (c.GuildId == ichannel.Guild.Id));
   }
 
@@ -183,27 +181,5 @@ public class BotDbContext : DbContext {
 
 }
 
-[Table("commands")]
-public class CustomCommand {
-
-  [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
-  public ulong GuildId { get; set; }
-  public Guild Guild { get; set; }
-  [Required]
-  public string Name { get; set; }
-  [Required]
-  public string Response { get; set; }
-
-  public CustomCommand() {
-  }
-
-  public Task Execute(IMessage message, string input) {
-    var channel = Check.NotNull(message.Channel as ITextChannel);
-    return message.Respond(Response.Replace("$input", input)
-      .Replace("$user", message.Author.Mention)
-      .Replace("$channel", channel.Mention));
-  }
-
-}
 
 }
