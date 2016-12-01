@@ -17,7 +17,7 @@ public static class DiscordExtensions {
     => Task.FromResult(obj);
 
   /// <summary>
-  /// Creates a response to a command. If the result is larger than can be retured as a single message, 
+  /// Creates a response to a command. If the result is larger than can be retured as a single message,
   /// will upload as a text file.
   /// </summary>
   /// <param name="message">the message to respond to</param>
@@ -35,6 +35,8 @@ public static class DiscordExtensions {
   }
 
   public static Task Respond(this IMessageChannel channel, string response) {
+    if(!channel.AllowCommands())
+      return Task.CompletedTask;
     const string fileName = "results.txt";
     if (response.Length > DiscordConfig.MaxMessageSize)
       return channel.SendMemoryFile(fileName, response);
@@ -60,7 +62,7 @@ public static class DiscordExtensions {
     });
   }
 
-  public static Task SendFileRetry(this IMessage message, string path, string text = null) => 
+  public static Task SendFileRetry(this IMessage message, string path, string text = null) =>
     message.Channel.SendFileRetry(path, text);
 
   public static async Task SendMemoryFile(this IMessageChannel channel,
@@ -75,7 +77,7 @@ public static class DiscordExtensions {
       await channel.SendFileAsync(stream, name, text);
     }
   }
-  
+
   public static string ToProcessedString(this IMessage message) {
     var userMessage = message as IUserMessage;
     if(userMessage == null)
@@ -86,20 +88,6 @@ public static class DiscordExtensions {
         TagHandling.Sanitize);
     var guildChannel = message.Channel as IGuildChannel;
     var guild = guildChannel?.Guild;
-    //foreach (IUser user in message.MentionedUsers) {
-      //var mention = $"@{user.Username}";
-      //content = content.Replace($"<@{user.Id}>", mention)
-                       //.Replace($"<@!{user.Id}>", mention);
-    //}
-    //if(guild != null) {
-      //foreach (ulong id in message.MentionedChannelIds) {
-        //var channel = guild.GetChannel(id);
-        //content = content.Replace($"<#{id}>", $"#{channel.Name}");
-      //}
-    //}
-    //foreach (IRole role in message.MentionedRoles) {
-      //content = content.Replace($"<@&{role.Id}", $"@{role.Name}");
-    //}
     var baseLog = $"{message.Author?.Username ?? "Unknown User"}: {content}";
     var attachments = message.Attachments.Select(a => a.Url).Join(" ");
     var embeds = message.Embeds.Select(a => a.Url).Join(" ");
@@ -116,7 +104,7 @@ public static class DiscordExtensions {
   public static int CompareTo(this IGuildUser u1, IGuildUser u2) {
     Func<IRole, int> rolePos = role => role.Position;
     return u1.GetRoles().Max(rolePos).CompareTo(u2.GetRoles().Max(rolePos));
-  } 
+  }
 
 }
 

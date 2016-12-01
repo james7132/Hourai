@@ -109,7 +109,7 @@ public partial class Standard : DatabaseHouraiModule {
         }
       }
     }
-    return Context.Message.Channel.SendMessageAsync(builder.ToString());
+    return RespondAsync(builder.ToString());
   }
 
   [Command("topic")]
