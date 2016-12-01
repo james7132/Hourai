@@ -24,7 +24,7 @@ public class AnnounceService {
     Client.UserBanned += GuildMessage(c => c.BanMessage, BanMsg);
     Client.UserVoiceStateUpdated += VoiceStateChanged;
   }
-  
+
   string GetUserString(IUser user) {
     string nickname = (user as IGuildUser)?.Nickname;
     if(string.IsNullOrEmpty(nickname))
@@ -32,8 +32,8 @@ public class AnnounceService {
     return nickname;
   }
 
-  async Task VoiceStateChanged(SocketUser user, 
-      SocketVoiceState before, 
+  async Task VoiceStateChanged(SocketUser user,
+      SocketVoiceState before,
       SocketVoiceState after) {
     var guild = (user as IGuildUser)?.Guild;
     if(guild == null)
@@ -61,14 +61,8 @@ public class AnnounceService {
         Database.Channels.Remove(channel);
         continue;
       }
-      var message = await dChannel.SendMessageAsync(changes);
-      DeleteMessage(message, 5000);
+      await dChannel.Respond(changes);
     }
-  }
-
-  async void DeleteMessage(IMessage message, int delay) {
-    await Task.Delay(delay);
-    await message.Channel.DeleteMessagesAsync(new [] {message});
   }
 
   string ProcessMessage(string message, IUser user) {
