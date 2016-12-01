@@ -14,6 +14,11 @@ public partial class Standard {
     public Commands(BotDbContext db) : base(db) {
     }
 
+    CustomCommand GetCommand(string name) {
+      var guild = Database.GetGuild(Check.NotNull(Context.Guild));
+      return guild?.GetCustomCommand(name);
+    }
+
     [Command]
     [GuildRateLimit(1, 1)]
     [MinimumRole(MinimumRole.Command)]
@@ -21,7 +26,7 @@ public partial class Standard {
     public async Task CreateCommand(string name,
                                     [Remainder] string response = "") {
       var guild = Database.GetGuild(Check.NotNull(Context.Guild));
-      var command = guild.GetCustomCommand(name);
+      var command = GetCommand(name);
       if (string.IsNullOrEmpty(response)) {
         if (command == null) {
           await RespondAsync($"Command {name.Code()} does not exist and thus cannot be deleted.");
@@ -48,6 +53,16 @@ public partial class Standard {
       }
       await Database.Save();
       await Success($"Command {name.Code()} {action} with response {response}.");
+    }
+
+    [Command("dump")]
+    [Remarks("Dumps the base source text for a command.")]
+    public Task CommandDump(string command) {
+      var customCommand = GetCommand(command);
+      if(customCommand == null)
+        return RespondAsync($"No custom command named {command}");
+      else
+        return RespondAsync($"{customCommand.Name}: {customCommand.Response}");
     }
 
     [Command("role")]

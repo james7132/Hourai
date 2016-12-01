@@ -43,7 +43,7 @@ The following are a non-comprehensive list of all commands that Hourai provides.
 
 Note, Hourai will ignore all commands enacting administrative action on a role higher than Hourai's highest role.
 
-This is just a general survey of the commands. Please use the `help` command to see the commands you can currently use. 
+This is just a general survey of the commands. Please use the `help` command to see the commands you can currently use.
 
 ####Standard Module
 |Command|Permissions|Notes|
@@ -63,6 +63,9 @@ This is just a general survey of the commands. Please use the `help` command to 
 |`search all regex`|N/A|Like `search regex`, but searches all channels the bot currently has logs for.|
 |`search ignore`|Manage Server|Marks certain channels to be unsearchable via `search all` commands.|
 |`search unignore`|Manage Server|Marks certain channels to be searchable via `search all` commands.|
+|`command`|At least the 'Command' role|Creates, edits, or removes a custom command|
+|`command dump`|N/A|Dumps the source text for a custom command|
+|`command role`|Manage Server|Sets the minimum role to create custom commands|
 ####Admin Module
 |Command|Permissions|Notes|
 |:--|:--|:--|
