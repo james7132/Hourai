@@ -16,9 +16,10 @@ public class AnnounceService {
   public AnnounceService(IDependencyMap map) {
     Database = map.Get<BotDbContext>();
     Client = map.Get<DiscordSocketClient>();
+    //TODO(james7132): make these messages configurable
     const string JoinMsg = "$mention has joined the server.";
-    const string LeaveMsg = "$mention has left the server.";
-    const string BanMsg = "$mention has been banned.";
+    const string LeaveMsg = "**$user** has left the server.";
+    const string BanMsg = "**$user** has been banned.";
     Client.UserJoined += u => GuildMessage(c => c.JoinMessage, JoinMsg)(u, u.Guild);
     Client.UserLeft += u => GuildMessage(c => c.LeaveMessage, LeaveMsg)(u, u.Guild);
     Client.UserBanned += GuildMessage(c => c.BanMessage, BanMsg);
