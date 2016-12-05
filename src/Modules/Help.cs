@@ -19,7 +19,7 @@ public class Help : DatabaseHouraiModule {
 
   const char CommandGroupChar = '*';
 
-  public Help(IDependencyMap map, CommandService commands, BotDbContext db) : base(db) { var modules = commands?.Modules;
+  public Help(IDependencyMap map, CommandService commands, BotDbContext db) : base(db) {
     Map = map;
     Commands = commands;
   }
@@ -34,7 +34,9 @@ public class Help : DatabaseHouraiModule {
 
   async Task GeneralHelp() {
     var builder = new StringBuilder();
-    foreach(var module in Commands.Modules.OrderBy(m => m.Name)) {
+    foreach(var module in Commands.Modules
+        .Where(m => !m.IsSubmodule)
+        .OrderBy(m => m.Name)) {
       var commands = await GetUsableCommands(module);
       if(commands.Count <= 0)
         continue;
