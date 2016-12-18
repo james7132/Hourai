@@ -29,6 +29,13 @@ public partial class Standard : DatabaseHouraiModule {
     return RespondAsync(remainder);
   }
 
+  [Command("choose")]
+  [ChannelRateLimit(3, 1)]
+  [Remarks("Chooses between several provided choices")]
+  public Task Choose(params string[] choices) {
+    return RespondAsync($"I choose {choices[new Random().Next(choices.Length)]}!");
+  }
+
   [Command("avatar")]
   [ChannelRateLimit(3, 1)]
   [Remarks("Gets the avatar url of all mentioned users.")]
