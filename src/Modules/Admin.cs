@@ -43,6 +43,16 @@ public partial class Admin : HouraiModule {
     await CommandUtility.ForEvery(Context, users, action);
   }
 
+  [Command("ban")]
+  [GuildRateLimit(1, 1)]
+  [RequirePermission(GuildPermission.BanMembers)]
+  [Remarks("Bans all mentioned users.")]
+  public async Task Ban(params ulong[] users) {
+    var guild = Context.Guild;
+    await Task.WhenAll(users.Select(u => guild.AddBanAsync(u)));
+    await Success();
+  }
+
   [Command("softban")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.BanMembers)]

@@ -8,5 +8,7 @@
     "LogDirectory": "logs",
     "DbFilename": "/db/bot_prod.db",
 
+    "Token": "MjA4NDYwNzM3MTgwNDY3MjAw.Cx6wyA.ZEv8qLj6Hv1Gtp_6OkSQM3WP50s",
+
     "PruneLimit": 100
 }

@@ -45,11 +45,11 @@ namespace Hourai.Preconditions {
       _counters = new ConcurrentDictionary<ulong, RateLimitCounter>();
     }
 
-    protected abstract IEntity<ulong> GetEntity(CommandContext context);
+    protected abstract IEntity<ulong> GetEntity(ICommandContext context);
     protected abstract string LimitType { get; }
 
     public override Task<PreconditionResult> CheckPermissions(
-        CommandContext context,
+        ICommandContext context,
         CommandInfo commandInfo,
         IDependencyMap dependencies) {
       var id = GetEntity(context)?.Id;
@@ -75,7 +75,7 @@ namespace Hourai.Preconditions {
     }
 
     protected override string LimitType => "User";
-    protected override IEntity<ulong> GetEntity(CommandContext context) => context.User;
+    protected override IEntity<ulong> GetEntity(ICommandContext context) => context.User;
 
   }
 
@@ -85,7 +85,7 @@ namespace Hourai.Preconditions {
     }
 
     protected override string LimitType => "Channel";
-    protected override IEntity<ulong> GetEntity(CommandContext context) => context.Channel;
+    protected override IEntity<ulong> GetEntity(ICommandContext context) => context.Channel;
 
   }
 
@@ -95,7 +95,7 @@ namespace Hourai.Preconditions {
     }
 
     protected override string LimitType => "Server";
-    protected override IEntity<ulong> GetEntity(CommandContext context) => context.Guild;
+    protected override IEntity<ulong> GetEntity(ICommandContext context) => context.Guild;
 
   }
 

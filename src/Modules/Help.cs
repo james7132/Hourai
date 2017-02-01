@@ -67,7 +67,7 @@ public class Help : DatabaseHouraiModule {
     command = command.Trim();
     var searchResults = Commands.Search(Context, command);
     if(searchResults.IsSuccess) {
-      await RespondAsync(await GetCommandInfo(searchResults.Commands)).ConfigureAwait(false);
+      await RespondAsync(await GetCommandInfo(searchResults.Commands.Select(c => c.Command)));
     } else {
       await RespondAsync(searchResults.ErrorReason).ConfigureAwait(false);
     }

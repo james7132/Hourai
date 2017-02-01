@@ -55,9 +55,12 @@ public class Bot {
       return;
     StartTime = DateTime.Now;
     Log.Info("Initializing...");
-    var config = new DiscordSocketConfig();
-    Client = new DiscordSocketClient(config);
-    var CommandService = new CommandService();
+    var clientConfig = new DiscordSocketConfig();
+    var commandConfig = new CommandServiceConfig() {
+      DefaultRunMode = RunMode.Sync
+    };
+    Client = new DiscordSocketClient(clientConfig);
+    var CommandService = new CommandService(commandConfig);
     var map = new DependencyMap();
     map.Add(this);
     map.Add(map);
@@ -79,7 +82,7 @@ public class Bot {
     map.Add(new TempService(map));
     map.Add(new BlacklistService(map));
     map.Add(new AnnounceService(map));
-    map.Add(new SearchService(map));
+    //map.Add(new SearchService(map));
 
     _initialized = true;
   }
@@ -101,7 +104,7 @@ public class Bot {
     Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
     while (!ExitSource.Task.IsCompleted) {
       await Task.WhenAll(_regularTasks.Select(t => t()));
-      await Client.SetGame(Config.Version); 
+      //await Client.SetGame(Config.Version);
       await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
     }
   }

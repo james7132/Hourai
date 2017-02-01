@@ -7,7 +7,7 @@ namespace Hourai {
 
   public class ServerOwnerAttribute : PreconditionAttribute {
     public override Task<PreconditionResult> CheckPermissions(
-        CommandContext context,
+        ICommandContext context,
         CommandInfo commandInfo,
         IDependencyMap dependencies) {
       if (QCheck.InGuild(context.Message) == null)
@@ -30,7 +30,7 @@ namespace Hourai {
     public MinimumRoleAttribute(MinimumRole role) { this._roleType = role; }
 
     public override async Task<PreconditionResult> CheckPermissions(
-        CommandContext context,
+        ICommandContext context,
         CommandInfo commandInfo,
         IDependencyMap dependencies) {
       var user = context.Message.Author as IGuildUser;
