@@ -25,8 +25,10 @@ public partial class Standard : DatabaseHouraiModule {
   [Command("echo")]
   [ChannelRateLimit(3, 1)]
   [Remarks("Has the bot repeat what you say")]
-  public Task Echo([Remainder] string remainder) {
-    return RespondAsync(remainder);
+  public async Task Echo([Remainder] string remainder) {
+    Log.Info(remainder);
+    await ReplyAsync(remainder);
+    //return RespondAsync(remainder);
   }
 
   [Command("choose")]

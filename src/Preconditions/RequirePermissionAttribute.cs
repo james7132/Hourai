@@ -1,5 +1,9 @@
 using Discord;
-using Discord.Commands; using System.Collections.Generic; using System.Linq; using System.Text; using System.Threading.Tasks;
+using Discord.Commands;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Hourai.Preconditions {
 
@@ -94,7 +98,7 @@ namespace Hourai.Preconditions {
     }
 
     public override async Task<PreconditionResult> CheckPermissions(
-        CommandContext context,
+        ICommandContext context,
         CommandInfo commandInfo,
         IDependencyMap dependencies) {
       // Check if the bot needs/has the permissions

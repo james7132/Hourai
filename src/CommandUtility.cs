@@ -42,9 +42,9 @@ public static class CommandUtility {
       try {
         await task(obj);
       } catch (HttpException httpException) {
-        if(httpException.StatusCode == HttpStatusCode.Forbidden)
-          result = "Bot has insufficient permissions.";
-        else
+        //if(httpException.StatusCode == HttpStatusCode.Forbidden)
+          //result = "Bot has insufficient permissions.";
+        //else
           result = httpException.Message;
       } catch (Exception exception) {
         result = exception.Message;

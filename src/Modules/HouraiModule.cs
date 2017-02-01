@@ -21,7 +21,7 @@ public abstract class DatabaseHouraiModule : HouraiModule {
 
   protected BotDbContext Database { get; }
 
-  protected DatabaseHouraiModule(BotDbContext db) { 
+  protected DatabaseHouraiModule(BotDbContext db) {
     Database = db;
   }
 

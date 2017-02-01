@@ -65,8 +65,8 @@ public class Owner : DatabaseHouraiModule {
   [Remarks("Broadcasts a message to the default channel of all servers the bot is connected to.")]
   public async Task Broadcast([Remainder] string broadcast) {
     var guilds = Client.Guilds;
-    var defaultChannels = await Task.WhenAll(guilds.Select(g => g.GetDefaultChannelAsync()));
-    await Task.WhenAll(defaultChannels.Select(c => c.Respond(broadcast)));
+    var defaultChannels = guilds.Select(g => g.GetChannel(g.Id)).Cast<ITextChannel>();
+    await Task.WhenAll(defaultChannels.Select(c => c.SendMessageAsync(broadcast)));
   }
 
   [Command("save")]
@@ -102,7 +102,7 @@ public class Owner : DatabaseHouraiModule {
       Database.AllowSave = false;
       var guildDb = Database.GetGuild(guild);
       Log.Info($"Refreshing {guild.Name}...");
-      var channels = await guild.GetTextChannelsAsync();
+      var channels = guild.Channels.OfType<ITextChannel>();
       try {
         foreach(var channel in channels)
           Database.GetChannel(channel);
@@ -157,7 +157,7 @@ public class Owner : DatabaseHouraiModule {
     using(var client = new HttpClient())
     using(var contentStream = await client.GetStreamAsync(url)) {
       await Bot.User.ModifyAsync(u => {
-          u.Avatar = new Discord.API.Image(contentStream);
+          u.Avatar = new Optional<Image?>(new Discord.Image(contentStream));
         });
     }
     await Success();

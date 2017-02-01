@@ -14,8 +14,8 @@ namespace Hourai {
 public class LogService {
 
   public LogSet Logs { get; }
-  public DiscordSocketClient Client { get; } 
-  public string BaseDirectory { get; } 
+  public DiscordSocketClient Client { get; }
+  public string BaseDirectory { get; }
   public string BotLog { get; private set; }
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
@@ -88,7 +88,7 @@ public class LogService {
   void RoleLogs() {
     Client.RoleCreated += RoleLog("created");
     Client.RoleDeleted += RoleLog("deleted");
-    Client.RoleUpdated += RoleUpdated; 
+    Client.RoleUpdated += RoleUpdated;
   }
 
   void UserLogs() {
@@ -100,38 +100,38 @@ public class LogService {
   }
 
   void MessageLogs() {
-    // Log every public message not made by the bot.
-    Client.MessageReceived += m => {
-      var channel = m.Channel as ITextChannel;
-      if (m.Author.IsMe() || m.Author.IsBot ||channel == null)
-        return Task.CompletedTask;
-      return Logs.GetChannel(channel).LogMessage(m);
-    };
+    //// Log every public message not made by the bot.
+    //Client.MessageReceived += m => {
+      //var channel = m.Channel as ITextChannel;
+      //if (m.Author.IsMe() || m.Author.IsBot ||channel == null)
+        //return Task.CompletedTask;
+      //return Logs.GetChannel(channel).LogMessage(m);
+    //};
 
     //// Make sure that every channel is available on loading up a server.
-    Client.GuildAvailable += DownloadGuildChatLogs;
-    Client.JoinedGuild += DownloadGuildChatLogs;
+    //Client.GuildAvailable += DownloadGuildChatLogs;
+    //Client.JoinedGuild += DownloadGuildChatLogs;
 
-    // Keep up to date with channels
-    Client.ChannelCreated += channel => {
-      var textChannel = channel as ITextChannel;
-      if (textChannel != null)
-        Logs.GetChannel(textChannel);
-      return Task.CompletedTask;
-    };
+    //// Keep up to date with channels
+    //Client.ChannelCreated += channel => {
+      //var textChannel = channel as ITextChannel;
+      //if (textChannel != null)
+        //Logs.GetChannel(textChannel);
+      //return Task.CompletedTask;
+    //};
 
-    // Preserve logs from deleted channels
-    Client.ChannelDestroyed += async channel => {
-      var textChannel = channel as ITextChannel;
-      if (textChannel != null)
-        await Logs.GetChannel(textChannel).DeletedChannel(textChannel);
-    };
+    //// Preserve logs from deleted channels
+    //Client.ChannelDestroyed += async channel => {
+      //var textChannel = channel as ITextChannel;
+      //if (textChannel != null)
+        //await Logs.GetChannel(textChannel).DeletedChannel(textChannel);
+    //};
   }
 
   Task LogChange<T, TA>(GuildLog log,
                        string change,
-                       T b, 
-                       T a, 
+                       T b,
+                       T a,
                        Func<T, TA> check) {
     var valA = check(a);
     var valB = check(b);
@@ -223,11 +223,11 @@ public class LogService {
     //TODO(james7132): Add Permission Overwrites
   }
 
-  async Task DownloadGuildChatLogs(IGuild guild) {
-    var textChannels = await guild.GetTextChannelsAsync();
-    foreach (ITextChannel channel in textChannels)
-      await Logs.AddChannel(channel);
-  }
+  //async Task DownloadGuildChatLogs(IGuild guild) {
+    //var textChannels = await guild.GetTextChannelsAsync();
+    //foreach (ITextChannel channel in textChannels)
+      //await Logs.AddChannel(channel);
+  //}
 
   Func<IRole, Task> RoleLog(string eventType) {
     return async delegate(IRole role) {

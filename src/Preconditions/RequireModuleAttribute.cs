@@ -19,7 +19,7 @@ namespace Hourai.Preconditions {
     }
 
     public override async Task<PreconditionResult> CheckPermissions(
-        CommandContext context,
+        ICommandContext context,
         CommandInfo commandInfo,
         IDependencyMap dependencies) {
       var baseCheck = await base.CheckPermissions(context, commandInfo, dependencies);

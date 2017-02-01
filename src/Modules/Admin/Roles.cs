@@ -116,7 +116,7 @@ public partial class Admin {
         return;
       }
       await Task.WhenAll(roles.Select(role => {
-        return role.ModifyAsync(r => { r.Color = colorVal; });
+        return role.ModifyAsync(r => { r.Color = new Optional<Color>(new Color(colorVal)); });
       }));
       await Success();
     }

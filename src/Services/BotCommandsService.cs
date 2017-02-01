@@ -11,7 +11,7 @@ namespace Hourai {
 public class BotCommandService {
 
   DiscordSocketClient Client { get; }
-  CommandService Commands { get; } 
+  CommandService Commands { get; }
   BotDbContext Database  { get; }
   CounterSet Counters { get; }
   IDependencyMap Map { get; }
@@ -23,6 +23,11 @@ public class BotCommandService {
     Database = dependencies.Get<BotDbContext>();
     Counters = dependencies.Get<CounterSet>();
     Map = dependencies.Get<DependencyMap>();
+
+    if (Commands != null) {
+      Log.Info("Loaded Modules: " + Commands.Modules.Select(c => c.Name).Join(", "));
+      Log.Info("Available Commands: " + Commands.Commands.Select(c => c.Name).Join(", "));
+    }
   }
 
   public async Task HandleMessage(IMessage m) {
@@ -35,7 +40,7 @@ public class BotCommandService {
 
     // Marks where the command begins
     var argPos = 0;
-    
+
     var guild = (m.Channel as IGuildChannel)?.Guild;
     char prefix;
     if(guild == null) {
@@ -52,7 +57,7 @@ public class BotCommandService {
       }
     }
 
-    // Determine if the msg is a command, based on if it starts with the defined command prefix 
+    // Determine if the msg is a command, based on if it starts with the defined command prefix
     if (!msg.HasCharPrefix(prefix, ref argPos))
       return;
 
@@ -61,12 +66,12 @@ public class BotCommandService {
       return;
     }
 
-    // Execute the command. (result does not indicate a return value, 
+    // Execute the command. (result does not indicate a return value,
     // rather an object stating if the command executed succesfully)
     var context = new CommandContext(Client, msg);
     var result = await Commands.ExecuteAsync(context, argPos, Map);
     var guildChannel = msg.Channel as ITextChannel;
-    string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}." 
+    string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
       : "in private channel.";
     if (result.IsSuccess) {
       Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
