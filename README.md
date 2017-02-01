@@ -21,7 +21,6 @@
 * [Configuration]()
 
 ###Features
-* Log searching - Ctrl-F for Discord! Search for messages that meet certain criteria.
 * Administrative - Permission-based text commands that apply administrative actions on users simultaneously
 * Custom Commands
 
@@ -32,7 +31,6 @@ Simply click this [link](https://discordapp.com/oauth2/authorize?client_id=20846
 ### Collected Information
 Hourai logs various things and keeps track of many stats to help with functionality. By adding Hourai to your server, you agree to have the following things logged and tracked:
 
-* All messages visible to Hourai are logged. This is to provide search functionality. Logs are not deleted, even if the messages are deleted. The only way to delete the logs, is to delete the channel after ignoring it via `search ignore`.
 * All moderation changes, and users joining/leaving/banning will also be logged. This is to provide modlog functionality.
 
 ### Commands
@@ -56,13 +54,6 @@ This is just a general survey of the commands. Please use the `help` command to 
 |`topic`|N/A|Prints the topic of the current channel.|
 |`module enable`|Manage Server|Enables a bot module for the current server|
 |`module disable`|Manage Server|Disables a bot module for the current server|
-|`search`|N/A|Searches the chat logs of the current channel for specific terms|
-|`search regex`|N/A|Searches the chat logs of the current channel for matches of a certain regex.|
-|`search day`|N/A|Provides the chat log for the current server on a certain provided day. Days are seperated at from 0:00 UTC|
-|`search all`|N/A|Like `search`, but searches all channels the bot currently has logs for.|
-|`search all regex`|N/A|Like `search regex`, but searches all channels the bot currently has logs for.|
-|`search ignore`|Manage Server|Marks certain channels to be unsearchable via `search all` commands.|
-|`search unignore`|Manage Server|Marks certain channels to be searchable via `search all` commands.|
 |`command`|At least the 'Command' role|Creates, edits, or removes a custom command|
 |`command dump`|N/A|Dumps the source text for a custom command|
 |`command role`|Manage Server|Sets the minimum role to create custom commands|
