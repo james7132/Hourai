@@ -26,9 +26,7 @@ public partial class Standard : DatabaseHouraiModule {
   [ChannelRateLimit(3, 1)]
   [Remarks("Has the bot repeat what you say")]
   public async Task Echo([Remainder] string remainder) {
-    Log.Info(remainder);
     await ReplyAsync(remainder);
-    //return RespondAsync(remainder);
   }
 
   [Command("choose")]
@@ -47,6 +45,12 @@ public partial class Standard : DatabaseHouraiModule {
       allUsers = new[] {Context.Message.Author};
     return RespondAsync(allUsers.Select(u => u.AvatarUrl).Join("\n"));
   }
+
+  [Command("invite")]
+  [ChannelRateLimit(1, 1)]
+  [Remarks("Provides a invite link to add this bot to your server")]
+  public Task Invite() =>
+    RespondAsync("Use this link to add me to your server: https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF");
 
   [Command("serverinfo")]
   [ChannelRateLimit(3, 1)]
