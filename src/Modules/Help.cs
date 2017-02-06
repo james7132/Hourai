@@ -4,7 +4,9 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using Discord; using Discord.Commands; using Hourai.Preconditions;
+using Discord;
+using Discord.Commands;
+using Hourai.Preconditions;
 
 namespace Hourai.Modules {
 
@@ -25,11 +27,19 @@ public class Help : DatabaseHouraiModule {
   }
 
   [Command("help")]
-  [UserRateLimit(1, 5)]
+  [UserRateLimit(1, 1)]
   public Task GetHelp([Remainder] string command = "") {
     if(string.IsNullOrEmpty(command))
       return GeneralHelp();
     return SpecficHelp(command);
+  }
+
+  async Task<string> CommandList(ModuleInfo module) {
+    var commands = await GetUsableCommands(module);
+    return commands.Select(c => c.Aliases.First())
+        .Concat(module.Submodules.Select(m => m.Name + "*"))
+        .Select(n => n.Code())
+        .Join(", ");
   }
 
   async Task GeneralHelp() {
@@ -37,17 +47,10 @@ public class Help : DatabaseHouraiModule {
     foreach(var module in Commands.Modules
         .Where(m => !m.IsSubmodule)
         .OrderBy(m => m.Name)) {
-      var commands = await GetUsableCommands(module);
-      if(commands.Count <= 0)
+      var commands = await CommandList(module);
+      if(string.IsNullOrEmpty(commands))
         continue;
-      var commandStrings =
-        // Add Commands
-        commands .Select(c => c.Name)
-        // Add modules
-        .Concat(module.Submodules.Select(m => m.Name + "*"))
-        .Select(n => n.Code())
-        .Join(", ");
-      builder.AppendLine($"{module.Name.Bold()}: {commandStrings}");
+      builder.AppendLine($"{module.Name.Bold()}: {commands}");
     }
     if(Context.Guild != null) {
       var guild = Database.GetGuild(Context.Guild);
@@ -63,14 +66,34 @@ public class Help : DatabaseHouraiModule {
   }
 
   async Task SpecficHelp(string command) {
-    Log.Debug(command);
     command = command.Trim();
     var searchResults = Commands.Search(Context, command);
     if(searchResults.IsSuccess) {
       await RespondAsync(await GetCommandInfo(searchResults.Commands.Select(c => c.Command)));
+      return;
+    }
+    var module = SearchModules(command);
+    if (module != null) {
+      await RespondAsync(await ModuleHelp(module));
     } else {
       await RespondAsync(searchResults.ErrorReason).ConfigureAwait(false);
     }
+  }
+
+  ModuleInfo SearchModules(string command) {
+    return Commands.Modules.FirstOrDefault(m => m.Aliases.Contains(command));
+  }
+
+  async Task<string> ModuleHelp(ModuleInfo module) {
+    var builder = new StringBuilder();
+    builder.AppendLine(module.Aliases.First().Bold());
+    if (!string.IsNullOrEmpty(module.Summary))
+      builder.AppendLine(module.Summary);
+    if (!string.IsNullOrEmpty(module.Remarks))
+      builder.AppendLine(module.Remarks);
+    if (module.Commands.Any() || module.Submodules.Any())
+      builder.AppendLine("Commands: " + await CommandList(module));
+    return builder.ToString();
   }
 
   async Task<List<CommandInfo>> GetUsableCommands(ModuleInfo module) {
@@ -93,7 +116,7 @@ public class Help : DatabaseHouraiModule {
       var command = commands.First();
       using(builder.Code()) {
         builder.Append(guild.Prefix)
-          .Append(command.Name)
+          .Append(command.Aliases.First())
           .Append(" ")
           .AppendLine(command.Parameters.Select(p => {
                 var param = p.Name;
@@ -122,7 +145,7 @@ public class Help : DatabaseHouraiModule {
       var other = commands.Skip(1);
       if(other.Any()) {
         builder.Append("Related commands:")
-          .AppendLine(other.Select(c => c.Name.Code()).Distinct().Join(", "));
+          .AppendLine(other.Select(c => c.Aliases.First().Code()).Distinct().Join(", "));
       }
       return builder.ToString();
     }
