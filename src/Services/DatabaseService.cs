@@ -10,20 +10,25 @@ namespace Hourai {
 
 public class DatabaseService {
 
-  BotDbContext Database { get; }
+  public BotDbContext Context { get; private set; }
   DiscordSocketClient Client { get; }
+
+  public BotDbContext CreateContext() {
+    return (Context = new BotDbContext());
+  }
 
   public DatabaseService(IDependencyMap map) {
     Client = map.Get<DiscordSocketClient>();
-    Database = map.Get<BotDbContext>();
-    Bot.RegularTasks += Database.Save;
+    //Bot.RegularTasks += Database.Save;
     Client.MessageReceived += async m => {
       var author = m.Author;
       if(author.Username == null)
         return;
-      var user = Database.GetUser(author);
-      user.AddName(author.Username);
-      await Database.Save();
+      using (var context = new BotDbContext()) {
+        var user = context.GetUser(author);
+        user.AddName(author.Username);
+        await context.Save();
+      }
     };
   }
 

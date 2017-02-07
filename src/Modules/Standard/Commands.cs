@@ -11,11 +11,11 @@ public partial class Standard {
   [RequireContext(ContextType.Guild)]
   public class Commands : DatabaseHouraiModule {
 
-    public Commands(BotDbContext db) : base(db) {
+    public Commands(DatabaseService db) : base(db) {
     }
 
     CustomCommand GetCommand(string name) {
-      var guild = Database.GetGuild(Check.NotNull(Context.Guild));
+      var guild = DbContext.GetGuild(Check.NotNull(Context.Guild));
       return guild?.GetCustomCommand(name);
     }
 
@@ -25,7 +25,7 @@ public partial class Standard {
     [Remarks("Creates a custom command. Deletes an existing one if response is empty.")]
     public async Task CreateCommand(string name,
                                     [Remainder] string response = "") {
-      var guild = Database.GetGuild(Check.NotNull(Context.Guild));
+      var guild = DbContext.GetGuild(Check.NotNull(Context.Guild));
       var command = GetCommand(name);
       if (string.IsNullOrEmpty(response)) {
         if (command == null) {
@@ -33,8 +33,8 @@ public partial class Standard {
           return;
         }
         guild.Commands.Remove(command);
-        Database.Commands.Remove(command);
-        await Database.Save();
+        DbContext.Commands.Remove(command);
+        await DbContext.Save();
         await RespondAsync($"Custom command {name.Code()} has been deleted.");
         return;
       }
@@ -51,7 +51,7 @@ public partial class Standard {
         command.Response = response;
         action = "updated";
       }
-      await Database.Save();
+      await DbContext.Save();
       await Success($"Command {name.Code()} {action} with response {response}.");
     }
 
@@ -69,7 +69,7 @@ public partial class Standard {
     [ServerOwner]
     [Remarks("Sets the minimum role for creating custom commands.")]
     public async Task CommandRole(IRole role) {
-      var guild = Database.GetGuild(Check.NotNull(Context.Guild));
+      var guild = DbContext.GetGuild(Check.NotNull(Context.Guild));
       guild.SetMinimumRole(MinimumRole.Command, role);
       await Success($"Set {role.Name.Code()} as the minimum role to create custom commnds");
     }

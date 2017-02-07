@@ -10,11 +10,9 @@ namespace Hourai {
 
 public class AnnounceService {
 
-  BotDbContext Database { get; }
   DiscordSocketClient Client { get; }
 
   public AnnounceService(IDependencyMap map) {
-    Database = map.Get<BotDbContext>();
     Client = map.Get<DiscordSocketClient>();
     //TODO(james7132): make these messages configurable
     const string JoinMsg = "$mention has joined the server.";
@@ -39,30 +37,32 @@ public class AnnounceService {
     var guild = (user as IGuildUser)?.Guild;
     if(guild == null)
       return;
-    var guildConfig = Database.GetGuild(guild);
-    string changes = null;
-    var userString = GetUserString(user).Bold();
-    if(before.VoiceChannel?.Id != after.VoiceChannel?.Id) {
-      if(after.VoiceChannel != null) {
-        changes = userString + " joined " + after.VoiceChannel?.Name.Bold();
-      } else {
-        changes = userString + " left " + before.VoiceChannel?.Name.Bold();
+    using (var context = new BotDbContext()) {
+      var guildConfig = context.GetGuild(guild);
+      string changes = null;
+      var userString = GetUserString(user).Bold();
+      if(before.VoiceChannel?.Id != after.VoiceChannel?.Id) {
+        if(after.VoiceChannel != null) {
+          changes = userString + " joined " + after.VoiceChannel?.Name.Bold();
+        } else {
+          changes = userString + " left " + before.VoiceChannel?.Name.Bold();
+        }
       }
-    }
 
-    if(string.IsNullOrEmpty(changes))
-      return;
+      if(string.IsNullOrEmpty(changes))
+        return;
 
-    foreach(var channel in guildConfig.Channels) {
-      if(!channel.VoiceMessage)
-        continue;
-      var dChannel = (await guild.GetChannelAsync(channel.Id)) as ITextChannel;
-      if(dChannel == null) {
-        guildConfig.Channels.Remove(channel);
-        Database.Channels.Remove(channel);
-        continue;
+      foreach(var channel in guildConfig.Channels) {
+        if(!channel.VoiceMessage)
+          continue;
+        var dChannel = (await guild.GetChannelAsync(channel.Id)) as ITextChannel;
+        if(dChannel == null) {
+          guildConfig.Channels.Remove(channel);
+          context.Channels.Remove(channel);
+          continue;
+        }
+        await dChannel.Respond(changes);
       }
-      await dChannel.Respond(changes);
     }
   }
 
@@ -73,17 +73,19 @@ public class AnnounceService {
 
   Func<IUser, IGuild, Task> GuildMessage(Func<Channel, bool> msg, string defaultMsg) {
     return async (u, g) => {
-      var guildConfig = Database.GetGuild(g);
-      foreach(var channel in guildConfig.Channels) {
-        if(!msg(channel))
-          continue;
-        var dChannel = (await g.GetChannelAsync(channel.Id)) as ITextChannel;
-        if(dChannel == null) {
-          guildConfig.Channels.Remove(channel);
-          Database.Channels.Remove(channel);
-          continue;
+      using (var context = new BotDbContext()) {
+        var guildConfig = context.GetGuild(g);
+        foreach(var channel in guildConfig.Channels) {
+          if(!msg(channel))
+            continue;
+          var dChannel = (await g.GetChannelAsync(channel.Id)) as ITextChannel;
+          if(dChannel == null) {
+            guildConfig.Channels.Remove(channel);
+            context.Channels.Remove(channel);
+            continue;
+          }
+          await dChannel.Respond(ProcessMessage(defaultMsg, u));
         }
-        await dChannel.Respond(ProcessMessage(defaultMsg, u));
       }
     };
   }

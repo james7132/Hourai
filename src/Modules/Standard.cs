@@ -18,7 +18,7 @@ public partial class Standard : DatabaseHouraiModule {
 
   LogSet Logs { get; }
 
-  public Standard(BotDbContext db, LogSet logs) : base(db) {
+  public Standard(DatabaseService db, LogSet logs) : base(db) {
     Logs = logs;
   }
 
@@ -59,7 +59,7 @@ public partial class Standard : DatabaseHouraiModule {
   public async Task ServerInfo() {
     var builder = new StringBuilder();
     var server = Check.NotNull(Context.Guild);
-    var guild = Database.GetGuild(server);
+    var guild = DbContext.GetGuild(server);
     var owner = await server.GetUserAsync(server.OwnerId);
     var channels = await server.GetChannelsAsync();
     var textChannels = channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
@@ -98,7 +98,7 @@ public partial class Standard : DatabaseHouraiModule {
   [Remarks("Gets information on a specified users")]
   public Task WhoIs(IGuildUser user) {
     const int spacing = 120;
-    var dbUser = Database.GetUser(user);
+    var dbUser = DbContext.GetUser(user);
     var builder = new StringBuilder()
       .AppendLine($"{Context.Message.Author.Mention}:")
       .AppendLine($"Username: {user.Username.Code()} {(user.IsBot ? "(BOT)".Code() : string.Empty )}")
@@ -145,7 +145,7 @@ public partial class Standard : DatabaseHouraiModule {
 
     CommandService Commands { get; }
 
-    public Module(CommandService commands, BotDbContext db) : base(db) {
+    public Module(CommandService commands, DatabaseService db) : base(db) {
       Commands = commands;
     }
 
@@ -156,7 +156,7 @@ public partial class Standard : DatabaseHouraiModule {
     [ChannelRateLimit(3, 1)]
     [Remarks("Lists all modules available. Enabled ones are highligted.")]
     public async Task ModuleList() {
-      var config = Database.GetGuild(Check.NotNull(Context.Guild));
+      var config = DbContext.GetGuild(Check.NotNull(Context.Guild));
       var modules = Enum.GetValues(typeof(ModuleType));
       await Context.Message.Respond(modules.OfType<ModuleType>()
           .Select(m => (config.IsModuleEnabled(m))
@@ -170,7 +170,7 @@ public partial class Standard : DatabaseHouraiModule {
     [Remarks("Enables a module for this server.")]
     public async Task ModuleEnable(params string[] modules) {
       var response = new StringBuilder();
-      var config = Database.GetGuild(Check.NotNull(Context.Guild));
+      var config = DbContext.GetGuild(Check.NotNull(Context.Guild));
       foreach (var module in modules) {
         ModuleType type;
         if(Enum.TryParse(module, true, out type)) {
@@ -180,7 +180,7 @@ public partial class Standard : DatabaseHouraiModule {
           response.AppendLine("Module {module} not found.");
         }
       }
-      await Database.Save();
+      await DbContext.Save();
       await Context.Message.Respond(response.ToString());
     }
 
@@ -189,7 +189,7 @@ public partial class Standard : DatabaseHouraiModule {
     [Remarks("Disable a module for this server.")]
     public async Task ModuleDisable(params string[]  modules) {
       var response = new StringBuilder();
-      var config = Database.GetGuild(Check.NotNull(Context.Guild));
+      var config = DbContext.GetGuild(Check.NotNull(Context.Guild));
       foreach (var module in modules) {
         ModuleType type;
         if(Enum.TryParse(module, true, out type)) {
@@ -199,7 +199,7 @@ public partial class Standard : DatabaseHouraiModule {
           response.AppendLine("Module {module} not found.");
         }
       }
-      await Database.Save();
+      await DbContext.Save();
       await Context.Message.Respond(response.ToString());
     }
   }

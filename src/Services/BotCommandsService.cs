@@ -12,15 +12,15 @@ public class BotCommandService {
 
   DiscordSocketClient Client { get; }
   CommandService Commands { get; }
-  BotDbContext Database  { get; }
+  DatabaseService Database { get; }
   CounterSet Counters { get; }
   IDependencyMap Map { get; }
 
   public BotCommandService(IDependencyMap dependencies) {
     Client = dependencies.Get<DiscordSocketClient>();
     Client.MessageReceived += HandleMessage;
+    Database = dependencies.Get<DatabaseService>();
     Commands = dependencies.Get<CommandService>();
-    Database = dependencies.Get<BotDbContext>();
     Counters = dependencies.Get<CounterSet>();
     Map = dependencies.Get<DependencyMap>();
 
@@ -34,72 +34,75 @@ public class BotCommandService {
     var msg = m as IUserMessage;
     if (msg == null || msg.Author.IsBot || msg.Author.IsMe())
       return;
-    var user = Database.GetUser(msg.Author);
-    if(user.IsBlacklisted)
-      return;
+    using (var db = Database.CreateContext()) {
+      var user = db.GetUser(msg.Author);
+      if(user.IsBlacklisted)
+        return;
 
-    // Marks where the command begins
-    var argPos = 0;
+      // Marks where the command begins
+      var argPos = 0;
 
-    var guild = (m.Channel as IGuildChannel)?.Guild;
-    char prefix;
-    if(guild == null) {
-      prefix = Config.CommandPrefix;
-    } else {
-      var dbGuild = Database.GetGuild(guild);
-      var prefixString = dbGuild.Prefix;
-      if(string.IsNullOrEmpty(prefixString)) {
+      var guild = (m.Channel as IGuildChannel)?.Guild;
+      char prefix;
+      if(guild == null) {
         prefix = Config.CommandPrefix;
-        dbGuild.Prefix = prefix.ToString();
-        await Database.Save();
       } else {
-        prefix = prefixString[0];
+        var dbGuild = db.GetGuild(guild);
+        var prefixString = dbGuild.Prefix;
+        if(string.IsNullOrEmpty(prefixString)) {
+          prefix = Config.CommandPrefix;
+          dbGuild.Prefix = prefix.ToString();
+          await db.Save();
+        } else {
+          prefix = prefixString[0];
+        }
       }
-    }
 
-    // Determine if the msg is a command, based on if it starts with the defined command prefix
-    if (!msg.HasCharPrefix(prefix, ref argPos))
-      return;
+      // Determine if the msg is a command, based on if it starts with the defined command prefix
+      if (!msg.HasCharPrefix(prefix, ref argPos))
+        return;
 
-    if (!msg.Channel.AllowCommands()) {
-      Log.Info($"Attempted to run a command that is not allowed. {msg.Content.DoubleQuote()}");
-      return;
-    }
-
-    // Execute the command. (result does not indicate a return value,
-    // rather an object stating if the command executed succesfully)
-    var context = new CommandContext(Client, msg);
-    using (context.Channel.EnterTypingState()) {
-      var result = await Commands.ExecuteAsync(context, argPos, Map);
-      var guildChannel = msg.Channel as ITextChannel;
-      string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
-        : "in private channel.";
-      if (result.IsSuccess) {
-        Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
-        Counters.Get("command-success").Increment();
+      if (!msg.Channel.AllowCommands()) {
+        Log.Info($"Attempted to run a command that is not allowed. {msg.Content.DoubleQuote()}");
         return;
       }
-      if (await CustomCommandCheck(msg, argPos))
-        return;
-      Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
-      Counters.Get("command-failed").Increment();
-      switch (result.Error) {
-        // Ignore these kinds of errors, no need for response.
-        case CommandError.UnknownCommand:
+
+      // Execute the command. (result does not indicate a return value,
+      // rather an object stating if the command executed succesfully)
+      var context = new CommandContext(Client, msg);
+
+      using (context.Channel.EnterTypingState()) {
+        var result = await Commands.ExecuteAsync(context, argPos, Map);
+        var guildChannel = msg.Channel as ITextChannel;
+        string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
+          : "in private channel.";
+        if (result.IsSuccess) {
+          Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
+          Counters.Get("command-success").Increment();
           return;
-        default:
-          if(result is ExecuteResult) {
-            Log.Error(((ExecuteResult) result).Exception);
-          } else {
-            Log.Error(result.ErrorReason);
-          }
-          await msg.Respond(result.ErrorReason);
-          break;
+        }
+        if (await CustomCommandCheck(msg, argPos, db))
+          return;
+        Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
+        Counters.Get("command-failed").Increment();
+        switch (result.Error) {
+          // Ignore these kinds of errors, no need for response.
+          case CommandError.UnknownCommand:
+            return;
+          default:
+            if(result is ExecuteResult) {
+              Log.Error(((ExecuteResult) result).Exception);
+            } else {
+              Log.Error(result.ErrorReason);
+            }
+            await msg.Respond(result.ErrorReason);
+            break;
+        }
       }
     }
   }
 
-  async Task<bool> CustomCommandCheck(IMessage msg, int argPos) {
+  async Task<bool> CustomCommandCheck(IMessage msg, int argPos, BotDbContext context) {
     var customCommandCheck = msg.Content.Substring(argPos).SplitWhitespace();
     if (customCommandCheck.Length <= 0)
       return false;
@@ -108,7 +111,7 @@ public class BotCommandService {
     var guild = (msg.Channel as ITextChannel)?.Guild;
     if(guild == null)
       return false;
-    var command = Database.Commands.FirstOrDefault(c => c.GuildId == guild.Id && c.Name == commandName);
+    var command = context.Commands.FirstOrDefault(c => c.GuildId == guild.Id && c.Name == commandName);
     if (command == null)
       return false;
     await command.Execute(msg, msg.Content.Substring(argPos));

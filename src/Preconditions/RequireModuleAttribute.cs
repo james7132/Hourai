@@ -25,7 +25,7 @@ namespace Hourai.Preconditions {
       var baseCheck = await base.CheckPermissions(context, commandInfo, dependencies);
       if (!baseCheck.IsSuccess)
           return baseCheck;
-      var guild = dependencies.Get<BotDbContext>().GetGuild(context.Guild);
+      var guild = dependencies.Get<DatabaseService>().Context.GetGuild(context.Guild);
       if (guild.IsModuleEnabled(Module))
           return PreconditionResult.FromSuccess();
       return PreconditionResult.FromError($"Module \"{commandInfo.Module.Name}\" is not enabled.");

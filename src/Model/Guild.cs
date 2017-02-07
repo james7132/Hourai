@@ -22,6 +22,8 @@ public class Guild {
   public ICollection<GuildUser> Users { get; set; }
   [Required]
   public List<CustomCommand> Commands { get; set; }
+  //[Required]
+  //public List<CounterEvent> Events { get; set; }
 
   [DatabaseGenerated(DatabaseGeneratedOption.None)]
   [Required]

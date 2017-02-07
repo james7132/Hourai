@@ -13,8 +13,9 @@ namespace Hourai {
 [Table("commands")]
 public class CustomCommand {
 
-  [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+  [DatabaseGenerated(DatabaseGeneratedOption.None)]
   public ulong GuildId { get; set; }
+  [ForeignKey("GuildId")]
   public Guild Guild { get; set; }
   [Required]
   public string Name { get; set; }

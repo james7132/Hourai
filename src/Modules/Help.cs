@@ -21,7 +21,7 @@ public class Help : DatabaseHouraiModule {
 
   const char CommandGroupChar = '*';
 
-  public Help(IDependencyMap map, CommandService commands, BotDbContext db) : base(db) {
+  public Help(IDependencyMap map, CommandService commands, DatabaseService db) : base(db) {
     Map = map;
     Commands = commands;
   }
@@ -53,7 +53,7 @@ public class Help : DatabaseHouraiModule {
       builder.AppendLine($"{module.Name.Bold()}: {commands}");
     }
     if(Context.Guild != null) {
-      var guild = Database.GetGuild(Context.Guild);
+      var guild = DbContext.GetGuild(Context.Guild);
       if(guild.Commands.Any())
         builder.AppendLine($"{"Custom".Bold()}: {guild.Commands.Select(c => c.Name.Code()).Join(", ")}");
     }
@@ -111,7 +111,7 @@ public class Help : DatabaseHouraiModule {
     // Reverse the commands. Order goes from least specific to most specfic.
     commands = commands.Reverse();
     if(commands.Any()) {
-      var guild = Database.GetGuild(Context.Guild);
+      var guild = DbContext.GetGuild(Context.Guild);
       var builder = new StringBuilder();
       var command = commands.First();
       using(builder.Code()) {

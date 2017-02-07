@@ -92,8 +92,9 @@ namespace Hourai.Migrations
 
                     b.Property<string>("Prefix")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasDefaultValue("~")
-                        .HasAnnotation("MaxLength", 1);
+                        .HasMaxLength(1);
 
                     b.HasKey("Id");
 

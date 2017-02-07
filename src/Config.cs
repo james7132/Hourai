@@ -10,7 +10,11 @@ public class Config {
 
   public const string ConfigFilePath = "config.json";
 
+  public static bool IsLoaded { get; private set; }
+
   public static void Load() {
+    if (IsLoaded)
+      return;
     string fullPath = Path.Combine(Bot.GetExecutionDirectory(),
         ConfigFilePath);
     Log.Info($"Loading config from {fullPath}...");
@@ -18,9 +22,10 @@ public class Config {
     Log.Info($"Setting log directory to: { LogDirectory }");
     Log.Info($"Setting database to: { DbFilename }");
     Log.Info("Config loaded.");
+    IsLoaded = true;
   }
 
-  // The login token used by the bot to access Discord 
+  // The login token used by the bot to access Discord
   [JsonProperty]
   public static string Token { get; set; }
 

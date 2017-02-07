@@ -11,7 +11,7 @@ public partial class Feeds {
   [Group("announce")]
   public class Announce : DatabaseHouraiModule {
 
-    public Announce(BotDbContext db) : base(db) {
+    public Announce(DatabaseService db) : base(db) {
     }
 
     [Command("join")]
@@ -51,9 +51,9 @@ public partial class Feeds {
     async Task SetMessage(Action<Channel> alteration,
         Func<Channel, bool> val,
         string messageType) {
-      var channel = Database.GetChannel(Context.Channel as ITextChannel);
+      var channel = DbContext.GetChannel(Context.Channel as ITextChannel);
       alteration(channel);
-      await Database.Save();
+      await DbContext.Save();
       await Success($"{messageType} message {Status(val(channel))}");
     }
 

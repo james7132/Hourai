@@ -19,9 +19,10 @@ public abstract class HouraiModule : ModuleBase {
 
 public abstract class DatabaseHouraiModule : HouraiModule {
 
-  protected BotDbContext Database { get; }
+  protected DatabaseService Database { get; }
+  protected BotDbContext DbContext => Database.Context;
 
-  protected DatabaseHouraiModule(BotDbContext db) {
+  protected DatabaseHouraiModule(DatabaseService db) {
     Database = db;
   }
 

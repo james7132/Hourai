@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Hourai {
 
@@ -71,11 +72,11 @@ public class CounterSet<T> : CounterSet<string, T> where T : ICounter {
 
 public class CounterSet<TKey, T> : IEnumerable<KeyValuePair<TKey, T>> where T : ICounter {
 
-  readonly Dictionary<TKey, T> _counters;
+  readonly ConcurrentDictionary<TKey, T> _counters;
   readonly IFactroy<T> _counterFactory;
 
   public CounterSet(IFactroy<T> factory) {
-    _counters = new Dictionary<TKey, T>();
+    _counters = new ConcurrentDictionary<TKey, T>();
     _counterFactory = Check.NotNull(factory);
   }
 

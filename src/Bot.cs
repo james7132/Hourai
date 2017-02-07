@@ -50,7 +50,7 @@ public class Bot {
     ExitSource.SetResult(new object());
   }
 
-  async Task Initialize(BotDbContext db) {
+  async Task Initialize() {
     if (_initialized)
       return;
     StartTime = DateTime.Now;
@@ -66,7 +66,6 @@ public class Bot {
     map.Add(map);
     map.Add(Client);
 
-    map.Add(db);
     map.Add(new CounterSet(new ActivatorFactory<SimpleCounter>()));
     map.Add(new LogSet());
 
@@ -111,14 +110,12 @@ public class Bot {
 
   async Task Run() {
     Log.Info($"Starting...");
-    using(var database = new BotDbContext()) {
-      await Initialize(database);
-      while (!ExitSource.Task.IsCompleted) {
-        try {
-          await MainLoop();
-        } catch (Exception error) {
-          Log.Error(error);
-        }
+    await Initialize();
+    while (!ExitSource.Task.IsCompleted) {
+      try {
+        await MainLoop();
+      } catch (Exception error) {
+        Log.Error(error);
       }
     }
   }
