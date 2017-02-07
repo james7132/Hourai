@@ -13,7 +13,7 @@ public partial class Admin {
   [Group("role")]
   public class Roles : DatabaseHouraiModule {
 
-    public Roles(BotDbContext db) : base(db) {
+    public Roles(DatabaseService db) : base(db) {
     }
 
     [Command("add")]
@@ -63,10 +63,10 @@ public partial class Admin {
       var action = CommandUtility.Action(
         async u => {
           await u.RemoveRolesAsync(role);
-          var guildUser = Database.GetGuildUser(u);
+          var guildUser = DbContext.GetGuildUser(u);
           guildUser.BanRole(role);
         });
-      await Database.Save();
+      await DbContext.Save();
       await CommandUtility.ForEvery(Context, users, action);
     }
 
@@ -77,11 +77,11 @@ public partial class Admin {
     public async Task RoleUnban(IRole role, params IGuildUser[] users) {
       var action = CommandUtility.Action(
         u => {
-          var guildUser = Database.GetGuildUser(u);
+          var guildUser = DbContext.GetGuildUser(u);
           guildUser.UnbanRole(role);
           return Task.CompletedTask;
         });
-      await Database.Save();
+      await DbContext.Save();
       await CommandUtility.ForEvery(Context, users, action);
     }
 

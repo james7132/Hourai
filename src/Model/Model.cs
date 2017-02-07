@@ -23,6 +23,9 @@ public class BotDbContext : DbContext {
   public DbSet<TempBan> TempBans { get; set; }
   public DbSet<TempRole> TempRole { get; set; }
 
+  //// Analytics Data
+  //public DbSet<Counter> Counters { get; set; }
+
   // Service Data
   //public DbSet<Subreddit> Subreddits { get; set; }
   //public DbSet<SubredditChannel> SubredditChannels { get; set; }
@@ -43,14 +46,30 @@ public class BotDbContext : DbContext {
       .HasKey(u => new { u.Id, u.GuildId });
     builder.Entity<Channel>()
       .HasKey(c => new { c.Id, c.GuildId });
-    builder.Entity<CustomCommand>()
-      .HasKey(c => new { c.GuildId, c.Name });
-    builder.Entity<Username>()
-      .HasKey(c => new { c.UserId, c.Date });
+    builder.Entity<CustomCommand>(b =>{
+        b.HasKey(c => new { c.GuildId, c.Name });
+        b.HasIndex(c => c.GuildId);
+      });
+    builder.Entity<Username>(b => {
+        b.HasKey(c => new { c.UserId, c.Date });
+        b.HasIndex(c => c.UserId);
+      });
+  //builder.Entity<CounterEvent>(b => {
+        //b.HasKey(c => new { c.CounterId, c.Timestamp });
+        //b.HasOne(c => c.Counter)
+         //.WithMany(c => c.Events)
+         //.HasForeignKey(c => c.CounterId);
+        //b.HasOne(c => c.Channel)
+         //.WithMany(c => c.Events)
+         //.HasForeignKey(c => new { c.ChannelId, c.GuildId });
+        //b.HasOne(c => c.GuildUser)
+         //.WithMany(u => u.Events)
+         //.HasForeignKey(c => new { c.GuildId, c.UserId });
+     //});
     //builder.Entity<SubredditChannel>()
       //.HasKey(s => new { s.Name, s.ChannelId });
     builder.Entity<AbstractTempAction>()
-      .HasIndex(t => t.End)
+        .HasIndex(t => t.End)
         .HasName("IX_temp_actions_End");
   }
 

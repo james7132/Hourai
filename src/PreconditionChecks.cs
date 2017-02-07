@@ -39,7 +39,7 @@ namespace Hourai {
       if (user.IsBotOwner() || user.IsServerOwner())
         return PreconditionResult.FromSuccess();
       var server = user.Guild;
-      var guild = dependencies.Get<BotDbContext>().GetGuild(server);
+      var guild = dependencies.Get<DatabaseService>().Context.GetGuild(server);
       ulong? minRole = guild.GetMinimumRole(_roleType);
       if (minRole == null)
         return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.ToString().Code()} is set.");

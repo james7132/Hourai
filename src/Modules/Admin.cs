@@ -13,16 +13,14 @@ namespace Hourai.Modules {
 
 [RequireContext(ContextType.Guild)]
 [RequireModule(ModuleType.Admin)]
-public partial class Admin : HouraiModule {
+public partial class Admin : DatabaseHouraiModule {
 
   LogSet Logs { get; }
   DiscordSocketClient Client { get; }
-  BotDbContext Database { get; }
 
-  public Admin(DiscordSocketClient client, LogSet log, BotDbContext db) {
+  public Admin(DiscordSocketClient client, LogSet log, DatabaseService db) : base(db) {
     Client = client;
     Logs = log;
-    Database = db;
   }
 
   [Command("kick")]
@@ -109,7 +107,7 @@ public partial class Admin : HouraiModule {
   + "and requires the ``Change Nickname`` permission.\nIf at least one ``user`` is specified, nicknames the mentioned users and requires the "
   + "``Manage Nicknames`` permission.")]
   public async Task Nickname(string nickname, params IGuildUser[] users) {
-    var guild = Database.GetGuild(Context.Guild);
+    var guild = DbContext.GetGuild(Context.Guild);
     var author = Context.Message.Author as IGuildUser;
     IGuildUser[] allUsers = users;
     if (allUsers.Length <= 0) {
@@ -148,6 +146,31 @@ public partial class Admin : HouraiModule {
     Log.Error("Done");
     return Task.CompletedTask;
   }
+
+  //[Group("reaction")]
+  //public class Reactions : HouraiModule {
+
+    //[Command("dump")]
+    //[ChannelRateLimit(1, 1)]
+    //public async Task Dump(int count = 100) {
+      //var users = new HashSet<IUser>();
+      //await Context.Channel.GetMessagesAsync(count).ForEachAwait(async m => {
+          //foreach(var message in m.OfType<IUserMessage>()) {
+            //if (!message.Reactions.Any())
+              //continue;
+            //foreach(var reaction in message.Reactions.Keys) {
+              //var name = reaction.Name;
+              //if (reaction.Id.HasValue)
+                //name += ":" + reaction.Id;
+              //Log.Info((await message.GetReactionUsersAsync(name)).Count);
+              //Log.Info(name + " " + reaction.ToString());
+            //}
+          //}
+        //});
+      //await RespondAsync(users.Select(u => u.Mention).Join(", "));
+    //}
+
+  //}
 
   [Group("server")]
   public class ServerGroup : HouraiModule {

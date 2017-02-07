@@ -18,6 +18,8 @@ public class User {
   public ICollection<Username> Usernames { get; set; }
   [Required]
   public ICollection<GuildUser> GuildUsers { get; set; }
+  //[Required]
+  //public ICollection<CounterEvent> Events { get; set; }
   public bool IsBlacklisted { get; set; }
   public ICollection<TempBan> TempBans;
 
@@ -40,7 +42,7 @@ public class User {
     var newUsername = new Username {
       User = this,
            Date = DateTimeOffset.Now,
-           Name = Username 
+           Name = Username
     };
     Usernames.Add(newUsername);
   }
@@ -61,14 +63,16 @@ public class GuildUser {
   [ForeignKey("GuildId")]
   public Guild Guild { get; set; }
 
+  //public ICollection<CounterEvent> Events { get; set; }
+
   private HashSet<ulong> _bannedRoles;
   public string  BannedRoles {
-    get { 
+    get {
       if(_bannedRoles == null || _bannedRoles.Count <= 0)
         return null;
       return JsonConvert.SerializeObject(_bannedRoles);
     }
-    set { 
+    set {
       if(string.IsNullOrEmpty(value))
         _bannedRoles = null;
       else
@@ -112,7 +116,7 @@ public class GuildUser {
 [Table("usernames")]
 public class Username {
 
-  [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+  [DatabaseGenerated(DatabaseGeneratedOption.None)]
   public ulong UserId { get; set; }
   [Required]
   public string Name { get; set; }

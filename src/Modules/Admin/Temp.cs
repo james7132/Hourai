@@ -13,7 +13,7 @@ public abstract class TempModule : DatabaseHouraiModule {
 
   protected DiscordSocketClient Client { get; }
 
-  public TempModule(DiscordSocketClient client, BotDbContext db) : base(db) {
+  public TempModule(DiscordSocketClient client, DatabaseService db) : base(db) {
     Client = client;
   }
 
@@ -36,8 +36,8 @@ public abstract class TempModule : DatabaseHouraiModule {
         var tempAction = await action(user);
         tempAction.Start = start;
         tempAction.End = end;
-        Database.TempActions.Add(tempAction);
-        await Database.Save();
+        DbContext.TempActions.Add(tempAction);
+        await DbContext.Save();
         if(postAction != null)
           await postAction(user, tempAction);
         await tempAction.Apply(Client);
@@ -47,12 +47,12 @@ public abstract class TempModule : DatabaseHouraiModule {
 
 }
 
-public partial class Admin : HouraiModule {
+public partial class Admin {
 
   [Group("temp")]
   public class Temp : TempModule {
 
-    public Temp(DiscordSocketClient client, BotDbContext db) : base(client, db) {
+    public Temp(DiscordSocketClient client, DatabaseService db) : base(client, db) {
     }
 
     [Command("ban")]
@@ -64,8 +64,8 @@ public partial class Admin : HouraiModule {
       Func<IGuildUser, AbstractTempAction> action = user => new TempBan {
          UserId = user.Id,
          GuildId = user.Guild.Id,
-         User = Database.GetUser(user),
-         Guild = Database.GetGuild(user.Guild),
+         User = DbContext.GetUser(user),
+         Guild = DbContext.GetGuild(user.Guild),
       };
       Func<IGuildUser, AbstractTempAction, Task> postAction = async (user, tempAction) => {
         try {
@@ -84,7 +84,7 @@ public partial class Admin : HouraiModule {
     [RequirePermission(GuildPermission.ManageRoles)]
     public class Roles : TempModule {
 
-      public Roles(DiscordSocketClient client, BotDbContext db) : base(client, db) {
+      public Roles(DiscordSocketClient client, DatabaseService db) : base(client, db) {
       }
 
       [Command("add")]
@@ -94,8 +94,8 @@ public partial class Admin : HouraiModule {
         return TempAction("add role", time, users, user => new TempRole {
            UserId = user.Id,
            GuildId = user.Guild.Id,
-           User = Database.GetUser(user),
-           Guild = Database.GetGuild(user.Guild),
+           User = DbContext.GetUser(user),
+           Guild = DbContext.GetGuild(user.Guild),
            RoleId = role.Id,
         });
       }
