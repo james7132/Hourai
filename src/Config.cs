@@ -51,9 +51,20 @@ public class Config {
   [JsonProperty]
   public static string SuccessResponse { get; set; } = ":thumbsup:";
 
-  // Maximum number of messages to remove with the prune command.
   [JsonProperty]
-  public static int PruneLimit { get; set; } = 100;
+  public static string RedditUsername { get; set; }
+
+  [JsonProperty]
+  public static string RedditPassword { get; set; }
+
+  [JsonProperty]
+  public static string RedditClientID { get; set; }
+
+  [JsonProperty]
+  public static string RedditClientSecret { get; set; }
+
+  [JsonProperty]
+  public static string RedditRedirectUri { get; set; }
 
 }
 }

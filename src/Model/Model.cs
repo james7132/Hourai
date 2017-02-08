@@ -27,8 +27,7 @@ public class BotDbContext : DbContext {
   //public DbSet<Counter> Counters { get; set; }
 
   // Service Data
-  //public DbSet<Subreddit> Subreddits { get; set; }
-  //public DbSet<SubredditChannel> SubredditChannels { get; set; }
+  public DbSet<Subreddit> Subreddits { get; set; }
 
   public bool AllowSave { get; set; } = true;
 
@@ -66,8 +65,15 @@ public class BotDbContext : DbContext {
          //.WithMany(u => u.Events)
          //.HasForeignKey(c => new { c.GuildId, c.UserId });
      //});
-    //builder.Entity<SubredditChannel>()
-      //.HasKey(s => new { s.Name, s.ChannelId });
+    builder.Entity<SubredditChannel>(b => {
+        b.HasKey(s => new { s.Name, s.ChannelId });
+        b.HasOne(c => c.Subreddit)
+          .WithMany(s => s.Channels)
+          .HasForeignKey(s => s.Name);
+        b.HasOne(c => c.Channel)
+          .WithMany(s => s.Subreddits)
+          .HasForeignKey(c => new { c.ChannelId, c.GuildId });
+      });
     builder.Entity<AbstractTempAction>()
         .HasIndex(t => t.End)
         .HasName("IX_temp_actions_End");
