@@ -104,8 +104,6 @@ public partial class Admin {
     async Task PruneMessages(Func<IMessage, bool> pred = null,
         int count = 100) {
       var channel = Context.Channel;
-      if (count > Config.PruneLimit)
-        count = Config.PruneLimit;
       if (count < 0) {
         await channel.Respond("Cannot prune a negative count of messages");
         return;

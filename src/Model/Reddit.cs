@@ -19,16 +19,19 @@ public class Subreddit {
 
   public ICollection<SubredditChannel> Channels { get; set; }
 
-  //public IAsyncEnumerable<IMessageChannel> GetChannels(IDiscordClient client) {
-    //Check.NotNull(client);
-    //return AsyncEnum.Enumerate<IMessageChannel>(async consumer => {
-          //foreach(var channel in Channels) {
-            //var discordChannel = await client.GetChannelAsync(channel.Id) as IMessageChannel;
-            //if(discordChannel != null)
-              //await consumer.YieldAsync(discordChannel);
-          //}
-        //});
-  //}
+  public async Task<IEnumerable<IMessageChannel>> GetChannels(IDiscordClient client) {
+    Check.NotNull(client);
+    var channels = new List<IMessageChannel>();
+    foreach(var channel in Channels) {
+      var discordChannel = await client.GetChannelAsync(channel.ChannelId) as IMessageChannel;
+      if(discordChannel != null) {
+        channels.Add(discordChannel);
+      } else {
+        Log.Error($"Channel {channel.ChannelId} for subreddit {Name} cannot be found");
+      }
+    }
+    return channels;
+  }
 
 }
 
@@ -39,11 +42,13 @@ public class SubredditChannel {
   public string Name { get; set; }
   [Required]
   public ulong ChannelId { get; set; }
+  [Required]
+  public ulong GuildId { get; set; }
 
   [ForeignKey("Name")]
   public Subreddit Subreddit { get; set; }
-  //[ForeignKey("Id")]
-  //public Channel Channel { get; set; }
+  [ForeignKey("ChannelId")]
+  public Channel Channel { get; set; }
 
 }
 

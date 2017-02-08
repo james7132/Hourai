@@ -25,6 +25,9 @@ public class Channel {
 
   //[Required]
   //public ICollection<CounterEvent> Events { get; set; }
+  //
+  [Required]
+  public ICollection<SubredditChannel> Subreddits { get; set; }
 
   public Channel() {
   }

@@ -200,25 +200,6 @@ public LogSet Logs { get; } public DiscordSocketClient Client { get; } public st
     };
   }
 
-  Func<IMessage, Task> MessageLog(string eventType) {
-    return delegate(IMessage message) {
-      if(message == null) {
-        Log.Info($"Message {eventType}.");
-        return Task.CompletedTask;
-      }
-      var guildChannel = message.Channel as IGuildChannel;
-      var privateChannel = message.Channel as IPrivateChannel;
-      if (guildChannel != null) {
-        Log.Info($"Message on {guildChannel.Name} on {guildChannel.Guild.ToIDString()} was {eventType}.");
-      } else if(privateChannel != null) {
-        Log.Info($"Message to {privateChannel.Recipients} in private channel was {eventType}.");
-      } else {
-        Log.Error($"Action {eventType.DoubleQuote()} occured to a message instance of type {message.GetType()} and was unhandled");
-      }
-      return Task.CompletedTask;
-    };
-  }
-
   Func<IUser, Task> UserLog(string eventType) {
     return delegate (IUser user) {
       var guildUser = user as IGuildUser;
