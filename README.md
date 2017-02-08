@@ -5,7 +5,7 @@
         <img src="https://img.shields.io/badge/license-MIT%20License-blue.svg" alt="MIT License">
     </a>
     <a href="https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF">
-        <img src="https://img.shields.io/badge/discord-add--to--server-738bd7.svg" alt="Add DrumBot to your server!">
+        <img src="https://img.shields.io/badge/discord-add--to--server-738bd7.svg" alt="Add Hourai to your server!">
     </a>
 </p>
 
@@ -35,7 +35,7 @@ Hourai logs various things and keeps track of many stats to help with functional
 
 ### Commands
 The following are a non-comprehensive list of all commands that Hourai provides. Some of them require specific permissions on Hourai and/or the user using the command. For the required permissions:
-* Unmarked - Both DrumBot and the user invoking the command need the permission.
+* Unmarked - Both Hourai and the user invoking the command need the permission.
 * Marked with an asterisk (*) - Only the user invoking the command needs the permission.
 * Marked with a carrot (^) - Only Hourai needs the permission.
 
@@ -93,6 +93,10 @@ This is just a general survey of the commands. Please use the `help` command to 
 |`announce join`|Manage Server|Enables or disables server join messages in the current channel|
 |`announce ban`|Manage Server|Enables or disables server ban messages in the current channel|
 |`announce voice`|Manage Server|Enables or disables voice change messages in the current channel|
+|`reddit add`|Manage Server|Adds a subreddit feed to the current channel|
+|`reddit remove`|Manage Server|Removes a subreddit feed to the current channel|
+|`reddit list`|Manage Server|Lists all subreddits that feed into the current channel|
+
 ####Owner Module
 |Command|Permissions|Notes|
 |:--|:--|:--|
