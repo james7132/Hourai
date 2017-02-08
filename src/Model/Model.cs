@@ -28,6 +28,7 @@ public class BotDbContext : DbContext {
 
   // Service Data
   public DbSet<Subreddit> Subreddits { get; set; }
+  public DbSet<SubredditChannel> SubredditChannels { get; set; }
 
   public bool AllowSave { get; set; } = true;
 
@@ -94,9 +95,6 @@ public class BotDbContext : DbContext {
       .FirstOrDefault(g => g.Id == iguild.Id);
   }
 
-  //string SanitizeSubredditName(string name) {
-    //return name.Trim().ToLower();
-  //}
 
   public Guild GetGuild(IGuild iguild) {
     var guild = FindGuild(iguild);
@@ -168,7 +166,8 @@ public class BotDbContext : DbContext {
 
   public Channel FindChannel(IGuildChannel ichannel) {
     Check.NotNull(ichannel);
-    return Channels.FirstOrDefault(c =>
+    return Channels.Include(c => c.Subreddits)
+      .FirstOrDefault(c =>
         (c.Id == ichannel.Id) && (c.GuildId == ichannel.Guild.Id));
   }
 
@@ -177,6 +176,7 @@ public class BotDbContext : DbContext {
     if(channel == null) {
       channel = new Channel(ichannel);
       Channels.Add(channel);
+      Entry(channel).Collection(s => s.Subreddits).Load();
     }
     return channel;
   }
@@ -189,20 +189,28 @@ public class BotDbContext : DbContext {
     return true;
   }
 
-  //public Subreddit FindSubreddit(string name) {
-    //name = SanitizeSubredditName(name);
-    //return Subreddits.Include(s => s.Channels).FirstOrDefault(s => s.Name == name);
-  //}
+  public Subreddit FindSubreddit(string name) {
+    name = SanitizeSubredditName(name);
+    return Subreddits.Include(s => s.Channels).FirstOrDefault(s => s.Name == name);
+  }
 
-  //public async Task<Subreddit> GetSubreddit(string name) {
-    //var subreddit = FindSubreddit(name);
-    //if(subreddit == null) {
-      //subreddit = new Subreddit { Name = SanitizeSubredditName(name) };
-      //Subreddits.Add(subreddit);
-      //await Save();
-    //}
-    //return subreddit;
-  //}
+  public async Task<Subreddit> GetSubreddit(string name) {
+    var subreddit = FindSubreddit(name);
+    if(subreddit == null) {
+      subreddit = new Subreddit {
+        Name = SanitizeSubredditName(name),
+        LastPost = DateTimeOffset.Now
+      };
+      Subreddits.Add(subreddit);
+      Entry(subreddit).Collection(s => s.Channels).Load();
+      await Save();
+    }
+    return subreddit;
+  }
+
+  public string SanitizeSubredditName(string name) {
+    return name.Trim().ToLower();
+  }
 
 }
 
