@@ -12,10 +12,7 @@ using System.Text;
 namespace Hourai {
 
 public class LogService {
-
-  public LogSet Logs { get; }
-  public DiscordSocketClient Client { get; }
-  public string BaseDirectory { get; }
+public LogSet Logs { get; } public DiscordSocketClient Client { get; } public string BaseDirectory { get; }
   public string BotLog { get; private set; }
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
@@ -29,7 +26,6 @@ public class LogService {
     ChannelLogs();
     RoleLogs();
     UserLogs();
-    MessageLogs();
   }
 
   void SetupBotLog() {
@@ -82,7 +78,6 @@ public class LogService {
     Client.ChannelCreated += ChannelLog("created");
     Client.ChannelDestroyed += ChannelLog("removed");
     Client.ChannelUpdated += ChannelUpdated;
-
   }
 
   void RoleLogs() {
@@ -97,35 +92,7 @@ public class LogService {
     Client.UserBanned += (u, g) => UserLog("banned")(u);
     Client.UserUnbanned += (u, g) => UserLog("unbanned")(u);
     Client.UserUpdated += UserUpdated;
-  }
-
-  void MessageLogs() {
-    //// Log every public message not made by the bot.
-    //Client.MessageReceived += m => {
-      //var channel = m.Channel as ITextChannel;
-      //if (m.Author.IsMe() || m.Author.IsBot ||channel == null)
-        //return Task.CompletedTask;
-      //return Logs.GetChannel(channel).LogMessage(m);
-    //};
-
-    //// Make sure that every channel is available on loading up a server.
-    //Client.GuildAvailable += DownloadGuildChatLogs;
-    //Client.JoinedGuild += DownloadGuildChatLogs;
-
-    //// Keep up to date with channels
-    //Client.ChannelCreated += channel => {
-      //var textChannel = channel as ITextChannel;
-      //if (textChannel != null)
-        //Logs.GetChannel(textChannel);
-      //return Task.CompletedTask;
-    //};
-
-    //// Preserve logs from deleted channels
-    //Client.ChannelDestroyed += async channel => {
-      //var textChannel = channel as ITextChannel;
-      //if (textChannel != null)
-        //await Logs.GetChannel(textChannel).DeletedChannel(textChannel);
-    //};
+    Client.GuildMemberUpdated += (b, a) => UserUpdated(b, a);
   }
 
   Task LogChange<T, TA>(GuildLog log,
@@ -222,12 +189,6 @@ public class LogService {
     await LogChange(log, $"Channel {a.ToIDString()} Position", b, a, c => c.Position);
     //TODO(james7132): Add Permission Overwrites
   }
-
-  //async Task DownloadGuildChatLogs(IGuild guild) {
-    //var textChannels = await guild.GetTextChannelsAsync();
-    //foreach (ITextChannel channel in textChannels)
-      //await Logs.AddChannel(channel);
-  //}
 
   Func<IRole, Task> RoleLog(string eventType) {
     return async delegate(IRole role) {
