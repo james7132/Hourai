@@ -37,6 +37,7 @@ public static class AsyncEnumerable {
 
 public partial class Admin {
 
+  [Log]
   [Group("prune")]
   public class Prune : HouraiModule {
 

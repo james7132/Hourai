@@ -16,6 +16,7 @@ public partial class Admin {
     public Roles(DatabaseService db) : base(db) {
     }
 
+    [Log]
     [Command("add")]
     [GuildRateLimit(1, 0.5)]
     [RequirePermission(GuildPermission.ManageRoles)]
@@ -34,6 +35,7 @@ public partial class Admin {
           .Select(r => r.Name)
           .Join(", "));
 
+    [Log]
     [Command("remove")]
     [GuildRateLimit(1, 0.5)]
     [RequirePermission(GuildPermission.ManageRoles)]
@@ -41,6 +43,7 @@ public partial class Admin {
     public Task Remove(IRole role, params IGuildUser[] users) =>
       ForEvery(users, Do(u => u.RemoveRolesAsync(role)));
 
+    [Log]
     [Command("nuke")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
@@ -48,6 +51,7 @@ public partial class Admin {
     public Task Nuke(params IGuildUser[] users) =>
       ForEvery(users, Do(u => u.RemoveRolesAsync()));
 
+    [Log]
     [Command("ban")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
@@ -61,6 +65,7 @@ public partial class Admin {
       await DbContext.Save();
     }
 
+    [Log]
     [Command("unban")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
@@ -74,6 +79,7 @@ public partial class Admin {
       await DbContext.Save();
     }
 
+    [Log]
     [Command("create")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
@@ -83,6 +89,7 @@ public partial class Admin {
       await Success();
     }
 
+    [Log]
     [Command("delete")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
@@ -90,6 +97,7 @@ public partial class Admin {
     public Task Delete(params IRole[] roles) =>
       ForEvery(roles, Do((IRole r) => r.DeleteAsync()));
 
+    [Log]
     [Command("color")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
@@ -105,6 +113,7 @@ public partial class Admin {
         })));
     }
 
+    [Log]
     [Command("rename")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]

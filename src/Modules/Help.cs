@@ -135,6 +135,15 @@ public class Help : DatabaseHouraiModule {
       var docPreconditions = command.Preconditions
         .OfType<DocumentedPreconditionAttribute>()
         .Select(d => d.GetDocumentation()).Join("\n");
+      var mod = command.Module;
+      while (mod != null) {
+        var preconditions = mod.Preconditions
+          .OfType<DocumentedPreconditionAttribute>()
+          .Select(d => d.GetDocumentation()).Join("\n");
+        if (!string.IsNullOrEmpty(preconditions))
+          docPreconditions += "\n" + preconditions;
+        mod = mod.Parent;
+      }
       builder.AppendLine()
         .AppendLine(command.Remarks)
         .AppendLine(docPreconditions);

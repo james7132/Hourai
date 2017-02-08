@@ -54,6 +54,7 @@ public partial class Admin {
     public Temp(DiscordSocketClient client, DatabaseService db) : base(client, db) {
     }
 
+    [Log]
     [Command("ban")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.BanMembers)]
@@ -79,6 +80,7 @@ public partial class Admin {
       return TempAction("ban", time, users, action, postAction);
     }
 
+    [Log]
     [Group("role")]
     [RequirePermission(GuildPermission.ManageRoles)]
     public class Roles : TempModule {
