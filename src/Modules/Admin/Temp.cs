@@ -31,8 +31,8 @@ public abstract class TempModule : DatabaseHouraiModule {
       Func<IGuildUser, AbstractTempAction, Task> postAction = null) {
     Check.NotNull(action);
     var start = DateTimeOffset.Now;
-    var end = DateTimeOffset.Now + time;
-    var commandAction = CommandUtility.Action(async delegate(IGuildUser user) {
+    var end = start + time;
+    await ForEvery(users, Do(async delegate(IGuildUser user) {
         var tempAction = await action(user);
         tempAction.Start = start;
         tempAction.End = end;
@@ -41,8 +41,7 @@ public abstract class TempModule : DatabaseHouraiModule {
         if(postAction != null)
           await postAction(user, tempAction);
         await tempAction.Apply(Client);
-      });
-    await CommandUtility.ForEvery(Context, users, commandAction);
+      }));
   }
 
 }

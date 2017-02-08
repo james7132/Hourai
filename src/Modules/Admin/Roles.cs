@@ -20,76 +20,65 @@ public partial class Admin {
     [GuildRateLimit(1, 0.5)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Adds a role to all mentioned users.")]
-    public async Task Add(IRole role, params IGuildUser[] users) {
-      var action = CommandUtility.Action(async u => await u.AddRolesAsync(role));
-      await CommandUtility.ForEvery(Context, users, action);
-    }
+    public Task Add(IRole role, params IGuildUser[] users) =>
+      ForEvery(users, Do(async u => await u.AddRolesAsync(role)));
 
     [Command("list")]
     [ChannelRateLimit(1, 1)]
     [GuildRateLimit(1, 0.5)]
     [Remarks("Lists all roles on this server.")]
-    public async Task List() {
-      var guild = Check.NotNull(Context.Guild);
-      var roles = guild.Roles
-        .Where(r => r.Id != guild.EveryoneRole.Id)
-        .OrderBy(r => r.Position);
-      await RespondAsync(roles.Select(r => r.Name).Join(", "));
-    }
+    public Task List() =>
+      RespondAsync(Check.NotNull(Context.Guild).Roles
+          .Where(r => r.Id != Context.Guild.EveryoneRole.Id)
+          .OrderBy(r => r.Position)
+          .Select(r => r.Name)
+          .Join(", "));
 
     [Command("remove")]
     [GuildRateLimit(1, 0.5)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Removes a role to all mentioned users.")]
-    public async Task Remove(IRole role, params IGuildUser[] users) {
-      var action = CommandUtility.Action(async u => await u.RemoveRolesAsync(role));
-      await CommandUtility.ForEvery(Context, users, action);
-    }
+    public Task Remove(IRole role, params IGuildUser[] users) =>
+      ForEvery(users, Do(u => u.RemoveRolesAsync(role)));
 
     [Command("nuke")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Removes all roles from provided users.")]
-    public async Task Nuke(params IGuildUser[] users) {
-      var action = CommandUtility.Action(async u => await u.RemoveRolesAsync());
-      await CommandUtility.ForEvery(Context, users, action);
-    }
+    public Task Nuke(params IGuildUser[] users) =>
+      ForEvery(users, Do(u => u.RemoveRolesAsync()));
 
     [Command("ban")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Bans all mentioned users from a specified role.")]
-    public async Task RoleBan(IRole role, params IGuildUser[] users) {
-      var action = CommandUtility.Action(
-        async u => {
+    public async Task Ban(IRole role, params IGuildUser[] users) {
+      await ForEvery(users, Do(async u => {
           await u.RemoveRolesAsync(role);
           var guildUser = DbContext.GetGuildUser(u);
           guildUser.BanRole(role);
-        });
+        }));
       await DbContext.Save();
-      await CommandUtility.ForEvery(Context, users, action);
     }
 
     [Command("unban")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Unban all mentioned users from a specified role.")]
-    public async Task RoleUnban(IRole role, params IGuildUser[] users) {
-      var action = CommandUtility.Action(
-        u => {
+    public async Task Unban(IRole role, params IGuildUser[] users) {
+      await ForEvery(users, Do(u => {
           var guildUser = DbContext.GetGuildUser(u);
           guildUser.UnbanRole(role);
           return Task.CompletedTask;
-        });
+        }));
       await DbContext.Save();
-      await CommandUtility.ForEvery(Context, users, action);
     }
 
     [Command("create")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Creates a mentionable role and applies it to all mentioned users")]
-    public async Task RoleCreate(string name) {
+    public async Task Create(string name) {
       await Check.NotNull(Context.Guild).CreateRoleAsync(name);
       await Success();
     }
@@ -98,27 +87,22 @@ public partial class Admin {
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Deletes a role and removes it from all users.")]
-    public Task RoleDelete(params IRole[] roles) {
-      return CommandUtility.ForEvery(Context, roles, CommandUtility.Action(
-        async delegate(IRole role) {
-          await role.DeleteAsync();
-        }));
-    }
+    public Task Delete(params IRole[] roles) =>
+      ForEvery(roles, Do((IRole r) => r.DeleteAsync()));
 
     [Command("color")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Sets a role's color.")]
-    public async Task RoleColor(string color, params IRole[] roles) {
+    public Task RoleColor(string color, params IRole[] roles) {
       uint colorVal;
       if(!TryParseColor(color, out colorVal)) {
-        await RespondAsync($"Could not parse {color} to a proper color value");
-        return;
+        return RespondAsync($"Could not parse {color} to a proper color value");
       }
-      await Task.WhenAll(roles.Select(role => {
-        return role.ModifyAsync(r => { r.Color = new Optional<Color>(new Color(colorVal)); });
-      }));
-      await Success();
+      return ForEvery(roles, Do(role =>
+        role.ModifyAsync(r => {
+          r.Color = new Optional<Color>(new Color(colorVal));
+        })));
     }
 
     [Command("rename")]
