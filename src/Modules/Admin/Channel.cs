@@ -25,12 +25,8 @@ public partial class Admin {
     [GuildRateLimit(1, 5)]
     [RequirePermission(GuildPermission.ManageChannels)]
     [Remarks("Deletes all mentioned channels.")]
-    public Task Delete(params IGuildChannel[] channels) {
-      return CommandUtility.ForEvery(Context, channels, CommandUtility.Action(
-            delegate(IGuildChannel channel) {
-              return channel.DeleteAsync();
-            }));
-    }
+    public Task Delete(params IGuildChannel[] channels) =>
+      ForEvery(channels, Do((IGuildChannel c) => c.DeleteAsync()));
 
     [Command("list")]
     [UserRateLimit(1, 1)]

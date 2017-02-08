@@ -27,19 +27,15 @@ public partial class Admin : DatabaseHouraiModule {
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.KickMembers)]
   [Remarks("Kicks all mentioned users.")]
-  public async Task Kick(params IGuildUser[] users) {
-    var action = CommandUtility.Action(u => u.KickAsync());
-    await CommandUtility.ForEvery(Context, users, action);
-  }
+  public Task Kick(params IGuildUser[] users) =>
+    ForEvery(users, Do(u => u.KickAsync()));
 
   [Command("ban")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.BanMembers)]
   [Remarks("Bans all mentioned users.")]
-  public async Task Ban(params IGuildUser[] users) {
-    var action = CommandUtility.Action(u => u.BanAsync());
-    await CommandUtility.ForEvery(Context, users, action);
-  }
+  public Task Ban(params IGuildUser[] users) =>
+    ForEvery(users, Do(u => u.BanAsync()));
 
   [Command("ban")]
   [GuildRateLimit(1, 1)]
@@ -55,50 +51,40 @@ public partial class Admin : DatabaseHouraiModule {
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.BanMembers)]
   [Remarks("Softbans all mentioned users.")]
-  public async Task Softban(params IGuildUser[] users) {
-    var action = CommandUtility.Action(async u => {
+  public Task Softban(params IGuildUser[] users) =>
+    ForEvery(users, Do(async u => {
         ulong id = u.Id;
         await u.BanAsync(7); // Prune 7 day's worth of messages
         await u.Guild.RemoveBanAsync(id);
-      });
-    await CommandUtility.ForEvery(Context, users, action);
-  }
+      }));
 
   [Command("mute")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.MuteMembers)]
   [Remarks("Server mutes all mentioned users.")]
-  public async Task Mute(params IGuildUser[] users) {
-    var action = CommandUtility.Action(async u => await u.MuteAsync());
-    await CommandUtility.ForEvery(Context, users, action);
-  }
+  public Task Mute(params IGuildUser[] users) =>
+    ForEvery(users, Do(u => u.MuteAsync()));
 
   [Command("unmute")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.MuteMembers)]
   [Remarks( "Server unmutes all mentioned users.")]
-  public async Task Unmute(params IGuildUser[] users) {
-    var action = CommandUtility.Action(async u => await u.UnmuteAsync());
-    await CommandUtility.ForEvery(Context, users, action);
-  }
+  public Task Unmute(params IGuildUser[] users) =>
+    ForEvery(users, Do(u => u.UnmuteAsync()));
 
   [Command("deafen")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.DeafenMembers)]
   [Remarks( "Server deafens all mentioned users.")]
-  public async Task Deafen(params IGuildUser[] users) {
-    var action = CommandUtility.Action(async u => await u.DeafenAsync());
-    await CommandUtility.ForEvery(Context, users, action);
-  }
+  public Task Deafen(params IGuildUser[] users) =>
+    ForEvery(users, Do(u => u.DeafenAsync()));
 
   [Command("undeafen")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.DeafenMembers)]
   [Remarks( "Server undeafens all mentioned users.")]
-  public async Task Undeafen(params IGuildUser[] users) {
-    var action = CommandUtility.Action(async u => await u.UndeafenAsync());
-    await CommandUtility.ForEvery(Context, users, action);
-  }
+  public Task Undeafen(params IGuildUser[] users) =>
+    ForEvery(users, Do(u => u.UndeafenAsync()));
 
   [Command("nickname")]
   [UserRateLimit(1, 1)]
@@ -122,8 +108,7 @@ public partial class Admin : DatabaseHouraiModule {
       return;
     }
 
-    var action = CommandUtility.Action(async u => await u.SetNickname(nickname));
-    await CommandUtility.ForEvery(Context, allUsers, action);
+    await ForEvery(users, Do(async u => await u.SetNickname(nickname)));
   }
 
   [Command("modlog")]
