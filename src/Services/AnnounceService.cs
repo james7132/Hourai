@@ -41,8 +41,7 @@ public class AnnounceService {
       var guildConfig = context.GetGuild(guild);
       string changes = null;
       var userString = GetUserString(user).Bold();
-      if(before.VoiceChannel?.Id != after.VoiceChannel?.Id) {
-        if(after.VoiceChannel != null) {
+      if(before.VoiceChannel?.Id != after.VoiceChannel?.Id) { if(after.VoiceChannel != null) {
           changes = userString + " joined " + after.VoiceChannel?.Name.Bold();
         } else {
           changes = userString + " left " + before.VoiceChannel?.Name.Bold();

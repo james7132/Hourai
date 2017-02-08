@@ -14,6 +14,7 @@ public partial class Admin {
     public ConfigGroup(DatabaseService db) : base(db) {
     }
 
+    [Log]
     [Command("prefix")]
     [GuildRateLimit(1, 60)]
     [Remarks("Sets the bot's command prefix for this server.")]

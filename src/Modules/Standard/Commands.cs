@@ -19,6 +19,7 @@ public partial class Standard {
       return guild?.GetCustomCommand(name);
     }
 
+    [Log]
     [Command]
     [GuildRateLimit(1, 1)]
     [MinimumRole(MinimumRole.Command)]
@@ -65,6 +66,7 @@ public partial class Standard {
         return RespondAsync($"{customCommand.Name}: {customCommand.Response}");
     }
 
+    [Log]
     [Command("role")]
     [ServerOwner]
     [Remarks("Sets the minimum role for creating custom commands.")]

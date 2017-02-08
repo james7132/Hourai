@@ -21,7 +21,7 @@ public static class StringExtensions {
     string Wrapper { get; }
     StringBuilder Builder { get; }
     bool Diff { get; }
-    
+
     public StringBuilderWrapper(StringBuilder builder, string wrapper, bool diff = false) {
       Builder = builder;
       Wrapper = wrapper;
@@ -94,13 +94,13 @@ public static class StringExtensions {
   public static string SplitCamelCase(this string str, string delimiter = " ")
     => CamelCaseRegex.Replace(str, $"$1{delimiter}");
 
-  public static string ToIDString(this IGuildChannel channel) 
+  public static string ToIDString(this IChannel channel)
     => channel != null ? $"#{channel.Name} ({channel.Id})" : "N/A";
-  public static string ToIDString(this IGuild guild) 
+  public static string ToIDString(this IGuild guild)
     => guild != null ? $"{guild.Name} ({guild.Id})" : "N/A";
-  public static string ToIDString(this IUser user) 
+  public static string ToIDString(this IUser user)
     => user != null ? $"{user.Username} ({user.Id})" : "N/A";
-  public static string ToIDString(this IRole role) 
+  public static string ToIDString(this IRole role)
     => role != null ? $"{role.Name} ({role.Id})" : "N/A";
 }
 

@@ -165,6 +165,7 @@ public partial class Standard : DatabaseHouraiModule {
           .Join(", "));
     }
 
+    [Log]
     [Command("enable")]
     [GuildRateLimit(2, 60)]
     [Remarks("Enables a module for this server.")]
@@ -184,6 +185,7 @@ public partial class Standard : DatabaseHouraiModule {
       await Context.Message.Respond(response.ToString());
     }
 
+    [Log]
     [Command("disable")]
     [GuildRateLimit(2, 60)]
     [Remarks("Disable a module for this server.")]

@@ -14,6 +14,7 @@ public partial class Feeds {
     public Announce(DatabaseService db) : base(db) {
     }
 
+    [Log]
     [Command("join")]
     [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server join messages in the current channel")]
@@ -22,6 +23,7 @@ public partial class Feeds {
         c => c.JoinMessage,
         "Join");
 
+    [Log]
     [Command("leave")]
     [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server leave messages in the current channel")]
@@ -30,6 +32,7 @@ public partial class Feeds {
         c => c.LeaveMessage,
         "Leave");
 
+    [Log]
     [Command("ban")]
     [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server ban messages in the current channel")]
@@ -38,6 +41,7 @@ public partial class Feeds {
         c => c.BanMessage,
         "Ban");
 
+    [Log]
     [Command("voice")]
     [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables voice messages in the current channel")]

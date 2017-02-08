@@ -23,6 +23,7 @@ public partial class Admin : DatabaseHouraiModule {
     Logs = log;
   }
 
+  [Log]
   [Command("kick")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.KickMembers)]
@@ -30,6 +31,7 @@ public partial class Admin : DatabaseHouraiModule {
   public Task Kick(params IGuildUser[] users) =>
     ForEvery(users, Do(u => u.KickAsync()));
 
+  [Log]
   [Command("ban")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.BanMembers)]
@@ -37,6 +39,7 @@ public partial class Admin : DatabaseHouraiModule {
   public Task Ban(params IGuildUser[] users) =>
     ForEvery(users, Do(u => u.BanAsync()));
 
+  [Log]
   [Command("ban")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.BanMembers)]
@@ -47,6 +50,7 @@ public partial class Admin : DatabaseHouraiModule {
     await Success();
   }
 
+  [Log]
   [Command("softban")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.BanMembers)]
@@ -58,6 +62,7 @@ public partial class Admin : DatabaseHouraiModule {
         await u.Guild.RemoveBanAsync(id);
       }));
 
+  [Log]
   [Command("mute")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.MuteMembers)]
@@ -65,6 +70,7 @@ public partial class Admin : DatabaseHouraiModule {
   public Task Mute(params IGuildUser[] users) =>
     ForEvery(users, Do(u => u.MuteAsync()));
 
+  [Log]
   [Command("unmute")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.MuteMembers)]
@@ -72,6 +78,7 @@ public partial class Admin : DatabaseHouraiModule {
   public Task Unmute(params IGuildUser[] users) =>
     ForEvery(users, Do(u => u.UnmuteAsync()));
 
+  [Log]
   [Command("deafen")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.DeafenMembers)]
@@ -79,6 +86,7 @@ public partial class Admin : DatabaseHouraiModule {
   public Task Deafen(params IGuildUser[] users) =>
     ForEvery(users, Do(u => u.DeafenAsync()));
 
+  [Log]
   [Command("undeafen")]
   [GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.DeafenMembers)]
@@ -86,6 +94,7 @@ public partial class Admin : DatabaseHouraiModule {
   public Task Undeafen(params IGuildUser[] users) =>
     ForEvery(users, Do(u => u.UndeafenAsync()));
 
+  [Log]
   [Command("nickname")]
   [UserRateLimit(1, 1)]
   [ChannelRateLimit(4, 1)]

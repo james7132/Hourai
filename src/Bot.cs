@@ -81,7 +81,6 @@ public class Bot {
     map.Add(new TempService(map));
     map.Add(new BlacklistService(map));
     map.Add(new AnnounceService(map));
-    //map.Add(new SearchService(map));
 
     _initialized = true;
   }

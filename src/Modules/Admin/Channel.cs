@@ -12,6 +12,7 @@ public partial class Admin {
   [Group("channel")]
   public class Channel : HouraiModule {
 
+    [Log]
     [Command("create")]
     [GuildRateLimit(1, 5)]
     [RequirePermission(GuildPermission.ManageChannels)]
@@ -21,6 +22,7 @@ public partial class Admin {
       await Success($"{channel.Mention} created.");
     }
 
+    [Log]
     [Command("delete")]
     [GuildRateLimit(1, 5)]
     [RequirePermission(GuildPermission.ManageChannels)]
