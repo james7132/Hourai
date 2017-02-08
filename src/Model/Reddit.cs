@@ -17,9 +17,11 @@ public class Subreddit {
   [Key, DatabaseGenerated(DatabaseGeneratedOption.None), Required]
   public string Name { get; set; }
 
+  public DateTimeOffset? LastPost { get; set; }
+
   public ICollection<SubredditChannel> Channels { get; set; }
 
-  public async Task<IEnumerable<IMessageChannel>> GetChannels(IDiscordClient client) {
+  public async Task<IEnumerable<IMessageChannel>> GetChannelsAsync(IDiscordClient client) {
     Check.NotNull(client);
     var channels = new List<IMessageChannel>();
     foreach(var channel in Channels) {

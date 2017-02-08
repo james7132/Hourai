@@ -83,7 +83,7 @@ public class Bot {
     map.Add(new BlacklistService(map));
     map.Add(new AnnounceService(map));
 
-    map.Add(new RedditService());
+    map.Add(new RedditService(map));
 
     _initialized = true;
   }

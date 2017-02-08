@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,14 +10,14 @@ namespace Hourai.Preconditions {
 
   public enum Require {
       // Requires only the bot to have the permission
-      Bot,
+      Bot = 1,
       // Requires only the user to have the permission
-      User,
+      User = Bot << 1,
       // Requires both the bot and the user to have the permission
       // However provides a override for the bot owner
-      BotOwnerOverride,
+      BotOwnerOverride = User << 1,
       // Requires both the bot and the user to have it.
-      Both
+      Both = 3
   }
 
   public class RequirePermissionAttribute : DocumentedPreconditionAttribute {
@@ -102,29 +103,22 @@ namespace Hourai.Preconditions {
         CommandInfo commandInfo,
         IDependencyMap dependencies) {
       // Check if the bot needs/has the permissions
-      switch(Requirement) {
-        case Require.Bot:
-        case Require.Both:
-          IUser botUser = Bot.User;
-          var guild = (context.Channel as IGuildChannel)?.Guild;
-          if (guild != null)
-            botUser = await guild.GetCurrentUserAsync();
-          var result = CheckUser(botUser, context.Channel);
-          if(!result.IsSuccess)
-            return PreconditionResult.FromError(result);
-          break;
+      if ((Requirement & Require.Bot) != 0) {
+        IUser botUser = Bot.User;
+        var guild = (context.Channel as IGuildChannel)?.Guild;
+        if (guild != null)
+          botUser = await guild.GetCurrentUserAsync();
+        var result = CheckUser(botUser, context.Channel);
+        if(!result.IsSuccess)
+          return PreconditionResult.FromError(result);
       }
-      switch(Requirement) {
-        case Require.User:
-        case Require.BotOwnerOverride:
-        case Require.Both:
-          var author = context.Message.Author;
-          if(Requirement == Require.BotOwnerOverride && context.User.IsBotOwner())
-            break;
-          var result = CheckUser(author, context.Channel);
-          if(!result.IsSuccess)
-            return PreconditionResult.FromError(result);
-          break;
+      if ((Requirement & Require.User) != 0 &&
+          !(context.User.IsBotOwner() &&
+           ((Requirement & Require.BotOwnerOverride) != 0))) {
+        var author = context.Message.Author;
+        var result = CheckUser(author, context.Channel);
+        if(!result.IsSuccess)
+          return PreconditionResult.FromError(result);
       }
       return PreconditionResult.FromSuccess();
     }
