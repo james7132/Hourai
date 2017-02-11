@@ -15,6 +15,7 @@ public class LogService {
 
   public LogSet Logs { get; }
   public DiscordShardedClient Client { get; }
+  public ErrorService ErrorService { get; }
   public string BaseDirectory { get; }
   public string BotLog { get; private set; }
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
@@ -23,6 +24,7 @@ public class LogService {
     BaseDirectory = directory;
     Client = map.Get<DiscordShardedClient>();
     Logs = map.Get<LogSet>();
+    ErrorService = map.Get<ErrorService>();
     SetupBotLog();
     ClientLogs();
     GuildLogs();
@@ -64,8 +66,10 @@ public class LogService {
         default:
           throw new ArgumentOutOfRangeException();
       }
-      if(message.Exception != null)
+      if(message.Exception != null) {
         Log.Error(message.Exception);
+        ErrorService.RegisterException(message.Exception);
+      }
       return Task.CompletedTask;
     };
   }
