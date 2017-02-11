@@ -112,9 +112,7 @@ namespace Hourai {
         object arg;
         if (map == null || !map.TryGet(paramType, out arg))
         {
-          if (paramType == typeof(CommandService))
-            arg = CommandService;
-          else if (paramType == typeof(IDependencyMap))
+          if (paramType == typeof(IDependencyMap))
             arg = map;
           else
             arg = AddService(paramType, map);
@@ -138,9 +136,7 @@ namespace Hourai {
         object arg = null;
         if (map == null || !map.TryGet(propType, out arg))
         {
-          if (propType == typeof(CommandService))
-            arg = CommandService;
-          else if (propType  == typeof(IDependencyMap))
+          if (propType  == typeof(IDependencyMap))
             arg = map;
           else if (!property.IsDefined(typeof(NotServiceAttribute)))
             arg = AddService(propType, map);
