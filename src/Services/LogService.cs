@@ -12,13 +12,16 @@ using System.Text;
 namespace Hourai {
 
 public class LogService {
-public LogSet Logs { get; } public DiscordSocketClient Client { get; } public string BaseDirectory { get; }
+
+  public LogSet Logs { get; }
+  public DiscordShardedClient Client { get; }
+  public string BaseDirectory { get; }
   public string BotLog { get; private set; }
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
   public LogService(IDependencyMap map, string directory) {
     BaseDirectory = directory;
-    Client = map.Get<DiscordSocketClient>();
+    Client = map.Get<DiscordShardedClient>();
     Logs = map.Get<LogSet>();
     SetupBotLog();
     ClientLogs();

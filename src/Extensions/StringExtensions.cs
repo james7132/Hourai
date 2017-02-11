@@ -102,6 +102,12 @@ public static class StringExtensions {
     => user != null ? $"{user.Username} ({user.Id})" : "N/A";
   public static string ToIDString(this IRole role)
     => role != null ? $"{role.Name} ({role.Id})" : "N/A";
+
+  public static string Ellipisize(this string str, int maxLength) {
+    if (str.Length <= maxLength)
+      return str;
+    return str.Substring(0, maxLength - 3) + "...";
+  }
 }
 
 }

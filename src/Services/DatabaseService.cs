@@ -11,14 +11,14 @@ namespace Hourai {
 public class DatabaseService {
 
   public BotDbContext Context { get; private set; }
-  DiscordSocketClient Client { get; }
+  DiscordShardedClient Client { get; }
 
   public BotDbContext CreateContext() {
     return (Context = new BotDbContext());
   }
 
   public DatabaseService(IDependencyMap map) {
-    Client = map.Get<DiscordSocketClient>();
+    Client = map.Get<DiscordShardedClient>();
     Client.ChannelCreated += AddChannel;
     Client.UserJoined += AddUser;
     Client.UserLeft += AddUser;

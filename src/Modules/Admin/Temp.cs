@@ -11,9 +11,9 @@ namespace Hourai.Modules {
 
 public abstract class TempModule : DatabaseHouraiModule {
 
-  protected DiscordSocketClient Client { get; }
+  protected DiscordShardedClient Client { get; }
 
-  public TempModule(DiscordSocketClient client, DatabaseService db) : base(db) {
+  public TempModule(DiscordShardedClient client, DatabaseService db) : base(db) {
     Client = client;
   }
 
@@ -51,7 +51,7 @@ public partial class Admin {
   [Group("temp")]
   public class Temp : TempModule {
 
-    public Temp(DiscordSocketClient client, DatabaseService db) : base(client, db) {
+    public Temp(DiscordShardedClient client, DatabaseService db) : base(client, db) {
     }
 
     [Log]
@@ -85,7 +85,7 @@ public partial class Admin {
     [RequirePermission(GuildPermission.ManageRoles)]
     public class Roles : TempModule {
 
-      public Roles(DiscordSocketClient client, DatabaseService db) : base(client, db) {
+      public Roles(DiscordShardedClient client, DatabaseService db) : base(client, db) {
       }
 
       [Command("add")]

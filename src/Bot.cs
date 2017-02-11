@@ -24,7 +24,8 @@ public class Bot {
   public DateTime StartTime { get; private set; }
   public TimeSpan Uptime => DateTime.Now - StartTime;
 
-  DiscordSocketClient Client { get; set; }
+  DiscordShardedClient Client { get; set; }
+  ErrorService ErrorService { get; set; }
 
   static TaskCompletionSource<object> ExitSource { get; set; }
   bool _initialized;
@@ -56,16 +57,21 @@ public class Bot {
       return;
     StartTime = DateTime.Now;
     Log.Info("Initializing...");
-    var clientConfig = new DiscordSocketConfig();
+    var clientConfig = new DiscordSocketConfig() {
+      TotalShards = 1
+    };
     var commandConfig = new CommandServiceConfig() {
       DefaultRunMode = RunMode.Sync
     };
-    Client = new DiscordSocketClient(clientConfig);
+    Client = new DiscordShardedClient(clientConfig);
     var CommandService = new CommandService(commandConfig);
     var map = new DependencyMap();
     map.Add(this);
     map.Add(map);
     map.Add(Client);
+
+    ErrorService = new ErrorService(map);
+    map.Add(ErrorService);
 
     map.Add(new CounterSet(new ActivatorFactory<SimpleCounter>()));
     map.Add(new LogSet());
@@ -105,7 +111,7 @@ public class Bot {
     Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
     while (!ExitSource.Task.IsCompleted) {
       await Task.WhenAll(_regularTasks.Select(t => t()));
-      //await Client.SetGame(Config.Version);
+      await Client.SetGameAsync(Config.Version);
       await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
     }
   }
@@ -118,6 +124,7 @@ public class Bot {
         await MainLoop();
       } catch (Exception error) {
         Log.Error(error);
+        ErrorService.RegisterException(error);
       }
     }
   }

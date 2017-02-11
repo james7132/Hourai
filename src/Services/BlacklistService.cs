@@ -8,10 +8,10 @@ namespace Hourai {
 
 public class BlacklistService {
 
-  DiscordSocketClient Client { get; }
+  DiscordShardedClient Client { get; }
 
   public BlacklistService(IDependencyMap dependencies) {
-    Client = dependencies.Get<DiscordSocketClient>();
+    Client = dependencies.Get<DiscordShardedClient>();
     Client.GuildAvailable += CheckBlacklist(false);
     Client.JoinedGuild += CheckBlacklist(true);
   }

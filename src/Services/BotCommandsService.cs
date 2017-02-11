@@ -10,14 +10,14 @@ namespace Hourai {
 
 public class BotCommandService {
 
-  DiscordSocketClient Client { get; }
+  DiscordShardedClient Client { get; }
   CommandService Commands { get; }
   DatabaseService Database { get; }
   CounterSet Counters { get; }
   IDependencyMap Map { get; }
 
   public BotCommandService(IDependencyMap dependencies) {
-    Client = dependencies.Get<DiscordSocketClient>();
+    Client = dependencies.Get<DiscordShardedClient>();
     Client.MessageReceived += HandleMessage;
     Database = dependencies.Get<DatabaseService>();
     Commands = dependencies.Get<CommandService>();
