@@ -1,12 +1,13 @@
 using Discord;
 using Discord.Commands;
+using Hourai.Model;
+using Hourai.Preconditions;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Hourai.Preconditions;
 
-namespace Hourai.Modules {
+namespace Hourai.Admin {
 
 public partial class Admin {
 

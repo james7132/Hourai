@@ -6,9 +6,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using Hourai.Model;
 using Hourai.Preconditions;
 
-namespace Hourai.Modules {
+namespace Hourai.Standard {
 
 /// <summary>
 /// Generates a help method for all of a bot commands.

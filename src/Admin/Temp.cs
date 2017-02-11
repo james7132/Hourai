@@ -1,13 +1,14 @@
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Hourai.Model;
+using Hourai.Preconditions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Hourai.Preconditions;
 
-namespace Hourai.Modules {
+namespace Hourai.Admin {
 
 public abstract class TempModule : DatabaseHouraiModule {
 

@@ -1,12 +1,12 @@
 using Discord;
 using Discord.Commands;
+using Hourai.Model;
+using Hourai.Preconditions;
 using RedditSharp;
 using System.Linq;
 using System.Threading.Tasks;
-using Hourai.Preconditions;
-using Hourai.Feeds.Services;
 
-namespace Hourai.Modules {
+namespace Hourai.Feeds {
 
 public partial class Feeds {
 

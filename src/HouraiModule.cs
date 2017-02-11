@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Net;
 using Discord.Commands;
+using Hourai.Model;
 using System;
 using System.Net;
 using System.Net.Http;

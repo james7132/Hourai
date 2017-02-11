@@ -1,10 +1,11 @@
 using Discord;
 using Discord.Commands;
+using Hourai.Model;
+using Hourai.Preconditions;
 using System;
 using System.Threading.Tasks;
-using Hourai.Preconditions;
 
-namespace Hourai.Modules {
+namespace Hourai.Feeds {
 
 public partial class Feeds {
 

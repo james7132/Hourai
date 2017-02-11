@@ -1,6 +1,7 @@
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using Hourai.Model;
+using System.Threading.Tasks;
 
 namespace Hourai.Preconditions {
 

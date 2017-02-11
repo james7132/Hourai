@@ -1,13 +1,14 @@
 using Discord.Commands;
 using Discord.WebSocket;
+using Hourai.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Hourai {
+namespace Hourai.Admin {
 
-public class TempService {
+public class TempService : IService {
 
   Bot Bot { get; }
   DiscordShardedClient Client { get; }

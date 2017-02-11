@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using Discord.Net;
 using Discord.Commands;
+using Hourai.Model;
 using RedditSharp;
 using RedditSharp.Things;
 using System;
@@ -9,18 +10,17 @@ using System.Linq;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
-namespace Hourai.Feeds.Services {
+namespace Hourai.Feeds {
 
-public class RedditService {
+public class RedditService : IService {
 
-  DiscordShardedClient Client { get; }
+  public DiscordShardedClient Client { get; set; }
   BotWebAgent Agent { get; }
   public Reddit Reddit { get; }
 
   ConcurrentDictionary<string, RedditSharp.Things.Subreddit> Subreddits { get; }
 
-  public RedditService(IDependencyMap map) {
-    Client = map.Get<DiscordShardedClient>();
+  public RedditService() {
     Agent = new BotWebAgent(Config.RedditUsername,
         Config.RedditPassword,
         Config.RedditClientID,

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Hourai.Preconditions;
 
-namespace Hourai.Modules {
+namespace Hourai.Admin {
 
 public partial class Admin {
 

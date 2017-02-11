@@ -2,6 +2,7 @@ using Discord;
 using Discord.Net;
 using Discord.Commands;
 using Discord.WebSocket;
+using Hourai.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,20 +10,17 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class AnnounceService {
+public class AnnounceService : IService {
 
-  DiscordShardedClient Client { get; }
-
-  public AnnounceService(IDependencyMap map) {
-    Client = map.Get<DiscordShardedClient>();
+  public AnnounceService(DiscordShardedClient client) {
     //TODO(james7132): make these messages configurable
     const string JoinMsg = "$mention has joined the server.";
     const string LeaveMsg = "**$user** has left the server.";
     const string BanMsg = "**$user** has been banned.";
-    Client.UserJoined += u => GuildMessage(c => c.JoinMessage, JoinMsg)(u, u.Guild);
-    Client.UserLeft += u => GuildMessage(c => c.LeaveMessage, LeaveMsg)(u, u.Guild);
-    Client.UserBanned += GuildMessage(c => c.BanMessage, BanMsg);
-    Client.UserVoiceStateUpdated += VoiceStateChanged;
+    client.UserJoined += u => GuildMessage(c => c.JoinMessage, JoinMsg)(u, u.Guild);
+    client.UserLeft += u => GuildMessage(c => c.LeaveMessage, LeaveMsg)(u, u.Guild);
+    client.UserBanned += GuildMessage(c => c.BanMessage, BanMsg);
+    client.UserVoiceStateUpdated += VoiceStateChanged;
   }
 
   string GetUserString(IUser user) {

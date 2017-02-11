@@ -9,7 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Hourai {
+namespace Hourai.Model {
 
 [Table("subreddits")]
 public class Subreddit {

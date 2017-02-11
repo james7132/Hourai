@@ -1,3 +1,8 @@
+using Discord;
+using Discord.Commands;
+using Discord.WebSocket;
+using Hourai.Model;
+using Hourai.Preconditions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,12 +11,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Discord;
-using Discord.Commands;
-using Discord.WebSocket;
-using Hourai.Preconditions;
 
-namespace Hourai.Modules {
+namespace Hourai.Standard {
 
 [RequireModule(ModuleType.Standard)]
 public partial class Standard : DatabaseHouraiModule {

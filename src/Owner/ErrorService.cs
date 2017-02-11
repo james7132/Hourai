@@ -7,16 +7,13 @@ using System.Collections.Generic;
 
 namespace Hourai {
 
-  public class ErrorService  {
+  public class ErrorService : IService {
 
-    DiscordShardedClient Client { get; }
-    Bot Bot { get; }
+    public Bot Bot { get; set; }
     IMessageChannel OwnerChannel { get; set; }
     List<Exception> Exceptions { get; }
 
-    public ErrorService(IDependencyMap map) {
-      Client = map.Get<DiscordShardedClient>();
-      Bot = map.Get<Bot>();
+    public ErrorService() {
       Bot.RegularTasks += SendErrors;
       Exceptions = new List<Exception>();
     }
