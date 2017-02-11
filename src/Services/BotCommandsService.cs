@@ -13,6 +13,7 @@ public class BotCommandService {
   DiscordShardedClient Client { get; }
   CommandService Commands { get; }
   DatabaseService Database { get; }
+  ErrorService ErrorService { get; }
   CounterSet Counters { get; }
   IDependencyMap Map { get; }
 
@@ -22,6 +23,7 @@ public class BotCommandService {
     Database = dependencies.Get<DatabaseService>();
     Commands = dependencies.Get<CommandService>();
     Counters = dependencies.Get<CounterSet>();
+    ErrorService = dependencies.Get<ErrorService>();
     Map = dependencies.Get<DependencyMap>();
 
     if (Commands != null) {
@@ -71,33 +73,35 @@ public class BotCommandService {
       // rather an object stating if the command executed succesfully)
       var context = new CommandContext(Client, msg);
 
-      using (context.Channel.EnterTypingState()) {
-        var result = await Commands.ExecuteAsync(context, argPos, Map);
-        var guildChannel = msg.Channel as ITextChannel;
-        string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
-          : "in private channel.";
-        if (result.IsSuccess) {
-          Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
-          Counters.Get("command-success").Increment();
+      var state = context.Channel.EnterTypingState();
+      var result = await Commands.ExecuteAsync(context, argPos, Map);
+      var guildChannel = msg.Channel as ITextChannel;
+      string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
+        : "in private channel.";
+      if (result.IsSuccess) {
+        Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
+        Counters.Get("command-success").Increment();
+        return;
+      }
+      if (await CustomCommandCheck(msg, argPos, db))
+        return;
+      state.Dispose();
+      Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
+      Counters.Get("command-failed").Increment();
+      switch (result.Error) {
+        // Ignore these kinds of errors, no need for response.
+        case CommandError.UnknownCommand:
           return;
-        }
-        if (await CustomCommandCheck(msg, argPos, db))
-          return;
-        Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
-        Counters.Get("command-failed").Increment();
-        switch (result.Error) {
-          // Ignore these kinds of errors, no need for response.
-          case CommandError.UnknownCommand:
-            return;
-          default:
-            if(result is ExecuteResult) {
-              Log.Error(((ExecuteResult) result).Exception);
-            } else {
-              Log.Error(result.ErrorReason);
-            }
-            await msg.Respond(result.ErrorReason);
-            break;
-        }
+        default:
+          if(result is ExecuteResult) {
+            var executeResult = (ExecuteResult) result;
+            ErrorService.RegisterException(executeResult.Exception);
+            Log.Error(executeResult.Exception);
+          } else {
+            Log.Error(result.ErrorReason);
+          }
+          await msg.Respond(result.ErrorReason);
+          break;
       }
     }
   }
