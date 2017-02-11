@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Threading.Tasks;
 
-namespace Hourai {
+namespace Hourai.Model {
 
 [Table("temp_actions")]
 public class AbstractTempAction {

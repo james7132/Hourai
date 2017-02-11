@@ -1,19 +1,17 @@
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Hourai.Model;
 using System;
 using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class BlacklistService {
+public class BlacklistService : IService {
 
-  DiscordShardedClient Client { get; }
-
-  public BlacklistService(IDependencyMap dependencies) {
-    Client = dependencies.Get<DiscordShardedClient>();
-    Client.GuildAvailable += CheckBlacklist(false);
-    Client.JoinedGuild += CheckBlacklist(true);
+  public BlacklistService(DiscordShardedClient client) {
+    client.GuildAvailable += CheckBlacklist(false);
+    client.JoinedGuild += CheckBlacklist(true);
   }
 
   Func<IGuild, Task> CheckBlacklist(bool normalJoin) {

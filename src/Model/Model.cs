@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
-namespace Hourai {
+namespace Hourai.Model {
 
 public class BotDbContext : DbContext {
 

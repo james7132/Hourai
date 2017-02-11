@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Hourai {
+namespace Hourai.Model {
 
 [Table("commands")]
 public class CustomCommand {

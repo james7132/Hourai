@@ -6,24 +6,23 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Hourai {
+namespace Hourai.Model {
 
 public class DatabaseService {
 
+  [NotService]
   public BotDbContext Context { get; private set; }
-  DiscordShardedClient Client { get; }
 
   public BotDbContext CreateContext() {
     return (Context = new BotDbContext());
   }
 
-  public DatabaseService(IDependencyMap map) {
-    Client = map.Get<DiscordShardedClient>();
-    Client.ChannelCreated += AddChannel;
-    Client.UserJoined += AddUser;
-    Client.UserLeft += AddUser;
-    Client.JoinedGuild += AddGuild;
-    Client.MessageReceived += m => AddUser(m.Author);
+  public DatabaseService(DiscordShardedClient client) {
+    client.ChannelCreated += AddChannel;
+    client.UserJoined += AddUser;
+    client.UserLeft += AddUser;
+    client.JoinedGuild += AddGuild;
+    client.MessageReceived += m => AddUser(m.Author);
   }
 
   async Task AddUser(IUser iuser) {

@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Hourai.Model;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -8,27 +9,22 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class BotCommandService {
+public class BotCommandService : IService {
 
-  DiscordShardedClient Client { get; }
-  CommandService Commands { get; }
-  DatabaseService Database { get; }
-  ErrorService ErrorService { get; }
-  CounterSet Counters { get; }
-  IDependencyMap Map { get; }
+  public DiscordShardedClient Client { get; set; }
+  public CommandService Commands { get; set; }
+  public DatabaseService Database { get; set; }
+  public ErrorService ErrorService { get; set; }
+  public CounterSet Counters { get; set; }
+  public IDependencyMap Map { get; set; }
 
-  public BotCommandService(IDependencyMap dependencies) {
-    Client = dependencies.Get<DiscordShardedClient>();
+  public BotCommandService(DiscordShardedClient client, CommandService command) {
+    Commands = command;
+    Client = client;
     Client.MessageReceived += HandleMessage;
-    Database = dependencies.Get<DatabaseService>();
-    Commands = dependencies.Get<CommandService>();
-    Counters = dependencies.Get<CounterSet>();
-    ErrorService = dependencies.Get<ErrorService>();
-    Map = dependencies.Get<DependencyMap>();
-
     if (Commands != null) {
-      Log.Info("Loaded Modules: " + Commands.Modules.Select(c => c.Name).Join(", "));
-      Log.Info("Available Commands: " + Commands.Commands.Select(c => c.Name).Join(", "));
+      Log.Info("Loaded Modules: " + Commands.Modules.Select(c => c.Aliases.First()).Join(", "));
+      Log.Info("Available Commands: " + Commands.Commands.Select(c => c.Aliases.First()).Join(", "));
     }
   }
 
@@ -73,35 +69,35 @@ public class BotCommandService {
       // rather an object stating if the command executed succesfully)
       var context = new CommandContext(Client, msg);
 
-      var state = context.Channel.EnterTypingState();
-      var result = await Commands.ExecuteAsync(context, argPos, Map);
-      var guildChannel = msg.Channel as ITextChannel;
-      string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
-        : "in private channel.";
-      if (result.IsSuccess) {
-        Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
-        Counters.Get("command-success").Increment();
-        return;
-      }
-      if (await CustomCommandCheck(msg, argPos, db))
-        return;
-      state.Dispose();
-      Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
-      Counters.Get("command-failed").Increment();
-      switch (result.Error) {
-        // Ignore these kinds of errors, no need for response.
-        case CommandError.UnknownCommand:
+      using(context.Channel.EnterTypingState()) {
+        var result = await Commands.ExecuteAsync(context, argPos, Map);
+        var guildChannel = msg.Channel as ITextChannel;
+        string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
+          : "in private channel.";
+        if (result.IsSuccess) {
+          Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
+          Counters.Get("command-success").Increment();
           return;
-        default:
-          if(result is ExecuteResult) {
-            var executeResult = (ExecuteResult) result;
-            ErrorService.RegisterException(executeResult.Exception);
-            Log.Error(executeResult.Exception);
-          } else {
-            Log.Error(result.ErrorReason);
-          }
-          await msg.Respond(result.ErrorReason);
-          break;
+        }
+        if (await CustomCommandCheck(msg, argPos, db))
+          return;
+        Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
+        Counters.Get("command-failed").Increment();
+        switch (result.Error) {
+          // Ignore these kinds of errors, no need for response.
+          case CommandError.UnknownCommand:
+            return;
+          default:
+            if(result is ExecuteResult) {
+              var executeResult = (ExecuteResult) result;
+              ErrorService.RegisterException(executeResult.Exception);
+              Log.Error(executeResult.Exception);
+            } else {
+              Log.Error(result.ErrorReason);
+            }
+            await msg.Respond(result.ErrorReason);
+            break;
+        }
       }
     }
   }

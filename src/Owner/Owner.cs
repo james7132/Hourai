@@ -1,3 +1,9 @@
+using Discord;
+using Discord.Net;
+using Discord.Rest;
+using Discord.WebSocket;
+using Discord.Commands;
+using Hourai.Model;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -5,11 +11,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Discord;
-using Discord.Net;
-using Discord.Rest;
-using Discord.WebSocket;
-using Discord.Commands;
 
 namespace Hourai {
 

@@ -1,9 +1,10 @@
 using Discord;
 using Discord.Commands;
-using System.Threading.Tasks;
+using Hourai.Model;
 using Hourai.Preconditions;
+using System.Threading.Tasks;
 
-namespace Hourai.Modules {
+namespace Hourai.Admin {
 
 public partial class Admin {
 

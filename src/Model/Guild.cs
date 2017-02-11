@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Threading.Tasks;
 using Hourai.Preconditions;
 
-namespace Hourai {
+namespace Hourai.Model {
 
 [Table("guilds")]
 public class Guild {
