@@ -16,9 +16,9 @@ namespace Hourai.Modules {
 public partial class Admin : DatabaseHouraiModule {
 
   LogSet Logs { get; }
-  DiscordSocketClient Client { get; }
+  DiscordShardedClient Client { get; }
 
-  public Admin(DiscordSocketClient client, LogSet log, DatabaseService db) : base(db) {
+  public Admin(DiscordShardedClient client, LogSet log, DatabaseService db) : base(db) {
     Client = client;
     Logs = log;
   }

@@ -10,11 +10,11 @@ namespace Hourai {
 public class TempService {
 
   Bot Bot { get; }
-  DiscordSocketClient Client { get; }
+  DiscordShardedClient Client { get; }
 
   public TempService(IDependencyMap map) {
     Bot = map.Get<Bot>();
-    Client = map.Get<DiscordSocketClient>();
+    Client = map.Get<DiscordShardedClient>();
     Bot.RegularTasks += CheckTempActions;
   }
 

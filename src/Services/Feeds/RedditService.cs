@@ -13,14 +13,14 @@ namespace Hourai.Feeds.Services {
 
 public class RedditService {
 
-  DiscordSocketClient Client { get; }
+  DiscordShardedClient Client { get; }
   BotWebAgent Agent { get; }
   public Reddit Reddit { get; }
 
   ConcurrentDictionary<string, RedditSharp.Things.Subreddit> Subreddits { get; }
 
   public RedditService(IDependencyMap map) {
-    Client = map.Get<DiscordSocketClient>();
+    Client = map.Get<DiscordShardedClient>();
     Agent = new BotWebAgent(Config.RedditUsername,
         Config.RedditPassword,
         Config.RedditClientID,

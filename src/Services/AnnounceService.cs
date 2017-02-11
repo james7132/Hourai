@@ -1,4 +1,5 @@
 using Discord;
+using Discord.Net;
 using Discord.Commands;
 using Discord.WebSocket;
 using System;
@@ -10,10 +11,10 @@ namespace Hourai {
 
 public class AnnounceService {
 
-  DiscordSocketClient Client { get; }
+  DiscordShardedClient Client { get; }
 
   public AnnounceService(IDependencyMap map) {
-    Client = map.Get<DiscordSocketClient>();
+    Client = map.Get<DiscordShardedClient>();
     //TODO(james7132): make these messages configurable
     const string JoinMsg = "$mention has joined the server.";
     const string LeaveMsg = "**$user** has left the server.";
@@ -83,7 +84,18 @@ public class AnnounceService {
             context.Channels.Remove(channel);
             continue;
           }
-          await dChannel.Respond(ProcessMessage(defaultMsg, u));
+          var message = ProcessMessage(defaultMsg, u);
+          try {
+            await dChannel.Respond(message);
+          } catch(HttpException) {
+            Log.Error("Announcement failed. Notifying server owner.");
+            var guild = dChannel.Guild;
+            var owner = await guild.GetUserAsync(guild.OwnerId);
+            var dm = await owner.CreateDMChannelAsync();
+            await dm.SendMessageAsync($"There as an attempt to announce something in channel {dChannel.Mention} that failed. " +
+                $"The announcement was {message.DoubleQuote()}. Please make sure the bot has the approriate permissions to do so or " +
+                "or disable the feature in said channel. Check the help command for more information");
+          }
         }
       }
     };

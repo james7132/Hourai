@@ -17,7 +17,7 @@ namespace Hourai {
 public class Owner : DatabaseHouraiModule {
 
   Bot Bot { get; }
-  DiscordSocketClient Client { get; }
+  DiscordShardedClient Client { get; }
   CounterSet Counters { get; }
   LogService LogService { get; }
 
@@ -25,7 +25,7 @@ public class Owner : DatabaseHouraiModule {
                CounterSet counters,
                DatabaseService db,
                LogService logs,
-               DiscordSocketClient client) : base(db) {
+               DiscordShardedClient client) : base(db) {
     Bot = bot;
     Counters = counters;
     LogService = logs;

@@ -23,15 +23,15 @@ public class CounterService {
 
   public CounterService(IDependencyMap map) {
     Counters = map.Get<CounterSet>();
-    var client = map.Get<DiscordSocketClient>();
+    var client = map.Get<DiscordShardedClient>();
 
     client.MessageReceived += m => {
         var um = m as IUserMessage;
         if (um == null || m.Author.IsMe())
             return Task.CompletedTask;
-        var text =  um.Resolve(TagHandling.Remove, 
-                            TagHandling.Remove, 
-                            TagHandling.Remove, 
+        var text =  um.Resolve(TagHandling.Remove,
+                            TagHandling.Remove,
+                            TagHandling.Remove,
                             TagHandling.Remove)
                         .ToLowerInvariant();
         text = UrlRegex.Replace(text, string.Empty);
