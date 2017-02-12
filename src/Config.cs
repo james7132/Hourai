@@ -2,13 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Discord;
+using Discord.WebSocket;
 using Newtonsoft.Json;
 
 namespace Hourai {
 
 public class Config {
 
+#if DEBUG
+  public const string ConfigFilePath = "test_config.json";
+#else
   public const string ConfigFilePath = "config.json";
+#endif
 
   public static bool IsLoaded { get; private set; }
 
@@ -30,9 +35,6 @@ public class Config {
   public static string Token { get; set; }
 
   [JsonProperty]
-  public static ulong TestServer { get; set; }
-
-  [JsonProperty]
   public static string Version { get; set; }
 
   // The subdirectory name where the logs for each channel is logged.
@@ -41,6 +43,9 @@ public class Config {
 
   [JsonProperty]
   public static string DbFilename { get; set; } = "./bot.db";
+
+  [JsonProperty]
+  public static DiscordSocketConfig DiscordConfig { get; set; }
 
   // The default command prefix that triggers commands specified by the bot
   // This is override-able on a per-guild basis via "config prefix <x>"

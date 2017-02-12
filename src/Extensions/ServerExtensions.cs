@@ -6,23 +6,6 @@ namespace Hourai {
 
 public static class ServerExtensions {
 
-  public static bool AllowCommands(this IGuild guild)  {
-    if(guild == null)
-      return false;
-#if DEBUG
-    return guild.Id == Config.TestServer;
-#else
-    return guild.Id != Config.TestServer;
-#endif
-  }
-
-  public static bool AllowCommands(this IChannel channel) {
-    if (channel == null)
-      return false;
-    var gChannel = channel as IGuildChannel;
-    return gChannel == null || gChannel.Guild.AllowCommands();
-  }
-
   public static IEnumerable<IRole> Order(this IEnumerable<IRole> roles) =>
     roles.OrderByDescending(r => r.Position);
 

@@ -34,7 +34,7 @@ public class RedditService : IService {
   Embed PostToMessage(Post post) {
     var builder = new EmbedBuilder();
     builder.Title = post.Title;
-    Log.Debug(post.Permalink.ToString());
+    Log.Debug(post.Permalink);
     builder.Url = "https://reddit.com" + post.Permalink.ToString();
     var author = post.AuthorName;
     builder.Author = new EmbedAuthorBuilder() {
@@ -71,24 +71,29 @@ public class RedditService : IService {
           subreddit = await Reddit.GetSubredditAsync("/r/" + name);
           Subreddits[name] = subreddit;
         }
+        Log.Info(subreddit.ToString());
         var channels = await dbSubreddit.GetChannelsAsync(Client);
-        DateTimeOffset latest = dbSubreddit.LastPost ?? new DateTimeOffset();
-        foreach(var post in subreddit.New.Take(25)) {
-          try {
-            if (post.CreatedUTC <= latest)
-              break;
-            var title = $"Post in /r/{dbSubreddit.Name}:";
-            var embed = PostToMessage(post);
-            await Task.WhenAll(channels.Select(c =>
-                  c.SendMessageAsync(title, false, embed)));
-          } catch (HttpException exception) {
-            Log.Error(exception);
-          }
-          if (latest < post.CreatedUTC) {
-            latest = post.CreatedUTC;
-          }
-        }
-        dbSubreddit.LastPost = latest;
+        DateTimeOffset latest = dbSubreddit.LastPost ?? DateTimeOffset.UtcNow;
+        var latestInPage = latest;
+        await subreddit.New.Take(1).ForEachAsync(async page => {
+              foreach(var post in page) {
+                Log.Info(post.CreatedUTC);
+                try {
+                  if (post.CreatedUTC <= latest)
+                    break;
+                  var title = $"Post in /r/{dbSubreddit.Name}:";
+                  var embed = PostToMessage(post);
+                  await Task.WhenAll(channels.Select(c =>
+                        c.SendMessageAsync(title, false, embed)));
+                } catch (HttpException exception) {
+                  Log.Error(exception);
+                }
+                if (latestInPage < post.CreatedUTC) {
+                  latestInPage = post.CreatedUTC;
+                }
+              }
+            });
+        dbSubreddit.LastPost = latestInPage;
         await context.Save();
       }
     }

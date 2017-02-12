@@ -3,10 +3,12 @@
     "Version": "v0.3.0-alpha",
     "SuccessResponse": ":thumbsup:",
 
-    "TestServer": 208460178863947776,
-
     "LogDirectory": "logs",
     "DbFilename": "/db/bot_prod.db",
+
+    "DiscordConfig": {
+      "TotalShards": 1
+    },
 
     "Token": "",
 

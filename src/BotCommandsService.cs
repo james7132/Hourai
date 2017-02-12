@@ -60,11 +60,6 @@ public class BotCommandService : IService {
       if (!msg.HasCharPrefix(prefix, ref argPos))
         return;
 
-      if (!msg.Channel.AllowCommands()) {
-        Log.Info($"Attempted to run a command that is not allowed. {msg.Content.DoubleQuote()}");
-        return;
-      }
-
       // Execute the command. (result does not indicate a return value,
       // rather an object stating if the command executed succesfully)
       var context = new CommandContext(Client, msg);

@@ -4,6 +4,7 @@ using Hourai.Model;
 using Hourai.Preconditions;
 using RedditSharp;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Hourai.Feeds {
@@ -23,23 +24,28 @@ public partial class Feeds {
     [RequirePermission(GuildPermission.ManageGuild, Require.User | Require.BotOwnerOverride)]
     public async Task Add(string subreddit) {
       var channel = DbContext.GetChannel(Check.InGuild(Context.Message));
-      var dbSubreddit = DbContext.FindSubreddit(subreddit);
-      if (dbSubreddit == null) {
-        var sub = await Reddit.GetSubredditAsync("/r/" + subreddit);
-        if (sub == null) {
-          await RespondAsync($"Subreddit /r/{subreddit} does not exist");
-          return;
+      var subreddits = subreddit.Split('+');
+      var response = new StringBuilder();
+      foreach(var sub in subreddits) {
+        var dbSubreddit = DbContext.FindSubreddit(sub);
+        if (dbSubreddit == null) {
+          var redditSubreddit = await Reddit.GetSubredditAsync("/r/" + subreddit);
+          if (redditSubreddit == null) {
+            response.AppendLine($"Subreddit /r/{subreddit} does not exist");
+            continue;
+          }
+          dbSubreddit = await DbContext.GetSubreddit(sub);
         }
-        dbSubreddit = await DbContext.GetSubreddit(subreddit);
+        subreddit = dbSubreddit.Name;
+        if (dbSubreddit.Channels.Any(c => c.ChannelId == channel.Id)) {
+          await RespondAsync($"Subreddit /r/{subreddit} already posts to this channel.");
+        } else {
+          dbSubreddit.Channels.Add(new SubredditChannel { Channel = channel, Subreddit = dbSubreddit });
+          response.AppendLine($"Subreddit /r/{subreddit} added.");
+        }
       }
-      subreddit = dbSubreddit.Name;
-      if (dbSubreddit.Channels.Any(c => c.ChannelId == channel.Id)) {
-        await RespondAsync($"Subreddit /r/{subreddit} already posts to this channel.");
-      } else {
-        dbSubreddit.Channels.Add(new SubredditChannel { Channel = channel, Subreddit = dbSubreddit });
-        await DbContext.Save();
-        await RespondAsync($"Subreddit /r/{subreddit} added.");
-      }
+      await DbContext.Save();
+      await RespondAsync(response.ToString());
     }
 
     [Command("remove")]
