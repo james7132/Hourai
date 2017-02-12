@@ -57,14 +57,10 @@ namespace Hourai {
         return;
       StartTime = DateTime.Now;
       Log.Info("Initializing...");
-      var clientConfig = new DiscordSocketConfig() {
-        TotalShards = 1
-      };
-      var commandConfig = new CommandServiceConfig() {
+      Client = new DiscordShardedClient(Config.DiscordConfig);
+      CommandService = new CommandService(new CommandServiceConfig() {
         DefaultRunMode = RunMode.Sync
-      };
-      Client = new DiscordShardedClient(clientConfig);
-      CommandService = new CommandService(commandConfig);
+      });
       var map = new DependencyMap();
       map.Add(this);
       map.Add(Client);
