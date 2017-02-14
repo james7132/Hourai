@@ -65,14 +65,12 @@ public partial class Admin {
       Func<IGuildUser, AbstractTempAction> action = user => new TempBan {
          UserId = user.Id,
          GuildId = user.Guild.Id,
-         User = DbContext.GetUser(user),
-         Guild = DbContext.GetGuild(user.Guild),
+         User = Context.Author,
+         Guild = Context.DbGuild
       };
       Func<IGuildUser, AbstractTempAction, Task> postAction = async (user, tempAction) => {
         try {
-          var dmChannel = await user.CreateDMChannelAsync();
-          await dmChannel.Respond
-            ($"You have been temporarily banned from {guild.Name}. " +
+          await user.SendDMAsync($"You have been temporarily banned from {guild.Name}. " +
              $"You will be unbanned at {tempAction.End} UTC.");
         } catch(Exception e) {
           Log.Error(e);
@@ -96,8 +94,8 @@ public partial class Admin {
         return TempAction("add role", time, users, user => new TempRole {
            UserId = user.Id,
            GuildId = user.Guild.Id,
-           User = DbContext.GetUser(user),
-           Guild = DbContext.GetGuild(user.Guild),
+           User = Context.Author,
+           Guild = Context.DbGuild,
            RoleId = role.Id,
         });
       }

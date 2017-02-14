@@ -10,12 +10,9 @@ namespace Hourai.Admin {
 
 public class TempService : IService {
 
-  Bot Bot { get; }
-  DiscordShardedClient Client { get; }
+  public DiscordShardedClient Client { get; }
 
-  public TempService(IDependencyMap map) {
-    Bot = map.Get<Bot>();
-    Client = map.Get<DiscordShardedClient>();
+  public TempService() {
     Bot.RegularTasks += CheckTempActions;
   }
 

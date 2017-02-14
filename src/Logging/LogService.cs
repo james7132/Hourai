@@ -94,10 +94,10 @@ public class LogService {
   }
 
   void UserLogs() {
-    Client.UserJoined += UserLog("joined");
-    Client.UserLeft += UserLog("left");
-    Client.UserBanned += (u, g) => UserLog("banned")(u);
-    Client.UserUnbanned += (u, g) => UserLog("unbanned")(u);
+    Client.UserJoined += u => UserLog("joined")(u, u.Guild);
+    Client.UserLeft += u => UserLog("left")(u, u.Guild);
+    Client.UserBanned += UserLog("banned");
+    Client.UserUnbanned += UserLog("unbanned");
     Client.UserUpdated += UserUpdated;
     Client.GuildMemberUpdated += (b, a) => UserUpdated(b, a);
   }
@@ -207,16 +207,12 @@ public class LogService {
     };
   }
 
-  Func<IUser, Task> UserLog(string eventType) {
-    return delegate (IUser user) {
-      var guildUser = user as IGuildUser;
-      var selfUser = user as ISelfUser;
-      if (guildUser != null) {
-        Logs.GetGuild(guildUser.Guild).LogEvent($"User {eventType}: {guildUser.ToIDString()}");
-      } else if(selfUser != null) {
-        Log.Info($"User {selfUser.ToIDString()} {eventType}");
+  Func<IUser, IGuild, Task> UserLog(string eventType) {
+    return delegate (IUser user, IGuild guild) {
+      if (guild != null) {
+        return Logs.GetGuild(guild).LogEvent($"User {eventType}: {user.ToIDString()}");
       } else {
-        Log.Error($"Action {eventType.DoubleQuote()} occured to a user instance of type {user.GetType()} and was unhandled");
+        Log.Info($"User {user.ToIDString()} {eventType}");
       }
       return Task.CompletedTask;
     };

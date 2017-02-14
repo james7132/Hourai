@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 namespace Hourai {
 
 [RequireOwner]
-public class Owner : DatabaseHouraiModule {
+public partial class Owner : DatabaseHouraiModule {
 
   Bot Bot { get; }
   DiscordShardedClient Client { get; }
@@ -68,13 +68,6 @@ public class Owner : DatabaseHouraiModule {
     var guilds = Client.Guilds;
     var defaultChannels = guilds.Select(g => g.GetChannel(g.Id)).Cast<ITextChannel>();
     await Task.WhenAll(defaultChannels.Select(c => c.SendMessageAsync(broadcast)));
-  }
-
-  [Command("save")]
-  [Remarks("Forces the bot to flush and save all active information")]
-  public async Task SaveAll() {
-    await DbContext.Save();
-    await Success();
   }
 
   [Command("stats")]
@@ -206,8 +199,7 @@ public class Owner : DatabaseHouraiModule {
         uConfig.IsBlacklisted = blacklisted;
         if(!blacklisted)
           continue;
-        var dmChannel = await user.CreateDMChannelAsync();
-        await dmChannel.Respond("You have been blacklisted. The bot will no longer respond to your commands.");
+        await user.SendDMAsync("You have been blacklisted. The bot will no longer respond to your commands.");
       }
       await DbContext.Save();
       await Success();

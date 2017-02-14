@@ -40,7 +40,8 @@ public class AnnounceService : IService {
       var guildConfig = context.GetGuild(guild);
       string changes = null;
       var userString = GetUserString(user).Bold();
-      if(before.VoiceChannel?.Id != after.VoiceChannel?.Id) { if(after.VoiceChannel != null) {
+      if(before.VoiceChannel?.Id != after.VoiceChannel?.Id) {
+        if(after.VoiceChannel != null) {
           changes = userString + " joined " + after.VoiceChannel?.Name.Bold();
         } else {
           changes = userString + " left " + before.VoiceChannel?.Name.Bold();
@@ -86,11 +87,9 @@ public class AnnounceService : IService {
           try {
             await dChannel.Respond(message);
           } catch(HttpException) {
-            Log.Error("Announcement failed. Notifying server owner.");
-            var guild = dChannel.Guild;
-            var owner = await guild.GetUserAsync(guild.OwnerId);
-            var dm = await owner.CreateDMChannelAsync();
-            await dm.SendMessageAsync($"There as an attempt to announce something in channel {dChannel.Mention} that failed. " +
+            Log.Error($"Announcement {message.DoubleQuote()} failed. Notifying server owner.");
+            var owner = await dChannel.Guild.GetOwner();
+            await owner.SendDMAsync($"There as an attempt to announce something in channel {dChannel.Mention} that failed. " +
                 $"The announcement was {message.DoubleQuote()}. Please make sure the bot has the approriate permissions to do so or " +
                 "or disable the feature in said channel. Check the help command for more information");
           }

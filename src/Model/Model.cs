@@ -33,7 +33,10 @@ public class BotDbContext : DbContext {
   public bool AllowSave { get; set; } = true;
 
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
-    Config.Load();
+    if (!Config.IsLoaded) {
+      Config.Load();
+      Log.Info($"Database File: {Config.DbFilename}");
+    }
     optionsBuilder.UseSqlite($"Filename={Config.DbFilename}");
   }
 
@@ -92,7 +95,7 @@ public class BotDbContext : DbContext {
     Check.NotNull(iguild);
     return Guilds.Include(g => g.Commands)
       .Include(g => g.Channels)
-      .FirstOrDefault(g => g.Id == iguild.Id);
+      .SingleOrDefault(g => g.Id == iguild.Id);
   }
 
 
@@ -115,8 +118,7 @@ public class BotDbContext : DbContext {
 
   public User FindUser(IUser iuser) {
     Check.NotNull(iuser);
-    return Users.Include(u => u.Usernames)
-      .FirstOrDefault(u => u.Id == iuser.Id);
+    return Users.Include(u => u.Usernames).SingleOrDefault(u => u.Id == iuser.Id);
   }
 
   public User GetUser(IUser iuser) {
@@ -138,19 +140,16 @@ public class BotDbContext : DbContext {
 
   public GuildUser FindGuildUser(IGuildUser iuser) {
     Check.NotNull(iuser);
-    return GuildUsers.FirstOrDefault(u =>
+    return GuildUsers.SingleOrDefault(u =>
         (u.Id == iuser.Id) && (u.GuildId == iuser.Guild.Id));
   }
 
   public GuildUser GetGuildUser(IGuildUser iuser) {
     var user = FindGuildUser(iuser);
     if(user == null) {
-      user = new GuildUser(iuser);
-      user.User = FindUser(iuser);
-      if(user.User == null) {
-        user.User = new User(iuser);
-        Users.Add(user.User);
-      }
+      user = new GuildUser(iuser) {
+        User = GetUser(iuser)
+      };
       GuildUsers.Add(user);
     }
     return user;
@@ -167,7 +166,7 @@ public class BotDbContext : DbContext {
   public Channel FindChannel(IGuildChannel ichannel) {
     Check.NotNull(ichannel);
     return Channels.Include(c => c.Subreddits)
-      .FirstOrDefault(c =>
+      .SingleOrDefault(c =>
         (c.Id == ichannel.Id) && (c.GuildId == ichannel.Guild.Id));
   }
 
@@ -191,7 +190,7 @@ public class BotDbContext : DbContext {
 
   public Subreddit FindSubreddit(string name) {
     name = SanitizeSubredditName(name);
-    return Subreddits.Include(s => s.Channels).FirstOrDefault(s => s.Name == name);
+    return Subreddits.Include(s => s.Channels).SingleOrDefault(s => s.Name == name);
   }
 
   public async Task<Subreddit> GetSubreddit(string name) {
