@@ -15,11 +15,6 @@ public partial class Standard {
     public Commands(DatabaseService db) : base(db) {
     }
 
-    CustomCommand GetCommand(string name) {
-      var guild = DbContext.GetGuild(Check.NotNull(Context.Guild));
-      return guild?.GetCustomCommand(name);
-    }
-
     [Log]
     [Command]
     [GuildRateLimit(1, 1)]
@@ -27,14 +22,13 @@ public partial class Standard {
     [Remarks("Creates a custom command. Deletes an existing one if response is empty.")]
     public async Task CreateCommand(string name,
                                     [Remainder] string response = "") {
-      var guild = DbContext.GetGuild(Check.NotNull(Context.Guild));
-      var command = GetCommand(name);
+      var command = Context.DbGuild.GetCustomCommand(name);
       if (string.IsNullOrEmpty(response)) {
         if (command == null) {
           await RespondAsync($"Command {name.Code()} does not exist and thus cannot be deleted.");
           return;
         }
-        guild.Commands.Remove(command);
+        Context.DbGuild.Commands.Remove(command);
         DbContext.Commands.Remove(command);
         await DbContext.Save();
         await RespondAsync($"Custom command {name.Code()} has been deleted.");
@@ -45,9 +39,9 @@ public partial class Standard {
         command = new CustomCommand {
           Name = name,
           Response = response,
-          Guild = guild
+          Guild = Context.DbGuild
         };
-        guild.Commands.Add(command);
+        Context.DbGuild.Commands.Add(command);
         action = "created";
       } else {
         command.Response = response;
@@ -60,7 +54,7 @@ public partial class Standard {
     [Command("dump")]
     [Remarks("Dumps the base source text for a command.")]
     public Task CommandDump(string command) {
-      var customCommand = GetCommand(command);
+      var customCommand = Context.DbGuild.GetCustomCommand(command);
       if(customCommand == null)
         return RespondAsync($"No custom command named {command}");
       else
@@ -72,9 +66,8 @@ public partial class Standard {
     [ServerOwner]
     [Remarks("Sets the minimum role for creating custom commands.")]
     public async Task CommandRole(IRole role) {
-      var guild = DbContext.GetGuild(Check.NotNull(Context.Guild));
-      guild.SetMinimumRole(MinimumRole.Command, role);
-      await Success($"Set {role.Name.Code()} as the minimum role to create custom commnds");
+      Context.DbGuild.SetMinimumRole(MinimumRole.Command, role);
+      await Success($"Set {role.Name.Code()} as the minimum role to create custom commnds.");
     }
 
   }

@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public abstract class HouraiModule : ModuleBase {
+public abstract class HouraiModule : ModuleBase<HouraiCommandContext> {
 
   const string FailureResponse =
       "No target specified. Please specify at least one target.";

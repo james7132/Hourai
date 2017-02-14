@@ -12,14 +12,8 @@ namespace Hourai {
 
     public static ITextChannel InGuild(IMessage message) {
       if(!(message.Channel is ITextChannel))
-        throw new Exception("CommandUtility must be executed in a public channel");
+        throw new Exception("Command must be executed in a public channel");
       return (ITextChannel) message.Channel;
-    }
-
-    public static IDMChannel InPrivate(IMessage message) {
-      if(!(message.Channel is IDMChannel))
-        throw new Exception("CommandUtility must be executed in a private channel");
-      return (IDMChannel) message.Channel;
     }
   }
 
@@ -27,10 +21,6 @@ namespace Hourai {
 
     public static ITextChannel InGuild(IMessage message) {
       return message.Channel as ITextChannel;
-    }
-
-    public static IDMChannel InPrivate(IMessage message) {
-      return message.Channel as IDMChannel;
     }
 
   }

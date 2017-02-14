@@ -71,6 +71,9 @@ namespace Hourai {
 
       map.Add(ErrorService = new ErrorService());
       map.Add(new LogService(map, ExecutionDirectory));
+
+      Log.Info($"Database: {Config.DbFilename}");
+
       var entryAssembly = Assembly.GetEntryAssembly();
       await CommandService.AddModulesAsync(entryAssembly);
 

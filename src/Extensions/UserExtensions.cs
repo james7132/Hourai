@@ -19,6 +19,11 @@ public static class UserExtensions {
   public static bool IsBotOwner(this IUser user) => user.Id == Bot.Owner.Id;
   public static bool IsServerOwner(this IGuildUser user) => user.Guild.OwnerId == user.Id;
 
+  public static async Task SendDMAsync(this IUser user, string message) {
+    var channel = await user.CreateDMChannelAsync();
+    await channel.SendMessageAsync(message);
+  }
+
   public static Task BanAsync(this IGuildUser user, int pruneDays = 0) {
     Log.Info($"Ban Days: {pruneDays}");
     return Check.NotNull(user).Guild.AddBanAsync(user, pruneDays);

@@ -61,7 +61,7 @@ public partial class Standard : DatabaseHouraiModule {
     var builder = new StringBuilder();
     var server = Check.NotNull(Context.Guild);
     var guild = DbContext.GetGuild(server);
-    var owner = await server.GetUserAsync(server.OwnerId);
+    var owner = await server.GetOwner();
     var channels = await server.GetChannelsAsync();
     var textChannels = channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
     var voiceChannels = channels.OfType<IVoiceChannel>().Order().Select(ch => ch.Name.Code());
@@ -99,7 +99,6 @@ public partial class Standard : DatabaseHouraiModule {
   [Remarks("Gets information on a specified users")]
   public Task WhoIs(IGuildUser user) {
     const int spacing = 120;
-    var dbUser = DbContext.GetUser(user);
     var builder = new StringBuilder()
       .AppendLine($"{Context.Message.Author.Mention}:")
       .AppendLine($"Username: {user.Username.Code()} {(user.IsBot ? "(BOT)".Code() : string.Empty )}")
@@ -113,7 +112,7 @@ public partial class Standard : DatabaseHouraiModule {
       builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
     if(!string.IsNullOrEmpty(user.AvatarUrl))
       builder.AppendLine(user.AvatarUrl);
-    var usernames = dbUser.Usernames.Where(u => u.Name != user.Username);
+    var usernames = Context.Author.Usernames.Where(u => u.Name != user.Username);
     if(usernames.Any()) {
       using(builder.MultilineCode()) {
         foreach(var username in usernames.OrderByDescending(u => u.Date)) {

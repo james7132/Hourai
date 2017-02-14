@@ -37,7 +37,7 @@ public class Help : DatabaseHouraiModule {
 
   async Task<string> CommandList(ModuleInfo module) {
     var commands = await GetUsableCommands(module);
-    return commands.Select(c => c.Aliases.First())
+    return commands.Select(c => c.GetFullName())
         .Concat(module.Submodules.Select(m => m.Name + "*"))
         .Select(n => n.Code())
         .Join(", ");
@@ -87,7 +87,7 @@ public class Help : DatabaseHouraiModule {
 
   async Task<string> ModuleHelp(ModuleInfo module) {
     var builder = new StringBuilder();
-    builder.AppendLine(module.Aliases.First().Bold());
+    builder.AppendLine(module.GetFullName().Bold());
     if (!string.IsNullOrEmpty(module.Summary))
       builder.AppendLine(module.Summary);
     if (!string.IsNullOrEmpty(module.Remarks))
@@ -117,7 +117,7 @@ public class Help : DatabaseHouraiModule {
       var command = commands.First();
       using(builder.Code()) {
         builder.Append(guild.Prefix)
-          .Append(command.Aliases.First())
+          .Append(command.GetFullName())
           .Append(" ")
           .AppendLine(command.Parameters.Select(p => {
                 var param = p.Name;
@@ -155,7 +155,7 @@ public class Help : DatabaseHouraiModule {
       var other = commands.Skip(1);
       if(other.Any()) {
         builder.Append("Related commands:")
-          .AppendLine(other.Select(c => c.Aliases.First().Code()).Distinct().Join(", "));
+          .AppendLine(other.Select(c => c.GetFullName().Code()).Distinct().Join(", "));
       }
       return builder.ToString();
     }

@@ -15,7 +15,7 @@ public class LogAttribute : DocumentedPreconditionAttribute {
       CommandInfo commandInfo,
       IDependencyMap dependencies) {
     await dependencies.Get<LogSet>().GetGuild(context.Guild)
-      .LogEvent($"{context.User.ToIDString()} used the command {commandInfo.Aliases.First().DoubleQuote()} in " +
+      .LogEvent($"{context.User.ToIDString()} used the command {commandInfo.GetFullName().DoubleQuote()} in " +
           $"{context.Channel.ToIDString()}.");
     return PreconditionResult.FromSuccess();
   }

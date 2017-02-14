@@ -23,8 +23,8 @@ public class BotCommandService : IService {
     Client = client;
     Client.MessageReceived += HandleMessage;
     if (Commands != null) {
-      Log.Info("Loaded Modules: " + Commands.Modules.Select(c => c.Aliases.First()).Join(", "));
-      Log.Info("Available Commands: " + Commands.Commands.Select(c => c.Aliases.First()).Join(", "));
+      Log.Info("Loaded Modules: " + Commands.Modules.Select(c => c.GetFullName()).Join(", "));
+      Log.Info("Available Commands: " + Commands.Commands.Select(c => c.GetFullName()).Join(", "));
     }
   }
 
@@ -40,12 +40,11 @@ public class BotCommandService : IService {
       // Marks where the command begins
       var argPos = 0;
 
+      Guild dbGuild = null;
+      char prefix = Config.CommandPrefix;
       var guild = (m.Channel as IGuildChannel)?.Guild;
-      char prefix;
-      if(guild == null) {
-        prefix = Config.CommandPrefix;
-      } else {
-        var dbGuild = db.GetGuild(guild);
+      if(guild != null) {
+        dbGuild = db.GetGuild(guild);
         var prefixString = dbGuild.Prefix;
         if(string.IsNullOrEmpty(prefixString)) {
           prefix = Config.CommandPrefix;
@@ -60,40 +59,42 @@ public class BotCommandService : IService {
       if (!msg.HasCharPrefix(prefix, ref argPos))
         return;
 
+
       // Execute the command. (result does not indicate a return value,
       // rather an object stating if the command executed succesfully)
-      var context = new CommandContext(Client, msg);
+      var context = new HouraiCommandContext(Client, msg, user, dbGuild);
 
-      using(context.Channel.EnterTypingState()) {
-        var result = await Commands.ExecuteAsync(context, argPos, Map);
-        var guildChannel = msg.Channel as ITextChannel;
-        string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
-          : "in private channel.";
-        if (result.IsSuccess) {
-          Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
-          Counters.Get("command-success").Increment();
-          return;
-        }
-        if (await CustomCommandCheck(msg, argPos, db))
-          return;
-        Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
-        Counters.Get("command-failed").Increment();
-        switch (result.Error) {
-          // Ignore these kinds of errors, no need for response.
-          case CommandError.UnknownCommand:
+      if (Commands.Search(context, argPos).IsSuccess) {
+        using(context.Channel.EnterTypingState()) {
+          var result = await Commands.ExecuteAsync(context, argPos, Map);
+          var guildChannel = msg.Channel as ITextChannel;
+          string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
+            : "in private channel.";
+          if (result.IsSuccess) {
+            Log.Info($"Command successfully executed {msg.Content.DoubleQuote()} {channelMsg}");
+            Counters.Get("command-success").Increment();
             return;
-          default:
-            if(result is ExecuteResult) {
-              var executeResult = (ExecuteResult) result;
-              ErrorService.RegisterException(executeResult.Exception);
-              Log.Error(executeResult.Exception);
-            } else {
-              Log.Error(result.ErrorReason);
-            }
-            await msg.Respond(result.ErrorReason);
-            break;
+          }
+          switch (result.Error) {
+            // Ignore these kinds of errors, no need for response.
+            case CommandError.UnknownCommand:
+              return;
+            default:
+              Log.Error($"Command failed {msg.Content.DoubleQuote()} {channelMsg} ({result.Error})");
+              Counters.Get("command-failed").Increment();
+              if(result is ExecuteResult) {
+                var executeResult = (ExecuteResult) result;
+                ErrorService.RegisterException(executeResult.Exception);
+                Log.Error(executeResult.Exception);
+              } else {
+                Log.Error(result.ErrorReason);
+              }
+              await msg.Respond(result.ErrorReason);
+              break;
+          }
         }
-      }
+      } else if (await CustomCommandCheck(msg, argPos, db))
+        return;
     }
   }
 

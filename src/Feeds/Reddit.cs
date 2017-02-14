@@ -54,8 +54,7 @@ public partial class Feeds {
       var name = DbContext.SanitizeSubredditName(subreddit);
       var channel = Check.InGuild(Context.Message);
       var dbSubreddit = DbContext.FindSubreddit(subreddit);
-      Log.Debug(dbSubreddit);
-      var subChannel = DbContext.SubredditChannels.FirstOrDefault(s =>
+      var subChannel = DbContext.SubredditChannels.SingleOrDefault(s =>
           s.Name == name &&
           s.ChannelId == channel.Id &&
           s.GuildId == channel.Guild.Id);

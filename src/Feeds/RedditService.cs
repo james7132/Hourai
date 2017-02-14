@@ -34,7 +34,6 @@ public class RedditService : IService {
   Embed PostToMessage(Post post) {
     var builder = new EmbedBuilder();
     builder.Title = post.Title;
-    Log.Debug(post.Permalink);
     builder.Url = "https://reddit.com" + post.Permalink.ToString();
     var author = post.AuthorName;
     builder.Author = new EmbedAuthorBuilder() {
@@ -71,13 +70,11 @@ public class RedditService : IService {
           subreddit = await Reddit.GetSubredditAsync("/r/" + name);
           Subreddits[name] = subreddit;
         }
-        Log.Info(subreddit.ToString());
         var channels = await dbSubreddit.GetChannelsAsync(Client);
         DateTimeOffset latest = dbSubreddit.LastPost ?? DateTimeOffset.UtcNow;
         var latestInPage = latest;
         await subreddit.New.Take(1).ForEachAsync(async page => {
               foreach(var post in page) {
-                Log.Info(post.CreatedUTC);
                 try {
                   if (post.CreatedUTC <= latest)
                     break;
