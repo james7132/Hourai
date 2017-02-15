@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Hourai.Model;
-using Hourai.Preconditions;
 
 namespace Hourai.Migrations
 {
@@ -93,6 +92,7 @@ namespace Hourai.Migrations
 
                     b.Property<string>("Prefix")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasDefaultValue("~")
                         .HasMaxLength(1);
 

@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using Discord.Net;
 using Discord.Commands;
 using Hourai.Model;
+using Hourai.Extensions;
 using RedditSharp;
 using RedditSharp.Things;
 using System;
@@ -38,9 +39,7 @@ public class RedditService : IService {
     var author = post.AuthorName;
     builder.Author = new EmbedAuthorBuilder() {
       Name = author,
-      Url = "https://reddit.com/u/" + author
-    };
-    if (!post.NSFW && !post.IsSelfPost) {
+      Url = "https://reddit.com/u/" + author }; if (!post.NSFW && !post.IsSelfPost) {
       builder.ThumbnailUrl = post.Thumbnail.ToString();
     }
     if (post.IsSelfPost) {
@@ -58,12 +57,13 @@ public class RedditService : IService {
   }
 
   async Task CheckReddits() {
-    Log.Debug("CHECKING SUBREDDITS");
     using (var context = new BotDbContext()) {
       foreach (var dbSubreddit in context.Subreddits) {
         context.Entry(dbSubreddit).Collection(s => s.Channels).Load();
-        if (!dbSubreddit.Channels.Any())
+        if (!dbSubreddit.Channels.Any()) {
+          context.Subreddits.Remove(dbSubreddit);
           continue;
+        }
         var name = dbSubreddit.Name;
         RedditSharp.Things.Subreddit subreddit;
         if (!Subreddits.TryGetValue(name, out subreddit)) {
@@ -73,21 +73,23 @@ public class RedditService : IService {
         var channels = await dbSubreddit.GetChannelsAsync(Client);
         DateTimeOffset latest = dbSubreddit.LastPost ?? DateTimeOffset.UtcNow;
         var latestInPage = latest;
-        await subreddit.New.Take(1).ForEachAsync(async page => {
+        await subreddit.New.Take(1).ForEachAwait(async page => {
               foreach(var post in page) {
-                try {
-                  if (post.CreatedUTC <= latest)
-                    break;
-                  var title = $"Post in /r/{dbSubreddit.Name}:";
-                  var embed = PostToMessage(post);
-                  await Task.WhenAll(channels.Select(c =>
-                        c.SendMessageAsync(title, false, embed)));
-                } catch (HttpException exception) {
-                  Log.Error(exception);
+                if (post.CreatedUTC <= latest)
+                  break;
+                var title = $"Post in /r/{dbSubreddit.Name}:";
+                var embed = PostToMessage(post);
+                foreach (var channel in channels) {
+                  try {
+                    await channel.SendMessageAsync(title, false, embed);
+                  } catch (Exception e) {
+                    Log.Error(e);
+                  }
                 }
                 if (latestInPage < post.CreatedUTC) {
                   latestInPage = post.CreatedUTC;
                 }
+                await Task.Delay(500);
               }
             });
         dbSubreddit.LastPost = latestInPage;

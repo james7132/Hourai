@@ -6,7 +6,7 @@ using Discord.WebSocket;
 using System.Threading.Tasks;
 using Hourai.Preconditions;
 
-namespace Hourai.Modules {
+namespace Hourai.Feeds {
 
 [RequireContext(ContextType.Guild)]
 [RequireModule(ModuleType.Feeds)]

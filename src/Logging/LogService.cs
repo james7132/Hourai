@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Threading.Tasks;
 using System.Text;
 
@@ -48,27 +49,29 @@ public class LogService {
 
   void ClientLogs() {
     Client.Log += delegate(LogMessage message) {
+      var messageStr = message.ToString(null, true, false);
       switch (message.Severity) {
         case LogSeverity.Critical:
         case LogSeverity.Error:
-          Log.Error(message.ToString());
+          Log.Error(messageStr);
           break;
         case LogSeverity.Warning:
-          Log.Warning(message.ToString());
+          Log.Warning(messageStr);
           break;
         case LogSeverity.Info:
-          Log.Info(message.ToString());
+          Log.Info(messageStr);
           break;
         case LogSeverity.Verbose:
         case LogSeverity.Debug:
-          Log.Debug(message.ToString());
+          Log.Debug(messageStr);
           break;
         default:
           throw new ArgumentOutOfRangeException();
       }
-      if(message.Exception != null) {
-        Log.Error(message.Exception);
-        ErrorService.RegisterException(message.Exception);
+      var exception = message.Exception;
+      if (exception != null) {
+        if (!(exception is WebSocketException && exception.Message.Contains("closed")))
+          ErrorService.RegisterException(message.Exception);
       }
       return Task.CompletedTask;
     };
@@ -76,8 +79,8 @@ public class LogService {
 
 
   void GuildLogs() {
-    Client.GuildAvailable += GuildLog("Discovered");
-    Client.GuildUnavailable += GuildLog("Lost");
+    //Client.GuildAvailable += GuildLog("Discovered");
+    //Client.GuildUnavailable += GuildLog("Lost");
     Client.GuildUpdated += GuildUpdated;
   }
 
