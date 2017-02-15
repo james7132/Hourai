@@ -30,13 +30,14 @@
     <PackageReference Include="System.Reflection.Extensions" Version="4.3.0-*" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="1.1.0-*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="1.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="1.0.0-msbuild2-final" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="1.1.0">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <DotNetCliToolReference Include="Microsoft.EntityFrameworkCore.Tools.DotNet" Version="1.1.0-preview4-final" />
+    <DotNetCliToolReference Include="Microsoft.EntityFrameworkCore.Tools.DotNet" Version="1.0.0-msbuild2-final" />
   </ItemGroup>
 
 </Project>

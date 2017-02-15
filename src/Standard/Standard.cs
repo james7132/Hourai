@@ -32,8 +32,10 @@ public partial class Standard : DatabaseHouraiModule {
 
   [Command("choose")]
   [ChannelRateLimit(3, 1)]
-  [Remarks("Chooses between several provided choices")]
+  [Remarks("Chooses between several provided choices. Seperated by spaces. Quote choices with spaces in them.")]
   public Task Choose(params string[] choices) {
+    if (choices.Length <= 0)
+      return RespondAsync($"There is nothing to choose from!");
     return RespondAsync($"I choose {choices[new Random().Next(choices.Length)]}!");
   }
 
