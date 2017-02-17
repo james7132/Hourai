@@ -14,21 +14,22 @@ using System.Threading.Tasks;
 
 namespace Hourai.Standard {
 
-[RequireModule(ModuleType.Standard)]
 public partial class Standard : DatabaseHouraiModule {
 
   LogSet Logs { get; }
+  DiscordShardedClient Client { get; }
 
-  public Standard(DatabaseService db, LogSet logs) : base(db) {
+  public Standard(DatabaseService db,
+                  DiscordShardedClient client,
+                  LogSet logs) : base(db) {
+    Client = client;
     Logs = logs;
   }
 
   [Command("echo")]
   [ChannelRateLimit(3, 1)]
   [Remarks("Has the bot repeat what you say")]
-  public async Task Echo([Remainder] string remainder) {
-    await ReplyAsync(remainder);
-  }
+  public Task Echo([Remainder] string remainder) => ReplyAsync(remainder);
 
   [Command("choose")]
   [ChannelRateLimit(3, 1)]
@@ -41,7 +42,7 @@ public partial class Standard : DatabaseHouraiModule {
 
   [Command("avatar")]
   [ChannelRateLimit(3, 1)]
-  [Remarks("Gets the avatar url of all mentioned users.")]
+  [Remarks("Gets the avatar url of the provided users. If no user is provided, your avatar is shown instead.")]
   public Task Avatar(params IGuildUser[] users) {
     IUser[] allUsers = users;
     if (users.Length <= 0)
@@ -54,6 +55,22 @@ public partial class Standard : DatabaseHouraiModule {
   [Remarks("Provides a invite link to add this bot to your server")]
   public Task Invite() =>
     RespondAsync("Use this link to add me to your server: https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF");
+
+  [Command("playing")]
+  [ChannelRateLimit(1, 1)]
+  [RequireContext(ContextType.Guild)]
+  [Remarks("Gets all users currently playing a certain game.")]
+  public async Task IsPlaying([Remainder] string game) {
+    var guild = Check.NotNull(Context.Guild);
+    var users = await guild.GetUsersAsync();
+    var regex = new Regex(game, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    var players = from user in users
+                  where user.Game.HasValue && regex.IsMatch(user.Game?.Name)
+                  group user.Username by user.Game.Value.Name into g
+                  select $"{g.Key.Bold()}: {g.Join(", ")}";
+    var results = players.Join("\n");
+    await RespondAsync(!string.IsNullOrEmpty(results) ? results : "No results.");
+  }
 
   [Command("serverinfo")]
   [ChannelRateLimit(3, 1)]
@@ -100,9 +117,8 @@ public partial class Standard : DatabaseHouraiModule {
   [ChannelRateLimit(3, 1)]
   [Remarks("Gets information on a specified users")]
   public Task WhoIs(IGuildUser user) {
-    const int spacing = 120;
+    const int spacing = 80;
     var builder = new StringBuilder()
-      .AppendLine($"{Context.Message.Author.Mention}:")
       .AppendLine($"Username: {user.Username.Code()} {(user.IsBot ? "(BOT)".Code() : string.Empty )}")
       .AppendLine($"Nickname: {user.Nickname.NullIfEmpty()?.Code() ?? "N/A".Code()}")
       .AppendLine($"Current Game: {user.Game?.Name.Code() ?? "N/A".Code()}")
@@ -110,11 +126,14 @@ public partial class Standard : DatabaseHouraiModule {
       .AppendLine($"Joined on: {user.JoinedAt?.ToString().Code() ?? "N/A".Code()}")
       .AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
     var roles = user.GetRoles().Where(r => r.Id != user.Guild.EveryoneRole.Id);
+    var count = Client.Guilds.Where(g => g.GetUser(user.Id) != null).Count();
+    if (count > 1)
+      builder.AppendLine($"Seen on **{count - 1}** other servers.");
     if(roles.Any())
       builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
     if(!string.IsNullOrEmpty(user.AvatarUrl))
       builder.AppendLine(user.AvatarUrl);
-    var usernames = Context.Author.Usernames.Where(u => u.Name != user.Username);
+    var usernames = DbContext.GetUser(user).Usernames.Where(u => u.Name != user.Username);
     if(usernames.Any()) {
       using(builder.MultilineCode()) {
         foreach(var username in usernames.OrderByDescending(u => u.Date)) {
@@ -132,81 +151,13 @@ public partial class Standard : DatabaseHouraiModule {
   [Remarks("Returns the mentioned channels' topics. If none are mentioned, the current channel is used.")]
   public Task Topic(params IGuildChannel[] channels) {
     if(channels.Length <= 0)
-      channels = new[] { Context.Message.Channel as IGuildChannel };
+      channels = new[] { Context.Channel as IGuildChannel };
     var builder = new StringBuilder();
     foreach(var channel in channels.OfType<ITextChannel>())
       builder.AppendLine($"{channel.Name}: {channel.Topic}");
     return Context.Message.Respond(builder.ToString());
   }
 
-
-  [Group("module")]
-  [RequireContext(ContextType.Guild)]
-  [RequirePermission(GuildPermission.ManageGuild, Require.User)]
-  public class Module : DatabaseHouraiModule {
-
-    CommandService Commands { get; }
-
-    public Module(CommandService commands, DatabaseService db) : base(db) {
-      Commands = commands;
-    }
-
-    IEnumerable<string> Modules => Commands.Modules
-      .Select(m => m.Name).ToList();
-
-    [Command]
-    [ChannelRateLimit(3, 1)]
-    [Remarks("Lists all modules available. Enabled ones are highligted.")]
-    public async Task ModuleList() {
-      var config = DbContext.GetGuild(Check.NotNull(Context.Guild));
-      var modules = Enum.GetValues(typeof(ModuleType));
-      await Context.Message.Respond(modules.OfType<ModuleType>()
-          .Select(m => (config.IsModuleEnabled(m))
-            ? m.ToString().Bold().Italicize()
-            : m.ToString())
-          .Join(", "));
-    }
-
-    [Log]
-    [Command("enable")]
-    [GuildRateLimit(2, 60)]
-    [Remarks("Enables a module for this server.")]
-    public async Task ModuleEnable(params string[] modules) {
-      var response = new StringBuilder();
-      var config = DbContext.GetGuild(Check.NotNull(Context.Guild));
-      foreach (var module in modules) {
-        ModuleType type;
-        if(Enum.TryParse(module, true, out type)) {
-          config.AddModule(type);
-          response.AppendLine($"{Config.SuccessResponse}: Module {module} enabled.");
-        } else {
-          response.AppendLine("Module {module} not found.");
-        }
-      }
-      await DbContext.Save();
-      await Context.Message.Respond(response.ToString());
-    }
-
-    [Log]
-    [Command("disable")]
-    [GuildRateLimit(2, 60)]
-    [Remarks("Disable a module for this server.")]
-    public async Task ModuleDisable(params string[]  modules) {
-      var response = new StringBuilder();
-      var config = DbContext.GetGuild(Check.NotNull(Context.Guild));
-      foreach (var module in modules) {
-        ModuleType type;
-        if(Enum.TryParse(module, true, out type)) {
-          config.RemoveModule(type);
-          response.AppendLine($"{Config.SuccessResponse}: Module {module} disabled.");
-        } else {
-          response.AppendLine("Module {module} not found.");
-        }
-      }
-      await DbContext.Save();
-      await Context.Message.Respond(response.ToString());
-    }
-  }
 }
 
 }

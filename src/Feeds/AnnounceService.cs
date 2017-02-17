@@ -21,6 +21,7 @@ public class AnnounceService : IService {
     client.UserLeft += u => GuildMessage(c => c.LeaveMessage, LeaveMsg)(u, u.Guild);
     client.UserBanned += GuildMessage(c => c.BanMessage, BanMsg);
     client.UserVoiceStateUpdated += VoiceStateChanged;
+    client.UserPresenceUpdated += PresenceChanged;
   }
 
   async Task PresenceChanged(Optional<SocketGuild> guild,
@@ -29,11 +30,22 @@ public class AnnounceService : IService {
                              SocketPresence after){
     if (!guild.IsSpecified)
       return;
-    var wasStreaming = after.Game?.StreamType != StreamType.NotStreaming;
-    var isStreaming = after.Game?.StreamType != StreamType.NotStreaming;
-    if (wasStreaming && !isStreaming) {
-      await ForEachChannel(guild.Value, c => c.VoiceMessage, ProcessMessage("**$user** stopped streaming.", user));
+    var bG = before.Game;
+    var aG = after.Game;
+    var wasStreaming = bG.HasValue && bG?.StreamType != StreamType.NotStreaming;
+    var isStreaming = aG.HasValue && aG?.StreamType != StreamType.NotStreaming;
+    if (!wasStreaming && !isStreaming) {
+      return;
+    } else if (wasStreaming && !isStreaming) {
+      await ForEachChannel(guild.Value, c => c.StreamMessage, ProcessMessage("**$user** stopped streaming.", user));
     } else if (!wasStreaming && isStreaming) {
+      var game = aG.Value;
+      await ForEachChannel(guild.Value, c => c.StreamMessage,
+          ProcessMessage($"**$user** is now streaming **{game.Name}**: <{game.StreamUrl}>.", user));
+    } else if (wasStreaming && isStreaming && before.Game?.Name != after.Game?.Name) {
+      var game = aG.Value;
+      await ForEachChannel(guild.Value, c => c.StreamMessage,
+          ProcessMessage($"**$user** is now streaming **{game.Name}**: <{game.StreamUrl}>.", user));
     }
   }
 
@@ -73,16 +85,20 @@ public class AnnounceService : IService {
       SocketVoiceState before,
       SocketVoiceState after) {
     var guild = (user as IGuildUser)?.Guild;
-    if(guild == null)
+    if (guild == null || before.VoiceChannel?.Id == after.VoiceChannel?.Id)
       return;
-    string changes = null;
     var userString = GetUserString(user).Bold();
-    if(before.VoiceChannel?.Id != after.VoiceChannel?.Id) {
-      if(after.VoiceChannel != null) {
-        changes = userString + " joined " + after.VoiceChannel?.Name.Bold();
-      } else {
-        changes = userString + " left " + before.VoiceChannel?.Name.Bold();
-      }
+    var bv = before.VoiceChannel != null;
+    var av = after.VoiceChannel != null;
+    var bName = before.VoiceChannel?.Name?.Bold();
+    var aName = after.VoiceChannel?.Name?.Bold();
+    string changes = null;
+    if(bv && av) {
+      changes = $"{userString} moved from {bName} to {aName}";
+    } else if (av) {
+      changes = $"{userString} joined {aName}";
+    } else if (bv) {
+      changes = $"{userString} left {bName}";
     }
 
     if(string.IsNullOrEmpty(changes))
@@ -97,7 +113,7 @@ public class AnnounceService : IService {
   }
 
   Func<IUser, IGuild, Task> GuildMessage(Func<Channel, bool> msg, string defaultMsg) {
-    return async (u, g) => ForEachChannel(g, msg, ProcessMessage(defaultMsg, u));
+    return (u, g) => ForEachChannel(g, msg, ProcessMessage(defaultMsg, u));
   }
 
 }

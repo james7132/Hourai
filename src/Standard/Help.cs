@@ -30,15 +30,32 @@ public class Help : DatabaseHouraiModule {
   [Command("help")]
   [UserRateLimit(1, 1)]
   public Task GetHelp([Remainder] string command = "") {
+    Context.IsHelp = true;
     if(string.IsNullOrEmpty(command))
       return GeneralHelp();
     return SpecficHelp(command);
   }
 
+  async Task<IEnumerable<ModuleInfo>> GetUsableModules(IEnumerable<ModuleInfo> modules)  {
+    var usableModules = new List<ModuleInfo>();
+    foreach(var module in modules) {
+      var commands = await GetUsableCommands(module);
+      if (commands.Any()) {
+        usableModules.Add(module);
+        continue;
+      }
+      var submodules = await GetUsableModules(module.Submodules);
+      if (submodules.Any())
+        usableModules.Add(module);
+    }
+    return usableModules;
+  }
+
   async Task<string> CommandList(ModuleInfo module) {
     var commands = await GetUsableCommands(module);
+    var modules = await GetUsableModules(module.Submodules);
     return commands.Select(c => c.GetFullName())
-        .Concat(module.Submodules.Select(m => m.Name + "*"))
+        .Concat(modules.Select(m => m.GetFullName() + "*"))
         .Select(n => n.Code())
         .Join(", ");
   }

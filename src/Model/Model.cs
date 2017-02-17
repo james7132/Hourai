@@ -35,7 +35,7 @@ public class BotDbContext : DbContext {
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
     if (!Config.IsLoaded) {
       Config.Load();
-      Log.Info($"Database File: {Config.DbFilename}");
+      Console.WriteLine($"Database File: {Config.DbFilename}");
     }
     optionsBuilder.UseSqlite($"Filename={Config.DbFilename}");
   }
@@ -104,6 +104,7 @@ public class BotDbContext : DbContext {
     if(guild == null) {
       guild = new Guild(iguild);
       Guilds.Add(guild);
+      Entry(guild).Collection(g => g.Channels).Load();
     }
     return guild;
   }

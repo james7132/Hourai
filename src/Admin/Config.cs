@@ -19,7 +19,7 @@ public partial class Admin {
     [Command("prefix")]
     [GuildRateLimit(1, 60)]
     [Remarks("Sets the bot's command prefix for this server.")]
-    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    [RequirePermission(GuildPermission.ManageGuild, Require.User | Require.BotOwnerOverride)]
     public async Task Prefix([Remainder] string prefix) {
       if(string.IsNullOrEmpty(prefix)) {
         await RespondAsync("Cannot set bot prefix to an empty result");

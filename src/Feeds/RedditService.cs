@@ -44,8 +44,9 @@ public class RedditService : IService {
     }
     if (post.IsSelfPost) {
       var selfText = post.SelfText;
-      if (selfText.Length > 300) {
-        builder.Description = selfText.Substring(300) + "...";
+      const int maxLength = 500;
+      if (selfText.Length > maxLength) {
+        builder.Description = selfText.Substring(0, maxLength) + "...";
       } else {
         builder.Description = selfText;
       }
