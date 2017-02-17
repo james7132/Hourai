@@ -9,6 +9,8 @@ namespace Hourai {
     public User Author { get; }
     public Guild DbGuild { get; }
 
+    public bool IsHelp { get; set; }
+
     public HouraiCommandContext(IDiscordClient client,
                                 IUserMessage msg,
                                 User author,

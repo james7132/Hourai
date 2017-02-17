@@ -76,22 +76,6 @@ public static class DiscordExtensions {
     }
   }
 
-  public static string ToProcessedString(this IMessage message) {
-    var userMessage = message as IUserMessage;
-    if(userMessage == null)
-      return message.Content;
-    var content = userMessage.Resolve(TagHandling.Name,
-        TagHandling.Name,
-        TagHandling.Name,
-        TagHandling.Sanitize);
-    var guildChannel = message.Channel as IGuildChannel;
-    var guild = guildChannel?.Guild;
-    var baseLog = $"{message.Author?.Username ?? "Unknown User"}: {content}";
-    var attachments = message.Attachments.Select(a => a.Url).Join(" ");
-    var embeds = message.Embeds.Select(a => a.Url).Join(" ");
-    return baseLog + attachments + embeds;
-  }
-
   public static IEnumerable<IRole> GetRoles(this IGuildUser user) {
     return Check.NotNull(user).RoleIds.Select(r => user.Guild.GetRole(r));
   }

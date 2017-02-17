@@ -15,41 +15,35 @@ public partial class Feeds {
     public Announce(DatabaseService db) : base(db) {
     }
 
-    [Log]
     [Command("join")]
-    [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server join messages in the current channel")]
-    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Join() => SetMessage(c => c.JoinMessage = !c.JoinMessage,
         c => c.JoinMessage,
         "Join");
 
-    [Log]
     [Command("leave")]
-    [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server leave messages in the current channel")]
-    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Leave() => SetMessage(c => c.LeaveMessage = !c.LeaveMessage,
         c => c.LeaveMessage,
         "Leave");
 
-    [Log]
     [Command("ban")]
-    [ChannelRateLimit(1, 1)]
     [Remarks("Enables or disables server ban messages in the current channel")]
-    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
     public Task Ban() => SetMessage(c => c.BanMessage = !c.BanMessage,
         c => c.BanMessage,
         "Ban");
 
-    [Log]
     [Command("voice")]
-    [ChannelRateLimit(1, 1)]
-    [Remarks("Enables or disables voice messages in the current channel")]
-    [RequirePermission(GuildPermission.ManageGuild, Require.BotOwnerOverride)]
+    [Remarks("Enables or disables voice announcement messages in the current channel")]
     public Task Voice() => SetMessage(c => c.VoiceMessage = !c.VoiceMessage,
         c => c.VoiceMessage,
         "Voice");
+
+    [Command("stream")]
+    [Remarks("Enables or disables stream announcement messages in the current channel")]
+    public Task Stream() => SetMessage(c => c.StreamMessage = !c.StreamMessage,
+        c => c.StreamMessage,
+        "Stream");
 
     static string Status(bool status) => status ? "enabled" : "disabled";
 

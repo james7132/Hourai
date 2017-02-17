@@ -22,6 +22,7 @@ public class Channel {
   public bool LeaveMessage { get; set; }
   public bool BanMessage { get; set; }
   public bool VoiceMessage { get; set; }
+  public bool StreamMessage { get; set; }
 
   //[Required]
   //public ICollection<CounterEvent> Events { get; set; }

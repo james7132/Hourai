@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Preconditions;
+using Hourai.Extensions;
 using System;
 using System.Globalization;
 using System.IO;
@@ -13,7 +14,6 @@ using System.Threading.Tasks;
 namespace Hourai.Admin {
 
 [RequireContext(ContextType.Guild)]
-[RequireModule(ModuleType.Admin)]
 public partial class Admin : DatabaseHouraiModule {
 
   LogSet Logs { get; }
@@ -96,6 +96,16 @@ public partial class Admin : DatabaseHouraiModule {
     ForEvery(users, Do(u => u.UndeafenAsync()));
 
   [Log]
+  [Command("move")]
+  [GuildRateLimit(1, 1)]
+  [RequirePermission(GuildPermission.MoveMembers)]
+  [Remarks("Moves all users from the `src` voice channel to `dst`.")]
+  public async Task Move(IVoiceChannel src, IVoiceChannel dst) =>
+    await ForEvery(await src.GetUsersAsync().Flatten(), Do(u => u.ModifyAsync(x => {
+              x.Channel = new Optional<IVoiceChannel>(dst);
+            })));
+
+  [Log]
   [Command("nickname")]
   [UserRateLimit(1, 1)]
   [ChannelRateLimit(4, 1)]
@@ -135,37 +145,35 @@ public partial class Admin : DatabaseHouraiModule {
       else
         return RespondAsync("No mod events logged thus far.");
     } catch(Exception e) {
-      Log.Error("hello");
       Log.Error(e);
     }
-    Log.Error("Done");
     return Task.CompletedTask;
   }
 
-  //[Group("reaction")]
-  //public class Reactions : HouraiModule {
+  [Group("reaction")]
+  public class Reactions : HouraiModule {
 
-    //[Command("dump")]
-    //[ChannelRateLimit(1, 1)]
-    //public async Task Dump(int count = 100) {
-      //var users = new HashSet<IUser>();
-      //await Context.Channel.GetMessagesAsync(count).ForEachAwait(async m => {
-          //foreach(var message in m.OfType<IUserMessage>()) {
-            //if (!message.Reactions.Any())
-              //continue;
-            //foreach(var reaction in message.Reactions.Keys) {
-              //var name = reaction.Name;
-              //if (reaction.Id.HasValue)
-                //name += ":" + reaction.Id;
-              //Log.Info((await message.GetReactionUsersAsync(name)).Count);
-              //Log.Info(name + " " + reaction.ToString());
-            //}
-          //}
-        //});
-      //await RespondAsync(users.Select(u => u.Mention).Join(", "));
-    //}
+    [Command("dump")]
+    [ChannelRateLimit(1, 1)]
+    public async Task Dump(int count = 100) {
+      var users = new HashSet<IUser>();
+      await Context.Channel.GetMessagesAsync(count).ForEachAwait(async m => {
+          foreach(var message in m.OfType<IUserMessage>()) {
+            if (!message.Reactions.Any())
+              continue;
+            foreach(var reaction in message.Reactions.Keys) {
+              var name = reaction.Name;
+              if (reaction.Id.HasValue)
+                name += ":" + reaction.Id;
+              Log.Info((await message.GetReactionUsersAsync(name)).Count);
+              Log.Info(name + " " + reaction.ToString());
+            }
+          }
+        });
+      await RespondAsync(users.Select(u => u.Mention).Join(", "));
+    }
 
-  //}
+  }
 
   [Group("server")]
   public class ServerGroup : HouraiModule {

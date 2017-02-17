@@ -14,6 +14,9 @@ public class LogAttribute : DocumentedPreconditionAttribute {
       ICommandContext context,
       CommandInfo commandInfo,
       IDependencyMap dependencies) {
+    var hContext = context as HouraiCommandContext;
+    if (hContext != null && hContext.IsHelp)
+      return PreconditionResult.FromSuccess();
     await dependencies.Get<LogSet>().GetGuild(context.Guild)
       .LogEvent($"{context.User.ToIDString()} used the command {commandInfo.GetFullName().DoubleQuote()} in " +
           $"{context.Channel.ToIDString()}.");

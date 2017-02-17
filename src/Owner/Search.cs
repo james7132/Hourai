@@ -31,7 +31,7 @@ namespace Hourai {
           );
 
       [Command("user")]
-      public async Task User(string username) =>
+      public Task User(string username) =>
         SearchDB(username, regex =>
              from user in DbContext.Users
              where regex.IsMatch(user.Username)
