@@ -46,6 +46,7 @@ public class Guild {
     }
   }
 
+  [Obsolete("No longer supported")]
   public ModuleType Modules { get; set; }
 
   public Guild() {
@@ -55,26 +56,6 @@ public class Guild {
 
   public Guild(IGuild guild) : this() {
     Id = Check.NotNull(guild).Id;
-  }
-
-  public bool AddModule(ModuleType module) {
-    var before = Modules;
-    Modules |= module;
-    return Modules != before;
-  }
-
-  public bool IsModuleEnabled(ModuleType module) {
-    return (Modules & module) != 0;
-  }
-
-  public bool RemoveModule(ModuleType module) {
-    var before = Modules;
-    Modules &= ~module;
-    return Modules != before;
-  }
-
-  public CustomCommand GetCustomCommand(string name) {
-    return Commands?.Find(c => c.Name == name);
   }
 
   public ulong? GetMinimumRole(MinimumRole roleType) {

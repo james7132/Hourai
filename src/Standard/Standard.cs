@@ -14,17 +14,9 @@ using System.Threading.Tasks;
 
 namespace Hourai.Standard {
 
-public partial class Standard : DatabaseHouraiModule {
+public partial class Standard : HouraiModule {
 
-  LogSet Logs { get; }
-  DiscordShardedClient Client { get; }
-
-  public Standard(DatabaseService db,
-                  DiscordShardedClient client,
-                  LogSet logs) : base(db) {
-    Client = client;
-    Logs = logs;
-  }
+  public LogSet Logs { get; set; }
 
   [Command("echo")]
   [ChannelRateLimit(3, 1)]
@@ -37,7 +29,7 @@ public partial class Standard : DatabaseHouraiModule {
   public Task Choose(params string[] choices) {
     if (choices.Length <= 0)
       return RespondAsync($"There is nothing to choose from!");
-    return RespondAsync($"I choose {choices[new Random().Next(choices.Length)]}!");
+    return RespondAsync($"I choose {choices.SelectRandom()}!");
   }
 
   [Command("avatar")]
@@ -47,7 +39,7 @@ public partial class Standard : DatabaseHouraiModule {
     IUser[] allUsers = users;
     if (users.Length <= 0)
       allUsers = new[] {Context.Message.Author};
-    return RespondAsync(allUsers.Select(u => u.AvatarUrl).Join("\n"));
+    return RespondAsync(allUsers.Select(u => u.GetAvatarUrl(AvatarFormat.Gif)).Join("\n"));
   }
 
   [Command("invite")]
@@ -79,7 +71,7 @@ public partial class Standard : DatabaseHouraiModule {
   public async Task ServerInfo() {
     var builder = new StringBuilder();
     var server = Check.NotNull(Context.Guild);
-    var guild = DbContext.GetGuild(server);
+    var guild = Db.GetGuild(server);
     var owner = await server.GetOwner();
     var channels = await server.GetChannelsAsync();
     var textChannels = channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
@@ -116,24 +108,33 @@ public partial class Standard : DatabaseHouraiModule {
   [Command("whois")]
   [ChannelRateLimit(3, 1)]
   [Remarks("Gets information on a specified users")]
-  public Task WhoIs(IGuildUser user) {
+  public async Task WhoIs(IUser user) {
     const int spacing = 80;
+    var guildUser = user as IGuildUser;
     var builder = new StringBuilder()
-      .AppendLine($"Username: {user.Username.Code()} {(user.IsBot ? "(BOT)".Code() : string.Empty )}")
-      .AppendLine($"Nickname: {user.Nickname.NullIfEmpty()?.Code() ?? "N/A".Code()}")
-      .AppendLine($"Current Game: {user.Game?.Name.Code() ?? "N/A".Code()}")
-      .AppendLine($"ID: {user.Id.ToString().Code()}")
-      .AppendLine($"Joined on: {user.JoinedAt?.ToString().Code() ?? "N/A".Code()}")
+      .AppendLine($"Username: ``{user.Username}#{user.Discriminator}`` {(user.IsBot ? "(BOT)".Code() : string.Empty )} ({user.Id})");
+    if (guildUser != null)
+      builder.AppendLine($"Nickname: {guildUser.Nickname.NullIfEmpty()?.Code() ?? "N/A".Code()}");
+    builder.AppendLine($"Current Game: {user.Game?.Name.Code() ?? "N/A".Code()}")
       .AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
-    var roles = user.GetRoles().Where(r => r.Id != user.Guild.EveryoneRole.Id);
+    if (guildUser != null)
+      builder.AppendLine($"Joined on: {guildUser.JoinedAt?.ToString().Code() ?? "N/A".Code()}");
     var count = Client.Guilds.Where(g => g.GetUser(user.Id) != null).Count();
+    var bans = await Task.WhenAll(Client.Guilds.Where(g => g.CurrentUser.GuildPermissions.BanMembers).Select(g => g.GetBansAsync()));
+    var banCount = bans.Where(banSet => banSet.Any(b => b.User.Id == user.Id)).Count();
     if (count > 1)
-      builder.AppendLine($"Seen on **{count - 1}** other servers.");
-    if(roles.Any())
-      builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
-    if(!string.IsNullOrEmpty(user.AvatarUrl))
-      builder.AppendLine(user.AvatarUrl);
-    var usernames = DbContext.GetUser(user).Usernames.Where(u => u.Name != user.Username);
+        builder.AppendLine($"Seen on **{count - 1}** other servers.");
+    if (banCount > 1)
+      builder.AppendLine($"Banned from **{banCount - 1}** other servers.");
+    if (guildUser != null) {
+      var roles = guildUser.GetRoles().Where(r => r.Id != guildUser.Guild.EveryoneRole.Id);
+      if(roles.Any())
+        builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
+    }
+    var avatar = user.GetAvatarUrl(AvatarFormat.Gif);
+    if(!string.IsNullOrEmpty(avatar))
+      builder.AppendLine(avatar);
+    var usernames = Db.GetUser(user).Usernames.Where(u => u.Name != user.Username);
     if(usernames.Any()) {
       using(builder.MultilineCode()) {
         foreach(var username in usernames.OrderByDescending(u => u.Date)) {
@@ -143,7 +144,7 @@ public partial class Standard : DatabaseHouraiModule {
         }
       }
     }
-    return RespondAsync(builder.ToString());
+    await RespondAsync(builder.ToString());
   }
 
   [Command("topic")]

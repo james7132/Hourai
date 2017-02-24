@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Net;
 using Discord.Commands;
+using Discord.WebSocket;
 using Hourai.Model;
 using System;
 using System.Net;
@@ -12,6 +13,9 @@ using System.Threading.Tasks;
 namespace Hourai {
 
 public abstract class HouraiModule : ModuleBase<HouraiCommandContext> {
+
+  public BotDbContext Db => Context.Db;
+  public DiscordShardedClient Client => Context.Client;
 
   const string FailureResponse =
       "No target specified. Please specify at least one target.";
@@ -75,17 +79,6 @@ public abstract class HouraiModule : ModuleBase<HouraiCommandContext> {
   protected static Func<IGuildChannel, Task<string>> Do(Func<IGuildChannel, Task> task,
                                                        bool ignoreErrors = false)
     => Do(task, ignoreErrors, c => c.Name);
-
-}
-
-public abstract class DatabaseHouraiModule : HouraiModule {
-
-  protected DatabaseService Database { get; }
-  protected BotDbContext DbContext => Database.Context;
-
-  protected DatabaseHouraiModule(DatabaseService db) {
-    Database = db;
-  }
 
 }
 

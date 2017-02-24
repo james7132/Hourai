@@ -1,9 +1,7 @@
 using Discord;
 using Discord.Net;
 using Discord.Rest;
-using Discord.WebSocket;
-using Discord.Commands;
-using Hourai.Model;
+using Discord.WebSocket; using Discord.Commands; using Hourai.Model;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -15,23 +13,11 @@ using System.Threading.Tasks;
 namespace Hourai {
 
 [RequireOwner]
-public partial class Owner : DatabaseHouraiModule {
+public partial class Owner : HouraiModule {
 
-  Bot Bot { get; }
-  DiscordShardedClient Client { get; }
-  CounterSet Counters { get; }
-  LogService LogService { get; }
-
-  public Owner(Bot bot,
-               CounterSet counters,
-               DatabaseService db,
-               LogService logs,
-               DiscordShardedClient client) : base(db) {
-    Bot = bot;
-    Counters = counters;
-    LogService = logs;
-    Client = client;
-  }
+  public Bot Bot { get; set; }
+  public CounterSet Counters { get; set; }
+  public LogService LogService { get; set; }
 
   [Command("log")]
   [Remarks("Gets the log for the bot.")]
@@ -57,7 +43,7 @@ public partial class Owner : DatabaseHouraiModule {
   [Command("kill")]
   [Remarks("Turns off the bot.")]
   public async Task Kill() {
-    await DbContext.Save();
+    await Db.Save();
     await Success();
     Bot.Exit();
   }
@@ -65,7 +51,7 @@ public partial class Owner : DatabaseHouraiModule {
   [Command("broadcast")]
   [Remarks("Broadcasts a message to the default channel of all servers the bot is connected to.")]
   public async Task Broadcast([Remainder] string broadcast) {
-    var guilds = Client.Guilds;
+    var guilds = Context.Client.Guilds;
     var defaultChannels = guilds.Select(g => g.GetChannel(g.Id)).Cast<ITextChannel>();
     await Task.WhenAll(defaultChannels.Select(c => c.SendMessageAsync(broadcast)));
   }
@@ -74,17 +60,20 @@ public partial class Owner : DatabaseHouraiModule {
   [Remarks("Gets statistics about the current running bot instance")]
   public async Task Stats() {
     var builder = new StringBuilder();
-    var guilds = Client.Guilds;
+    var users = (from guild in Client.Guilds
+                from user in guild.Users
+                select user.Id).Distinct().Count();
     builder.AppendLine("Stats".Bold())
-      .AppendLine($"Guilds: Visible: {guilds.Count}, Stored: {DbContext.Guilds.Count()}")
-      .AppendLine($"Users: Visible: {Client.Guilds.Sum(g => g.Users.Count)}, Stored: {DbContext.Users.Count()}")
-      .AppendLine($"Channels: Visible: {Client.Guilds.Sum(g => g.Channels.Count)}, Stored: {DbContext.Channels.Count()}")
+      .AppendLine($"Guilds: Visible: {Client.Guilds.Count}, Stored: {Db.Guilds.Count()}")
+      .AppendLine($"Users: Visible: {users}, Stored: {Db.Users.Count()}")
+      .AppendLine($"Guild Users: Visible: {Client.Guilds.Sum(g => g.Users.Count)}, Stored: {Db.GuildUsers.Count()}")
+      .AppendLine($"Channels: Visible: {Client.Guilds.Sum(g => g.Channels.Count)}, Stored: {Db.Channels.Count()}")
       .AppendLine()
       .AppendLine($"Start Time: {Bot.StartTime}")
       .AppendLine($"Uptime: {Bot.Uptime}")
       .AppendLine()
       .AppendLine($"Client: Discord .NET v{DiscordConfig.Version} (API v{DiscordConfig.APIVersion}, {DiscordSocketConfig.GatewayEncoding})")
-      .AppendLine($"Latency: {Client.Latency}ms")
+      .AppendLine($"Latency: {Context.Client.Latency}ms")
       .AppendLine($"Total Memory Used: {BytesToMemoryValue(GC.GetTotalMemory(false))}");
     await Context.Message.Respond(builder.ToString());
   }
@@ -92,24 +81,24 @@ public partial class Owner : DatabaseHouraiModule {
   [Command("refresh")]
   public async Task Refresh() {
     Log.Info("Starting refresh...");
-    foreach(var guild in Client.Guilds) {
-      DbContext.AllowSave = false;
-      var guildDb = DbContext.GetGuild(guild);
+    foreach(var guild in Context.Client.Guilds) {
+      Db.AllowSave = false;
+      var guildDb = Db.GetGuild(guild);
       Log.Info($"Refreshing {guild.Name}...");
       var channels = guild.Channels.OfType<ITextChannel>();
       try {
         foreach(var channel in channels)
-          DbContext.GetChannel(channel);
+          Db.GetChannel(channel);
         foreach(var user in guild.Users) {
           if(user.Username == null) {
             Log.Error($"Found user {user.Id} without a username");
             continue;
           }
-          DbContext.GetGuildUser(user);
+          Db.GetGuildUser(user);
         }
       } finally {
-        DbContext.AllowSave = true;
-        await DbContext.Save();
+        Db.AllowSave = true;
+        await Db.Save();
       }
     }
     Log.Info("Done refreshing.");
@@ -147,12 +136,17 @@ public partial class Owner : DatabaseHouraiModule {
       await Context.Message.Respond("No provided image.");
       return;
     }
-    Log.Info(url);
-    using(var client = new HttpClient())
-    using(var contentStream = await client.GetStreamAsync(url)) {
-      await Bot.User.ModifyAsync(u => {
-          u.Avatar = new Optional<Image?>(new Discord.Image(contentStream));
-        });
+    using (var httpClient = new HttpClient())
+    {
+        using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url)))
+        {
+            using (Stream contentStream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync())
+            {
+                await Bot.User.ModifyAsync(u => {
+                    u.Avatar = new Optional<Image?>(new Discord.Image(contentStream));
+                  });
+            }
+        }
     }
     await Success();
   }
@@ -166,10 +160,7 @@ public partial class Owner : DatabaseHouraiModule {
   }
 
   [Group("blacklist")]
-  public class Blacklist : DatabaseHouraiModule {
-
-    public Blacklist(DatabaseService db) : base(db) {
-    }
+  public class Blacklist : HouraiModule {
 
     static bool SettingToBlacklist(string setting) {
       if(setting == "-")
@@ -181,9 +172,9 @@ public partial class Owner : DatabaseHouraiModule {
     [Remarks("Blacklists the current server and makes the bot leave.")]
     public async Task Server(string setting = "+") {
       var guild = Check.NotNull(Context.Guild);
-      var config = DbContext.GetGuild(guild);
+      var config = Db.GetGuild(guild);
       config.IsBlacklisted = true;
-      await DbContext.Save();
+      await Db.Save();
       await Success();
       await guild.LeaveAsync();
     }
@@ -193,7 +184,7 @@ public partial class Owner : DatabaseHouraiModule {
     public async Task User(string setting, params IGuildUser[] users) {
       var blacklisted = SettingToBlacklist(setting);
       foreach(var user in users) {
-        var uConfig = DbContext.GetUser(user);
+        var uConfig = Db.GetUser(user);
         if(uConfig == null)
           continue;
         uConfig.IsBlacklisted = blacklisted;
@@ -201,7 +192,7 @@ public partial class Owner : DatabaseHouraiModule {
           continue;
         await user.SendDMAsync("You have been blacklisted. The bot will no longer respond to your commands.");
       }
-      await DbContext.Save();
+      await Db.Save();
       await Success();
     }
 

@@ -10,10 +10,7 @@ public partial class Admin {
 
   [Group("config")]
   [RequireContext(ContextType.Guild)]
-  public class ConfigGroup : DatabaseHouraiModule {
-
-    public ConfigGroup(DatabaseService db) : base(db) {
-    }
+  public class ConfigGroup : HouraiModule {
 
     [Log]
     [Command("prefix")]
@@ -25,9 +22,9 @@ public partial class Admin {
         await RespondAsync("Cannot set bot prefix to an empty result");
         return;
       }
-      var guild = DbContext.GetGuild(Context.Guild);
+      var guild = Db.GetGuild(Context.Guild);
       guild.Prefix = prefix.Substring(0, 1);
-      await DbContext.Save();
+      await Db.Save();
       await Success($"Bot command prefix set to {guild.Prefix.ToString().Code()}");
     }
 

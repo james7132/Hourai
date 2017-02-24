@@ -62,7 +62,7 @@ public class BotCommandService : IService {
 
       // Execute the command. (result does not indicate a return value,
       // rather an object stating if the command executed succesfully)
-      var context = new HouraiCommandContext(Client, msg, user, dbGuild);
+      var context = new HouraiCommandContext(Client, msg, db, user, dbGuild);
 
       if (Commands.Search(context, argPos).IsSuccess) {
         using(context.Channel.EnterTypingState()) {
@@ -93,24 +93,23 @@ public class BotCommandService : IService {
               break;
           }
         }
-      } else if (await CustomCommandCheck(msg, argPos, db))
+      } else if (await CustomCommandCheck(context, argPos, db))
         return;
     }
   }
 
-  async Task<bool> CustomCommandCheck(IMessage msg, int argPos, BotDbContext context) {
-    var customCommandCheck = msg.Content.Substring(argPos).SplitWhitespace();
+  async Task<bool> CustomCommandCheck(ICommandContext msg, int argPos, BotDbContext context) {
+    var customCommandCheck = msg.Message.Content.Substring(argPos).SplitWhitespace();
     if (customCommandCheck.Length <= 0)
       return false;
     var commandName = customCommandCheck[0];
     argPos += commandName.Length;
-    var guild = (msg.Channel as ITextChannel)?.Guild;
-    if(guild == null)
+    if (msg.Guild == null)
       return false;
-    var command = context.Commands.FirstOrDefault(c => c.GuildId == guild.Id && c.Name == commandName);
+    var command = context.Commands.Find(msg.Guild.Id, commandName);
     if (command == null)
       return false;
-    await command.Execute(msg, msg.Content.Substring(argPos));
+    await command.Execute(msg.Message, msg.Message.Content.Substring(argPos));
     Counters.Get("custom-command-executed").Increment();
     return true;
   }

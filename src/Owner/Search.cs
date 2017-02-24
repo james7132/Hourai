@@ -14,32 +14,26 @@ namespace Hourai {
   public partial class Owner {
 
     [Group("search")]
-    public class Search : DatabaseHouraiModule {
-
-      DiscordShardedClient Client { get; }
-
-      public Search(DatabaseService db, DiscordShardedClient client) : base(db) {
-        Client = client;
-      }
+    public class Search : HouraiModule {
 
       [Command("server")]
       public Task Server(string name) =>
-        SearchDB(name, regex =>
-             from guild in DbContext.Guilds.Select(g => Client.GetGuild(g.Id))
-             where guild != null && regex.IsMatch(guild.Name)
+        SearchBot(name, regex =>
+             from guild in Context.Client.Guilds
+             where regex.IsMatch(guild.Name)
              select guild.ToIDString().Code()
           );
 
       [Command("user")]
       public Task User(string username) =>
-        SearchDB(username, regex =>
-             from user in DbContext.Users
+        SearchBot(username, regex =>
+             from user in Db.Users
              where regex.IsMatch(user.Username)
              select $"{user.Username} ({user.Id})"
           );
 
 
-      async Task SearchDB(string name, Func<Regex, IEnumerable<string>> resultFun) {
+      async Task SearchBot(string name, Func<Regex, IEnumerable<string>> resultFun) {
         var regex = new Regex(name, RegexOptions.Compiled | RegexOptions.IgnoreCase);
         var results = resultFun(regex);
         if (!results.Any())

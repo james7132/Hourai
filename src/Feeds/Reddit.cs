@@ -13,30 +13,27 @@ public partial class Feeds {
 
   [Group("reddit")]
   [Remarks("Reddit related commands. Used to set up, configure, or remove reddit feeds.")]
-  public class RedditModule : DatabaseHouraiModule {
+  public class RedditModule : HouraiModule {
 
-    Reddit Reddit { get; }
-
-    public RedditModule(RedditService redditService, DatabaseService db) : base(db) {
-      Reddit = redditService.Reddit;
-    }
+    public RedditService Service { get; set; }
+    Reddit Reddit => Service?.Reddit;
 
     [Command("add")]
     [RequirePermission(GuildPermission.ManageGuild, Require.User | Require.BotOwnerOverride)]
     [Remarks("Adds subreddit feed(s) to the current channel. New posts on reddit will be automatically linked.")]
     public async Task Add(params string[] subreddits) {
-      var channel = DbContext.GetChannel(Check.InGuild(Context.Message));
+      var channel = Db.GetChannel(Check.InGuild(Context.Message));
       var response = new StringBuilder();
       foreach(var sub in subreddits) {
-        var subreddit = sub;
-        var dbSubreddit = DbContext.FindSubreddit(sub);
+        var subreddit = Subreddit.SanitizeName(sub);
+        var dbSubreddit = Db.Subreddits.Find(sub);
         if (dbSubreddit == null) {
           var redditSubreddit = await Reddit.GetSubredditAsync("/r/" + sub);
           if (redditSubreddit == null) {
             response.AppendLine($"Subreddit /r/{subreddit} does not exist");
             continue;
           }
-          dbSubreddit = await DbContext.GetSubreddit(sub);
+          dbSubreddit = Db.GetSubreddit(sub);
         }
         subreddit = dbSubreddit.Name;
         if (dbSubreddit.Channels.Any(c => c.ChannelId == channel.Id)) {
@@ -46,7 +43,7 @@ public partial class Feeds {
           response.AppendLine($"Subreddit /r/{subreddit} added.");
         }
       }
-      await DbContext.Save();
+      await Db.Save();
       await RespondAsync(response.ToString());
     }
 
@@ -57,18 +54,15 @@ public partial class Feeds {
       var channel = Check.InGuild(Context.Message);
       var builder = new StringBuilder();
       foreach(var subreddit in subreddits) {
-        var name = DbContext.SanitizeSubredditName(subreddit);
-        var dbSubreddit = DbContext.FindSubreddit(subreddit);
-        var subChannel = DbContext.SubredditChannels.SingleOrDefault(s =>
-            s.Name == name &&
-            s.ChannelId == channel.Id &&
-            s.GuildId == channel.Guild.Id);
+        var name = Subreddit.SanitizeName(subreddit);
+        var dbSubreddit = Db.Subreddits.Find(name);
+        var subChannel = Db.SubredditChannels.Find(name, channel.Id);
         if (subChannel != null){
-          DbContext.SubredditChannels.Remove(subChannel);
-          await DbContext.Save();
+          Db.SubredditChannels.Remove(subChannel);
+          await Db.Save();
           if (dbSubreddit != null && dbSubreddit.Channels.Count <= 0) {
-            DbContext.Subreddits.Remove(dbSubreddit);
-            await DbContext.Save();
+            Db.Subreddits.Remove(dbSubreddit);
+            await Db.Save();
           }
         } else {
           builder.AppendLine($"Subreddit /r/{name} already does not post to this channel.");
@@ -84,7 +78,7 @@ public partial class Feeds {
     [Command("list")]
     [Remarks("Lists all subreddits that feed into this channel.")]
     public async Task List() {
-      var channel = DbContext.GetChannel(Check.InGuild(Context.Message));
+      var channel = Db.GetChannel(Check.InGuild(Context.Message));
       if (!channel.Subreddits.Any())
         await RespondAsync("No subreddits currently tied to this channel");
       else

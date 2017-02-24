@@ -38,12 +38,11 @@ public class User {
       return;
     Log.Info($"User updated username: {Username} => {name} ({Id})");
     Username = name;
-    var newUsername = new Username {
+    Usernames.Add(new Username {
       User = this,
-           Date = DateTimeOffset.Now,
-           Name = Username
-    };
-    Usernames.Add(newUsername);
+      Date = DateTimeOffset.Now,
+      Name = Username
+    });
   }
 
 }

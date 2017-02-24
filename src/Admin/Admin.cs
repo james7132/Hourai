@@ -14,15 +14,10 @@ using System.Threading.Tasks;
 namespace Hourai.Admin {
 
 [RequireContext(ContextType.Guild)]
-public partial class Admin : DatabaseHouraiModule {
+public partial class Admin : HouraiModule {
 
-  LogSet Logs { get; }
-  DiscordShardedClient Client { get; }
-
-  public Admin(DiscordShardedClient client, LogSet log, DatabaseService db) : base(db) {
-    Client = client;
-    Logs = log;
-  }
+  public LogSet Logs { get; set; }
+  public DiscordShardedClient Client { get; set; }
 
   [Log]
   [Command("kick")]
@@ -101,9 +96,7 @@ public partial class Admin : DatabaseHouraiModule {
   [RequirePermission(GuildPermission.MoveMembers)]
   [Remarks("Moves all users from the `src` voice channel to `dst`.")]
   public async Task Move(IVoiceChannel src, IVoiceChannel dst) =>
-    await ForEvery(await src.GetUsersAsync().Flatten(), Do(u => u.ModifyAsync(x => {
-              x.Channel = new Optional<IVoiceChannel>(dst);
-            })));
+    await ForEvery(await src.GetUsersAsync().Flatten(), Do(u => u.ModifyAsync(x => { x.Channel = new Optional<IVoiceChannel>(dst); })));
 
   [Log]
   [Command("nickname")]
@@ -113,18 +106,17 @@ public partial class Admin : DatabaseHouraiModule {
   + "and requires the ``Change Nickname`` permission.\nIf at least one ``user`` is specified, nicknames the mentioned users and requires the "
   + "``Manage Nicknames`` permission.")]
   public async Task Nickname(string nickname, params IGuildUser[] users) {
-    var guild = DbContext.GetGuild(Context.Guild);
-    var author = Context.Message.Author as IGuildUser;
+    var author = Context.User as IGuildUser;
     IGuildUser[] allUsers = users;
     if (allUsers.Length <= 0) {
       if(!author.GuildPermissions.ChangeNickname) {
-        await RespondAsync($"{author.Mention} you do not have the ``Change Nickname`` permission. See ``{guild.Prefix}help nickname``");
+        await RespondAsync($"{author.Mention} you do not have the ``Change Nickname`` permission. See ``{Context.DbGuild.Prefix}help nickname``");
         return;
       }
       allUsers = new[] { author };
     }
     if(!author.GuildPermissions.ManageNicknames) {
-      await RespondAsync($"{author.Mention} you do not have the ``Manage Nicknames`` permission. See ``{guild.Prefix}help nickname``");
+      await RespondAsync($"{author.Mention} you do not have the ``Manage Nicknames`` permission. See ``{Context.DbGuild.Prefix}help nickname``");
       return;
     }
 
@@ -137,8 +129,7 @@ public partial class Admin : DatabaseHouraiModule {
   [Remarks("Gets the most recent changes on the server")]
   public Task Modlog() {
     try  {
-      var guild = Check.NotNull(Context.Guild);
-      var log = Logs.GetGuild(guild);
+      var log = Logs.GetGuild(Check.NotNull(Context.Guild));
       var path =  log.GetPath(DateTimeOffset.Now);
       if(File.Exists(path))
         return Utility.FileIO(() => Context.Channel.SendFileAsync(path));

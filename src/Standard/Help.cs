@@ -15,17 +15,12 @@ namespace Hourai.Standard {
 /// Generates a help method for all of a bot commands.
 /// Cannot be automatically installed and must be installed after all other modules have been installed.
 /// </summary>
-public class Help : DatabaseHouraiModule {
+public class Help : HouraiModule {
 
-  IDependencyMap Map { get; }
-  CommandService Commands { get; }
+  public IDependencyMap Map { get; set; }
+  public CommandService Commands { get; set; }
 
   const char CommandGroupChar = '*';
-
-  public Help(IDependencyMap map, CommandService commands, DatabaseService db) : base(db) {
-    Map = map;
-    Commands = commands;
-  }
 
   [Command("help")]
   [UserRateLimit(1, 1)]
@@ -71,7 +66,7 @@ public class Help : DatabaseHouraiModule {
       builder.AppendLine($"{module.Name.Bold()}: {commands}");
     }
     if(Context.Guild != null) {
-      var guild = DbContext.GetGuild(Context.Guild);
+      var guild = Db.GetGuild(Context.Guild);
       if(guild.Commands.Any())
         builder.AppendLine($"{"Custom".Bold()}: {guild.Commands.Select(c => c.Name.Code()).Join(", ")}");
     }
@@ -129,7 +124,7 @@ public class Help : DatabaseHouraiModule {
     // Reverse the commands. Order goes from least specific to most specfic.
     commands = commands.Reverse();
     if(commands.Any()) {
-      var guild = DbContext.GetGuild(Context.Guild);
+      var guild = Db.GetGuild(Context.Guild);
       var builder = new StringBuilder();
       var command = commands.First();
       using(builder.Code()) {
