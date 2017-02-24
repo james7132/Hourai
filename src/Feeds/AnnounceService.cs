@@ -64,7 +64,7 @@ public class AnnounceService : IService {
         try {
           await dChannel.Respond(message);
         } catch(HttpException) {
-          Log.Error($"Announcement {message.DoubleQuote()} failed. Notifying server owner.");
+          Log.Error($"Announcement {message.DoubleQuote()} failed in {guild.ToIDString()}. Notifying server owner.");
           var owner = await dChannel.Guild.GetOwner();
           await owner.SendDMAsync($"There as an attempt to announce something in channel {dChannel.Mention} that failed. " +
               $"The announcement was {message.DoubleQuote()}. Please make sure the bot has the approriate permissions to do so or " +

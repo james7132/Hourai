@@ -42,7 +42,7 @@ public partial class Admin {
     [UserRateLimit(1, 5)]
     [Remarks("Removes all messages from the user using the command in the last X messages.")]
     public Task Mine(int count = 100) {
-      ulong id = Context.Message.Author.Id;
+      ulong id = Context.User.Id;
       return PruneMessages(m => m.Author.Id == id, count);
     }
 

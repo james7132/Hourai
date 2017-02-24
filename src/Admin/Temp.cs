@@ -10,13 +10,7 @@ using System.Threading.Tasks;
 
 namespace Hourai.Admin {
 
-public abstract class TempModule : DatabaseHouraiModule {
-
-  protected DiscordShardedClient Client { get; }
-
-  public TempModule(DiscordShardedClient client, DatabaseService db) : base(db) {
-    Client = client;
-  }
+public abstract class TempModule : HouraiModule {
 
   protected Task TempAction(string actionType,
       TimeSpan time,
@@ -37,11 +31,11 @@ public abstract class TempModule : DatabaseHouraiModule {
         var tempAction = await action(user);
         tempAction.Start = start;
         tempAction.End = end;
-        DbContext.TempActions.Add(tempAction);
-        await DbContext.Save();
+        Db.TempActions.Add(tempAction);
+        await Db.Save();
         if(postAction != null)
           await postAction(user, tempAction);
-        await tempAction.Apply(Client);
+        await tempAction.Apply(Context.Client);
       }));
   }
 
@@ -51,9 +45,6 @@ public partial class Admin {
 
   [Group("temp")]
   public class Temp : TempModule {
-
-    public Temp(DiscordShardedClient client, DatabaseService db) : base(client, db) {
-    }
 
     [Log]
     [Command("ban")]
@@ -83,9 +74,6 @@ public partial class Admin {
     [Group("role")]
     [RequirePermission(GuildPermission.ManageRoles)]
     public class Roles : TempModule {
-
-      public Roles(DiscordShardedClient client, DatabaseService db) : base(client, db) {
-      }
 
       [Command("add")]
       [GuildRateLimit(1, 1)]

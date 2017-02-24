@@ -12,10 +12,7 @@ namespace Hourai.Admin {
 public partial class Admin {
 
   [Group("role")]
-  public class Roles : DatabaseHouraiModule {
-
-    public Roles(DatabaseService db) : base(db) {
-    }
+  public class Roles : HouraiModule {
 
     [Log]
     [Command("add")]
@@ -60,10 +57,10 @@ public partial class Admin {
     public async Task Ban(IRole role, params IGuildUser[] users) {
       await ForEvery(users, Do(async u => {
           await u.RemoveRolesAsync(role);
-          var guildUser = DbContext.GetGuildUser(u);
+          var guildUser = Db.GetGuildUser(u);
           guildUser.BanRole(role);
         }));
-      await DbContext.Save();
+      await Db.Save();
     }
 
     [Log]
@@ -73,11 +70,11 @@ public partial class Admin {
     [Remarks("Unban all mentioned users from a specified role.")]
     public async Task Unban(IRole role, params IGuildUser[] users) {
       await ForEvery(users, Do(u => {
-          var guildUser = DbContext.GetGuildUser(u);
+          var guildUser = Db.GetGuildUser(u);
           guildUser.UnbanRole(role);
           return Task.CompletedTask;
         }));
-      await DbContext.Save();
+      await Db.Save();
     }
 
     [Log]

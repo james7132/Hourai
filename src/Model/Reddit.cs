@@ -14,8 +14,12 @@ namespace Hourai.Model {
 [Table("subreddits")]
 public class Subreddit {
 
+  private string _name;
   [Key, DatabaseGenerated(DatabaseGeneratedOption.None), Required]
-  public string Name { get; set; }
+  public string Name {
+    get { return _name; }
+    set { _name = SanitizeName(value); }
+  }
 
   public DateTimeOffset? LastPost { get; set; }
 
@@ -34,6 +38,11 @@ public class Subreddit {
     }
     return channels;
   }
+
+  public static string SanitizeName(string name) {
+    return name.Trim().ToLower();
+  }
+
 
 }
 

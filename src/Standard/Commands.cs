@@ -1,8 +1,9 @@
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Hourai.Model;
 using Hourai.Preconditions;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Hourai.Standard {
 
@@ -10,10 +11,7 @@ public partial class Standard {
 
   [Group("command")]
   [RequireContext(ContextType.Guild)]
-  public class Commands : DatabaseHouraiModule {
-
-    public Commands(DatabaseService db) : base(db) {
-    }
+  public class Commands : HouraiModule {
 
     [Log]
     [Command]
@@ -22,15 +20,15 @@ public partial class Standard {
     [Remarks("Creates a custom command. Deletes an existing one if response is empty.")]
     public async Task CreateCommand(string name,
                                     [Remainder] string response = "") {
-      var command = Context.DbGuild.GetCustomCommand(name);
+      var command = Context.DbGuild.Commands.SingleOrDefault(c => c.Name == name);
       if (string.IsNullOrEmpty(response)) {
         if (command == null) {
           await RespondAsync($"Command {name.Code()} does not exist and thus cannot be deleted.");
           return;
         }
         Context.DbGuild.Commands.Remove(command);
-        DbContext.Commands.Remove(command);
-        await DbContext.Save();
+        Db.Commands.Remove(command);
+        await Db.Save();
         await RespondAsync($"Custom command {name.Code()} has been deleted.");
         return;
       }
@@ -47,14 +45,14 @@ public partial class Standard {
         command.Response = response;
         action = "updated";
       }
-      await DbContext.Save();
+      await Db.Save();
       await Success($"Command {name.Code()} {action} with response {response}.");
     }
 
     [Command("dump")]
     [Remarks("Dumps the base source text for a command.")]
     public Task CommandDump(string command) {
-      var customCommand = Context.DbGuild.GetCustomCommand(command);
+      var customCommand = Context.DbGuild.Commands.SingleOrDefault(c => c.Name == command);
       if(customCommand == null)
         return RespondAsync($"No custom command named {command}");
       else

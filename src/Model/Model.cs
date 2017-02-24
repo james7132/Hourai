@@ -91,125 +91,91 @@ public class BotDbContext : DbContext {
       Log.Info($"Saved {changes} changes to the database.");
   }
 
-  public Guild FindGuild(IGuild iguild) {
-    Check.NotNull(iguild);
-    return Guilds.Include(g => g.Commands)
-      .Include(g => g.Channels)
-      .SingleOrDefault(g => g.Id == iguild.Id);
-  }
-
-
   public Guild GetGuild(IGuild iguild) {
-    var guild = FindGuild(iguild);
+    var guild = Guilds.Find(iguild.Id);
     if(guild == null) {
       guild = new Guild(iguild);
       Guilds.Add(guild);
-      Entry(guild).Collection(g => g.Channels).Load();
     }
+    if (guild.Commands == null)
+      Entry(guild).Collection(g => g.Commands).Load();
+    if (guild.Channels == null)
+      Entry(guild).Collection(g => g.Channels).Load();
     return guild;
   }
 
   public bool RemoveGuild(IGuild iguild) {
-    var guild = FindGuild(iguild);
+    var guild = Guilds.Find(iguild.Id);
     if(guild == null)
       return false;
     Guilds.Remove(guild);
     return true;
   }
 
-  public User FindUser(IUser iuser) {
-    Check.NotNull(iuser);
-    return Users.Include(u => u.Usernames).SingleOrDefault(u => u.Id == iuser.Id);
-  }
-
   public User GetUser(IUser iuser) {
-    var user = FindUser(iuser);
-    if(user == null) {
-      user = new User(iuser);
-      Users.Add(user);
-    }
+    var user = Users.Find(iuser.Id);
+    if(user == null)
+      user = Users.Add(new User(iuser)).Entity;
+    if (user.Usernames == null)
+      Entry(user).Collection(s => s.Usernames).Load();
     return user;
   }
 
   public bool RemoveUser(IUser iuser) {
-    var user = FindUser(iuser);
+    var user = Users.Find(iuser.Id);
     if(user == null)
       return false;
     Users.Remove(user);
     return true;
   }
 
-  public GuildUser FindGuildUser(IGuildUser iuser) {
-    Check.NotNull(iuser);
-    return GuildUsers.SingleOrDefault(u =>
-        (u.Id == iuser.Id) && (u.GuildId == iuser.Guild.Id));
-  }
-
   public GuildUser GetGuildUser(IGuildUser iuser) {
-    var user = FindGuildUser(iuser);
+    var user = GuildUsers.Find(iuser.Id, iuser.Guild.Id);
     if(user == null) {
-      user = new GuildUser(iuser) {
-        User = GetUser(iuser)
-      };
-      GuildUsers.Add(user);
+      user = GuildUsers.Add(new GuildUser(iuser) {
+          User = GetUser(iuser)
+        }).Entity;
     }
     return user;
   }
 
   public bool RemoveGuildUser(IGuildUser iuser) {
-    var user = FindGuildUser(iuser);
-    if(user == null)
+    var user = GuildUsers.Find(iuser.Id, iuser.Guild.Id);
+    if (user == null)
       return false;
     GuildUsers.Remove(user);
     return true;
   }
 
-  public Channel FindChannel(IGuildChannel ichannel) {
-    Check.NotNull(ichannel);
-    return Channels.Include(c => c.Subreddits)
-      .SingleOrDefault(c =>
-        (c.Id == ichannel.Id) && (c.GuildId == ichannel.Guild.Id));
-  }
-
   public Channel GetChannel(IGuildChannel ichannel) {
-    var channel = FindChannel(ichannel);
-    if(channel == null) {
-      channel = new Channel(ichannel);
-      Channels.Add(channel);
+    var channel = Channels.Find(ichannel.Id, ichannel.Guild.Id);
+    if (channel == null)
+      channel = Channels.Add(new Channel(ichannel)).Entity;
+    if (channel.Subreddits == null)
       Entry(channel).Collection(s => s.Subreddits).Load();
-    }
     return channel;
   }
 
   public bool RemoveChannel(IGuildChannel ichannel) {
-    var channel = FindChannel(ichannel);
+    var channel = Channels.Find(ichannel.Id);
     if(channel == null)
       return false;
     Channels.Remove(channel);
     return true;
   }
 
-  public Subreddit FindSubreddit(string name) {
-    name = SanitizeSubredditName(name);
-    return Subreddits.Include(s => s.Channels).SingleOrDefault(s => s.Name == name);
-  }
-
-  public async Task<Subreddit> GetSubreddit(string name) {
-    var subreddit = FindSubreddit(name);
+  public Subreddit GetSubreddit(string name) {
+    name = Subreddit.SanitizeName(name);
+    var subreddit = Subreddits.Find(name);
     if(subreddit == null) {
-      subreddit = new Subreddit {
-        Name = SanitizeSubredditName(name),
-        LastPost = DateTimeOffset.Now
-      };
-      Subreddits.Add(subreddit);
-      Entry(subreddit).Collection(s => s.Channels).Load();
-      await Save();
+      subreddit = Subreddits.Add(new Subreddit {
+          Name = name,
+          LastPost = DateTimeOffset.Now
+        }).Entity;
     }
+    if (subreddit.Channels != null)
+      Entry(subreddit).Collection(s => s.Channels).Load();
     return subreddit;
-  }
-
-  public string SanitizeSubredditName(string name) {
-    return name.Trim().ToLower();
   }
 
 }
