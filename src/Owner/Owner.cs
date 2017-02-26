@@ -74,11 +74,11 @@ public partial class Owner : HouraiModule {
       .AppendLine()
       .AppendLine($"Client: Discord .NET v{DiscordConfig.Version} (API v{DiscordConfig.APIVersion}, {DiscordSocketConfig.GatewayEncoding})")
       .AppendLine($"Latency: {Context.Client.Latency}ms")
-      .AppendLine($"Total Memory Used: {BytesToMemoryValue(GC.GetTotalMemory(false))}");
+      .AppendLine($"Total Memory Used: {BytesToMemoryValue(Process.GetCurrentProcess().WorkingSet64)}");
     await Context.Message.Respond(builder.ToString());
   }
 
-  [Command("refresh")]
+  [Command("refresh", RunMode=RunMode.Mixed)]
   public async Task Refresh() {
     Log.Info("Starting refresh...");
     foreach(var guild in Context.Client.Guilds) {

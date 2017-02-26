@@ -57,8 +57,7 @@ public partial class Admin {
     public async Task Ban(IRole role, params IGuildUser[] users) {
       await ForEvery(users, Do(async u => {
           await u.RemoveRolesAsync(role);
-          var guildUser = Db.GetGuildUser(u);
-          guildUser.BanRole(role);
+          Db.GetGuildUser(u).GetRole(role).IsBanned = true;
         }));
       await Db.Save();
     }
@@ -70,8 +69,7 @@ public partial class Admin {
     [Remarks("Unban all mentioned users from a specified role.")]
     public async Task Unban(IRole role, params IGuildUser[] users) {
       await ForEvery(users, Do(u => {
-          var guildUser = Db.GetGuildUser(u);
-          guildUser.UnbanRole(role);
+          Db.GetGuildUser(u).GetRole(role).IsBanned = false;
           return Task.CompletedTask;
         }));
       await Db.Save();

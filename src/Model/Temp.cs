@@ -10,8 +10,7 @@ namespace Hourai.Model {
 [Table("temp_actions")]
 public class AbstractTempAction {
 
-  [Key]
-  [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+  [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
   public ulong Id { get; set; }
 
   [Required]
@@ -19,25 +18,19 @@ public class AbstractTempAction {
   [Required]
   public ulong GuildId { get; set; }
   [Required]
-  public DateTimeOffset Start { get; set; }
-  [Required]
-  public DateTimeOffset End { get; set; }
+  public DateTimeOffset Expiration { get; set; }
 
-  [Required]
-  [ForeignKey("UserId")]
+  [Required, ForeignKey("UserId")]
   public User User;
 
-  [Required]
-  [ForeignKey("GuildId")]
+  [Required, ForeignKey("GuildId")]
   public Guild Guild;
 
-  public virtual async Task Apply(DiscordShardedClient client) {
-    await Task.CompletedTask;
+  public virtual Task Apply(DiscordShardedClient client) {
     throw new NotImplementedException();
   }
 
-  public virtual async Task Unapply(DiscordShardedClient client) {
-    await Task.CompletedTask;
+  public virtual Task Unapply(DiscordShardedClient client) {
     throw new NotImplementedException();
   }
 
@@ -62,6 +55,7 @@ public class TempRole : AbstractTempAction {
 
   [Required]
   public ulong RoleId { get; set; }
+  public Role Role { get; set; }
 
   public override async Task Apply(DiscordShardedClient client) {
     var guild = client.GetGuild(GuildId);

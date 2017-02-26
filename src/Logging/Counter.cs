@@ -6,8 +6,13 @@ using System.Collections.Concurrent;
 namespace Hourai {
 
 public interface ICounter {
-  void Increment();
   void IncrementBy(ulong value);
+}
+
+public static class CounterExtensions {
+
+  public static void Increment(this ICounter counter) => counter?.IncrementBy(1);
+
 }
 
 public interface IReadableCounter {
@@ -21,10 +26,31 @@ public interface IMaxValueTracker {
 public class SimpleCounter : ICounter, IReadableCounter {
   ulong _count;
 
-  public virtual void Increment() { _count++; }
+  protected ulong Count { get; set; }
 
   public virtual void IncrementBy(ulong value) { _count += value; }
   public ulong? Value => _count;
+}
+
+public class SaveableCounter : SimpleCounter {
+
+  ulong _oldCount;
+
+  public SaveableCounter(ulong value, DateTimeOffset? lastChanged = null) {
+    Count = value;
+    _oldCount = value;
+  }
+
+  public bool IsDirty => _oldCount != Count;
+  public DateTimeOffset LastChanged  { get; private set; }
+
+  public override void IncrementBy(ulong value) {
+    base.IncrementBy(value);
+    LastChanged = DateTimeOffset.UtcNow;
+  }
+
+  public void Save() => _oldCount = Count;
+
 }
 
 public class AggregatedCounter : ICounter, IEnumerable<ICounter> {
