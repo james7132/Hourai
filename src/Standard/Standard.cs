@@ -18,6 +18,9 @@ public partial class Standard : HouraiModule {
 
   public LogSet Logs { get; set; }
 
+  const AvatarFormat AvaFormat = AvatarFormat.Gif;
+  const ushort AvatarSize = 512;
+
   [Command("echo")]
   [ChannelRateLimit(3, 1)]
   [Remarks("Has the bot repeat what you say")]
@@ -39,7 +42,7 @@ public partial class Standard : HouraiModule {
     IUser[] allUsers = users;
     if (users.Length <= 0)
       allUsers = new[] {Context.Message.Author};
-    return RespondAsync(allUsers.Select(u => u.GetAvatarUrl(AvatarFormat.Gif)).Join("\n"));
+    return RespondAsync(allUsers.Select(u => u.GetAvatarUrl(AvaFormat, AvatarSize)).Join("\n"));
   }
 
   [Command("invite")]
@@ -54,9 +57,8 @@ public partial class Standard : HouraiModule {
   [Remarks("Gets all users currently playing a certain game.")]
   public async Task IsPlaying([Remainder] string game) {
     var guild = Check.NotNull(Context.Guild);
-    var users = await guild.GetUsersAsync();
     var regex = new Regex(game, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    var players = from user in users
+    var players = from user in guild.Users
                   where user.Game.HasValue && regex.IsMatch(user.Game?.Name)
                   group user.Username by user.Game.Value.Name into g
                   select $"{g.Key.Bold()}: {g.Join(", ")}";
@@ -73,18 +75,15 @@ public partial class Standard : HouraiModule {
     var server = Check.NotNull(Context.Guild);
     var guild = Db.GetGuild(server);
     var owner = await server.GetOwner();
-    var channels = await server.GetChannelsAsync();
-    var textChannels = channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
-    var voiceChannels = channels.OfType<IVoiceChannel>().Order().Select(ch => ch.Name.Code());
+    var textChannels = server.Channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
+    var voiceChannels = server.Channels.OfType<IVoiceChannel>().Order().Select(ch => ch.Name.Code());
     var roles = server.Roles.Where(r => r.Id != server.EveryoneRole.Id);
-    var socketServer = server as SocketGuild;
-    var userCount = socketServer?.MemberCount ?? (await server.GetUsersAsync()).Count;
     builder.AppendLine($"Name: {server.Name.Code()}")
       .AppendLine($"ID: {server.Id.ToString().Code()}")
       .AppendLine($"Owner: {owner.Username.Code()}")
       .AppendLine($"Region: {server.VoiceRegionId.Code()}")
       .AppendLine($"Created: {server.CreatedAt.ToString().Code()}")
-      .AppendLine($"User Count: {userCount.ToString().Code()}");
+      .AppendLine($"User Count: {server.MemberCount.ToString().Code()}");
     if(roles.Any())
       builder.AppendLine($"Roles: {roles.Order().Select(r => r.Name.Code()).Join(", ")}");
     builder.AppendLine($"Text Channels: {textChannels.Join(", ")}")
@@ -131,7 +130,7 @@ public partial class Standard : HouraiModule {
       if(roles.Any())
         builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
     }
-    var avatar = user.GetAvatarUrl(AvatarFormat.Gif);
+    var avatar = user.GetAvatarUrl(AvaFormat, AvatarSize);
     if(!string.IsNullOrEmpty(avatar))
       builder.AppendLine(avatar);
     var usernames = Db.GetUser(user).Usernames.Where(u => u.Name != user.Username);

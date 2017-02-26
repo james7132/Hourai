@@ -35,7 +35,7 @@ public partial class Admin {
     [ChannelRateLimit(1, 15)]
     [Remarks("Responds with a list of all text channels that the bot can see on this server.")]
     public async Task List() {
-      var channels = await Check.NotNull(Context.Guild).GetTextChannelsAsync();
+      var channels = Check.NotNull(Context.Guild).Channels.OfType<ITextChannel>();
       await RespondAsync(channels.OrderBy(c => c.Position).Select(c => c.Mention).Join(", "));
     }
 

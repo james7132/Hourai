@@ -4,13 +4,12 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Hourai.Model;
-using Hourai.Preconditions;
 
 namespace Hourai.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    [Migration("20170215235232_StreamUpdate")]
-    partial class StreamUpdate
+    [Migration("20170226015017_Test")]
+    partial class Test
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -25,18 +24,16 @@ namespace Hourai.Migrations
                     b.Property<string>("Discriminator")
                         .IsRequired();
 
-                    b.Property<DateTimeOffset>("End");
+                    b.Property<DateTimeOffset>("Expiration");
 
                     b.Property<ulong>("GuildId");
-
-                    b.Property<DateTimeOffset>("Start");
 
                     b.Property<ulong>("UserId");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("End")
-                        .HasName("IX_temp_actions_End");
+                    b.HasIndex("Expiration")
+                        .HasName("IX_temp_actions_Expiration");
 
                     b.ToTable("temp_actions");
 
@@ -54,8 +51,6 @@ namespace Hourai.Migrations
                     b.Property<bool>("JoinMessage");
 
                     b.Property<bool>("LeaveMessage");
-
-                    b.Property<bool>("SearchIgnored");
 
                     b.Property<bool>("StreamMessage");
 
@@ -92,8 +87,6 @@ namespace Hourai.Migrations
 
                     b.Property<string>("MinRoles");
 
-                    b.Property<long>("Modules");
-
                     b.Property<string>("Prefix")
                         .IsRequired()
                         .HasDefaultValue("~")
@@ -110,17 +103,24 @@ namespace Hourai.Migrations
 
                     b.Property<ulong>("GuildId");
 
-                    b.Property<string>("BannedRoles");
+                    b.HasKey("Id", "GuildId");
 
-                    b.Property<ulong?>("UserId");
+                    b.HasIndex("GuildId");
+
+                    b.ToTable("guild_users");
+                });
+
+            modelBuilder.Entity("Hourai.Model.Role", b =>
+                {
+                    b.Property<ulong>("Id");
+
+                    b.Property<ulong>("GuildId");
 
                     b.HasKey("Id", "GuildId");
 
                     b.HasIndex("GuildId");
 
-                    b.HasIndex("UserId");
-
-                    b.ToTable("guild_users");
+                    b.ToTable("roles");
                 });
 
             modelBuilder.Entity("Hourai.Model.Subreddit", b =>
@@ -143,6 +143,8 @@ namespace Hourai.Migrations
                     b.Property<ulong>("GuildId");
 
                     b.HasKey("Name", "ChannelId");
+
+                    b.HasIndex("GuildId");
 
                     b.HasIndex("ChannelId", "GuildId");
 
@@ -179,6 +181,25 @@ namespace Hourai.Migrations
                     b.ToTable("usernames");
                 });
 
+            modelBuilder.Entity("Hourai.Model.UserRole", b =>
+                {
+                    b.Property<ulong>("UserId");
+
+                    b.Property<ulong>("GuildId");
+
+                    b.Property<ulong>("RoleId");
+
+                    b.Property<bool>("HasRole");
+
+                    b.Property<bool>("IsBanned");
+
+                    b.HasKey("UserId", "GuildId", "RoleId");
+
+                    b.HasIndex("RoleId", "GuildId");
+
+                    b.ToTable("user_role");
+                });
+
             modelBuilder.Entity("Hourai.Model.TempBan", b =>
                 {
                     b.HasBaseType("Hourai.Model.AbstractTempAction");
@@ -193,7 +214,13 @@ namespace Hourai.Migrations
                 {
                     b.HasBaseType("Hourai.Model.AbstractTempAction");
 
+                    b.Property<ulong?>("RoleGuildId");
+
                     b.Property<ulong>("RoleId");
+
+                    b.Property<ulong?>("RoleId1");
+
+                    b.HasIndex("RoleId1", "RoleGuildId");
 
                     b.ToTable("temp_actions");
 
@@ -223,13 +250,27 @@ namespace Hourai.Migrations
                         .HasForeignKey("GuildId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Hourai.Model.User")
+                    b.HasOne("Hourai.Model.User", "User")
                         .WithMany("GuildUsers")
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("Id")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Hourai.Model.Role", b =>
+                {
+                    b.HasOne("Hourai.Model.Guild", "Guild")
+                        .WithMany("Roles")
+                        .HasForeignKey("GuildId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Hourai.Model.SubredditChannel", b =>
                 {
+                    b.HasOne("Hourai.Model.Guild", "Guild")
+                        .WithMany()
+                        .HasForeignKey("GuildId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Hourai.Model.Subreddit", "Subreddit")
                         .WithMany("Channels")
                         .HasForeignKey("Name")
@@ -247,6 +288,26 @@ namespace Hourai.Migrations
                         .WithMany("Usernames")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Hourai.Model.UserRole", b =>
+                {
+                    b.HasOne("Hourai.Model.Role", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId", "GuildId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Hourai.Model.GuildUser", "User")
+                        .WithMany("Roles")
+                        .HasForeignKey("UserId", "GuildId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Hourai.Model.TempRole", b =>
+                {
+                    b.HasOne("Hourai.Model.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId1", "RoleGuildId");
                 });
         }
     }

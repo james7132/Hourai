@@ -18,11 +18,11 @@ public class TempService : IService {
 
   async Task CheckTempActions() {
     using (var context = new BotDbContext()) {
-      var actions = context.TempActions.OrderByDescending(b => b.End);
+      var actions = context.TempActions.OrderByDescending(b => b.Expiration);
       var now = DateTimeOffset.Now;
       var done = new List<AbstractTempAction>();
       foreach(var action in actions) {
-        if(action.End >= now)
+        if(action.Expiration >= now)
           break;
         await action.Unapply(Client);
         done.Add(action);

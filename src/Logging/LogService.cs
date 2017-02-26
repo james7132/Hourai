@@ -163,17 +163,16 @@ public class LogService {
     }
   }
 
-  async Task UserUpdated(IUser before, IUser after) {
-    var b = before as IGuildUser;
-    var a = after as IGuildUser;
+  async Task UserUpdated(SocketUser before, SocketUser after) {
+    var b = before as SocketGuildUser;
+    var a = after as SocketGuildUser;
     if(b == null ||  a == null)
       return;
     var log = Logs.GetGuild(a.Guild);
     var userString = a.ToIDString();
     await LogChange(log, $"User {userString} Username", b, a, u => u.Username);
     await LogChange(log, $"User {userString} Nickname", b, a, u => u.Nickname);
-    await LogSetChange(log, $"User {userString} Roles", b, a,
-        u => u.GetRoles(), r => r.ToIDString());
+    await LogSetChange(log, $"User {userString} Roles", b, a, u => u.Roles, r => r.ToIDString());
   }
 
   async Task RoleUpdated(IRole b, IRole a) {

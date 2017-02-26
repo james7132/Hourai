@@ -5,7 +5,7 @@ using Hourai.Model;
 
 namespace Hourai {
 
-  public class HouraiCommandContext : CommandContext {
+  public class HouraiCommandContext : ShardedCommandContext {
 
     public User Author { get; }
     public Guild DbGuild { get; }
@@ -13,10 +13,8 @@ namespace Hourai {
 
     public bool IsHelp { get; set; }
 
-    public new DiscordShardedClient Client => base.Client as DiscordShardedClient;
-
     public HouraiCommandContext(DiscordShardedClient client,
-                                IUserMessage msg,
+                                SocketUserMessage msg,
                                 BotDbContext db,
                                 User author,
                                 Guild guild) : base(client, msg) {

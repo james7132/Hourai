@@ -17,7 +17,6 @@ namespace Hourai.Admin {
 public partial class Admin : HouraiModule {
 
   public LogSet Logs { get; set; }
-  public DiscordShardedClient Client { get; set; }
 
   [Log]
   [Command("kick")]

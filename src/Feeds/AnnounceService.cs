@@ -34,24 +34,26 @@ public class AnnounceService : IService {
     var aG = after.Game;
     var wasStreaming = bG.HasValue && bG?.StreamType != StreamType.NotStreaming;
     var isStreaming = aG.HasValue && aG?.StreamType != StreamType.NotStreaming;
+    string message = null;
     if (!wasStreaming && !isStreaming) {
       return;
     } else if (wasStreaming && !isStreaming) {
-      await ForEachChannel(guild.Value, c => c.StreamMessage, ProcessMessage("**$user** stopped streaming.", user));
+      message = ProcessMessage("**$user** stopped streaming.", user);
     } else if (!wasStreaming && isStreaming) {
       var game = aG.Value;
-      await ForEachChannel(guild.Value, c => c.StreamMessage,
-          ProcessMessage($"**$user** is now streaming **{game.Name}**: <{game.StreamUrl}>.", user));
+      message = ProcessMessage($"**$user** is now streaming **{game.Name}**: <{game.StreamUrl}>.", user);
     } else if (wasStreaming && isStreaming && before.Game?.Name != after.Game?.Name) {
       var game = aG.Value;
-      await ForEachChannel(guild.Value, c => c.StreamMessage,
-          ProcessMessage($"**$user** is now streaming **{game.Name}**: <{game.StreamUrl}>.", user));
+      message = ProcessMessage($"**$user** is now streaming **{game.Name}**: <{game.StreamUrl}>.", user);
     }
+    if (message != null)
+      await ForEachChannel(guild.Value, c => c.StreamMessage, message);
   }
 
   async Task ForEachChannel(IGuild guild, Func<Channel, bool> validFunc, string message) {
     using (var context = new BotDbContext()) {
       var guildConfig = context.GetGuild(guild);
+      Log.Info($"Announcement in {guild.ToIDString()}: \"{message}\"");
       foreach(var channel in guildConfig.Channels) {
         if(!validFunc(channel))
           continue;
