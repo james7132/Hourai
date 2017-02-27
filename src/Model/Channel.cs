@@ -16,8 +16,6 @@ public class Channel {
   public ulong GuildId { get; set; }
   [Required]
   public Guild Guild { get; set; }
-  [Obsolete("No longer used")]
-  public bool SearchIgnored { get; set; }
 
   public bool JoinMessage { get; set; }
   public bool LeaveMessage { get; set; }

@@ -21,6 +21,8 @@ public class Guild {
   [Required]
   public ICollection<GuildUser> Users { get; set; }
   [Required]
+  public ICollection<Role> Roles { get; set; }
+  [Required]
   public List<CustomCommand> Commands { get; set; }
   //[Required]
   //public List<CounterEvent> Events { get; set; }
@@ -46,11 +48,7 @@ public class Guild {
     }
   }
 
-  [Obsolete("No longer supported")]
-  public ModuleType Modules { get; set; }
-
   public Guild() {
-    Modules = (ModuleType) ~0L;
     Prefix = Config.CommandPrefix.ToString();
   }
 

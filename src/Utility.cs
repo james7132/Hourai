@@ -20,8 +20,7 @@ public static class Utility {
   }
 
   public static bool RoleCheck(IGuildUser user, IRole role) {
-    int position = role.Position;
-    return user.IsServerOwner() || user.GetRoles().Max(r => r.Position) >= position;
+    return user.IsServerOwner() || user.GetRoles().Any(r => r.Position >= role.Position);
   }
 
   public static string DateString(DateTime date) {
@@ -30,29 +29,6 @@ public static class Utility {
 
   public static string DateString(DateTimeOffset date) {
     return date.ToString(LogDateFormat);
-  }
-
-  public static async Task FileIO(Action fileIOaction,
-                                  Action retry = null,
-                                  Action failure = null) {
-    var success = false;
-    var tries = 0;
-    while (!success) {
-      try {
-        fileIOaction();
-        success = true;
-      } catch (IOException) {
-        if (tries <= MaxRetries) {
-          retry?.Invoke();
-          tries++;
-          await Task.Delay(100);
-        } else {
-          Log.Error("Failed to perform file IO. Max retries exceeded.");
-          failure?.Invoke();
-          throw;
-        }
-      }
-    }
   }
 
   public static async Task FileIO(Func<Task> fileIOaction,

@@ -60,6 +60,8 @@ public class SubredditChannel {
   public Subreddit Subreddit { get; set; }
   [ForeignKey("ChannelId")]
   public Channel Channel { get; set; }
+  [ForeignKey("GuildId")]
+  public Guild Guild { get; set; }
 
 }
 

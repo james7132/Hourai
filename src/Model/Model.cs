@@ -42,20 +42,28 @@ public class BotDbContext : DbContext {
 
   protected override void OnModelCreating(ModelBuilder builder) {
     builder.Entity<Guild>(b => {
-        b.Property(g => g.Prefix)
-          .HasDefaultValue("~");
+        b.Property(g => g.Prefix).HasDefaultValue("~");
       });
-    builder.Entity<GuildUser>()
-      .HasKey(u => new { u.Id, u.GuildId });
-    builder.Entity<Channel>()
-      .HasKey(c => new { c.Id, c.GuildId });
+    builder.Entity<Channel>().HasKey(c => new { c.Id, c.GuildId });
     builder.Entity<CustomCommand>(b =>{
         b.HasKey(c => new { c.GuildId, c.Name });
         b.HasIndex(c => c.GuildId);
       });
+    builder.Entity<GuildUser>(b => {
+        b.HasKey(u => new { u.Id, u.GuildId });
+      });
     builder.Entity<Username>(b => {
         b.HasKey(c => new { c.UserId, c.Date });
         b.HasIndex(c => c.UserId);
+      });
+    builder.Entity<Role>(b => {
+        b.HasKey(r => new { r.Id, r.GuildId });
+        b.HasOne(r => r.Guild).WithMany(g => g.Roles);
+      });
+    builder.Entity<UserRole>(b => {
+        b.HasKey(r => new { r.UserId, r.GuildId, r.RoleId });
+        b.HasOne(r => r.User).WithMany(u => u.Roles).HasForeignKey(r => new { r.UserId, r.GuildId });
+        b.HasOne(u => u.Role).WithMany(r => r.Users).HasForeignKey(r => new { r.RoleId, r.GuildId });
       });
   //builder.Entity<CounterEvent>(b => {
         //b.HasKey(c => new { c.CounterId, c.Timestamp });
@@ -79,8 +87,8 @@ public class BotDbContext : DbContext {
           .HasForeignKey(c => new { c.ChannelId, c.GuildId });
       });
     builder.Entity<AbstractTempAction>()
-        .HasIndex(t => t.End)
-        .HasName("IX_temp_actions_End");
+        .HasIndex(t => t.Expiration)
+        .HasName("IX_temp_actions_Expiration");
   }
 
   public async Task Save() {
@@ -101,6 +109,8 @@ public class BotDbContext : DbContext {
       Entry(guild).Collection(g => g.Commands).Load();
     if (guild.Channels == null)
       Entry(guild).Collection(g => g.Channels).Load();
+    if (guild.Roles == null)
+      Entry(guild).Collection(g => g.Roles).Load();
     return guild;
   }
 
@@ -136,6 +146,8 @@ public class BotDbContext : DbContext {
           User = GetUser(iuser)
         }).Entity;
     }
+    if (user.Roles == null)
+      Entry(user).Collection(s => s.Roles).Load();
     return user;
   }
 

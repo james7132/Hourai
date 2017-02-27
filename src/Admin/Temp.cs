@@ -25,12 +25,10 @@ public abstract class TempModule : HouraiModule {
       Func<IGuildUser, Task<AbstractTempAction>> action,
       Func<IGuildUser, AbstractTempAction, Task> postAction = null) {
     Check.NotNull(action);
-    var start = DateTimeOffset.Now;
-    var end = start + time;
+    var expiration = DateTimeOffset.Now + time;
     await ForEvery(users, Do(async delegate(IGuildUser user) {
         var tempAction = await action(user);
-        tempAction.Start = start;
-        tempAction.End = end;
+        tempAction.Expiration = expiration;
         Db.TempActions.Add(tempAction);
         await Db.Save();
         if(postAction != null)
@@ -62,7 +60,7 @@ public partial class Admin {
       Func<IGuildUser, AbstractTempAction, Task> postAction = async (user, tempAction) => {
         try {
           await user.SendDMAsync($"You have been temporarily banned from {guild.Name}. " +
-             $"You will be unbanned at {tempAction.End} UTC.");
+             $"You will be unbanned at {tempAction.Expiration} UTC.");
         } catch(Exception e) {
           Log.Error(e);
         }

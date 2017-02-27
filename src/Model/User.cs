@@ -1,9 +1,10 @@
 using Discord;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+
 namespace Hourai.Model {
 
 [Table("users")]
@@ -22,8 +23,7 @@ public class User {
   public bool IsBlacklisted { get; set; }
   public ICollection<TempBan> TempBans;
 
-  public User() {
-  }
+  public User() { }
 
   public User(IUser user) : this() {
     Check.NotNull(user);
@@ -54,29 +54,14 @@ public class GuildUser {
   public ulong Id { get; set; }
   public ulong GuildId { get; set; }
 
-  [Required]
-  [ForeignKey("Id")]
-  public User User;
-  [Required]
-  [ForeignKey("GuildId")]
+  [Required, ForeignKey("Id")]
+  public User User { get; set; }
+  [Required, ForeignKey("GuildId")]
   public Guild Guild { get; set; }
+  [Required]
+  public ICollection<UserRole> Roles { get; set; }
 
   //public ICollection<CounterEvent> Events { get; set; }
-
-  private HashSet<ulong> _bannedRoles;
-  public string  BannedRoles {
-    get {
-      if(_bannedRoles == null || _bannedRoles.Count <= 0)
-        return null;
-      return JsonConvert.SerializeObject(_bannedRoles);
-    }
-    set {
-      if(string.IsNullOrEmpty(value))
-        _bannedRoles = null;
-      else
-        _bannedRoles = JsonConvert.DeserializeObject<HashSet<ulong>>(value);
-    }
-  }
 
   public GuildUser() {
   }
@@ -86,27 +71,17 @@ public class GuildUser {
     GuildId = user.Guild.Id;
   }
 
-  public bool IsRoleBanned(IRole role) {
-    if(role == null || _bannedRoles == null)
-      return false;
-    return _bannedRoles.Contains(role.Id);
-  }
-
-  public void BanRole(IRole role) {
-    if(role == null)
-      return;
-    if(_bannedRoles == null)
-      _bannedRoles = new HashSet<ulong>();
-    _bannedRoles.Add(role.Id);
-  }
-
-  public bool UnbanRole(IRole role) {
-    if(role == null || _bannedRoles == null)
-      return false;
-    bool success = _bannedRoles.Remove(role.Id);
-    if(success && _bannedRoles.Count <= 0)
-      _bannedRoles = null;
-    return success;
+  public UserRole GetRole(IRole role) {
+    var dbRole  = Roles.FirstOrDefault(r => r.UserId == role.Id);
+    if (role == null) {
+      dbRole = new UserRole {
+        UserId = Id,
+        GuildId = GuildId,
+        RoleId = role.Id
+      };
+      Roles.Add(dbRole);
+    }
+    return dbRole;
   }
 
 }

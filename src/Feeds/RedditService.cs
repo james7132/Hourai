@@ -33,28 +33,28 @@ public class RedditService : IService {
   }
 
   Embed PostToMessage(Post post) {
-    var builder = new EmbedBuilder();
-    builder.Title = post.Title;
-    builder.Url = "https://reddit.com" + post.Permalink.ToString();
-    var author = post.AuthorName;
-    builder.Author = new EmbedAuthorBuilder() {
-      Name = author,
-      Url = "https://reddit.com/u/" + author }; if (!post.NSFW && !post.IsSelfPost) {
-      builder.ThumbnailUrl = post.Thumbnail.ToString();
-    }
+    const int maxLength = 500;
+    string description;
     if (post.IsSelfPost) {
       var selfText = post.SelfText;
-      const int maxLength = 500;
       if (selfText.Length > maxLength) {
-        builder.Description = selfText.Substring(0, maxLength) + "...";
+        description = selfText.Substring(0, maxLength) + "...";
       } else {
-        builder.Description = selfText;
+        description = selfText;
       }
     } else {
-      builder.Description = post.Url.ToString();
+      description = post.Url.ToString();
     }
-    builder.Timestamp = post.CreatedUTC;
-    return builder;
+    return new EmbedBuilder {
+        Title = post.Title,
+        Url = "https://reddit.com" + post.Permalink.ToString(),
+        Description = description,
+        Timestamp = post.CreatedUTC,
+        Author = new EmbedAuthorBuilder {
+          Name = post.AuthorName,
+          Url = "https://reddit.com/u/" + post.AuthorName
+        }
+      };
   }
 
   async Task CheckReddits() {
@@ -78,6 +78,7 @@ public class RedditService : IService {
               foreach(var post in page) {
                 if (post.CreatedUTC <= latest)
                   break;
+                Log.Info($"New post in /r/{dbSubreddit.Name}: {post.Title}");
                 var title = $"Post in /r/{dbSubreddit.Name}:";
                 var embed = PostToMessage(post);
                 foreach (var channel in channels) {
