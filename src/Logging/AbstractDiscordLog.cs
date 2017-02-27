@@ -16,7 +16,7 @@ public abstract class AbstractDiscordLog {
   public static readonly string LogDirectory;
 
   static AbstractDiscordLog() {
-    LogDirectory = Path.Combine(Bot.ExecutionDirectory, Config.LogDirectory);
+    LogDirectory = Config.LogDirectory;
     Log.Info($"Chat Log Directory: { LogDirectory }");
   }
 

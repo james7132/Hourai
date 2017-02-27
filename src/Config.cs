@@ -10,9 +10,9 @@ namespace Hourai {
 public class Config {
 
 #if DEBUG
-  public const string ConfigFilePath = "test_config.json";
+  public const string ConfigFilePath = "/var/bot/hourai/test_config.json";
 #else
-  public const string ConfigFilePath = "config.json";
+  public const string ConfigFilePath = "/var/bot/hourai/config.json";
 #endif
 
   public static bool IsLoaded { get; private set; }
@@ -20,9 +20,7 @@ public class Config {
   public static void Load() {
     if (IsLoaded)
       return;
-    string fullPath = Path.Combine(Bot.GetExecutionDirectory(),
-        ConfigFilePath);
-    Log.Info($"Loading config from {fullPath}...");
+    Log.Info($"Loading config from {ConfigFilePath}...");
     JsonConvert.DeserializeObject<Config>(File.ReadAllText(ConfigFilePath));
     Log.Info($"Setting log directory to: { LogDirectory }");
     Log.Info($"Setting database to: { DbFilename }");

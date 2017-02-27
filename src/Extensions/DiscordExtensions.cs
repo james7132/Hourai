@@ -36,6 +36,8 @@ public static class DiscordExtensions {
 
   public static Task Respond(this IMessageChannel channel, string response) {
     const string fileName = "results.txt";
+    if (response == null)
+      return Task.CompletedTask;
     if (response.Length > DiscordConfig.MaxMessageSize)
       return channel.SendMemoryFile(fileName, response);
     if(response.Length > 0)

@@ -40,6 +40,25 @@ public partial class Owner : HouraiModule {
     await RespondAsync(response.ToString());
   }
 
+  [Command("join")]
+  [Remarks("Provides invite link to a given server by it's id")]
+  public async Task Join(ulong id) {
+    var guild = Context.Client.GetGuild(id);
+    if (guild == null) {
+      await RespondAsync("No server found");
+      return;
+    }
+    foreach (var channel in guild.Channels) {
+      var invites = await channel.GetInvitesAsync();
+      var invite = invites.FirstOrDefault(i => !i.IsRevoked)?.Url;
+      if (!string.IsNullOrEmpty(invite)) {
+        await RespondAsync(invite);
+        return;
+      }
+    }
+    await RespondAsync("No valid invite found");
+  }
+
   [Command("kill")]
   [Remarks("Turns off the bot.")]
   public async Task Kill() {
