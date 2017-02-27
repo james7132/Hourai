@@ -18,8 +18,6 @@ namespace Hourai {
     public static ISelfUser User { get; private set; }
     public static IUser Owner { get; private set; }
 
-    public static string ExecutionDirectory { get; private set; }
-
     public DateTime StartTime { get; private set; }
     public TimeSpan Uptime => DateTime.Now - StartTime;
 
@@ -42,8 +40,6 @@ namespace Hourai {
 
       _regularTasks = new List<Func<Task>>();
 
-      ExecutionDirectory = GetExecutionDirectory();
-      Log.Info($"Execution Directory: { ExecutionDirectory }");
       Config.Load();
     }
 
@@ -70,7 +66,7 @@ namespace Hourai {
       map.Add(new LogSet());
 
       map.Add(ErrorService = new ErrorService());
-      map.Add(new LogService(map, ExecutionDirectory));
+      map.Add(new LogService(map));
 
       //Log.Info($"Database: {Config.DbFilename}");
 
@@ -149,16 +145,10 @@ namespace Hourai {
       return obj;
     }
 
-    public static string GetExecutionDirectory() {
-      var uri = new UriBuilder(Assembly.GetEntryAssembly().CodeBase);
-      string path = Uri.UnescapeDataString(uri.Path);
-      return Path.GetDirectoryName(path);
-    }
-
     async Task MainLoop() {
       Log.Info("Connecting to Discord...");
       await Client.LoginAsync(TokenType.Bot, Config.Token, false);
-      await Client.ConnectAsync();
+      await Client.StartAsync();
       User = Client.CurrentUser;
       Log.Info($"Logged in as {User.ToIDString()}");
 

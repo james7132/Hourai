@@ -17,12 +17,10 @@ public class LogService {
   public LogSet Logs { get; }
   public DiscordShardedClient Client { get; }
   public ErrorService ErrorService { get; }
-  public string BaseDirectory { get; }
   public string BotLog { get; private set; }
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
-  public LogService(IDependencyMap map, string directory) {
-    BaseDirectory = directory;
+  public LogService(IDependencyMap map) {
     Client = map.Get<DiscordShardedClient>();
     Logs = map.Get<LogSet>();
     ErrorService = map.Get<ErrorService>();
@@ -36,7 +34,7 @@ public class LogService {
 
   void SetupBotLog() {
     Console.OutputEncoding = Encoding.UTF8;
-    var logDirectory = Path.Combine(BaseDirectory, Config.LogDirectory);
+    var logDirectory = Config.LogDirectory;
     if(!Directory.Exists(logDirectory))
       Directory.CreateDirectory(logDirectory);
     BotLog = Path.Combine(logDirectory, DateTime.Now.ToString(LogStringFormat) + ".log");

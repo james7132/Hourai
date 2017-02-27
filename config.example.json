@@ -3,7 +3,7 @@
     "Version": "v0.3.0-alpha",
     "SuccessResponse": ":thumbsup:",
 
-    "LogDirectory": "logs",
+    "LogDirectory": "/var/log/hourai",
     "DbFilename": "/db/bot_prod.db",
 
     "DiscordConfig": {
