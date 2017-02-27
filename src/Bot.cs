@@ -146,14 +146,6 @@ namespace Hourai {
     }
 
     async Task MainLoop() {
-      Log.Info("Connecting to Discord...");
-      await Client.LoginAsync(TokenType.Bot, Config.Token, false);
-      await Client.StartAsync();
-      User = Client.CurrentUser;
-      Log.Info($"Logged in as {User.ToIDString()}");
-
-      Owner = (await Client.GetApplicationInfoAsync()).Owner;
-      Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
       while (!ExitSource.Task.IsCompleted) {
         await Task.WhenAll(_regularTasks.Select(t => t()));
         await Client.SetGameAsync(Config.Version);
@@ -164,13 +156,29 @@ namespace Hourai {
     async Task Run() {
       Log.Info($"Starting...");
       await Initialize();
-      while (!ExitSource.Task.IsCompleted) {
-        try {
-          await MainLoop();
-        } catch (Exception error) {
-          Log.Error(error);
-          ErrorService.RegisterException(error);
+      Log.Info("Starting Discord Client...");
+      await Client.StartAsync();
+      Log.Info("Logging into Discord...");
+      await Client.LoginAsync(TokenType.Bot, Config.Token, false);
+      User = Client.CurrentUser;
+      Log.Info($"Logged in as {User.ToIDString()}");
+
+      Owner = (await Client.GetApplicationInfoAsync()).Owner;
+      Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
+      try {
+        while (!ExitSource.Task.IsCompleted) {
+          try {
+            await MainLoop();
+          } catch (Exception error) {
+            Log.Error(error);
+            ErrorService.RegisterException(error);
+          }
         }
+      } finally {
+        Log.Info("Logging out...");
+        await Client.LogoutAsync();
+        Log.Info("Stopping Discord client...");
+        await Client.StopAsync();
       }
     }
 

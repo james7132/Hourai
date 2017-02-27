@@ -23,13 +23,17 @@ public class BotCommandService : IService {
     Client = client;
     Client.MessageReceived += HandleMessage;
     if (Commands != null) {
-      Log.Info("Loaded Modules: " + Commands.Modules.Select(c => c.GetFullName()).Join(", "));
-      Log.Info("Available Commands: " + Commands.Commands.Select(c => c.GetFullName()).Join(", "));
+      foreach(var module in Commands.Modules) {
+        Log.Info("Loaded module: " + module.Name);
+        foreach (var cmd in module.Commands) {
+          Log.Info("Command: " + cmd.GetFullName());
+        }
+      }
     }
   }
 
   public async Task HandleMessage(IMessage m) {
-    var msg = m as IUserMessage;
+    var msg = m as SocketUserMessage;
     if (msg == null || msg.Author.IsBot || msg.Author.IsMe())
       return;
     using (var db = Database.CreateContext()) {
@@ -58,7 +62,6 @@ public class BotCommandService : IService {
       // Determine if the msg is a command, based on if it starts with the defined command prefix
       if (!msg.HasCharPrefix(prefix, ref argPos))
         return;
-
 
       // Execute the command. (result does not indicate a return value,
       // rather an object stating if the command executed succesfully)
