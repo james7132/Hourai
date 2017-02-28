@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Hourai.Migrations
 {
-    public partial class Test : Migration
+    public partial class Initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -14,7 +14,6 @@ namespace Hourai.Migrations
                 {
                     Id = table.Column<ulong>(nullable: false),
                     IsBlacklisted = table.Column<bool>(nullable: false),
-                    MinRoles = table.Column<string>(nullable: true),
                     Prefix = table.Column<string>(maxLength: 1, nullable: false, defaultValue: "~")
                 },
                 constraints: table =>
@@ -52,8 +51,8 @@ namespace Hourai.Migrations
                 columns: table => new
                 {
                     Id = table.Column<ulong>(nullable: false),
-                    GuildId = table.Column<ulong>(nullable: false),
                     BanMessage = table.Column<bool>(nullable: false),
+                    GuildId = table.Column<ulong>(nullable: true),
                     JoinMessage = table.Column<bool>(nullable: false),
                     LeaveMessage = table.Column<bool>(nullable: false),
                     StreamMessage = table.Column<bool>(nullable: false),
@@ -61,13 +60,13 @@ namespace Hourai.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_channels", x => new { x.Id, x.GuildId });
+                    table.PrimaryKey("PK_channels", x => x.Id);
                     table.ForeignKey(
                         name: "FK_channels_guilds_GuildId",
                         column: x => x.GuildId,
                         principalTable: "guilds",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -98,7 +97,7 @@ namespace Hourai.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_roles", x => new { x.Id, x.GuildId });
+                    table.PrimaryKey("PK_roles", x => x.Id);
                     table.ForeignKey(
                         name: "FK_roles_guilds_GuildId",
                         column: x => x.GuildId,
@@ -155,16 +154,15 @@ namespace Hourai.Migrations
                 columns: table => new
                 {
                     Name = table.Column<string>(nullable: false),
-                    ChannelId = table.Column<ulong>(nullable: false),
-                    GuildId = table.Column<ulong>(nullable: false)
+                    ChannelId = table.Column<ulong>(nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_subreddit_channels", x => new { x.Name, x.ChannelId });
                     table.ForeignKey(
-                        name: "FK_subreddit_channels_guilds_GuildId",
-                        column: x => x.GuildId,
-                        principalTable: "guilds",
+                        name: "FK_subreddit_channels_channels_ChannelId",
+                        column: x => x.ChannelId,
+                        principalTable: "channels",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -173,12 +171,6 @@ namespace Hourai.Migrations
                         principalTable: "subreddits",
                         principalColumn: "Name",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_subreddit_channels_channels_ChannelId_GuildId",
-                        columns: x => new { x.ChannelId, x.GuildId },
-                        principalTable: "channels",
-                        principalColumns: new[] { "Id", "GuildId" },
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -186,28 +178,51 @@ namespace Hourai.Migrations
                 columns: table => new
                 {
                     Id = table.Column<ulong>(nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                        .Annotation("MySql:ValueGeneratedOnAdd", true),
                     Discriminator = table.Column<string>(nullable: false),
                     Expiration = table.Column<DateTimeOffset>(nullable: false),
                     GuildId = table.Column<ulong>(nullable: false),
                     UserId = table.Column<ulong>(nullable: false),
-                    RoleGuildId = table.Column<ulong>(nullable: true),
-                    RoleId = table.Column<ulong>(nullable: true),
-                    RoleId1 = table.Column<ulong>(nullable: true)
+                    RoleId = table.Column<ulong>(nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_temp_actions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_temp_actions_roles_RoleId1_RoleGuildId",
-                        columns: x => new { x.RoleId1, x.RoleGuildId },
+                        name: "FK_temp_actions_roles_RoleId",
+                        column: x => x.RoleId,
                         principalTable: "roles",
-                        principalColumns: new[] { "Id", "GuildId" },
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "user_role",
+                name: "min_roles",
+                columns: table => new
+                {
+                    GuildId = table.Column<ulong>(nullable: false),
+                    Type = table.Column<int>(nullable: false),
+                    RoleId = table.Column<ulong>(nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_min_roles", x => new { x.GuildId, x.Type });
+                    table.ForeignKey(
+                        name: "FK_min_roles_guilds_GuildId",
+                        column: x => x.GuildId,
+                        principalTable: "guilds",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_min_roles_roles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "roles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_rolesj",
                 columns: table => new
                 {
                     UserId = table.Column<ulong>(nullable: false),
@@ -218,15 +233,15 @@ namespace Hourai.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_user_role", x => new { x.UserId, x.GuildId, x.RoleId });
+                    table.PrimaryKey("PK_user_rolesj", x => new { x.UserId, x.GuildId, x.RoleId });
                     table.ForeignKey(
-                        name: "FK_user_role_roles_RoleId_GuildId",
-                        columns: x => new { x.RoleId, x.GuildId },
+                        name: "FK_user_rolesj_roles_RoleId",
+                        column: x => x.RoleId,
                         principalTable: "roles",
-                        principalColumns: new[] { "Id", "GuildId" },
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_user_role_guild_users_UserId_GuildId",
+                        name: "FK_user_rolesj_guild_users_UserId_GuildId",
                         columns: x => new { x.UserId, x.GuildId },
                         principalTable: "guild_users",
                         principalColumns: new[] { "Id", "GuildId" },
@@ -239,9 +254,9 @@ namespace Hourai.Migrations
                 column: "Expiration");
 
             migrationBuilder.CreateIndex(
-                name: "IX_temp_actions_RoleId1_RoleGuildId",
+                name: "IX_temp_actions_RoleId",
                 table: "temp_actions",
-                columns: new[] { "RoleId1", "RoleGuildId" });
+                column: "RoleId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_channels_GuildId",
@@ -259,19 +274,19 @@ namespace Hourai.Migrations
                 column: "GuildId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_min_roles_RoleId",
+                table: "min_roles",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_roles_GuildId",
                 table: "roles",
                 column: "GuildId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_subreddit_channels_GuildId",
+                name: "IX_subreddit_channels_ChannelId",
                 table: "subreddit_channels",
-                column: "GuildId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_subreddit_channels_ChannelId_GuildId",
-                table: "subreddit_channels",
-                columns: new[] { "ChannelId", "GuildId" });
+                column: "ChannelId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_usernames_UserId",
@@ -279,9 +294,9 @@ namespace Hourai.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_user_role_RoleId_GuildId",
-                table: "user_role",
-                columns: new[] { "RoleId", "GuildId" });
+                name: "IX_user_rolesj_RoleId",
+                table: "user_rolesj",
+                column: "RoleId");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -293,19 +308,22 @@ namespace Hourai.Migrations
                 name: "commands");
 
             migrationBuilder.DropTable(
+                name: "min_roles");
+
+            migrationBuilder.DropTable(
                 name: "subreddit_channels");
 
             migrationBuilder.DropTable(
                 name: "usernames");
 
             migrationBuilder.DropTable(
-                name: "user_role");
-
-            migrationBuilder.DropTable(
-                name: "subreddits");
+                name: "user_rolesj");
 
             migrationBuilder.DropTable(
                 name: "channels");
+
+            migrationBuilder.DropTable(
+                name: "subreddits");
 
             migrationBuilder.DropTable(
                 name: "roles");

@@ -1,12 +1,44 @@
 using Discord;
+using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
 namespace Hourai.Model {
+
+public static class DbSetExtensions {
+
+  public static T Get<T>(this DbSet<T> set, IEntity<ulong> entity) where T : class {
+    var val = set.Find(entity.Id);
+    if(val == null) {
+      val = (T) Activator.CreateInstance(typeof(T), entity);
+      set.Add(val);
+    }
+    return val;
+  }
+
+  public static bool Remove<T>(this DbSet<T> set, IEntity<ulong> entity) where T : class {
+    var val = set.Find(entity.Id);
+    if(val == null)
+      return false;
+    set.Remove(val);
+    return true;
+  }
+
+  public static Channel Get(this DbSet<Channel> set, IChannel ichannel) {
+    var channel = set.Find(ichannel.Id);
+    if (channel == null)
+      channel = set.Add(new Channel(ichannel) {
+            GuildId = (channel as IGuildChannel)?.Id
+          }).Entity;
+    return channel;
+  }
+
+}
 
 public class BotDbContext : DbContext {
 
@@ -17,11 +49,14 @@ public class BotDbContext : DbContext {
   public DbSet<Username> Usernames { get; set; }
   public DbSet<GuildUser> GuildUsers { get; set; }
   public DbSet<CustomCommand> Commands { get; set; }
+  public DbSet<Role> Roles { get; set; }
+  public DbSet<UserRole> UserRoles { get; set; }
+  public DbSet<MinRole> MinRoles { get; set; }
 
   // Temporary Action Data
   public DbSet<AbstractTempAction> TempActions { get; set; }
   public DbSet<TempBan> TempBans { get; set; }
-  public DbSet<TempRole> TempRole { get; set; }
+  public DbSet<TempRole> TempRoles { get; set; }
 
   //// Analytics Data
   //public DbSet<Counter> Counters { get; set; }
@@ -37,14 +72,13 @@ public class BotDbContext : DbContext {
       Config.Load();
       Console.WriteLine($"Database File: {Config.DbFilename}");
     }
-    optionsBuilder.UseSqlite($"Filename={Config.DbFilename}");
+    optionsBuilder.UseMySql(Config.DbFilename);
   }
 
   protected override void OnModelCreating(ModelBuilder builder) {
     builder.Entity<Guild>(b => {
         b.Property(g => g.Prefix).HasDefaultValue("~");
       });
-    builder.Entity<Channel>().HasKey(c => new { c.Id, c.GuildId });
     builder.Entity<CustomCommand>(b =>{
         b.HasKey(c => new { c.GuildId, c.Name });
         b.HasIndex(c => c.GuildId);
@@ -57,13 +91,16 @@ public class BotDbContext : DbContext {
         b.HasIndex(c => c.UserId);
       });
     builder.Entity<Role>(b => {
-        b.HasKey(r => new { r.Id, r.GuildId });
         b.HasOne(r => r.Guild).WithMany(g => g.Roles);
+      });
+    builder.Entity<MinRole>(b => {
+        b.HasKey(r => new { r.GuildId, r.Type });
+        b.HasOne(r => r.Guild).WithMany(g => g.MinRoles);
       });
     builder.Entity<UserRole>(b => {
         b.HasKey(r => new { r.UserId, r.GuildId, r.RoleId });
         b.HasOne(r => r.User).WithMany(u => u.Roles).HasForeignKey(r => new { r.UserId, r.GuildId });
-        b.HasOne(u => u.Role).WithMany(r => r.Users).HasForeignKey(r => new { r.RoleId, r.GuildId });
+        b.HasOne(u => u.Role).WithMany(r => r.Users).HasForeignKey(r => r.RoleId);
       });
   //builder.Entity<CounterEvent>(b => {
         //b.HasKey(c => new { c.CounterId, c.Timestamp });
@@ -84,7 +121,7 @@ public class BotDbContext : DbContext {
           .HasForeignKey(s => s.Name);
         b.HasOne(c => c.Channel)
           .WithMany(s => s.Subreddits)
-          .HasForeignKey(c => new { c.ChannelId, c.GuildId });
+          .HasForeignKey(c => c.ChannelId);
       });
     builder.Entity<AbstractTempAction>()
         .HasIndex(t => t.Expiration)
@@ -99,51 +136,11 @@ public class BotDbContext : DbContext {
       Log.Info($"Saved {changes} changes to the database.");
   }
 
-  public Guild GetGuild(IGuild iguild) {
-    var guild = Guilds.Find(iguild.Id);
-    if(guild == null) {
-      guild = new Guild(iguild);
-      Guilds.Add(guild);
-    }
-    if (guild.Commands == null)
-      Entry(guild).Collection(g => g.Commands).Load();
-    if (guild.Channels == null)
-      Entry(guild).Collection(g => g.Channels).Load();
-    if (guild.Roles == null)
-      Entry(guild).Collection(g => g.Roles).Load();
-    return guild;
-  }
-
-  public bool RemoveGuild(IGuild iguild) {
-    var guild = Guilds.Find(iguild.Id);
-    if(guild == null)
-      return false;
-    Guilds.Remove(guild);
-    return true;
-  }
-
-  public User GetUser(IUser iuser) {
-    var user = Users.Find(iuser.Id);
-    if(user == null)
-      user = Users.Add(new User(iuser)).Entity;
-    if (user.Usernames == null)
-      Entry(user).Collection(s => s.Usernames).Load();
-    return user;
-  }
-
-  public bool RemoveUser(IUser iuser) {
-    var user = Users.Find(iuser.Id);
-    if(user == null)
-      return false;
-    Users.Remove(user);
-    return true;
-  }
-
   public GuildUser GetGuildUser(IGuildUser iuser) {
     var user = GuildUsers.Find(iuser.Id, iuser.Guild.Id);
     if(user == null) {
       user = GuildUsers.Add(new GuildUser(iuser) {
-          User = GetUser(iuser)
+          User = Users.Get(iuser)
         }).Entity;
     }
     if (user.Roles == null)
@@ -157,15 +154,6 @@ public class BotDbContext : DbContext {
       return false;
     GuildUsers.Remove(user);
     return true;
-  }
-
-  public Channel GetChannel(IGuildChannel ichannel) {
-    var channel = Channels.Find(ichannel.Id, ichannel.Guild.Id);
-    if (channel == null)
-      channel = Channels.Add(new Channel(ichannel)).Entity;
-    if (channel.Subreddits == null)
-      Entry(channel).Collection(s => s.Subreddits).Load();
-    return channel;
   }
 
   public bool RemoveChannel(IGuildChannel ichannel) {
@@ -188,6 +176,67 @@ public class BotDbContext : DbContext {
     if (subreddit.Channels != null)
       Entry(subreddit).Collection(s => s.Channels).Load();
     return subreddit;
+  }
+
+  public UserRole GetUserRole(IGuildUser user, IRole role) {
+    var userRole = UserRoles.Find(user.Id, role.Id, user.Guild.Id);
+    if (userRole == null)
+      userRole = UserRoles.Add(new UserRole(user, role) {
+            Role = Roles.Get(role)
+          }).Entity;
+    return userRole;
+  }
+
+  public void RefreshUser(SocketGuildUser user) {
+    var guildUser = GetGuildUser(user);
+    //Entry(guild_user).Property(g => g.Guild).Load();
+    Entry(guildUser.Guild).Collection(g => g.Roles).Load();
+    var roles = guildUser.Guild.Roles.ToDictionary(r => r.Id, r => r);
+    var roleIds = new HashSet<ulong>();
+    foreach (var role in user.Roles) {
+      var userRole = GetUserRole(user, role);
+      guildUser.Roles.Add(userRole);
+      roleIds.Add(role.Id);
+    }
+    foreach (var role in guildUser.Roles) {
+      if (roleIds.Contains(role.RoleId))
+        role.HasRole = true;
+    }
+  }
+
+  public async Task RefreshGuild(SocketGuild guild) {
+    var dbGuild = Guilds.Get(guild);
+    var channelIds = new HashSet<ulong>();
+    var roleIds = new HashSet<ulong>();
+    Entry(dbGuild).Collection(g => g.Channels).Load();
+    Entry(dbGuild).Collection(g => g.Roles).Load();
+    foreach (var channel in guild.Channels.OfType<IMessageChannel>()) {
+      Channels.Get(channel);
+      channelIds.Add(channel.Id);
+    }
+    foreach (var role in guild.Roles) {
+      if (role.Id == guild.EveryoneRole.Id)
+        continue;
+      Roles.Get(role);
+      roleIds.Add(role.Id);
+    }
+    foreach (var channel in dbGuild.Channels) {
+      if (!channelIds.Contains(channel.Id))
+        Channels.Remove(channel);
+    }
+    foreach (var role in dbGuild.Roles) {
+      if (!roleIds.Contains(role.Id))
+        Roles.Remove(role);
+    }
+    if (!guild.HasAllMembers)
+      await guild.DownloadUsersAsync();
+    foreach(var user in guild.Users) {
+      if(user.Username == null) {
+        Log.Error($"Found user {user.Id} without a username");
+        continue;
+      }
+      RefreshUser(user);
+    }
   }
 
 }

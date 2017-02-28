@@ -52,9 +52,10 @@ public class AnnounceService : IService {
 
   async Task ForEachChannel(IGuild guild, Func<Channel, bool> validFunc, string message) {
     using (var context = new BotDbContext()) {
-      var guildConfig = context.GetGuild(guild);
-      Log.Info($"Announcement in {guild.ToIDString()}: \"{message}\"");
-      foreach(var channel in guildConfig.Channels) {
+      var guildConfig = context.Guilds.Get(guild);
+      await context.Entry(guildConfig).Collection(g => g.Channels).LoadAsync();
+      var sent = false;
+      foreach(var channel in guildConfig.Channels.ToArray()) {
         if(!validFunc(channel))
           continue;
         var dChannel = (await guild.GetChannelAsync(channel.Id)) as ITextChannel;
@@ -65,6 +66,7 @@ public class AnnounceService : IService {
         }
         try {
           await dChannel.Respond(message);
+          sent = true;
         } catch(HttpException) {
           Log.Error($"Announcement {message.DoubleQuote()} failed in {guild.ToIDString()}. Notifying server owner.");
           var owner = await dChannel.Guild.GetOwner();
@@ -73,6 +75,8 @@ public class AnnounceService : IService {
               "or disable the feature in said channel. Check the help command for more information");
         }
       }
+      if (sent)
+        Log.Info($"Announcement in {guild.ToIDString()}: \"{message}\"");
     }
   }
 

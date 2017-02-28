@@ -66,12 +66,12 @@ public partial class Admin {
     [RequirePermission(GuildPermission.ManageMessages)]
     [Remarks("Removes all reactions from messages in the last X messages.")]
     public async Task Reactions(int count = 100) {
-      await Context.Channel.GetMessagesAsync(count).ForEachAwait(async m => { IEnumerable<IUserMessage> messages = m.OfType<IUserMessage>()
-              .Where(message => message.Reactions.Count > 0);
-            foreach (IUserMessage message in messages) {
-              await message.RemoveAllReactionsAsync();
-              await Task.Delay(2000);
-            }
+      await Context.Channel.GetMessagesAsync(count).ForEachAwait(async msg => {
+          var messages = msg.OfType<IUserMessage>().Where(m => m.Reactions.Any());
+          foreach (IUserMessage message in messages) {
+            await message.RemoveAllReactionsAsync();
+            await Task.Delay(2000);
+          }
         });
       await Success();
     }
@@ -84,7 +84,7 @@ public partial class Admin {
         return;
       }
       var actualCount = 0;
-      await channel.GetMessagesAsync(count).ForEachAsync(async m => {
+      await channel.GetMessagesAsync(count).ForEachAwait(async m => {
           IEnumerable<IMessage> messages = m;
           if (pred != null)
             messages = m.Where(pred);

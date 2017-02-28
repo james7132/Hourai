@@ -8,9 +8,9 @@ using RedditSharp;
 using RedditSharp.Things;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
-
 namespace Hourai.Feeds {
 
 public class RedditService : IService {
@@ -58,8 +58,9 @@ public class RedditService : IService {
   }
 
   async Task CheckReddits() {
+    Log.Info("CHECKING SUBREDDITS");
     using (var context = new BotDbContext()) {
-      foreach (var dbSubreddit in context.Subreddits) {
+      foreach (var dbSubreddit in context.Subreddits.ToArray()) {
         context.Entry(dbSubreddit).Collection(s => s.Channels).Load();
         if (!dbSubreddit.Channels.Any()) {
           context.Subreddits.Remove(dbSubreddit);
@@ -72,26 +73,23 @@ public class RedditService : IService {
           Subreddits[name] = subreddit;
         }
         var channels = await dbSubreddit.GetChannelsAsync(Client);
+        if (!channels.Any())
+          return;
         DateTimeOffset latest = dbSubreddit.LastPost ?? DateTimeOffset.UtcNow;
         var latestInPage = latest;
-        await subreddit.New.Take(1).ForEachAwait(async page => {
-              foreach(var post in page) {
-                if (post.CreatedUTC <= latest)
-                  break;
-                Log.Info($"New post in /r/{dbSubreddit.Name}: {post.Title}");
-                var title = $"Post in /r/{dbSubreddit.Name}:";
-                var embed = PostToMessage(post);
-                foreach (var channel in channels) {
-                  try {
-                    await channel.SendMessageAsync(title, false, embed);
-                  } catch (Exception e) {
-                    Log.Error(e);
-                  }
-                }
-                if (latestInPage < post.CreatedUTC) {
-                  latestInPage = post.CreatedUTC;
-                }
-                await Task.Delay(500);
+        var title = $"Post in /r/{dbSubreddit.Name}:";
+        await subreddit.New.Take(25).ForEachAwait(async post => {
+              if (post.CreatedUTC <= latest)
+                return;
+              Log.Info($"New post in /r/{dbSubreddit.Name}: {post.Title}");
+              var embed = PostToMessage(post);
+              try {
+                await Task.WhenAll(channels.Select(c => c.SendMessageAsync(title, false, embed)));
+              } catch (Exception e) {
+                Log.Error(e);
+              }
+              if (latestInPage < post.CreatedUTC) {
+                latestInPage = post.CreatedUTC;
               }
             });
         dbSubreddit.LastPost = latestInPage;

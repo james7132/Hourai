@@ -1,14 +1,15 @@
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using System;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class CounterService {
+public class CounterService : IService {
 
-  CounterSet Counters { get; }
+  public CounterSet Counters { get; set; }
 
   static readonly Regex UrlRegex = new Regex(@"^(http|https|ftp)\://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(:[a-zA-Z0-9]*)?/?([a-zA-Z0-9\-\._\?\,\'/\\\+&amp;%\$#\=~])*$",
                                           RegexOptions.Compiled |
@@ -17,14 +18,11 @@ public class CounterService {
                                               RegexOptions.Compiled);
 
   Task Increment(string key) {
-     Counters.Get(key).Increment();
-     return Task.CompletedTask;
+      Counters.Get(key).Increment();
+      return Task.CompletedTask;
   }
 
-  public CounterService(IDependencyMap map) {
-    Counters = map.Get<CounterSet>();
-    var client = map.Get<DiscordShardedClient>();
-
+  public CounterService(DiscordShardedClient client) {
     client.MessageReceived += m => {
         var um = m as IUserMessage;
         if (um == null || m.Author.IsMe())
@@ -51,32 +49,26 @@ public class CounterService {
         return Task.CompletedTask;
     };
 
-    client.MessageUpdated +=
-        delegate { return Increment("messages-updated"); };
-    client.MessageDeleted +=
-        delegate { return Increment("messages-deleted"); };
+    foreach (var shard in client.Shards)
+      shard.Connected += () => Increment($"shard-{shard.ShardId}-reconnects");
 
-    client.ChannelCreated +=
-        delegate { return Increment("channels-created"); };
-    client.ChannelUpdated +=
-        delegate { return Increment("channels-updated"); };
-    client.ChannelDestroyed +=
-        delegate { return Increment("channels-deleted"); };
+    client.MessageUpdated += (b, a) => Increment("messages-updated");
+    client.MessageDeleted += (i, o) => Increment("messages-deleted");
 
-    client.RoleCreated +=
-        delegate { return Increment("roles-created"); };
-    client.RoleUpdated +=
-        delegate { return Increment("roles-updated"); };
-    client.RoleDeleted +=
-        delegate { return Increment("roles-deleted"); };
+    client.ChannelCreated += c => Increment("channels-created");
+    client.ChannelUpdated += (b, a) => Increment("channels-updated");
+    client.ChannelDestroyed += c => Increment("channels-deleted");
 
-    client.UserLeft+= delegate { return Increment("user-left"); };
-    client.UserBanned += delegate { return Increment("user-banned"); };
-    client.UserUnbanned +=
-        delegate { return Increment("user-unbanned"); };
+    client.RoleCreated += r => Increment("roles-created");
+    client.RoleUpdated += (b, a) => Increment("roles-updated");
+    client.RoleDeleted += r => Increment("roles-deleted");
 
-    client.JoinedGuild += delegate { return Increment("guild-joined"); };
-    client.LeftGuild += delegate { return Increment("guild-left"); };
+    client.UserLeft += u => Increment("user-left");
+    client.UserBanned += (u, g) => Increment("user-banned");
+    client.UserUnbanned += (u, g) => Increment("user-unbanned");
+
+    client.JoinedGuild += g => Increment("guild-joined");
+    client.LeftGuild += g => Increment("guild-left");
   }
 }
 }

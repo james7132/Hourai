@@ -29,7 +29,7 @@ public class Subreddit {
     Check.NotNull(client);
     var channels = new List<IMessageChannel>();
     foreach(var channel in Channels) {
-      var discordChannel = await client.GetChannelAsync(channel.ChannelId) as IMessageChannel;
+      var discordChannel = (await client.GetChannelAsync(channel.ChannelId)) as IMessageChannel;
       if(discordChannel != null) {
         channels.Add(discordChannel);
       } else {
@@ -53,15 +53,11 @@ public class SubredditChannel {
   public string Name { get; set; }
   [Required]
   public ulong ChannelId { get; set; }
-  [Required]
-  public ulong GuildId { get; set; }
 
   [ForeignKey("Name")]
   public Subreddit Subreddit { get; set; }
   [ForeignKey("ChannelId")]
   public Channel Channel { get; set; }
-  [ForeignKey("GuildId")]
-  public Guild Guild { get; set; }
 
 }
 

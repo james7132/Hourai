@@ -5,9 +5,7 @@ using System.Collections.Concurrent;
 
 namespace Hourai {
 
-public interface ICounter {
-  void IncrementBy(ulong value);
-}
+public interface ICounter { void IncrementBy(ulong value); }
 
 public static class CounterExtensions {
 
@@ -80,11 +78,11 @@ public class AggregatedCounter : ICounter, IEnumerable<ICounter> {
   }
 }
 
-public class CounterSet : CounterSet<ICounter> {
+public class CounterSet : CounterSet<SimpleCounter> {
 
-  public CounterSet(IFactroy<ICounter> factory) : base(factory) {}
+  public CounterSet(IFactroy<SimpleCounter> factory) : base(factory) {}
 
-  public CounterSet(Func<ICounter> factoryFunc) : base(factoryFunc) {}
+  public CounterSet(Func<SimpleCounter> factoryFunc) : base(factoryFunc) {}
 
 }
 

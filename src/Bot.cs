@@ -11,6 +11,16 @@ using Discord.WebSocket;
 
 namespace Hourai {
 
+  public class BotCounters {
+
+    public SimpleCounter Reconnects { get; }
+
+    public BotCounters() {
+      Reconnects = new SimpleCounter();
+    }
+
+  }
+
   public class Bot {
 
     static void Main() => new Bot().Run().GetAwaiter().GetResult();
@@ -63,6 +73,7 @@ namespace Hourai {
       map.Add(CommandService);
 
       map.Add(new CounterSet(new ActivatorFactory<SimpleCounter>()));
+      map.Add(new BotCounters());
       map.Add(new LogSet());
 
       map.Add(ErrorService = new ErrorService());
@@ -148,7 +159,8 @@ namespace Hourai {
     async Task MainLoop() {
       while (!ExitSource.Task.IsCompleted) {
         await Task.WhenAll(_regularTasks.Select(t => t()));
-        await Client.SetGameAsync(Config.Version);
+        if (Client.CurrentUser != null)
+          await Client.SetGameAsync(Config.Version);
         await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
       }
     }
@@ -156,10 +168,10 @@ namespace Hourai {
     async Task Run() {
       Log.Info($"Starting...");
       await Initialize();
-      Log.Info("Starting Discord Client...");
-      await Client.StartAsync();
       Log.Info("Logging into Discord...");
       await Client.LoginAsync(TokenType.Bot, Config.Token, false);
+      Log.Info("Starting Discord Client...");
+      await Client.StartAsync();
       User = Client.CurrentUser;
       Log.Info($"Logged in as {User.ToIDString()}");
 
