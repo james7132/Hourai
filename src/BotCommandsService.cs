@@ -37,7 +37,7 @@ public class BotCommandService : IService {
     if (msg == null || msg.Author.IsBot || msg.Author.IsMe())
       return;
     using (var db = Database.CreateContext()) {
-      var user = db.GetUser(msg.Author);
+      var user = db.Users.Get(msg.Author);
       if(user.IsBlacklisted)
         return;
 
@@ -48,7 +48,7 @@ public class BotCommandService : IService {
       char prefix = Config.CommandPrefix;
       var guild = (m.Channel as IGuildChannel)?.Guild;
       if(guild != null) {
-        dbGuild = db.GetGuild(guild);
+        dbGuild = db.Guilds.Get(guild);
         var prefixString = dbGuild.Prefix;
         if(string.IsNullOrEmpty(prefixString)) {
           prefix = Config.CommandPrefix;

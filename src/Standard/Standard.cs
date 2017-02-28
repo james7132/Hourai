@@ -73,7 +73,6 @@ public partial class Standard : HouraiModule {
   public async Task ServerInfo() {
     var builder = new StringBuilder();
     var server = Check.NotNull(Context.Guild);
-    var guild = Db.GetGuild(server);
     var owner = await server.GetOwner();
     var textChannels = server.Channels.OfType<ITextChannel>().Order().Select(ch => ch.Name.Code());
     var voiceChannels = server.Channels.OfType<IVoiceChannel>().Order().Select(ch => ch.Name.Code());
@@ -88,20 +87,10 @@ public partial class Standard : HouraiModule {
       builder.AppendLine($"Roles: {roles.Order().Select(r => r.Name.Code()).Join(", ")}");
     builder.AppendLine($"Text Channels: {textChannels.Join(", ")}")
       .AppendLine($"Voice Channels: {voiceChannels.Join(", ")}")
-      .AppendLine($"Bot Command Prefix: {guild.Prefix}");
+      .AppendLine($"Bot Command Prefix: {Context.DbGuild.Prefix}");
     if(!string.IsNullOrEmpty(server.IconUrl))
       builder.AppendLine(server.IconUrl);
     await Context.Message.Respond(builder.ToString());
-  }
-
-  [Command("channelinfo")]
-  [ChannelRateLimit(3, 1)]
-  [RequireContext(ContextType.Guild)]
-  [Remarks("Gets information on a specified channel")]
-  public Task ChannelInfo(IGuildChannel channel = null) {
-    if(channel == null)
-      channel = Check.InGuild(Context.Message);
-    return Context.Message.Respond($"ID: {channel.Id.ToString().Code()}");
   }
 
   [Command("whois")]
@@ -133,7 +122,9 @@ public partial class Standard : HouraiModule {
     var avatar = user.GetAvatarUrl(AvaFormat, AvatarSize);
     if(!string.IsNullOrEmpty(avatar))
       builder.AppendLine(avatar);
-    var usernames = Db.GetUser(user).Usernames.Where(u => u.Name != user.Username);
+    var dbUser = Db.Users.Get(user);
+    await Db.Entry(dbUser).Collection(u => u.Usernames).LoadAsync();
+    var usernames = dbUser.Usernames.Where(u => u.Name != user.Username);
     if(usernames.Any()) {
       using(builder.MultilineCode()) {
         foreach(var username in usernames.OrderByDescending(u => u.Date)) {

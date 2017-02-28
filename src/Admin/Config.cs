@@ -22,7 +22,7 @@ public partial class Admin {
         await RespondAsync("Cannot set bot prefix to an empty result");
         return;
       }
-      var guild = Db.GetGuild(Context.Guild);
+      var guild = Context.DbGuild;
       guild.Prefix = prefix.Substring(0, 1);
       await Db.Save();
       await Success($"Bot command prefix set to {guild.Prefix.ToString().Code()}");

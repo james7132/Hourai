@@ -20,6 +20,7 @@ public partial class Standard {
     [Remarks("Creates a custom command. Deletes an existing one if response is empty.")]
     public async Task CreateCommand(string name,
                                     [Remainder] string response = "") {
+      await Db.Entry(Context.DbGuild).Collection(c => c.Commands).LoadAsync();
       var command = Context.DbGuild.Commands.SingleOrDefault(c => c.Name == name);
       if (string.IsNullOrEmpty(response)) {
         if (command == null) {
@@ -51,12 +52,13 @@ public partial class Standard {
 
     [Command("dump")]
     [Remarks("Dumps the base source text for a command.")]
-    public Task CommandDump(string command) {
+    public async Task CommandDump(string command) {
+      await Db.Entry(Context.DbGuild).Collection(c => c.Commands).LoadAsync();
       var customCommand = Context.DbGuild.Commands.SingleOrDefault(c => c.Name == command);
       if(customCommand == null)
-        return RespondAsync($"No custom command named {command}");
+        await RespondAsync($"No custom command named {command}");
       else
-        return RespondAsync($"{customCommand.Name}: {customCommand.Response}");
+        await RespondAsync($"{customCommand.Name}: {customCommand.Response}");
     }
 
     [Log]
@@ -64,7 +66,15 @@ public partial class Standard {
     [ServerOwner]
     [Remarks("Sets the minimum role for creating custom commands.")]
     public async Task CommandRole(IRole role) {
-      Context.DbGuild.SetMinimumRole(MinimumRole.Command, role);
+      await Db.Entry(Context.DbGuild).Collection(g => g.MinRoles).LoadAsync();
+      const int type = (int)MinimumRole.Command;
+      var dbrole = Context.DbGuild.MinRoles.FirstOrDefault(r => r.Type == type);
+      if (dbrole == null) {
+        dbrole = new MinRole(MinimumRole.Command, role);
+        Context.DbGuild.MinRoles.Add(dbrole);
+      }
+      dbrole.Role = Db.Roles.Get(role);
+      await Db.Save();
       await Success($"Set {role.Name.Code()} as the minimum role to create custom commnds.");
     }
 

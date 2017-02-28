@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,16 +25,35 @@ public class DatabaseService {
     client.ChannelDestroyed += AddChannel;
     client.UserJoined += AddUser;
     client.UserLeft += AddUser;
+    client.UserUpdated += (b, a) => AddUser(a);
+    client.GuildMemberUpdated += (b, a) => RefreshUser(a);
+    client.RoleCreated += r => Add(c => c.Roles, r);
+    client.RoleDeleted += r => Remove(c => c.Roles, r);
     //client.JoinedGuild += AddGuild;
     client.MessageReceived += m => AddUser(m.Author);
     _guilds = new HashSet<ulong>();
+  }
+
+  async Task Add<T>(Func<BotDbContext, DbSet<T>> setFunc, IEntity<ulong> entity) where T :class {
+    using (var context = new BotDbContext()) {
+      setFunc(context).Get(entity);
+      await context.Save();
+    }
+  }
+
+  async Task Remove<T>(Func<BotDbContext, DbSet<T>> setFunc, IEntity<ulong> entity) where T :class {
+    using (var context = new BotDbContext()) {
+      setFunc(context).Remove(entity);
+      await context.Save();
+    }
   }
 
   async Task AddUser(IUser iuser) {
     if(iuser.Username == null)
       return;
     using (var context = new BotDbContext()) {
-      var user = context.GetUser(iuser);
+      var user = context.Users.Get(iuser);
+      await context.Entry(user).Collection(u => u.Usernames).LoadAsync();
       user.AddName(iuser.Username);
       await context.Save();
     }
@@ -44,8 +64,15 @@ public class DatabaseService {
     if (guild_channel == null)
       return;
     using (var context = new BotDbContext()) {
-      context.GetGuild(guild_channel.Guild);
-      context.GetChannel(guild_channel);
+      context.Guilds.Get(guild_channel.Guild);
+      context.Channels.Get(guild_channel);
+      await context.Save();
+    }
+  }
+
+  async Task RefreshUser(SocketGuildUser user) {
+    using (var context = new BotDbContext()) {
+      context.RefreshUser(user);
       await context.Save();
     }
   }
@@ -55,8 +82,9 @@ public class DatabaseService {
     if (guild_channel == null)
       return;
     using (var context = new BotDbContext()) {
-      context.RemoveChannel(guild_channel);
+      context.Channels.Remove(guild_channel);
       await context.Save();
+      Log.Info($"Channel removed. Deleted from database.");
     }
   }
 
@@ -64,21 +92,7 @@ public class DatabaseService {
     if (_guilds.Contains(guild.Id))
       return;
     using (var context = new BotDbContext()) {
-      var dbGuild = context.GetGuild(guild);
-      context.AllowSave = false;
-      foreach(var channel in guild.Channels) {
-        context.GetChannel(channel);
-      }
-      if (!guild.HasAllMembers)
-        await guild.DownloadUsersAsync();
-      foreach(var user in guild.Users) {
-        if(user.Username == null) {
-          Log.Error($"Found user {user.Id} without a username");
-          continue;
-        }
-        context.GetGuildUser(user);
-      }
-      context.AllowSave = true;
+      await context.RefreshGuild(guild);
       await context.Save();
     }
     _guilds.Add(guild.Id);

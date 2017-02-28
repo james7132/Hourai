@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace Hourai.Preconditions {
 
-[Flags]
-public enum MinimumRole : long {
-  Command = 1 << 0
+public enum MinimumRole : int {
+  Command = 0
 }
 
 public class MinimumRoleAttribute : PreconditionAttribute {
@@ -21,19 +20,18 @@ public class MinimumRoleAttribute : PreconditionAttribute {
       ICommandContext context,
       CommandInfo commandInfo,
       IDependencyMap dependencies) {
-    var user = context.Message.Author as IGuildUser;
+    var user = context.User as IGuildUser;
     if(user == null)
       return PreconditionResult.FromError("Must be in server to execute this command");
     if (user.IsBotOwner() || user.IsServerOwner())
       return PreconditionResult.FromSuccess();
-    var server = user.Guild;
-    var guild = dependencies.Get<DatabaseService>().Context.GetGuild(server);
-    ulong? minRole = guild.GetMinimumRole(_roleType);
+    var guild = context.Guild;
+    ulong? minRole = dependencies.Get<DatabaseService>().Context.MinRoles.Find(guild.Id, (int)_roleType)?.RoleId;
     if (minRole == null)
       return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.ToString().Code()} is set.");
-    var role = server.GetRole(minRole.Value);
+    var role = guild.GetRole(minRole.Value);
     if (role == null) {
-      var owner = await server.GetOwnerAsync();
+      var owner = await guild.GetOwnerAsync();
       return PreconditionResult.FromError($"{owner.Mention} the role for {_roleType.ToString().Code()} no longer exists, and you are the only one who can now run it.");
     }
     if (!Utility.RoleCheck(user, role))

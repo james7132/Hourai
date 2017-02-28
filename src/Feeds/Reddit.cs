@@ -22,7 +22,7 @@ public partial class Feeds {
     [RequirePermission(GuildPermission.ManageGuild, Require.User | Require.BotOwnerOverride)]
     [Remarks("Adds subreddit feed(s) to the current channel. New posts on reddit will be automatically linked.")]
     public async Task Add(params string[] subreddits) {
-      var channel = Db.GetChannel(Check.InGuild(Context.Message));
+      var channel = Db.Channels.Get(Check.InGuild(Context.Message));
       var response = new StringBuilder();
       foreach(var sub in subreddits) {
         var subreddit = Subreddit.SanitizeName(sub);
@@ -78,7 +78,7 @@ public partial class Feeds {
     [Command("list")]
     [Remarks("Lists all subreddits that feed into this channel.")]
     public async Task List() {
-      var channel = Db.GetChannel(Check.InGuild(Context.Message));
+      var channel = Db.Channels.Get(Check.InGuild(Context.Message));
       if (!channel.Subreddits.Any())
         await RespondAsync("No subreddits currently tied to this channel");
       else

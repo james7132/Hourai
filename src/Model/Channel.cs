@@ -11,10 +11,10 @@ namespace Hourai.Model {
 [Table("channels")]
 public class Channel {
 
-  [DatabaseGenerated(DatabaseGeneratedOption.None)]
+  [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
   public ulong Id { get; set; }
-  public ulong GuildId { get; set; }
-  [Required]
+  public ulong? GuildId { get; set; }
+  [ForeignKey("GuildId")]
   public Guild Guild { get; set; }
 
   public bool JoinMessage { get; set; }
@@ -32,43 +32,11 @@ public class Channel {
   public Channel() {
   }
 
-  public Channel(IGuildChannel channel) {
+  public Channel(IChannel channel) {
     Id = Check.NotNull(channel).Id;
-    GuildId = channel.Guild.Id;
+    GuildId = (channel as IGuildChannel)?.Guild.Id;
   }
 
 }
-
-//[Table("counters")]
-//public class Counter {
-
-  //public ulong Id { get; set; }
-  //public string Name { get; set; }
-
-  //public List<CounterEvent> Events { get; set; }
-
-//}
-
-//public class CounterEvent {
-
-  //[Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
-  //public ulong CounterId { get; set; }
-  //[Required]
-  //public Counter Counter { get; set; }
-  //public DateTime Timestamp { get; set; }
-  //public ulong Count { get; set; }
-
-  //public ulong? ChannelId { get; set; }
-  //public ulong? GuildId { get; set; }
-  //public ulong? UserId { get; set; }
-
-  //public Channel Channel { get; set; }
-  //[ForeignKey("GuildId")]
-  //public Guild Guild { get; set; }
-  //[ForeignKey("UserId")]
-  //public User User { get; set; }
-  //public GuildUser GuildUser { get; set; }
-
-//}
 
 }

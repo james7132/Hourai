@@ -17,7 +17,7 @@ public class BlacklistService : IService {
   Func<IGuild, Task> CheckBlacklist(bool normalJoin) {
     return async guild => {
       using (var context = new BotDbContext()) {
-        var config = context.GetGuild(guild);
+        var config = context.Guilds.Get(guild);
         var defaultChannel = (await guild.GetChannelAsync(guild.DefaultChannelId)) as ITextChannel;
         if (defaultChannel == null)
           return;

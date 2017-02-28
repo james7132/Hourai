@@ -12,7 +12,7 @@ namespace Hourai.Feeds {
 public partial class Feeds {
 
   [Group("announce")]
-  [RequirePermission(ChannelPermission.SendMessages, Require.Bot)]
+  [RequirePermission(GuildPermission.SendMessages, Require.Bot)]
   public class Announce : HouraiModule {
 
     [Command("join")]
@@ -41,7 +41,7 @@ public partial class Feeds {
         string messageType) {
       var exp = (MemberExpression)alteration.Body;
       var prop = exp.Member as PropertyInfo;
-      var channel = Db.GetChannel(Context.Channel as ITextChannel);
+      var channel = Db.Channels.Get(Context.Channel as ITextChannel);
       var value =  !((bool)prop.GetValue(channel));
       prop.SetValue(channel, value);
       await Db.Save();

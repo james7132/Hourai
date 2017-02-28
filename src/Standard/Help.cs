@@ -65,11 +65,10 @@ public class Help : HouraiModule {
         continue;
       builder.AppendLine($"{module.Name.Bold()}: {commands}");
     }
-    if(Context.Guild != null) {
-      var guild = Db.GetGuild(Context.Guild);
-      if(guild.Commands.Any())
-        builder.AppendLine($"{"Custom".Bold()}: {guild.Commands.Select(c => c.Name.Code()).Join(", ")}");
-    }
+    var guild = Context.DbGuild;
+    await Db.Entry(guild).Collection(c => c.Commands).LoadAsync();
+    if(guild.Commands.Any())
+      builder.AppendLine($"{"Custom".Bold()}: {guild.Commands.Select(c => c.Name.Code()).Join(", ")}");
     var result = builder.ToString();
     if(!string.IsNullOrEmpty(result))
       await RespondAsync($"{Context.Message.Author.Mention}, here are the " +
@@ -124,11 +123,10 @@ public class Help : HouraiModule {
     // Reverse the commands. Order goes from least specific to most specfic.
     commands = commands.Reverse();
     if(commands.Any()) {
-      var guild = Db.GetGuild(Context.Guild);
       var builder = new StringBuilder();
       var command = commands.First();
       using(builder.Code()) {
-        builder.Append(guild.Prefix)
+        builder.Append(Context.DbGuild.Prefix)
           .Append(command.GetFullName())
           .Append(" ")
           .AppendLine(command.Parameters.Select(p => {
