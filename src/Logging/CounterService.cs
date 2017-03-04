@@ -2,6 +2,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using System;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -39,6 +40,15 @@ public class CounterService : IService {
             if(!word.IsNullOrEmpty())
                 Counters.Get("word-" + word).Increment();
         Counters.Get("messages-recieved").Increment();
+        var guild = (m.Channel as IGuildChannel)?.Guild;
+        if (guild != null) {
+          foreach (var shard in client.Shards) {
+            if (shard.Guilds.Any(g => g.Id == guild.Id)) {
+              Counters.Get($"shard-{shard.ShardId}-messages-recieved").Increment();
+              break;
+            }
+          }
+        }
         Counters.Get("messages-attachments").IncrementBy((ulong) um.Attachments.Count);
         Counters.Get("messages-embeds").IncrementBy((ulong) um.Embeds.Count);
         Counters.Get("messages-user-mentions").IncrementBy((ulong) um.MentionedUserIds.Count);
@@ -52,7 +62,7 @@ public class CounterService : IService {
     foreach (var shard in client.Shards)
       shard.Connected += () => Increment($"shard-{shard.ShardId}-reconnects");
 
-    client.MessageUpdated += (b, a) => Increment("messages-updated");
+    client.MessageUpdated += (c, m, ch) => Increment("messages-updated");
     client.MessageDeleted += (i, o) => Increment("messages-deleted");
 
     client.ChannelCreated += c => Increment("channels-created");

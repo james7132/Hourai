@@ -10,7 +10,8 @@ namespace Hourai.Admin {
 
 public class TempService : IService {
 
-  public DiscordShardedClient Client { get; }
+  public DiscordShardedClient Client { get; set; }
+  public ErrorService ErrorService { get; set; }
 
   public TempService() {
     Bot.RegularTasks += CheckTempActions;
@@ -18,18 +19,20 @@ public class TempService : IService {
 
   async Task CheckTempActions() {
     using (var context = new BotDbContext()) {
-      var now = DateTimeOffset.Now;
-      var done = new List<AbstractTempAction>();
-      foreach(var action in context.TempActions) {
-        if(action.Expiration >= now)
-          break;
-        await action.Unapply(Client);
-        done.Add(action);
-      }
-      if(done.Count > 0) {
-        context.TempActions.RemoveRange(done);
-        await context.Save();
-      }
+      await Task.WhenAll(context.TempActions
+          .Where(a => a.Expiration < DateTimeOffset.Now)
+          .AsEnumerable()
+          .Select(action =>
+            Task.Run(async () => {
+        try {
+          await action.Unapply(Client);
+          context.TempActions.Remove(action);
+        } catch(Exception e) {
+          Log.Error(e);
+          ErrorService.RegisterException(e);
+        }
+      })));
+      await context.Save();
     }
   }
 

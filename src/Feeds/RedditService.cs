@@ -6,6 +6,7 @@ using Hourai.Model;
 using Hourai.Extensions;
 using RedditSharp;
 using RedditSharp.Things;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -60,16 +61,17 @@ public class RedditService : IService {
   async Task CheckReddits() {
     Log.Info("CHECKING SUBREDDITS");
     using (var context = new BotDbContext()) {
-      foreach (var dbSubreddit in context.Subreddits.ToArray()) {
-        context.Entry(dbSubreddit).Collection(s => s.Channels).Load();
+      var subreddits = await context.Subreddits.Include(s => s.Channels).ToListAsync();
+      await Task.WhenAll(subreddits.Select(dbSubreddit => Task.Run(async () => {
+        Log.Info($"Checking {dbSubreddit.Name}");
         if (!dbSubreddit.Channels.Any()) {
           context.Subreddits.Remove(dbSubreddit);
-          continue;
+          return;
         }
         var name = dbSubreddit.Name;
         RedditSharp.Things.Subreddit subreddit;
         if (!Subreddits.TryGetValue(name, out subreddit)) {
-          subreddit = await Reddit.GetSubredditAsync("/r/" + name);
+          subreddit = await Reddit.GetSubredditAsync(name);
           Subreddits[name] = subreddit;
         }
         var channels = await dbSubreddit.GetChannelsAsync(Client);
@@ -93,8 +95,8 @@ public class RedditService : IService {
               }
             });
         dbSubreddit.LastPost = latestInPage;
-        await context.Save();
-      }
+      })));
+      await context.Save();
     }
   }
 

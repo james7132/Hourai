@@ -12,8 +12,8 @@ namespace Hourai.Model {
 
 public static class DbSetExtensions {
 
-  public static T Get<T>(this DbSet<T> set, IEntity<ulong> entity) where T : class {
-    var val = set.Find(entity.Id);
+  public static async Task<T> Get<T>(this DbSet<T> set, IEntity<ulong> entity) where T : class {
+    var val = await set.FindAsync(entity.Id);
     if(val == null) {
       val = (T) Activator.CreateInstance(typeof(T), entity);
       set.Add(val);
@@ -21,16 +21,16 @@ public static class DbSetExtensions {
     return val;
   }
 
-  public static bool Remove<T>(this DbSet<T> set, IEntity<ulong> entity) where T : class {
-    var val = set.Find(entity.Id);
+  public static async Task<bool> Remove<T>(this DbSet<T> set, IEntity<ulong> entity) where T : class {
+    var val = await set.FindAsync(entity.Id);
     if(val == null)
       return false;
     set.Remove(val);
     return true;
   }
 
-  public static Channel Get(this DbSet<Channel> set, IChannel ichannel) {
-    var channel = set.Find(ichannel.Id);
+  public static async Task<Channel> Get(this DbSet<Channel> set, IChannel ichannel) {
+    var channel = await set.FindAsync(ichannel.Id);
     if (channel == null)
       channel = set.Add(new Channel(ichannel) {
             GuildId = (channel as IGuildChannel)?.Id
@@ -136,37 +136,27 @@ public class BotDbContext : DbContext {
       Log.Info($"Saved {changes} changes to the database.");
   }
 
-  public GuildUser GetGuildUser(IGuildUser iuser) {
-    var user = GuildUsers.Find(iuser.Id, iuser.Guild.Id);
+  public async Task<GuildUser>GetGuildUser(IGuildUser iuser) {
+    var user = await GuildUsers.FindAsync(iuser.Id, iuser.Guild.Id);
     if(user == null) {
       user = GuildUsers.Add(new GuildUser(iuser) {
-          User = Users.Get(iuser)
+          User = await Users.Get(iuser)
         }).Entity;
     }
-    if (user.Roles == null)
-      Entry(user).Collection(s => s.Roles).Load();
     return user;
   }
 
-  public bool RemoveGuildUser(IGuildUser iuser) {
-    var user = GuildUsers.Find(iuser.Id, iuser.Guild.Id);
+  public async Task<bool> RemoveGuildUser(IGuildUser iuser) {
+    var user = await GuildUsers.FindAsync(iuser.Id, iuser.Guild.Id);
     if (user == null)
       return false;
     GuildUsers.Remove(user);
     return true;
   }
 
-  public bool RemoveChannel(IGuildChannel ichannel) {
-    var channel = Channels.Find(ichannel.Id);
-    if(channel == null)
-      return false;
-    Channels.Remove(channel);
-    return true;
-  }
-
-  public Subreddit GetSubreddit(string name) {
+  public async Task<Subreddit> GetSubreddit(string name) {
     name = Subreddit.SanitizeName(name);
-    var subreddit = Subreddits.Find(name);
+    var subreddit = await Subreddits.FindAsync(name);
     if(subreddit == null) {
       subreddit = Subreddits.Add(new Subreddit {
           Name = name,
@@ -174,69 +164,63 @@ public class BotDbContext : DbContext {
         }).Entity;
     }
     if (subreddit.Channels != null)
-      Entry(subreddit).Collection(s => s.Channels).Load();
+      await Entry(subreddit).Collection(s => s.Channels).LoadAsync();
     return subreddit;
   }
 
-  public UserRole GetUserRole(IGuildUser user, IRole role) {
-    var userRole = UserRoles.Find(user.Id, role.Id, user.Guild.Id);
+  public async Task<UserRole> GetUserRole(IGuildUser user, IRole role) {
+    var userRole = await UserRoles.FindAsync(user.Id, role.Id, user.Guild.Id);
     if (userRole == null)
       userRole = UserRoles.Add(new UserRole(user, role) {
-            Role = Roles.Get(role)
+            Role = await Roles.Get(role)
           }).Entity;
     return userRole;
   }
 
-  public void RefreshUser(SocketGuildUser user) {
-    var guildUser = GetGuildUser(user);
-    //Entry(guild_user).Property(g => g.Guild).Load();
-    Entry(guildUser.Guild).Collection(g => g.Roles).Load();
-    var roles = guildUser.Guild.Roles.ToDictionary(r => r.Id, r => r);
-    var roleIds = new HashSet<ulong>();
-    foreach (var role in user.Roles) {
-      var userRole = GetUserRole(user, role);
-      guildUser.Roles.Add(userRole);
-      roleIds.Add(role.Id);
-    }
-    foreach (var role in guildUser.Roles) {
-      if (roleIds.Contains(role.RoleId))
-        role.HasRole = true;
-    }
+  public async Task RefreshUser(SocketGuildUser user) {
+    Log.Info($"Refreshing {user.ToIDString()}");
+    var guildUser = await GetGuildUser(user);
+    await Entry(guildUser).Collection(u => u.Roles).LoadAsync();
+    Log.Info($"Loaded {user.ToIDString()} roles");
+    var roleIds = new HashSet<ulong>(user.Roles.Select(r => r.Id));
+    await Task.WhenAll(user.Guild.Roles.Select(async role => {
+      var userRole = await GetUserRole(user, role);
+      userRole.HasRole = roleIds.Contains(role.Id);
+    }));
+    Log.Info($"Refreshed {user.ToIDString()}");
   }
 
   public async Task RefreshGuild(SocketGuild guild) {
-    var dbGuild = Guilds.Get(guild);
-    var channelIds = new HashSet<ulong>();
-    var roleIds = new HashSet<ulong>();
-    Entry(dbGuild).Collection(g => g.Channels).Load();
-    Entry(dbGuild).Collection(g => g.Roles).Load();
-    foreach (var channel in guild.Channels.OfType<IMessageChannel>()) {
-      Channels.Get(channel);
-      channelIds.Add(channel.Id);
-    }
-    foreach (var role in guild.Roles) {
-      if (role.Id == guild.EveryoneRole.Id)
-        continue;
-      Roles.Get(role);
-      roleIds.Add(role.Id);
-    }
-    foreach (var channel in dbGuild.Channels) {
-      if (!channelIds.Contains(channel.Id))
-        Channels.Remove(channel);
-    }
-    foreach (var role in dbGuild.Roles) {
-      if (!roleIds.Contains(role.Id))
-        Roles.Remove(role);
-    }
-    if (!guild.HasAllMembers)
+    Log.Info($"Refreshing {guild.ToIDString()}");
+    var dbGuild = await Guilds.Get(guild);
+    await Entry(dbGuild).Collection(g => g.Channels).LoadAsync();
+    await Entry(dbGuild).Collection(g => g.Roles).LoadAsync();
+    Log.Info($"Loaded {guild.ToIDString()} entities.");
+    var messageChannels = guild.Channels.OfType<IMessageChannel>();
+    var channelIds = new HashSet<ulong>(messageChannels.Select(c => c.Id));
+    var roleIds = new HashSet<ulong>(guild.Roles.Select(r => r.Id));
+    var chTask = Task.WhenAll(messageChannels.Select(c => Channels.Get(c)));
+    var rTask = Task.WhenAll(guild.Roles.Where(r => r.Id != guild.EveryoneRole.Id)
+        .Select(r => Roles.Get(r)));
+    Log.Info($"Added new {guild.ToIDString()} entities.");
+    await Task.WhenAll(chTask, rTask);
+    Channels.RemoveRange(dbGuild.Channels.Where(c => !channelIds.Contains(c.Id)));
+    Roles.RemoveRange(dbGuild.Roles.Where(r => !roleIds.Contains(r.Id)));
+    Log.Info($"Removed deleted {guild.ToIDString()} entities.");
+    if (!guild.HasAllMembers) {
+      Log.Info($"Downloading {guild.ToIDString()} users.");
       await guild.DownloadUsersAsync();
-    foreach(var user in guild.Users) {
+      Log.Info($"Downloaded {guild.ToIDString()} users.");
+    }
+    Log.Info($"Refreshing {guild.ToIDString()} users ({guild.Users.Count}).");
+    await Task.WhenAll(guild.Users.Select(user => {
       if(user.Username == null) {
         Log.Error($"Found user {user.Id} without a username");
-        continue;
+        return Task.CompletedTask;
       }
-      RefreshUser(user);
-    }
+      return RefreshUser(user);
+    }));
+    Log.Info($"{guild.ToIDString()} refreshed.");
   }
 
 }

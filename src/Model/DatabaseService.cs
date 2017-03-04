@@ -27,7 +27,7 @@ public class DatabaseService {
     client.UserLeft += AddUser;
     client.UserUpdated += (b, a) => AddUser(a);
     client.GuildMemberUpdated += (b, a) => RefreshUser(a);
-    client.RoleCreated += r => Add(c => c.Roles, r);
+    client.RoleCreated += r => AddRole(r);
     client.RoleDeleted += r => Remove(c => c.Roles, r);
     //client.JoinedGuild += AddGuild;
     client.MessageReceived += m => AddUser(m.Author);
@@ -36,14 +36,22 @@ public class DatabaseService {
 
   async Task Add<T>(Func<BotDbContext, DbSet<T>> setFunc, IEntity<ulong> entity) where T :class {
     using (var context = new BotDbContext()) {
-      setFunc(context).Get(entity);
+      await setFunc(context).Get(entity);
       await context.Save();
     }
   }
 
   async Task Remove<T>(Func<BotDbContext, DbSet<T>> setFunc, IEntity<ulong> entity) where T :class {
     using (var context = new BotDbContext()) {
-      setFunc(context).Remove(entity);
+      await setFunc(context).Remove(entity);
+      await context.Save();
+    }
+  }
+
+  async Task AddRole(IRole role) {
+    using (var context = new BotDbContext()) {
+      await context.Guilds.Get(role.Guild);
+      await context.Roles.Get(role);
       await context.Save();
     }
   }
@@ -52,7 +60,7 @@ public class DatabaseService {
     if(iuser.Username == null)
       return;
     using (var context = new BotDbContext()) {
-      var user = context.Users.Get(iuser);
+      var user = await context.Users.Get(iuser);
       await context.Entry(user).Collection(u => u.Usernames).LoadAsync();
       user.AddName(iuser.Username);
       await context.Save();
@@ -64,15 +72,15 @@ public class DatabaseService {
     if (guild_channel == null)
       return;
     using (var context = new BotDbContext()) {
-      context.Guilds.Get(guild_channel.Guild);
-      context.Channels.Get(guild_channel);
+      await context.Guilds.Get(guild_channel.Guild);
+      await context.Channels.Get(guild_channel);
       await context.Save();
     }
   }
 
   async Task RefreshUser(SocketGuildUser user) {
     using (var context = new BotDbContext()) {
-      context.RefreshUser(user);
+      await context.RefreshUser(user);
       await context.Save();
     }
   }
@@ -82,7 +90,7 @@ public class DatabaseService {
     if (guild_channel == null)
       return;
     using (var context = new BotDbContext()) {
-      context.Channels.Remove(guild_channel);
+      await context.Channels.Remove(guild_channel);
       await context.Save();
       Log.Info($"Channel removed. Deleted from database.");
     }

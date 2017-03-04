@@ -122,7 +122,7 @@ public partial class Standard : HouraiModule {
     var avatar = user.GetAvatarUrl(AvaFormat, AvatarSize);
     if(!string.IsNullOrEmpty(avatar))
       builder.AppendLine(avatar);
-    var dbUser = Db.Users.Get(user);
+    var dbUser = await Db.Users.Get(user);
     await Db.Entry(dbUser).Collection(u => u.Usernames).LoadAsync();
     var usernames = dbUser.Usernames.Where(u => u.Name != user.Username);
     if(usernames.Any()) {

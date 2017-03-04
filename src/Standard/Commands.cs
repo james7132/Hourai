@@ -66,14 +66,13 @@ public partial class Standard {
     [ServerOwner]
     [Remarks("Sets the minimum role for creating custom commands.")]
     public async Task CommandRole(IRole role) {
-      await Db.Entry(Context.DbGuild).Collection(g => g.MinRoles).LoadAsync();
       const int type = (int)MinimumRole.Command;
-      var dbrole = Context.DbGuild.MinRoles.FirstOrDefault(r => r.Type == type);
+      var dbrole = await Db.MinRoles.FindAsync(Context.Guild.Id, type);
       if (dbrole == null) {
         dbrole = new MinRole(MinimumRole.Command, role);
-        Context.DbGuild.MinRoles.Add(dbrole);
+        Db.MinRoles.Add(dbrole);
       }
-      dbrole.Role = Db.Roles.Get(role);
+      dbrole.Role = await Db.Roles.Get(role);
       await Db.Save();
       await Success($"Set {role.Name.Code()} as the minimum role to create custom commnds.");
     }
