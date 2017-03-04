@@ -16,8 +16,7 @@ public abstract class HouraiModule : ModuleBase<HouraiCommandContext> {
 
   public BotDbContext Db => Context.Db;
   public DiscordShardedClient Client => Context.Client;
-
-  const string FailureResponse =
+const string FailureResponse =
       "No target specified. Please specify at least one target.";
 
   public Task Success(string response = "") {
@@ -61,6 +60,7 @@ public abstract class HouraiModule : ModuleBase<HouraiCommandContext> {
           result = httpException.Message;
       } catch (Exception exception) {
         result = exception.Message;
+        Log.Error(exception);
       }
       if (string.IsNullOrEmpty(result) || ignoreErrors)
         return $"{name(obj)}: { Config.SuccessResponse }";

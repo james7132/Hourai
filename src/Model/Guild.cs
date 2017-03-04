@@ -31,7 +31,6 @@ public class Guild {
   public IList<MinRole> MinRoles { get; set; }
 
   [DatabaseGenerated(DatabaseGeneratedOption.None)]
-  [Required]
   [MaxLength(1)]
   public string Prefix { get; set; }
 

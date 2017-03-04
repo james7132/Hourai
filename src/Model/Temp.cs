@@ -11,7 +11,7 @@ namespace Hourai.Model {
 public class AbstractTempAction {
 
   [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-  public ulong Id { get; set; }
+  public long Id { get; set; }
 
   [Required]
   public ulong UserId { get; set; }

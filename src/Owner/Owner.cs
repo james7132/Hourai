@@ -82,24 +82,54 @@ public partial class Owner : HouraiModule {
     var users = (from guild in Client.Guilds
                 from user in guild.Users
                 select user.Id).Distinct().Count();
-    var reconnects = Context.Client.Shards.Select(s => Counters.Get($"shard-{s.ShardId}-reconnects")?.Value ?? 0)
+    var reconnects = Client.Shards.Select(s => Counters.Get($"shard-{s.ShardId}-reconnects")?.Value ?? 0)
       .Aggregate(0UL, (a, c) => a + c);
-    builder.AppendLine("Stats".Bold())
-      .AppendLine($"Guilds: Visible: {Client.Guilds.Count}, Stored: {Db.Guilds.Count()}")
-      .AppendLine($"Users: Visible: {users}, Stored: {Db.Users.Count()}")
-      .AppendLine($"Guild Users: Visible: {Client.Guilds.Sum(g => g.Users.Count)}, Stored: {Db.GuildUsers.Count()}")
-      .AppendLine($"Roles: Visible: {Client.Guilds.Sum(g => g.Roles.Count)}, Stored: {Db.Roles.Count()}")
-      .AppendLine($"Channels: Visible: {Client.Guilds.Sum(g => g.Channels.Count)}, Stored: {Db.Channels.Count()}")
-      .AppendLine($"Messages Recieved: {Counters.Get("messages-recieved").Value}")
-      .AppendLine()
-      .AppendLine($"Start Time: {Bot.StartTime}")
+    var table = new Table(2);
+    const string all = "All";
+    const string stored = "Stored";
+    table[all, "Guilds"] = Client.Guilds.Count;
+    table[all, "Users"] = users;
+    table[all, "Guild Users"] = Client.Guilds.Sum(g => g.MemberCount);
+    table[all, "Roles"] = Client.Guilds.Sum(g => g.Roles.Count);
+    table[all, "Channels"] = Client.Guilds.Sum(g => g.Channels.Count);
+    table[all, "Reconnects"] = reconnects;
+    table[all, "Messages"] = Counters.Get("messages-recieved").Value;
+    table[stored, "Guilds"] = Db.Guilds.Count();
+    table[stored, "Users"] = Db.Users.Count();
+    table[stored, "Guild Users"] = Db.GuildUsers.Count();
+    table[stored, "Roles"] = Db.Roles.Count();
+    table[stored, "Channels"] = Db.Channels.Count();
+
+    if (Client.Shards.Count > 1) {
+      foreach (var shard in Client.Shards)
+        AddShard(shard, table);
+    }
+
+    builder.AppendLine("Stats".Bold());
+    using (builder.MultilineCode()) {
+      builder.AppendLine(table.ToString());
+    }
+    builder.AppendLine($"Start Time: {Bot.StartTime}")
       .AppendLine($"Uptime: {Bot.Uptime}")
-      .AppendLine($"Reconnects: {reconnects}")
       .AppendLine()
       .AppendLine($"Client: Discord .NET v{DiscordConfig.Version} (API v{DiscordConfig.APIVersion}, {DiscordSocketConfig.GatewayEncoding})")
       .AppendLine($"Latency: {Context.Client.Latency}ms")
       .AppendLine($"Total Memory Used: {BytesToMemoryValue(Process.GetCurrentProcess().WorkingSet64)}");
     await Context.Message.Respond(builder.ToString());
+  }
+
+  void AddShard(DiscordSocketClient client, Table table) {
+    var users = (from guild in client.Guilds
+                from user in guild.Users
+                select user.Id).Distinct().Count();
+    var name = "Shard " + client.ShardId;
+    table[name, "Guilds"] = client.Guilds.Count;
+    table[name, "Users"] = users;
+    table[name, "Guild Users"] = client.Guilds.Sum(g => g.MemberCount);
+    table[name, "Roles"] = client.Guilds.Sum(g => g.Roles.Count);
+    table[name, "Channels"] = client.Guilds.Sum(g => g.Channels.Count);
+    table[name, "Reconnects"] = Counters.Get($"shard-{client.ShardId}-reconnects")?.Value ?? 0;
+    table[name, "Messages"] = Counters.Get($"shard-{client.ShardId}-messages-recieved").Value ?? 0;
   }
 
   [Group("refresh")]
@@ -213,15 +243,14 @@ public partial class Owner : HouraiModule {
     [Remarks("Blacklist user(s) and prevent them from using commands.")]
     public async Task User(string setting, params IGuildUser[] users) {
       var blacklisted = SettingToBlacklist(setting);
-      foreach(var user in users) {
-        var uConfig = Db.Users.Get(user);
+      await Task.WhenAll(users.Select(async user => {
+        var uConfig = await Db.Users.Get(user);
         if(uConfig == null)
-          continue;
+          return;
         uConfig.IsBlacklisted = blacklisted;
-        if(!blacklisted)
-          continue;
-        await user.SendDMAsync("You have been blacklisted. The bot will no longer respond to your commands.");
-      }
+        if(blacklisted)
+          await user.SendDMAsync("You have been blacklisted. The bot will no longer respond to your commands.");
+      }));
       await Db.Save();
       await Success();
     }

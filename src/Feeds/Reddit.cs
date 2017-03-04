@@ -22,18 +22,18 @@ public partial class Feeds {
     [RequirePermission(GuildPermission.ManageGuild, Require.User | Require.BotOwnerOverride)]
     [Remarks("Adds subreddit feed(s) to the current channel. New posts on reddit will be automatically linked.")]
     public async Task Add(params string[] subreddits) {
-      var channel = Db.Channels.Get(Check.InGuild(Context.Message));
+      var channel = await Db.Channels.Get(Check.InGuild(Context.Message));
       var response = new StringBuilder();
       foreach(var sub in subreddits) {
         var subreddit = Subreddit.SanitizeName(sub);
-        var dbSubreddit = Db.Subreddits.Find(sub);
+        var dbSubreddit = await Db.Subreddits.FindAsync(sub);
         if (dbSubreddit == null) {
           var redditSubreddit = await Reddit.GetSubredditAsync("/r/" + sub);
           if (redditSubreddit == null) {
             response.AppendLine($"Subreddit /r/{subreddit} does not exist");
             continue;
           }
-          dbSubreddit = Db.GetSubreddit(sub);
+          dbSubreddit = await Db.GetSubreddit(sub);
         }
         subreddit = dbSubreddit.Name;
         if (dbSubreddit.Channels.Any(c => c.ChannelId == channel.Id)) {
@@ -78,7 +78,7 @@ public partial class Feeds {
     [Command("list")]
     [Remarks("Lists all subreddits that feed into this channel.")]
     public async Task List() {
-      var channel = Db.Channels.Get(Check.InGuild(Context.Message));
+      var channel = await Db.Channels.Get(Check.InGuild(Context.Message));
       if (!channel.Subreddits.Any())
         await RespondAsync("No subreddits currently tied to this channel");
       else

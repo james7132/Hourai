@@ -52,7 +52,7 @@ public class AnnounceService : IService {
 
   async Task ForEachChannel(IGuild guild, Func<Channel, bool> validFunc, string message) {
     using (var context = new BotDbContext()) {
-      var guildConfig = context.Guilds.Get(guild);
+      var guildConfig = await context.Guilds.Get(guild);
       await context.Entry(guildConfig).Collection(g => g.Channels).LoadAsync();
       var sent = false;
       foreach(var channel in guildConfig.Channels.ToArray()) {

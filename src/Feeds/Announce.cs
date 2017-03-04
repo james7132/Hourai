@@ -41,8 +41,8 @@ public partial class Feeds {
         string messageType) {
       var exp = (MemberExpression)alteration.Body;
       var prop = exp.Member as PropertyInfo;
-      var channel = Db.Channels.Get(Context.Channel as ITextChannel);
-      var value =  !((bool)prop.GetValue(channel));
+      var channel = await Db.Channels.Get(Context.Channel as ITextChannel);
+      var value = !((bool)prop.GetValue(channel));
       prop.SetValue(channel, value);
       await Db.Save();
       await Success($"{messageType} message {Status(value)}");
