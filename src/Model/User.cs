@@ -61,6 +61,8 @@ public class GuildUser {
   [Required]
   public ICollection<UserRole> Roles { get; set; }
 
+  public ICollection<AbstractTempAction> Actions { get; set; }
+
   //public ICollection<CounterEvent> Events { get; set; }
 
   public GuildUser() {

@@ -19,12 +19,10 @@ public class AbstractTempAction {
   public ulong GuildId { get; set; }
   [Required]
   public DateTimeOffset Expiration { get; set; }
+  [Required]
+  public bool Reverse { get; set; } = false;
 
-  [Required, ForeignKey("UserId")]
-  public User User;
-
-  [Required, ForeignKey("GuildId")]
-  public Guild Guild;
+  public GuildUser User { get; set; }
 
   public virtual Task Apply(DiscordShardedClient client) {
     throw new NotImplementedException();
@@ -33,6 +31,9 @@ public class AbstractTempAction {
   public virtual Task Unapply(DiscordShardedClient client) {
     throw new NotImplementedException();
   }
+
+  public SocketGuildUser GetUser(DiscordShardedClient client) =>
+    client.GetGuild(GuildId)?.GetUser(UserId);
 
 }
 
@@ -49,6 +50,41 @@ public class TempBan : AbstractTempAction {
     Log.Info($"{UserId}'s temp ban from {GuildId} has been lifted.");
   }
 
+}
+
+public class TempMute : AbstractTempAction {
+
+  public override async Task Apply(DiscordShardedClient client) {
+    var user = GetUser(client);
+    if (user == null)
+      throw new InvalidOperationException("User not found");
+    await user.MuteAsync();
+  }
+
+  public override async Task Unapply(DiscordShardedClient client) {
+    var user = GetUser(client);
+    if (user == null)
+      throw new InvalidOperationException("User not found");
+    await user.UnmuteAsync();
+  }
+
+}
+
+public class TempDeafen : AbstractTempAction {
+
+  public override async Task Apply(DiscordShardedClient client) {
+    var user = GetUser(client);
+    if (user == null)
+      throw new InvalidOperationException("User not found");
+    await user.DeafenAsync();
+  }
+
+  public override async Task Unapply(DiscordShardedClient client) {
+    var user = GetUser(client);
+    if (user == null)
+      throw new InvalidOperationException("User not found");
+    await user.UndeafenAsync();
+  }
 }
 
 public class TempRole : AbstractTempAction {
