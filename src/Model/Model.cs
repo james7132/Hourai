@@ -57,6 +57,8 @@ public class BotDbContext : DbContext {
   public DbSet<AbstractTempAction> TempActions { get; set; }
   public DbSet<TempBan> TempBans { get; set; }
   public DbSet<TempRole> TempRoles { get; set; }
+  public DbSet<TempMute> TempMutes { get; set; }
+  public DbSet<TempDeafen> TempDeafens { get; set; }
 
   //// Analytics Data
   //public DbSet<Counter> Counters { get; set; }
@@ -123,9 +125,10 @@ public class BotDbContext : DbContext {
           .WithMany(s => s.Subreddits)
           .HasForeignKey(c => c.ChannelId);
       });
-    builder.Entity<AbstractTempAction>()
-        .HasIndex(t => t.Expiration)
-        .HasName("IX_temp_actions_Expiration");
+    builder.Entity<AbstractTempAction>(b => {
+        b.HasIndex(t => t.Expiration).HasName("IX_temp_actions_Expiration");
+        b.HasOne(a => a.User).WithMany(u => u.Actions).HasForeignKey(a => new { a.UserId, a.GuildId });
+      });
   }
 
   public async Task Save() {

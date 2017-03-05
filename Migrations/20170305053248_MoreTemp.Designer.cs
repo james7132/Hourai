@@ -8,9 +8,10 @@ using Hourai.Model;
 namespace Hourai.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    partial class BotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20170305053248_MoreTemp")]
+    partial class MoreTemp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
             modelBuilder
                 .HasAnnotation("ProductVersion", "1.1.0-rtm-22752");
@@ -35,8 +36,6 @@ namespace Hourai.Migrations
 
                     b.HasIndex("Expiration")
                         .HasName("IX_temp_actions_Expiration");
-
-                    b.HasIndex("UserId", "GuildId");
 
                     b.ToTable("temp_actions");
 
@@ -232,14 +231,6 @@ namespace Hourai.Migrations
                     b.ToTable("temp_actions");
 
                     b.HasDiscriminator().HasValue("TempRole");
-                });
-
-            modelBuilder.Entity("Hourai.Model.AbstractTempAction", b =>
-                {
-                    b.HasOne("Hourai.Model.GuildUser", "User")
-                        .WithMany("Actions")
-                        .HasForeignKey("UserId", "GuildId")
-                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Hourai.Model.Channel", b =>

@@ -25,7 +25,10 @@ public class TempService : IService {
           .Select(action =>
             Task.Run(async () => {
         try {
-          await action.Unapply(Client);
+          if (action.Reverse)
+            await action.Apply(Client);
+          else
+            await action.Unapply(Client);
           context.TempActions.Remove(action);
         } catch(Exception e) {
           Log.Error(e);
