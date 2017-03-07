@@ -1,6 +1,7 @@
 using Discord;
 using Newtonsoft.Json;
 using System;
+using Hourai.Custom;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -12,7 +13,7 @@ namespace Hourai.Model {
 [Table("guilds")]
 public class Guild {
 
-  [DatabaseGenerated(DatabaseGeneratedOption.None)]
+  [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
   public ulong Id { get; set; }
 
   public bool IsBlacklisted { get; set; }
@@ -40,6 +41,34 @@ public class Guild {
 
   public Guild(IGuild guild) : this() {
     Id = Check.NotNull(guild).Id;
+  }
+
+}
+
+[Table("custom_config")]
+public class CustomConfig {
+
+  [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+  public ulong GuildId { get; set; }
+  [ForeignKey("GuildId")]
+  public Guild Guild { get; set; }
+
+  [Required]
+  public string ConfigString { get; set; }
+
+  public CustomConfig() {
+  }
+
+  public CustomConfig(IGuild guild) {
+    GuildId = guild.Id;
+  }
+
+  public void Save(GuildConfig config) {
+    ConfigString = config.ToString();
+  }
+
+  public static implicit operator GuildConfig(CustomConfig config) {
+    return config != null ? GuildConfig.FromString(config.ConfigString) : null;
   }
 
 }

@@ -14,7 +14,7 @@ public class LogAttribute : DocumentedPreconditionAttribute {
       ICommandContext context,
       CommandInfo commandInfo,
       IDependencyMap dependencies) {
-    var hContext = context as HouraiCommandContext;
+    var hContext = context as HouraiContext;
     if (hContext != null && hContext.IsHelp)
       return PreconditionResult.FromSuccess();
     await dependencies.Get<LogSet>().GetGuild(context.Guild)

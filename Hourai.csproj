@@ -25,6 +25,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="1.1.0-*">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="YamlDotNet" Version="4.1.0-*" />
   </ItemGroup>
 
   <ItemGroup>

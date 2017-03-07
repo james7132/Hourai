@@ -52,7 +52,7 @@ namespace Hourai.Preconditions {
         ICommandContext context,
         CommandInfo commandInfo,
         IDependencyMap dependencies) {
-      var hContext = context as HouraiCommandContext;
+      var hContext = context as HouraiContext;
       if (hContext != null && hContext.IsHelp)
         return Task.FromResult(PreconditionResult.FromSuccess());
       var id = GetEntity(context)?.Id;

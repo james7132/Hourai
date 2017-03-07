@@ -53,6 +53,8 @@ public class BotDbContext : DbContext {
   public DbSet<UserRole> UserRoles { get; set; }
   public DbSet<MinRole> MinRoles { get; set; }
 
+  public DbSet<CustomConfig> Configs { get; set; }
+
   // Temporary Action Data
   public DbSet<AbstractTempAction> TempActions { get; set; }
   public DbSet<TempBan> TempBans { get; set; }

@@ -12,11 +12,11 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public abstract class HouraiModule : ModuleBase<HouraiCommandContext> {
+public abstract class HouraiModule : ModuleBase<HouraiContext> {
 
   public BotDbContext Db => Context.Db;
   public DiscordShardedClient Client => Context.Client;
-const string FailureResponse =
+  const string FailureResponse =
       "No target specified. Please specify at least one target.";
 
   public Task Success(string response = "") {
@@ -25,7 +25,7 @@ const string FailureResponse =
   }
 
   public Task RespondAsync(string response) {
-    return Context.Message.Respond(response);
+    return Context.Channel.Respond(response);
   }
 
   protected async Task ForEvery<T>(IEnumerable<T> enumeration,

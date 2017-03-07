@@ -43,7 +43,7 @@ public static class StringExtensions {
   public static string Wrap(this string s, string w) => w + s + w;
   public static string Wrap(this string s, char l, char r) => l + s + r;
   public static string Code(this string s) => $"`{s}`";
-  public static string MultilineCode(this string s) => $"```{s}```";
+  public static string MultilineCode(this string s, string lang = "") => $"```{lang}\n{s}\n```";
   public static string Bold(this string s) => $"**{s}**";
   public static string Italicize(this string s) => $"*{s}*";
   public static string Underline(this string s) => $"__{s}__";
