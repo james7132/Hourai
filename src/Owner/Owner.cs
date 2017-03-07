@@ -1,8 +1,12 @@
 using Discord;
 using Discord.Net;
 using Discord.Rest;
-using Discord.WebSocket; using Discord.Commands; using Hourai.Model;
+using Discord.WebSocket;
+using Discord.Commands;
+using Hourai.Model;
+using Hourai.Custom;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;

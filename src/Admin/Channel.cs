@@ -16,7 +16,7 @@ public partial class Admin {
     [Command("create")]
     [GuildRateLimit(1, 5)]
     [RequirePermission(GuildPermission.ManageChannels)]
-    [Remarks("Creates a public channel with a specified name. ")]
+    [Remarks("Creates a public channel with a specified name.")]
     public async Task Create(string name) {
       var channel = await Check.NotNull(Context.Guild).CreateTextChannelAsync(name);
       await Success($"{channel.Mention} created.");
@@ -26,7 +26,7 @@ public partial class Admin {
     [Command("delete")]
     [GuildRateLimit(1, 5)]
     [RequirePermission(GuildPermission.ManageChannels)]
-    [Remarks("Deletes all mentioned channels.")]
+    [Remarks("Deletes all provided channels.")]
     public Task Delete(params IGuildChannel[] channels) =>
       ForEvery(channels, Do((IGuildChannel c) => c.DeleteAsync()));
 

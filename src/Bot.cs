@@ -129,6 +129,9 @@ namespace Hourai {
       try
       {
         obj = constructor.Invoke(args);
+        var add = typeof(IDependencyMap).GetMethod("Add");
+        var method = add.MakeGenericMethod(type);
+        method.Invoke(map, new [] {obj});
       }
       catch (Exception ex)
       {
@@ -150,9 +153,6 @@ namespace Hourai {
         if (arg != null)
           property.SetValue(obj, arg, null);
       }
-      var add = typeof(IDependencyMap).GetMethod("Add");
-      var method = add.MakeGenericMethod(type);
-      method.Invoke(map, new [] {obj});
       return obj;
     }
 
