@@ -101,6 +101,7 @@ namespace Hourai.Migrations
                     b.Property<bool>("IsBlacklisted");
 
                     b.Property<string>("Prefix")
+                        .ValueGeneratedOnAdd()
                         .HasDefaultValue("~")
                         .HasMaxLength(1);
 
