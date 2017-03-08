@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using Hourai.Extensions;
 using Hourai.Model;
+using Hourai.Custom.Converters;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,15 +31,27 @@ public class ChannelConfig : DiscordContextConfig {
 
 public class GuildConfig : DiscordContextConfig {
 
+  static readonly Serializer Serializer;
+  static readonly Deserializer Deserializer;
+
+  static GuildConfig() {
+    Serializer = new SerializerBuilder()
+      .WithTypeConverter(new ExecuteCommandActionConverter())
+      .Build();
+    Deserializer = new DeserializerBuilder()
+      .WithTypeConverter(new ExecuteCommandActionConverter())
+      .Build();
+  }
+
   [YamlMember(Alias="aliases")]
   public Dictionary<string, string> Aliases { get; set; }
   [YamlMember(Alias="channels")]
   public Dictionary<string, ChannelConfig> Channels { get; set; }
 
   public static GuildConfig FromString(string config) =>
-    new Deserializer().Deserialize<GuildConfig>(config);
+    Deserializer.Deserialize<GuildConfig>(config);
 
-  public override string ToString() => new Serializer().Serialize(this);
+  public override string ToString() => Serializer.Serialize(this);
 
 }
 

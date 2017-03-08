@@ -80,9 +80,6 @@ public class BotDbContext : DbContext {
   }
 
   protected override void OnModelCreating(ModelBuilder builder) {
-    builder.Entity<Guild>(b => {
-        b.Property(g => g.Prefix).HasDefaultValue("~");
-      });
     builder.Entity<CustomCommand>(b =>{
         b.HasKey(c => new { c.GuildId, c.Name });
         b.HasIndex(c => c.GuildId);
