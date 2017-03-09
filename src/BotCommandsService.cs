@@ -121,16 +121,16 @@ public class BotCommandService : IService {
 
   async Task<bool> CustomCommandCheck(HouraiContext msg, string cmd) {
     var customCommandCheck = cmd.SplitWhitespace();
-    if (customCommandCheck.Length <= 0)
+    if (customCommandCheck.Length <= 0 ||
+        msg.Guild == null)
       return false;
     var commandName = customCommandCheck[0];
     cmd = cmd.Substring(commandName.Length);
-    if (msg.Guild == null)
-      return false;
-    var command = msg.Db.Commands.Find(msg.Guild.Id, commandName);
+    msg.Input = cmd.Trim();
+    var command = await msg.Db.Commands.FindAsync(msg.Guild.Id, commandName);
     if (command == null)
       return false;
-    await command.Execute(msg.Message, cmd);
+    await command.Execute(msg, cmd);
     Counters.Get("custom-command-executed").Increment();
     return true;
   }

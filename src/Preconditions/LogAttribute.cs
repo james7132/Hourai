@@ -18,7 +18,7 @@ public class LogAttribute : DocumentedPreconditionAttribute {
     if (hContext != null && hContext.IsHelp)
       return PreconditionResult.FromSuccess();
     await dependencies.Get<LogSet>().GetGuild(context.Guild)
-      .LogEvent($"{context.User.ToIDString()} used the command {commandInfo.GetFullName().DoubleQuote()} in " +
+      .LogEvent($"{context.User.ToIDString()} used the command {context.Message.Content} in " +
           $"{context.Channel.ToIDString()}.");
     return PreconditionResult.FromSuccess();
   }
