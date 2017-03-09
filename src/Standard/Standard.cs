@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Preconditions;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -24,7 +25,7 @@ public partial class Standard : HouraiModule {
   [Command("echo")]
   [ChannelRateLimit(3, 1)]
   [Remarks("Has the bot repeat what you say")]
-  public Task Echo([Remainder] string remainder) => ReplyAsync(remainder);
+  public Task Echo([Remainder] string remainder) => ReplyAsync(Context.Process(remainder));
 
   [Command("choose")]
   [ChannelRateLimit(3, 1)]
@@ -101,15 +102,18 @@ public partial class Standard : HouraiModule {
     var guildUser = user as IGuildUser;
     var builder = new StringBuilder()
       .AppendLine($"Username: ``{user.Username}#{user.Discriminator}`` {(user.IsBot ? "(BOT)".Code() : string.Empty )} ({user.Id})");
-    if (guildUser != null)
-      builder.AppendLine($"Nickname: {guildUser.Nickname.NullIfEmpty()?.Code() ?? "N/A".Code()}");
-    builder.AppendLine($"Current Game: {user.Game?.Name.Code() ?? "N/A".Code()}")
-      .AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
+    if (guildUser != null && !string.IsNullOrWhiteSpace(guildUser.Nickname))
+      builder.AppendLine($"Nickname: {guildUser.Nickname.Code()}");
+    if (user?.Game?.Name != null)
+      builder.AppendLine($"Game: {user.Game?.Name.Code()}");
+    builder.AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
     if (guildUser != null)
       builder.AppendLine($"Joined on: {guildUser.JoinedAt?.ToString().Code() ?? "N/A".Code()}");
-    var count = Client.Guilds.Where(g => g.GetUser(user.Id) != null).Count();
-    var bans = await Task.WhenAll(Client.Guilds.Where(g => g.CurrentUser.GuildPermissions.BanMembers).Select(g => g.GetBansAsync()));
-    var banCount = bans.Where(banSet => banSet.Any(b => b.User.Id == user.Id)).Count();
+    var count = Client.Guilds.Count(g => g.GetUser(user.Id) != null);
+    var bans = await Task.WhenAll(from guild in Client.Guilds
+                                  where guild.CurrentUser.GuildPermissions.BanMembers
+                                  select guild.GetBansAsync());
+    var banCount = bans.Count(banSet => banSet.Any(b => b.User.Id == user.Id));
     if (count > 1)
         builder.AppendLine($"Seen on **{count - 1}** other servers.");
     if (banCount > 1)
@@ -122,15 +126,15 @@ public partial class Standard : HouraiModule {
     var avatar = user.GetAvatarUrl(AvaFormat, AvatarSize);
     if(!string.IsNullOrEmpty(avatar))
       builder.AppendLine(avatar);
-    var dbUser = await Db.Users.Get(user);
-    await Db.Entry(dbUser).Collection(u => u.Usernames).LoadAsync();
-    var usernames = dbUser.Usernames.Where(u => u.Name != user.Username);
+    var usernames = await (from username in Db.Usernames
+                           where username.UserId == user.Id && username.Name != user.Username
+                           orderby username.Date descending
+                           select username).ToListAsync();
     if(usernames.Any()) {
       using(builder.MultilineCode()) {
-        foreach(var username in usernames.OrderByDescending(u => u.Date)) {
-          builder.Append(username.Name);
-          builder.Append(new string(' ', spacing - username.Name.Length));
-          builder.AppendLine(username.Date.ToString("yyyy-MM-dd"));
+        foreach(var username in usernames) {
+          builder.Append(username.Name.PadRight(spacing))
+            .AppendLine(username.Date.ToString("yyyy-MM-dd"));
         }
       }
     }

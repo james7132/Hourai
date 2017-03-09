@@ -4,6 +4,7 @@ using Hourai.Model;
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hourai.Custom {
@@ -17,12 +18,13 @@ namespace Hourai.Custom {
     public CustomConfigService(DiscordShardedClient client) {
       _configs = new ConcurrentDictionary<ulong, GuildConfig>();
       Client = client;
-      client.MessageReceived += OnMessage;
       client.JoinedGuild += g => GetConfig(g);
       client.GuildAvailable += g => GetConfig(g);
-      client.UserJoined += u => OnUserEvent(g => g.OnJoin, c => c.OnJoin)(u, u.Guild);
-      client.UserLeft += u => OnUserEvent(g => g.OnLeave, c => c.OnLeave)(u, u.Guild);
-      client.UserBanned += OnUserEvent(c => c.OnBan, c => c.OnBan);
+      client.MessageReceived += OnMessage(g => g.OnMessage);
+      client.MessageUpdated += (c, m, ch) => OnMessage(g => g.OnEdit)(m);
+      client.UserJoined += u => OnUserEvent(g => g.OnJoin)(u, u.Guild);
+      client.UserLeft += u => OnUserEvent(g => g.OnLeave)(u, u.Guild);
+      client.UserBanned += OnUserEvent(c => c.OnBan);
       client.LeftGuild += g => {
         GuildConfig config;
         _configs.TryRemove(g.Id, out config);
@@ -58,33 +60,35 @@ namespace Hourai.Custom {
       }
     }
 
-    async Task OnMessage(SocketMessage message) {
-      var um = message as SocketUserMessage;
-      if (um == null)
-        return;
-      var channel = message.Channel as SocketTextChannel;
-      SocketGuild guild = channel?.Guild;
-      if (guild == null)
-        return;
-      var config = await GetConfig(guild);
-      var context = new HouraiContext {
-        ConfigService = this,
-        Client = Client,
-        Message = um,
-        Channel = channel,
-        Guild = guild
+    Func<SocketMessage, Task> OnMessage(Func<DiscordContextConfig, CustomEvent> evt) {
+      return async (message) => {
+        var um = message as SocketUserMessage;
+        if (um == null || um.Author.IsBot)
+          return;
+        var channel = message.Channel as SocketTextChannel;
+        SocketGuild guild = channel?.Guild;
+        if (guild == null)
+          return;
+        var config = await GetConfig(guild);
+        var context = new HouraiContext {
+          ConfigService = this,
+          Client = Client,
+          Message = um,
+          Channel = channel,
+          Guild = guild
+        };
+        var gEvent = evt(config);
+        if (gEvent != null)
+          await gEvent.ProcessEvent(context);
+        ChannelConfig chConfig;
+        if (config.Channels != null &&
+            config.Channels.TryGetValue(message.Channel.Name, out chConfig) &&
+            evt(chConfig) != null)
+          await evt(chConfig).ProcessEvent(context);
       };
-      if (config.OnMessage != null)
-        await config.OnMessage.ProcessEvent(context);
-      ChannelConfig chConfig;
-      if (config.Channels != null &&
-          config.Channels.TryGetValue(message.Channel.Name, out chConfig) &&
-          chConfig.OnMessage != null)
-        await chConfig.OnMessage.ProcessEvent(context);
     }
 
-    Func<SocketUser, SocketGuild, Task> OnUserEvent(Func<GuildConfig, CustomEvent> guildEvent,
-        Func<ChannelConfig, CustomEvent> channelEvent) {
+    Func<SocketUser, SocketGuild, Task> OnUserEvent(Func<DiscordContextConfig, CustomEvent> evt) {
       return async (user, guild) => {
         if (guild == null)
           return;
@@ -93,14 +97,18 @@ namespace Hourai.Custom {
           ConfigService = this,
           Client = Client,
           Guild = guild,
+          Users = new [] { user }
         };
-        var gEvent = guildEvent(config);
+        var gEvent = evt(config);
         if (gEvent != null)
           await gEvent.ProcessEvent(context);
         if (config.Channels == null)
           return;
-        foreach (var channel in config.Channels.Values) {
-          var chEvent = channelEvent(channel);
+        foreach (var channel in config.Channels) {
+          context.Channel = guild.Channels.OfType<SocketTextChannel>().Where(ch => ch.Name == channel.Key).FirstOrDefault();
+          if (context.Channel == null)
+            continue;
+          var chEvent = evt(channel.Value);
           if (chEvent != null)
             await chEvent.ProcessEvent(context);
         }

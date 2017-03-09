@@ -17,6 +17,8 @@ namespace Hourai.Custom {
 public abstract class DiscordContextConfig {
   [YamlMember(Alias="on_message")]
   public CustomEvent OnMessage { get; set; }
+  [YamlMember(Alias="on_edit")]
+  public CustomEvent OnEdit { get; set; }
   [YamlMember(Alias="on_join")]
   public CustomEvent OnJoin { get; set; }
   [YamlMember(Alias="on_leave")]
@@ -108,7 +110,7 @@ public class MessageContentFilter : ActionableEvent {
   public string Match { get; set; }
 
   public override Task<bool> IsValid(HouraiContext context) =>
-    Regex.IsMatch(Match, context.Content).ToTask();
+    Regex.IsMatch(context.Content, Match).ToTask();
 
 }
 
