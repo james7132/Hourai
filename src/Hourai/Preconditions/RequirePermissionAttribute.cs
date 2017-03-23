@@ -1,8 +1,7 @@
 using Discord;
 using Discord.Commands;
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Generic; using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -113,7 +112,7 @@ namespace Hourai.Preconditions {
           return PreconditionResult.FromError(result);
       }
       if ((Requirement & Require.User) != 0 &&
-          !(context.User.IsBotOwner() &&
+          !(context.User?.Id == Bot.Owner?.Id &&
            ((Requirement & Require.BotOwnerOverride) != 0))) {
         var author = context.Message.Author;
         var result = CheckUser(author, context.Channel);

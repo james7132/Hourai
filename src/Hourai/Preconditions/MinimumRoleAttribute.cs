@@ -23,7 +23,7 @@ public class MinimumRoleAttribute : PreconditionAttribute {
     var user = context.User as IGuildUser;
     if(user == null)
       return PreconditionResult.FromError("Must be in server to execute this command");
-    if (user.IsBotOwner() || user.IsServerOwner())
+    if (user?.Id == Bot.Owner?.Id || user.IsServerOwner())
       return PreconditionResult.FromSuccess();
     var guild = context.Guild;
     ulong? minRole = dependencies.Get<DatabaseService>().Context.MinRoles.Find(guild.Id, (int)_roleType)?.RoleId;

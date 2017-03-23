@@ -26,7 +26,7 @@ public class CounterService : IService {
   public CounterService(DiscordShardedClient client) {
     client.MessageReceived += m => {
         var um = m as IUserMessage;
-        if (um == null || m.Author.IsMe())
+        if (um == null || m.Author?.Id == client?.CurrentUser?.Id)
             return Task.CompletedTask;
         var text =  um.Resolve(TagHandling.Remove,
                             TagHandling.Remove,

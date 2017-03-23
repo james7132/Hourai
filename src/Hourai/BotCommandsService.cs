@@ -36,7 +36,7 @@ public class BotCommandService : IService {
 
   public async Task HandleMessage(IMessage m) {
     var msg = m as SocketUserMessage;
-    if (msg == null || msg.Author.IsBot || msg.Author.IsMe())
+    if (msg == null || msg.Author.IsBot || msg.Author.Id == Client.CurrentUser.Id)
       return;
     using (var db = Database.CreateContext()) {
       var user = await db.Users.Get(msg.Author);
