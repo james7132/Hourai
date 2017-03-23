@@ -7,8 +7,10 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -19,8 +21,8 @@ public partial class Standard : HouraiModule {
 
   public LogSet Logs { get; set; }
 
-  const AvatarFormat AvaFormat = AvatarFormat.Gif;
-  const ushort AvatarSize = 512;
+  const ImageFormat ImgFormat = ImageFormat.Auto;
+  const ushort AvatarSize = 1024;
 
   [Command("echo")]
   [ChannelRateLimit(3, 1)]
@@ -43,7 +45,7 @@ public partial class Standard : HouraiModule {
     IUser[] allUsers = users;
     if (users.Length <= 0)
       allUsers = new[] {Context.Message.Author};
-    return RespondAsync(allUsers.Select(u => u.GetAvatarUrl(AvaFormat, AvatarSize)).Join("\n"));
+    return RespondAsync(allUsers.Select(u => u.GetAvatarUrl(ImgFormat, AvatarSize)).Join("\n"));
   }
 
   [Command("invite")]
@@ -60,11 +62,28 @@ public partial class Standard : HouraiModule {
     var guild = Check.NotNull(Context.Guild);
     var regex = new Regex(game, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     var players = from user in guild.Users
-                  where user.Game.HasValue && regex.IsMatch(user.Game?.Name)
+                  where user.Game?.Name != null && regex.IsMatch(user.Game?.Name)
                   group user.Username by user.Game.Value.Name into g
                   select $"{g.Key.Bold()}: {g.Join(", ")}";
     var results = players.Join("\n");
     await RespondAsync(!string.IsNullOrEmpty(results) ? results : "No results.");
+  }
+
+  static string TimeSummary(DateTimeOffset? time) {
+    if (time == null)
+      return "N/A";
+    var timespan = DateTimeOffset.UtcNow - time.Value;
+    if (timespan.TotalDays > 365.0)
+      return $"{time} ({timespan.TotalDays/365:0.00} years ago)";
+    if (timespan.TotalDays > 1.0)
+      return $"{time} ({timespan.TotalDays:0.00} days ago)";
+    if (timespan.TotalHours > 1.0)
+      return $"{time} ({timespan.TotalHours:0.00} hours ago)";
+    if (timespan.TotalMinutes > 1.0)
+      return $"{time} ({timespan.TotalMinutes:0.00} minutes ago)";
+    if (timespan.TotalSeconds > 1.0)
+      return $"{time} ({timespan.TotalSeconds:0.00} seconds ago)";
+    return $"{time} (moments ago)";
   }
 
   [Command("serverinfo")]
@@ -82,7 +101,7 @@ public partial class Standard : HouraiModule {
       .AppendLine($"ID: {server.Id.ToString().Code()}")
       .AppendLine($"Owner: {owner.Username.Code()}")
       .AppendLine($"Region: {server.VoiceRegionId.Code()}")
-      .AppendLine($"Created: {server.CreatedAt.ToString().Code()}")
+      .AppendLine($"Created: {TimeSummary(server.CreatedAt)}")
       .AppendLine($"User Count: {server.MemberCount.ToString().Code()}");
     if(roles.Any())
       builder.AppendLine($"Roles: {roles.Order().Select(r => r.Name.Code()).Join(", ")}");
@@ -106,9 +125,9 @@ public partial class Standard : HouraiModule {
       builder.AppendLine($"Nickname: {guildUser.Nickname.Code()}");
     if (user?.Game?.Name != null)
       builder.AppendLine($"Game: {user.Game?.Name.Code()}");
-    builder.AppendLine($"Created on: {user.CreatedAt.ToString().Code()}");
+    builder.AppendLine($"Created on: {TimeSummary(user.CreatedAt).Code()}");
     if (guildUser != null)
-      builder.AppendLine($"Joined on: {guildUser.JoinedAt?.ToString().Code() ?? "N/A".Code()}");
+      builder.AppendLine($"Joined on: {TimeSummary(guildUser.JoinedAt).Code()}");
     var count = Client.Guilds.Count(g => g.GetUser(user.Id) != null);
     var bans = await Task.WhenAll(from guild in Client.Guilds
                                   where guild.CurrentUser.GuildPermissions.BanMembers
@@ -123,7 +142,7 @@ public partial class Standard : HouraiModule {
       if(roles.Any())
         builder.AppendLine($"Roles: {roles.Select(r => r.Name.Code()).Join(", ")}");
     }
-    var avatar = user.GetAvatarUrl(AvaFormat, AvatarSize);
+    var avatar = user.GetAvatarUrl(ImgFormat, AvatarSize);
     if(!string.IsNullOrEmpty(avatar))
       builder.AppendLine(avatar);
     var usernames = await (from username in Db.Usernames
@@ -151,6 +170,129 @@ public partial class Standard : HouraiModule {
     foreach(var channel in channels.OfType<ITextChannel>())
       builder.AppendLine($"{channel.Name}: {channel.Topic}");
     return Context.Message.Respond(builder.ToString());
+  }
+
+  [Group("hash")]
+  public class Hash : HouraiModule {
+
+    [Command("md5")]
+    public async Task Md5([Remainder] string input = "") {
+      using (var md5 = MD5.Create()) {
+        await HashMessage(input, md5);
+      }
+    }
+
+    [Command("sha1")]
+    [Alias("sha-1")]
+    public async Task Sha1([Remainder] string input = "") {
+      using (var sha = SHA1.Create()) {
+        await HashMessage(input, sha);
+      }
+    }
+
+    [Command("sha256")]
+    [Alias("sha-256")]
+    public async Task Sha256([Remainder] string input = "") {
+      using (var sha = SHA256.Create()) {
+        await HashMessage(input, sha);
+      }
+    }
+
+    [Command("sha384")]
+    [Alias("sha-384")]
+    public async Task Sha384([Remainder] string input = "") {
+      using (var sha = SHA384.Create()) {
+        await HashMessage(input, sha);
+      }
+    }
+
+    [Command("sha512")]
+    [Alias("sha-512")]
+    public async Task Sha512([Remainder] string input = "") {
+      using (var sha = SHA512.Create()) {
+        await HashMessage(input, sha);
+      }
+    }
+
+    static string GetURL(HouraiContext context, string input) {
+      return context.Message.Embeds.SingleOrDefault()?.Url ??
+        context.Message.Attachments.SingleOrDefault()?.Url;
+    }
+
+    static async Task<string> GetHash(string input, string url, HashAlgorithm hashing) {
+      byte[] hash;
+      if (url == null) {
+        hash = hashing.ComputeHash(Encoding.ASCII.GetBytes(input));
+      } else {
+        using (var httpClient = new HttpClient()) {
+          using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url))) {
+            using (Stream contentStream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync()) {
+              hash = hashing.ComputeHash(contentStream);
+            }
+          }
+        }
+      }
+      return Convert.ToBase64String(hash);
+    }
+
+    async Task HashMessage(string input, HashAlgorithm hashing) {
+      var url = GetURL(Context, input);
+      await RespondAsync(await GetHash(input, url, hashing));
+    }
+
+    [Group("check")]
+    public class Verify : HouraiModule {
+
+      [Command("md5")]
+      public async Task Md5(string hash, [Remainder] string input = "") {
+        using (var md5 = MD5.Create()) {
+          await CheckMessage(input, hash, md5);
+        }
+      }
+
+      [Command("sha1")]
+      [Alias("sha-1")]
+      public async Task Sha1(string hash, [Remainder] string input = "") {
+        using (var sha = SHA1.Create()) {
+          await CheckMessage(input, hash, sha);
+        }
+      }
+
+      [Command("sha256")]
+      [Alias("sha-256")]
+      public async Task Sha256(string hash, [Remainder] string input = "") {
+        using (var sha = SHA256.Create()) {
+          await CheckMessage(input, hash, sha);
+        }
+      }
+
+      [Command("sha384")]
+      [Alias("sha-384")]
+      public async Task Sha384(string hash, [Remainder] string input = "") {
+        using (var sha = SHA384.Create()) {
+          await CheckMessage(input, hash, sha);
+        }
+      }
+
+      [Command("sha512")]
+      [Alias("sha-512")]
+      public async Task Sha512(string hash, [Remainder] string input = "") {
+        using (var sha = SHA512.Create()) {
+          await CheckMessage(input, hash, sha);
+        }
+      }
+
+      async Task CheckMessage(string input, string hash, HashAlgorithm hashing) {
+        var url = GetURL(Context, input);
+        var hashCheck = await GetHash(input, url, hashing);
+        if (hash == hashCheck)
+          await Success();
+        else {
+          await RespondAsync($":x: Hash `{hashCheck}` does not match `{hash}`");
+        }
+      }
+    }
+
   }
 
 }

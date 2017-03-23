@@ -17,11 +17,11 @@ public class BlacklistService : IService {
     Client = client;
   }
 
-  Func<IGuild, Task> CheckBlacklist(bool normalJoin) {
+  Func<SocketGuild, Task> CheckBlacklist(bool normalJoin) {
     return async guild => {
       using (var context = new BotDbContext()) {
         var config = await context.Guilds.Get(guild);
-        var defaultChannel = (await guild.GetChannelAsync(guild.DefaultChannelId)) as ITextChannel;
+        var defaultChannel = guild.DefaultChannel;
         if (defaultChannel == null)
           return;
         if(config.IsBlacklisted) {
@@ -34,8 +34,8 @@ public class BlacklistService : IService {
         if(normalJoin) {
           var help = $"{config.Prefix}help".Code();
           await defaultChannel.Respond(
-              $"Hello {guild.Name}! {Client.CurrentUser.Username} has been added to your server!\n" +
-              "To see available commands, run the command {help}\n" +
+              $"Hello {guild.Name}! {guild.CurrentUser.Username} has been added to your server!\n" +
+              $"To see available commands, run the command {help}\n" +
               "For more information, see https://github.com/james7132/Hourai");
         }
       }

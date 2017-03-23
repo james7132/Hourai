@@ -37,8 +37,6 @@ public class AnnounceService : IService {
     string message = null;
     if (!wasStreaming && !isStreaming) {
       return;
-    } else if (wasStreaming && !isStreaming) {
-      message = ProcessMessage("**$user** stopped streaming.", user);
     } else if (!wasStreaming && isStreaming) {
       var game = aG.Value;
       message = ProcessMessage($"**$user** is now streaming **{game.Name}**: <{game.StreamUrl}>.", user);

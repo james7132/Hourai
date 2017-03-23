@@ -29,7 +29,7 @@ public class FakeMessage : IUserMessage {
   public IReadOnlyCollection<IAttachment> Attachments => new ReadOnlyCollection<IAttachment>(new IAttachment[0]);
   public IReadOnlyCollection<IEmbed> Embeds => new ReadOnlyCollection<IEmbed>(new IEmbed[0]);
   public IReadOnlyCollection<ITag> Tags => new ReadOnlyCollection<ITag>(new ITag[0]);
-  public IReadOnlyDictionary<Emoji, int> Reactions => new ReadOnlyDictionary<Emoji, int>(new Dictionary<Emoji, int>());
+  public IReadOnlyDictionary<Emoji, ReactionMetadata> Reactions => new ReadOnlyDictionary<Emoji, ReactionMetadata>(new Dictionary<Emoji, ReactionMetadata>());
   public IReadOnlyCollection<ulong> MentionedUserIds => new ReadOnlyCollection<ulong>(new ulong[0]);
   public IReadOnlyCollection<ulong> MentionedRoleIds => new ReadOnlyCollection<ulong>(new ulong[0]);
   public IReadOnlyCollection<ulong> MentionedChannelIds => new ReadOnlyCollection<ulong>(new ulong[0]);
