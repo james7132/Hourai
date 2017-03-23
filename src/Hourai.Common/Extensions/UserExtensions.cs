@@ -12,11 +12,8 @@ public static class UserExtensions {
   public static Task UnmuteAsync(this IGuildUser user) => user.SetMuted(false);
   public static Task DeafenAsync(this IGuildUser user) => user.SetDeafen(true);
   public static Task UndeafenAsync(this IGuildUser user) => user.SetDeafen(false);
-
   public static Task SetNickname(this IGuildUser user, string nickname) => user.ModifyAsync(p => p.Nickname = nickname);
 
-  public static bool IsMe(this IUser user) => Bot.User != null && user.Id == Bot.User.Id;
-  public static bool IsBotOwner(this IUser user) => user.Id == Bot.Owner.Id;
   public static bool IsServerOwner(this IGuildUser user) => user.Guild.OwnerId == user.Id;
 
   public static async Task SendDMAsync(this IUser user, string message) {

@@ -9,14 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../RedditSharp/RedditSharp/RedditSharp.csproj"  />
+    <ProjectReference Include="../../../RedditSharp/RedditSharp/RedditSharp.csproj"  />
+    <ProjectReference Include="../Hourai.Common/Hourai.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Discord.Net" Version="1.0.0-*" />
     <PackageReference Include="Discord.Net.Commands" Version="1.0.0-*" />
     <PackageReference Include="System.Collections.Concurrent" Version="4.3.0-*" />
-    <PackageReference Include="System.Diagnostics.TraceSource" Version="4.0.0-*" />
     <PackageReference Include="System.Diagnostics.TextWriterTraceListener" Version="4.0.0-*" />
     <PackageReference Include="System.Reflection.Extensions" Version="4.3.0-*" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="1.1.0-*" />
