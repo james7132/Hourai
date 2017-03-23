@@ -66,9 +66,11 @@ public class Help : HouraiModule {
       builder.AppendLine($"{module.Name.Bold()}: {commands}");
     }
     var guild = Context.DbGuild;
-    await Db.Entry(guild).Collection(c => c.Commands).LoadAsync();
-    if(guild.Commands.Any())
-      builder.AppendLine($"{"Custom".Bold()}: {guild.Commands.Select(c => c.Name.Code()).Join(", ")}");
+    if (guild != null) {
+      await Db.Entry(guild).Collection(c => c.Commands).LoadAsync();
+      if(guild.Commands.Any())
+        builder.AppendLine($"{"Custom".Bold()}: {guild.Commands.Select(c => c.Name.Code()).Join(", ")}");
+    }
     var result = builder.ToString();
     if(!string.IsNullOrEmpty(result))
       await RespondAsync($"{Context.Message.Author.Mention}, here are the " +

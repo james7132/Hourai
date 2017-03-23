@@ -55,7 +55,7 @@ public class MinRole {
 
 }
 
-[Table("user_roles")]
+[Table("user_rolesj")]
 public class UserRole {
 
   [Required]

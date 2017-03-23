@@ -23,6 +23,7 @@ public class RedditService : IService {
   ConcurrentDictionary<string, RedditSharp.Things.Subreddit> Subreddits { get; }
 
   public RedditService() {
+    WebAgent.UserAgent = $"ubuntu:discord.bot.hourai:{Config.Version}";
     Agent = new BotWebAgent(Config.RedditUsername,
         Config.RedditPassword,
         Config.RedditClientID,
@@ -62,7 +63,7 @@ public class RedditService : IService {
     Log.Info("CHECKING SUBREDDITS");
     using (var context = new BotDbContext()) {
       var subreddits = await context.Subreddits.Include(s => s.Channels).ToListAsync();
-      await Task.WhenAll(subreddits.Select(dbSubreddit => Task.Run(async () => {
+      await Task.WhenAll(subreddits.Select(async dbSubreddit => {
         Log.Info($"Checking {dbSubreddit.Name}");
         if (!dbSubreddit.Channels.Any()) {
           context.Subreddits.Remove(dbSubreddit);
@@ -80,9 +81,10 @@ public class RedditService : IService {
         DateTimeOffset latest = dbSubreddit.LastPost ?? DateTimeOffset.UtcNow;
         var latestInPage = latest;
         var title = $"Post in /r/{dbSubreddit.Name}:";
-        await subreddit.New.Take(25).ForEachAwait(async post => {
-              if (post.CreatedUTC <= latest)
-                return;
+        await subreddit.New.Take(25)
+          .Where(p => p.CreatedUTC > latest)
+          .OrderBy(p => p.CreatedUTC)
+          .ForEachAwait(async post => {
               Log.Info($"New post in /r/{dbSubreddit.Name}: {post.Title}");
               var embed = PostToMessage(post);
               try {
@@ -94,8 +96,10 @@ public class RedditService : IService {
                 latestInPage = post.CreatedUTC;
               }
             });
-        dbSubreddit.LastPost = latestInPage;
-      })));
+        if (latestInPage > latest)
+          dbSubreddit.LastPost = latestInPage;
+      }));
+      Log.Info("Done checking subreddits");
       await context.Save();
     }
   }

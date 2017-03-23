@@ -9,10 +9,7 @@ namespace Hourai.Model {
 
 [Table("temp_actions")]
 public class AbstractTempAction {
-
-  [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-  public long Id { get; set; }
-
+[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)] public long Id { get; set; }
   [Required]
   public ulong UserId { get; set; }
   [Required]
@@ -99,7 +96,7 @@ public class TempRole : AbstractTempAction {
     var role = guild.GetRole(RoleId);
     if(role == null)
       return;
-    await user.AddRolesAsync(role);
+    await user.AddRoleAsync(role);
   }
 
   public override async Task Unapply(DiscordShardedClient client) {
@@ -108,7 +105,7 @@ public class TempRole : AbstractTempAction {
     var role = guild.GetRole(RoleId);
     if(role == null)
       return;
-    await user.RemoveRolesAsync(role);
+    await user.RemoveRoleAsync(role);
   }
 
 }

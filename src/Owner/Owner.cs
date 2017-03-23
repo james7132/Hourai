@@ -201,12 +201,9 @@ public partial class Owner : HouraiModule {
       await Context.Message.Respond("No provided image.");
       return;
     }
-    using (var httpClient = new HttpClient())
-    {
-        using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url)))
-        {
-            using (Stream contentStream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync())
-            {
+    using (var httpClient = new HttpClient()) {
+        using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url))) {
+            using (Stream contentStream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync()) {
                 await Bot.User.ModifyAsync(u => {
                     u.Avatar = new Optional<Image?>(new Discord.Image(contentStream));
                   });

@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Preconditions;
 using System.Globalization;
@@ -20,7 +21,7 @@ public partial class Admin {
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Adds a role to all mentioned users.")]
     public Task Add(IRole role, params IGuildUser[] users) =>
-      ForEvery(users, Do(async u => await u.AddRolesAsync(role)));
+      ForEvery(users, Do(async u => await u.AddRoleAsync(role)));
 
     [Command("list")]
     [ChannelRateLimit(1, 1)]
@@ -39,15 +40,15 @@ public partial class Admin {
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Removes a role to all mentioned users.")]
     public Task Remove(IRole role, params IGuildUser[] users) =>
-      ForEvery(users, Do(u => u.RemoveRolesAsync(role)));
+      ForEvery(users, Do(u => u.RemoveRoleAsync(role)));
 
     [Log]
     [Command("nuke")]
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Removes all roles from provided users.")]
-    public Task Nuke(params IGuildUser[] users) =>
-      ForEvery(users, Do(u => u.RemoveRolesAsync()));
+    public Task Nuke(params SocketGuildUser[] users) =>
+      ForEvery(users, Do(u => u.RemoveRolesAsync(u.GetRoles())));
 
     [Log]
     [Command("ban")]
@@ -56,7 +57,7 @@ public partial class Admin {
     [Remarks("Bans all mentioned users from a specified role.")]
     public async Task Ban(IRole role, params IGuildUser[] users) {
       await ForEvery(users, Do(async u => {
-          await u.RemoveRolesAsync(role);
+          await u.RemoveRoleAsync(role);
           var userRole = await Db.GetUserRole(u, role);
           userRole.IsBanned = true;
         }));

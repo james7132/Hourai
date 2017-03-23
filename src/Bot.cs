@@ -39,7 +39,8 @@ namespace Hourai {
     bool _initialized;
 
     public static event Func<Task> RegularTasks {
-      add { _regularTasks.Add(Check.NotNull(value)); }
+      add { _regularTasks.Add(Check.NotNull(value));
+      Log.Info($"Regular Tasks: {_regularTasks.Count}");}
       remove { _regularTasks.Remove(value); }
     }
 
@@ -70,7 +71,6 @@ namespace Hourai {
       var map = new DependencyMap();
       map.Add(this);
       map.Add(Client);
-      map.Add(CommandService);
 
       map.Add(new CounterSet(new ActivatorFactory<SimpleCounter>()));
       map.Add(new BotCounters());
@@ -116,8 +116,9 @@ namespace Hourai {
         var paramType = parameters[i].ParameterType;
         Log.Info($"Found {type.Name} dependency => {paramType.Name}...");
         object arg;
-        if (map == null || !map.TryGet(paramType, out arg))
-        {
+        if (paramType == typeof(CommandService)) {
+          arg = CommandService;
+        } else if (map == null || !map.TryGet(paramType, out arg)) {
           if (paramType == typeof(IDependencyMap))
             arg = map;
           else
@@ -143,8 +144,9 @@ namespace Hourai {
         var propType = property.PropertyType;
         Log.Info($"Found {type.Name} dependency => {propType.Name}...");
         object arg = null;
-        if (map == null || !map.TryGet(propType, out arg))
-        {
+        if (propType == typeof(CommandService)) {
+          arg = CommandService;
+        } else if (map == null || !map.TryGet(propType, out arg)) {
           if (propType  == typeof(IDependencyMap))
             arg = map;
           else if (!property.IsDefined(typeof(NotServiceAttribute)))
@@ -158,9 +160,11 @@ namespace Hourai {
 
     async Task MainLoop() {
       while (!ExitSource.Task.IsCompleted) {
-        await Task.WhenAll(_regularTasks.Select(t => t()));
+        Log.Info("Starting regular tasks...");
+        var tasks = Task.WhenAll(_regularTasks.Select(t => t()));
         if (Client.CurrentUser != null)
           await Client.SetGameAsync(Config.Version);
+        Log.Info("Waiting ...");
         await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
       }
     }

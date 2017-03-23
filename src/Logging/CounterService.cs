@@ -42,6 +42,7 @@ public class CounterService : IService {
         Counters.Get("messages-recieved").Increment();
         var guild = (m.Channel as IGuildChannel)?.Guild;
         if (guild != null) {
+          Counters.Get($"guild-{guild.Id}_messages-recieved").Increment();
           foreach (var shard in client.Shards) {
             if (shard.Guilds.Any(g => g.Id == guild.Id)) {
               Counters.Get($"shard-{shard.ShardId}-messages-recieved").Increment();

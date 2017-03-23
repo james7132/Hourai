@@ -26,7 +26,7 @@ public class DatabaseService {
     client.UserJoined += AddUser;
     client.UserLeft += AddUser;
     client.UserUpdated += (b, a) => AddUser(a);
-    client.GuildMemberUpdated += (b, a) => RefreshUser(a);
+    //client.GuildMemberUpdated += (b, a) => RefreshUser(a);
     client.RoleCreated += r => AddRole(r);
     client.RoleDeleted += r => Remove(c => c.Roles, r);
     //client.JoinedGuild += AddGuild;
@@ -78,12 +78,12 @@ public class DatabaseService {
     }
   }
 
-  async Task RefreshUser(SocketGuildUser user) {
-    using (var context = new BotDbContext()) {
-      await context.RefreshUser(user);
-      await context.Save();
-    }
-  }
+  //async Task RefreshUser(SocketGuildUser user) {
+    //using (var context = new BotDbContext()) {
+      //await context.RefreshUser(user);
+      //await context.Save();
+    //}
+  //}
 
   async Task RemoveChannel(SocketChannel channel) {
     var guild_channel = channel as IGuildChannel;

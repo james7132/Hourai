@@ -140,31 +140,6 @@ public partial class Admin : HouraiModule {
     return Task.CompletedTask;
   }
 
-  [Group("reaction")]
-  public class Reactions : HouraiModule {
-
-    [Command("dump")]
-    [ChannelRateLimit(1, 1)]
-    public async Task Dump(int count = 100) {
-      var users = new HashSet<IUser>();
-      await Context.Channel.GetMessagesAsync(count).ForEachAwait(async m => {
-          foreach(var message in m.OfType<IUserMessage>()) {
-            if (!message.Reactions.Any())
-              continue;
-            foreach(var reaction in message.Reactions.Keys) {
-              var name = reaction.Name;
-              if (reaction.Id.HasValue)
-                name += ":" + reaction.Id;
-              Log.Info((await message.GetReactionUsersAsync(name)).Count);
-              Log.Info(name + " " + reaction.ToString());
-            }
-          }
-        });
-      await RespondAsync(users.Select(u => u.Mention).Join(", "));
-    }
-
-  }
-
   [Group("server")]
   public class ServerGroup : HouraiModule {
 
