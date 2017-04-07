@@ -15,6 +15,7 @@ public class FakeMessage : IUserMessage {
     CreatedAt = DateTimeOffset.UtcNow;
   }
   public ulong Id => 0UL;
+  public MessageSource Source => MessageSource.User;
   public string Content { get; }
   public IUser Author { get; }
   public IMessageChannel Channel { get; }
