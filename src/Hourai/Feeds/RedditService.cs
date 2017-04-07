@@ -12,6 +12,9 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
+using Subreddit = RedditSharp.Things.Subreddit;
+using DbSubreddit = Hourai.Model.Subreddit;
+
 namespace Hourai.Feeds {
 
 public class RedditService : IService {
@@ -30,7 +33,7 @@ public class RedditService : IService {
         Config.RedditClientSecret,
         Config.RedditRedirectUri);
     Reddit = new Reddit(Agent, false);
-    Subreddits = new ConcurrentDictionary<string, RedditSharp.Things.Subreddit>();
+    Subreddits = new ConcurrentDictionary<string, Subreddit>();
     Bot.RegularTasks += CheckReddits;
   }
 
@@ -81,7 +84,7 @@ public class RedditService : IService {
         DateTimeOffset latest = dbSubreddit.LastPost ?? DateTimeOffset.UtcNow;
         var latestInPage = latest;
         var title = $"Post in /r/{dbSubreddit.Name}:";
-        await subreddit.New.Take(25)
+        await subreddit.GetPosts(Subreddit.Sort.New).Take(25)
           .Where(p => p.CreatedUTC > latest)
           .OrderBy(p => p.CreatedUTC)
           .ForEachAwait(async post => {
