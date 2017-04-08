@@ -14,7 +14,7 @@ public class Channel {
   [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
   public ulong Id { get; set; }
   public ulong? GuildId { get; set; }
-  [ForeignKey("GuildId")]
+  [Required, ForeignKey("GuildId")]
   public Guild Guild { get; set; }
 
   public bool JoinMessage { get; set; }

@@ -29,11 +29,11 @@ public static class DbSetExtensions {
     return true;
   }
 
-  public static async Task<Channel> Get(this DbSet<Channel> set, IChannel ichannel) {
+  public static async Task<Channel> Get(this DbSet<Channel> set, ITextChannel ichannel) {
     var channel = await set.FindAsync(ichannel.Id);
     if (channel == null)
       channel = set.Add(new Channel(ichannel) {
-            GuildId = (channel as IGuildChannel)?.Id
+            GuildId = channel.Guild.Id
           }).Entity;
     return channel;
   }
@@ -201,28 +201,29 @@ public class BotDbContext : DbContext {
     var messageChannels = guild.Channels.OfType<IMessageChannel>();
     var channelIds = new HashSet<ulong>(messageChannels.Select(c => c.Id));
     var roleIds = new HashSet<ulong>(guild.Roles.Select(r => r.Id));
-    var chTask = Task.WhenAll(messageChannels.Select(c => Channels.Get(c)));
-    var rTask = Task.WhenAll(guild.Roles.Where(r => r.Id != guild.EveryoneRole.Id)
-        .Select(r => Roles.Get(r)));
+    foreach(var channel in messageChannels)
+      await Channels.Get(channel);
+    //var rTask = Task.WhenAll(guild.Roles.Where(r => r.Id != guild.EveryoneRole.Id)
+        //.Select(r => Roles.Get(r)));
+    //await Task.WhenAll(chTask);
     Log.Info($"Added new {guild.ToIDString()} entities.");
-    await Task.WhenAll(chTask, rTask);
     Channels.RemoveRange(dbGuild.Channels.Where(c => !channelIds.Contains(c.Id)));
     Roles.RemoveRange(dbGuild.Roles.Where(r => !roleIds.Contains(r.Id)));
-    Log.Info($"Removed deleted {guild.ToIDString()} entities.");
-    if (!guild.HasAllMembers) {
-      Log.Info($"Downloading {guild.ToIDString()} users.");
-      await guild.DownloadUsersAsync();
-      Log.Info($"Downloaded {guild.ToIDString()} users.");
-    }
-    Log.Info($"Refreshing {guild.ToIDString()} users ({guild.Users.Count}).");
-    await Task.WhenAll(guild.Users.Select(user => {
-      if(user.Username == null) {
-        Log.Error($"Found user {user.Id} without a username");
-        return Task.CompletedTask;
-      }
-      return RefreshUser(user);
-    }));
-    Log.Info($"{guild.ToIDString()} refreshed.");
+    //Log.Info($"Removed deleted {guild.ToIDString()} entities.");
+    //if (!guild.HasAllMembers) {
+      //Log.Info($"Downloading {guild.ToIDString()} users.");
+      //await guild.DownloadUsersAsync();
+      //Log.Info($"Downloaded {guild.ToIDString()} users.");
+    //}
+    //Log.Info($"Refreshing {guild.ToIDString()} users ({guild.Users.Count}).");
+    //await Task.WhenAll(guild.Users.Select(user => {
+      //if(user.Username == null) {
+        //Log.Error($"Found user {user.Id} without a username");
+        //return Task.CompletedTask;
+      //}
+      //return RefreshUser(user);
+    //}));
+    //Log.Info($"{guild.ToIDString()} refreshed.");
   }
 
 }

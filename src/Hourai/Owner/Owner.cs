@@ -157,11 +157,8 @@ public partial class Owner : HouraiModule {
     [Command("all")]
     public async Task RefreshAll() {
       Log.Info("Starting refresh...");
-      Db.AllowSave = false;
-      try {
-        await Task.WhenAll(Context.Client.Guilds.Select(guild => Db.RefreshGuild(guild)));
-      } finally {
-        Db.AllowSave = true;
+      foreach(var guild in Context.Client.Guilds) {
+        await Db.RefreshGuild(guild);
         await Db.Save();
       }
       Log.Info("Done refreshing.");

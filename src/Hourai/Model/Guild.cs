@@ -61,9 +61,7 @@ public class CustomConfig {
 
   public CustomConfig(IGuild guild) {
     GuildId = guild.Id;
-  }
-
-  public void Save(GuildConfig config) {
+  } public void Save(GuildConfig config) {
     ConfigString = config.ToString();
   }
 
