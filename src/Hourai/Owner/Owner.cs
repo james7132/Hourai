@@ -181,7 +181,7 @@ public partial class Owner : HouraiModule {
   [Command("rename")]
   [Remarks("Renames the bot a new name.")]
   public async Task Rename(string name) {
-    await Bot.User.ModifyAsync(u => {
+    await Context.Client.CurrentUser.ModifyAsync(u => {
           u.Username = name;
         });
     await Success();
@@ -201,7 +201,7 @@ public partial class Owner : HouraiModule {
     using (var httpClient = new HttpClient()) {
         using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url))) {
             using (Stream contentStream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync()) {
-                await Bot.User.ModifyAsync(u => {
+                await Context.Client.CurrentUser.ModifyAsync(u => {
                     u.Avatar = new Optional<Image?>(new Discord.Image(contentStream));
                   });
             }

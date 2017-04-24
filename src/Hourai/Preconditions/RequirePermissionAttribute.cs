@@ -103,7 +103,7 @@ namespace Hourai.Preconditions {
         IDependencyMap dependencies) {
       // Check if the bot needs/has the permissions
       if ((Requirement & Require.Bot) != 0) {
-        IUser botUser = Bot.User;
+        IUser botUser = context.Client.CurrentUser;
         var guild = (context.Channel as IGuildChannel)?.Guild;
         if (guild != null)
           botUser = await guild.GetCurrentUserAsync();

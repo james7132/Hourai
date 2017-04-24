@@ -127,6 +127,8 @@ namespace Hourai {
     public string Content => Message?.Content;
     public CustomConfigService ConfigService { get; set; }
 
+    public bool IsAutoCommand { get; }
+
     public string Input { get; set; }
     public SocketGuild Guild { get; set; }
     public SocketUser User { get; set; }
@@ -150,6 +152,7 @@ namespace Hourai {
                          BotDbContext db) {
       Client = client;
       Message = new FakeMessage(msg, user, channel);
+      IsAutoCommand = true;
       User = user;
       Channel = channel;
       Guild = (channel as SocketGuildChannel)?.Guild;
