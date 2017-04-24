@@ -25,7 +25,6 @@ namespace Hourai {
 
     static void Main() => new Bot().Run().GetAwaiter().GetResult();
 
-    public static ISelfUser User { get; private set; }
     public static IUser Owner { get; private set; }
 
     public DateTime StartTime { get; private set; }
@@ -176,8 +175,7 @@ namespace Hourai {
       await Client.LoginAsync(TokenType.Bot, Config.Token, false);
       Log.Info("Starting Discord Client...");
       await Client.StartAsync();
-      User = Client.CurrentUser;
-      Log.Info($"Logged in as {User.ToIDString()}");
+      //Log.Info($"Logged in as {User.ToIDString()}");
 
       Owner = (await Client.GetApplicationInfoAsync()).Owner;
       Log.Info($"Owner: {Owner.Username} ({Owner.Id})");

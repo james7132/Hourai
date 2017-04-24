@@ -28,10 +28,10 @@ public static class DiscordExtensions {
   static readonly Random Random = new Random();
 
   public static T SelectRandom<T>(this IEnumerable<T> t) {
-    var array = t.ToArray();
-    if (array.Length <= 0)
+    if (!t.Any())
       return default(T);
-    return array[Random.Next(array.Length - 1)];
+    IList<T> array = t as IList<T> ?? t.ToArray();
+    return array[Random.Next(array.Count)];
   }
 
   public static Task Respond(this IMessageChannel channel, string response) {
