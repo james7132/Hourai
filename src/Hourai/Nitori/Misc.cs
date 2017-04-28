@@ -208,7 +208,6 @@ namespace Hourai.Nitori {
     [Remarks("You know what this is")]
     public Task Lenny() => RespondAsync(_lennyFaces.SelectRandom());
 
-
   }
 
 }

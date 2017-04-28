@@ -199,13 +199,13 @@ public partial class Owner : HouraiModule {
       return;
     }
     using (var httpClient = new HttpClient()) {
-        using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url))) {
-            using (Stream contentStream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync()) {
-                await Context.Client.CurrentUser.ModifyAsync(u => {
-                    u.Avatar = new Optional<Image?>(new Discord.Image(contentStream));
-                  });
-            }
+      using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url))) {
+        using (Stream contentStream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync()) {
+          await Context.Client.CurrentUser.ModifyAsync(u => {
+              u.Avatar = new Optional<Image?>(new Discord.Image(contentStream));
+            });
         }
+      }
     }
     await Success();
   }
