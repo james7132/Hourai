@@ -25,13 +25,11 @@ public static class DiscordExtensions {
   public static Task Respond(this IMessage message, string response) =>
     message.Channel.Respond(response);
 
-  static readonly Random Random = new Random();
-
   public static T SelectRandom<T>(this IEnumerable<T> t) {
     if (!t.Any())
       return default(T);
     IList<T> array = t as IList<T> ?? t.ToArray();
-    return array[Random.Next(array.Count)];
+    return array[RandomUtil.Int(array.Count)];
   }
 
   public static Task Respond(this IMessageChannel channel, string response) {
