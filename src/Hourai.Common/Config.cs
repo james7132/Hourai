@@ -9,11 +9,14 @@ namespace Hourai {
 
 public class Config {
 
+  public const string BaseDataPath = "/var/bot/hourai";
+
 #if DEBUG
-  public const string ConfigFilePath = "/var/bot/hourai/test_config.json";
+  public const string ConfigFilePath = BaseDataPath + "/test_config.json";
 #else
-  public const string ConfigFilePath = "/var/bot/hourai/config.json";
+  public const string ConfigFilePath = BaseDataPath + "/config.json";
 #endif
+
 
   public static bool IsLoaded { get; private set; }
 
@@ -41,6 +44,9 @@ public class Config {
 
   [JsonProperty]
   public static string DbFilename { get; set; } = "./bot.db";
+
+  [JsonProperty]
+  public static string ImageStoragePath = BaseDataPath + "/images";
 
   [JsonProperty]
   public static DiscordSocketConfig DiscordConfig { get; set; }
