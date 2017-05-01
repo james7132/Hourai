@@ -11,6 +11,10 @@
       "TotalShards": 1
     },
 
+    "Error": [
+      "Websocket connection was closed"
+    ],
+
     "Token": "",
 
     "RedditUsername": "",
