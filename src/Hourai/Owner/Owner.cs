@@ -211,30 +211,42 @@ public partial class Owner : HouraiModule {
   }
 
   [Command("leave")]
-  [Remarks("Makes the bot leave the current server")]
-  public async Task Leave() {
-    var guild = Check.NotNull(Context.Guild);
-    await Success();
-    await guild.LeaveAsync();
+  [Remarks("Makes the bot leave a server.")]
+  public async Task Leave(ulong? id = null) {
+    IGuild guild;
+    if (id == null)
+        guild = Context.Guild;
+    else
+        guild = Client.GetGuild(id.Value);
+    if (guild != null) {
+      await Success();
+      await guild.LeaveAsync();
+    } else {
+      await RespondAsync("No valid guild found.");
+    }
   }
 
   [Group("blacklist")]
   public class Blacklist : HouraiModule {
 
-    static bool SettingToBlacklist(string setting) {
-      if(setting == "-")
-        return false;
-      return true;
-    }
+    static bool SettingToBlacklist(string setting) => setting != "-";
 
     [Command("server")]
     [Remarks("Blacklists the current server and makes the bot leave.")]
-    public async Task Server(string setting = "+") {
-      var guild = Check.NotNull(Context.Guild);
-      Context.DbGuild.IsBlacklisted = true;
-      await Db.Save();
-      await Success();
-      await guild.LeaveAsync();
+    public async Task Server(string setting = "+", ulong? id = null) {
+      IGuild guild;
+      if (id == null)
+          guild = Context.Guild;
+      else
+          guild = Client.GetGuild(id.Value);
+      if (guild != null) {
+        (await Db.Guilds.Get(guild)).IsBlacklisted = true;
+        await Db.Save();
+        await Success();
+        await guild.LeaveAsync();
+      } else {
+        await RespondAsync("No valid guild found.");
+      }
     }
 
     [Command("user")]
