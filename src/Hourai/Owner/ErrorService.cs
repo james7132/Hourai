@@ -2,8 +2,9 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Hourai {
 
@@ -38,6 +39,8 @@ namespace Hourai {
     public async void RegisterException(Exception e) {
       if (OwnerChannel == null)
         OwnerChannel = await Bot.Owner.CreateDMChannelAsync();
+      if (Config.ErrorBlacklist.Any(e.Message.Contains))
+        return;
       try {
         await SendError(e);
       } catch {

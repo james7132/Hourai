@@ -1,9 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using Discord;
 using Discord.WebSocket;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace Hourai {
 
@@ -46,7 +47,7 @@ public class Config {
   public static string DbFilename { get; set; } = "./bot.db";
 
   [JsonProperty]
-  public static string ImageStoragePath = BaseDataPath + "/images";
+  public static string ImageStoragePath { get; set; } = BaseDataPath + "/images";
 
   [JsonProperty]
   public static DiscordSocketConfig DiscordConfig { get; set; }
@@ -74,6 +75,9 @@ public class Config {
 
   [JsonProperty]
   public static string RedditRedirectUri { get; set; }
+
+  [JsonProperty]
+  public static List<string> ErrorBlacklist { get; set; } = new List<string>();
 
 }
 }
