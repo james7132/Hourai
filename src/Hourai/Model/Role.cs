@@ -21,6 +21,8 @@ public class Role {
   public Guild Guild { get; set; }
   [Required]
   public ICollection<UserRole> Users { get; set; }
+  [Required]
+  public bool SelfServe { get; set; }
 
   public Role() {
   }

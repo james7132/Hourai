@@ -34,6 +34,59 @@ public partial class Admin {
           .Select(r => r.Name)
           .Join(", "));
 
+    async Task SetSelfServe(IRole[] roles, bool val) {
+      var dbRoles = await Task.WhenAll(roles.Select(r => Db.Roles.Get(r)));
+      foreach(var role in dbRoles)
+        role.SelfServe = val;
+      await Db.Save();
+      await Success();
+    }
+
+    [Log]
+    [Command("allow")]
+    [RequirePermission(GuildPermission.ManageRoles, Require.Bot)]
+    [RequirePermission(GuildPermission.ManageGuild | GuildPermission.ManageRoles, Require.User)]
+    [Remarks("Enables self-serve for all provided roles.")]
+    public Task Allow(params IRole[] roles) => SetSelfServe(roles, true);
+
+    [Log]
+    [Command("forbid")]
+    [RequirePermission(GuildPermission.ManageRoles, Require.Bot)]
+    [RequirePermission(GuildPermission.ManageGuild | GuildPermission.ManageRoles, Require.User)]
+    [Remarks("Disables self-serve for all provided roles.")]
+    public Task Forbid(params IRole[] roles) => SetSelfServe(roles, false);
+
+    [Log]
+    [Command("get")]
+    [RequirePermission(GuildPermission.ManageRoles, Require.Bot)]
+    [Remarks("Gives the user a self-serve role. The role must be enabled via `role allow` first.")]
+    public async Task Get(IRole role) {
+      var dbRole = await Db.Roles.Get(role);
+      if (dbRole.SelfServe) {
+        var user = Context.Guild.GetUser(Context.User.Id);
+        await user.AddRolesAsync(new[] {role});
+        await Success();
+      } else {
+        await RespondAsync($"The role {role.Name} is not set up for self-serve.");
+      }
+    }
+
+    [Log]
+    [Command("drop")]
+    [RequirePermission(GuildPermission.ManageRoles, Require.Bot)]
+    [Remarks("Removes a self-serve role from the user. The role must be enabled via `role allow` first.")]
+    public async Task Drop(IRole role) {
+      var dbRole = await Db.Roles.Get(role);
+      if (dbRole.SelfServe) {
+        var user = Context.Guild.GetUser(Context.User.Id);
+        await user.RemoveRolesAsync(new[] {role});
+        await Success();
+      } else {
+        await RespondAsync($"The role {role.Name} is not set up for self-serve.");
+      }
+    }
+
+
     [Log]
     [Command("remove")]
     [GuildRateLimit(1, 0.5)]
@@ -100,7 +153,7 @@ public partial class Admin {
     [GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.ManageRoles)]
     [Remarks("Sets a role's color.")]
-    public Task RoleColor(string color, params IRole[] roles) {
+    public Task Color(string color, params IRole[] roles) {
       uint colorVal;
       if(!TryParseColor(color, out colorVal)) {
         return RespondAsync($"Could not parse {color} to a proper color value");
