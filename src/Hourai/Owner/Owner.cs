@@ -211,13 +211,9 @@ public partial class Owner : HouraiModule {
   }
 
   [Command("leave")]
-  [Remarks("Makes the bot leave a server.")]
-  public async Task Leave(ulong? id = null) {
-    IGuild guild;
-    if (id == null)
-        guild = Context.Guild;
-    else
-        guild = Client.GetGuild(id.Value);
+  [Remarks("Makes the bot leave a server. If ID is 0, the current server is used.")]
+  public async Task Leave(ulong id = 0) {
+    IGuild guild = id == 0 ? Context.Guild : Client.GetGuild(id);
     if (guild != null) {
       await Success();
       await guild.LeaveAsync();
@@ -232,13 +228,9 @@ public partial class Owner : HouraiModule {
     static bool SettingToBlacklist(string setting) => setting != "-";
 
     [Command("server")]
-    [Remarks("Blacklists the current server and makes the bot leave.")]
-    public async Task Server(string setting = "+", ulong? id = null) {
-      IGuild guild;
-      if (id == null)
-          guild = Context.Guild;
-      else
-          guild = Client.GetGuild(id.Value);
+    [Remarks("Blacklists the current server and makes the bot leave. If ID is 0, the current server is used.")]
+    public async Task Server(string setting = "+", ulong id = 0) {
+      IGuild guild = id == 0 ? Context.Guild : Client.GetGuild(id);
       if (guild != null) {
         (await Db.Guilds.Get(guild)).IsBlacklisted = true;
         await Db.Save();
