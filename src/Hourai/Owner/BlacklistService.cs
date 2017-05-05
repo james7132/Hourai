@@ -7,14 +7,12 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class BlacklistService : IService {
-
-  DiscordShardedClient Client { get; }
+[Service]
+public class BlacklistService {
 
   public BlacklistService(DiscordShardedClient client) {
     client.GuildAvailable += CheckBlacklist(false);
     client.JoinedGuild += CheckBlacklist(true);
-    Client = client;
   }
 
   Func<SocketGuild, Task> CheckBlacklist(bool normalJoin) {

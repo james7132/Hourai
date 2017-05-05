@@ -8,7 +8,8 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class CounterService : IService {
+[Service]
+public class CounterService {
 
   public CounterSet Counters { get; set; }
 

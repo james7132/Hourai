@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using System;
 using System.Threading.Tasks;
 
 namespace Hourai.Custom {
@@ -9,7 +10,7 @@ namespace Hourai.Custom {
     public override Task<PreconditionResult> CheckPermissions(
         ICommandContext context,
         CommandInfo commandInfo,
-        IDependencyMap dependencies) {
+        IServiceProvider service) {
       var houraiContext = context as HouraiContext;
       if (houraiContext == null || !houraiContext.IsAutoCommand)
         return Task.FromResult(

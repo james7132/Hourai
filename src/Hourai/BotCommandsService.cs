@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Custom;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -10,22 +11,25 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class BotCommandService : IService {
+[Service]
+public class BotCommandService {
 
-  public DiscordShardedClient Client { get; set; }
-  public CommandService Commands { get; set; }
+  readonly DiscordShardedClient _client;
+  readonly CommandService _commands;
+  readonly IServiceProvider _services;
   public DatabaseService Database { get; set; }
   public ErrorService ErrorService { get; set; }
   public CustomConfigService ConfigService { get; set; }
   public CounterSet Counters { get; set; }
-  public IDependencyMap Map { get; set; }
 
-  public BotCommandService(DiscordShardedClient client, CommandService command) {
-    Commands = command;
-    Client = client;
-    Client.MessageReceived += HandleMessage;
-    if (Commands != null) {
-      foreach(var module in Commands.Modules) {
+  public BotCommandService(IServiceProvider services) {
+    _services = Check.NotNull(services);
+    _client = services.GetService<DiscordShardedClient>();
+    _commands = services.GetService<CommandService>();
+
+    _client.MessageReceived += HandleMessage;
+    if (_commands != null) {
+      foreach(var module in _commands.Modules) {
         Log.Info("Loaded module: " + module.Name);
         foreach (var cmd in module.Commands) {
           Log.Info("Command: " + cmd.GetFullName());
@@ -36,7 +40,9 @@ public class BotCommandService : IService {
 
   public async Task HandleMessage(IMessage m) {
     var msg = m as SocketUserMessage;
-    if (msg == null || msg.Author.IsBot || msg.Author?.Id == Client?.CurrentUser?.Id)
+    if (msg == null ||
+        msg.Author.IsBot ||
+        msg.Author?.Id == _client?.CurrentUser?.Id)
       return;
     using (var db = Database.CreateContext()) {
       var user = await db.Users.Get(msg.Author);
@@ -65,7 +71,7 @@ public class BotCommandService : IService {
         return;
       // Execute the command. (result does not indicate a return value,
       // rather an object stating if the command executed succesfully)
-      var context = new HouraiContext(Client, msg, db, user, dbGuild);
+      var context = new HouraiContext(_client, msg, db, user, dbGuild);
       await ExecuteCommand(context, argPos);
     }
   }
@@ -90,7 +96,7 @@ public class BotCommandService : IService {
   }
 
   async Task<bool> ExecuteStandardCommand(HouraiContext context, string command) {
-    var result = await Commands.ExecuteAsync(context, command, Map);
+    var result = await _commands.ExecuteAsync(context, command, _services);
     var guildChannel = context.Channel as ITextChannel;
     string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
       : "in private channel.";
@@ -121,8 +127,7 @@ public class BotCommandService : IService {
 
   async Task<bool> CustomCommandCheck(HouraiContext msg, string cmd) {
     var customCommandCheck = cmd.SplitWhitespace();
-    if (customCommandCheck.Length <= 0 ||
-        msg.Guild == null)
+    if (customCommandCheck.Length <= 0 || msg.Guild == null)
       return false;
     var commandName = customCommandCheck[0];
     cmd = cmd.Substring(commandName.Length);

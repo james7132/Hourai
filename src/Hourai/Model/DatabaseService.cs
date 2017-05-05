@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace Hourai.Model {
 
+[Service]
 public class DatabaseService {
 
-  [NotService]
   public BotDbContext Context { get; private set; }
 
   ICollection<ulong> _guilds;

@@ -17,10 +17,16 @@ namespace Hourai.Standard {
 /// </summary>
 public class Help : HouraiModule {
 
-  public IDependencyMap Map { get; set; }
-  public CommandService Commands { get; set; }
+  readonly CommandService _commands;
+  readonly IServiceProvider _services;
 
   const char CommandGroupChar = '*';
+
+  public Help(IServiceProvider services,
+              CommandService commands) {
+    _commands = commands;
+    _services = services;
+  }
 
   [Command("help")]
   [UserRateLimit(1, 1)]
@@ -57,7 +63,7 @@ public class Help : HouraiModule {
 
   async Task GeneralHelp() {
     var builder = new StringBuilder();
-    foreach(var module in Commands.Modules
+    foreach(var module in _commands.Modules
         .Where(m => !m.IsSubmodule)
         .OrderBy(m => m.Name)) {
       var commands = await CommandList(module);
@@ -81,7 +87,7 @@ public class Help : HouraiModule {
 
   async Task SpecficHelp(string command) {
     command = command.Trim();
-    var searchResults = Commands.Search(Context, command);
+    var searchResults = _commands.Search(Context, command);
     if(searchResults.IsSuccess) {
       await RespondAsync(await GetCommandInfo(searchResults.Commands.Select(c => c.Command)));
       return;
@@ -95,7 +101,7 @@ public class Help : HouraiModule {
   }
 
   ModuleInfo SearchModules(string command) {
-    return Commands.Modules.FirstOrDefault(m => m.Aliases.Contains(command));
+    return _commands.Modules.FirstOrDefault(m => m.Aliases.Contains(command));
   }
 
   async Task<string> ModuleHelp(ModuleInfo module) {
@@ -113,7 +119,7 @@ public class Help : HouraiModule {
   async Task<List<CommandInfo>> GetUsableCommands(ModuleInfo module) {
     var usableCommands = new List<CommandInfo>();
     foreach(var command in module.Commands) {
-      var result = await command.CheckPreconditionsAsync(Context, Map);
+      var result = await command.CheckPreconditionsAsync(Context, _services);
       if(result.IsSuccess)
         usableCommands.Add(command);
     }

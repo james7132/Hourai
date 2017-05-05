@@ -8,7 +8,8 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-  public class ErrorService : IService {
+  [Service]
+  public class ErrorService {
 
     public Bot Bot { get; set; }
     IMessageChannel OwnerChannel { get; set; }

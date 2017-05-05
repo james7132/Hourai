@@ -10,7 +10,8 @@ using System.Threading.Tasks;
 
 namespace Hourai {
 
-public class AnnounceService : IService {
+[Service]
+public class AnnounceService {
 
   public AnnounceService(DiscordShardedClient client) {
     //TODO(james7132): make these messages configurable

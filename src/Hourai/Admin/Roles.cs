@@ -45,14 +45,14 @@ public partial class Admin {
     [Log]
     [Command("allow")]
     [RequirePermission(GuildPermission.ManageRoles, Require.Bot)]
-    [RequirePermission(GuildPermission.ManageGuild | GuildPermission.ManageRoles, Require.User)]
+    [RequirePermission(new[] {GuildPermission.ManageGuild, GuildPermission.ManageRoles}, Require.BotOwnerOverride)]
     [Remarks("Enables self-serve for all provided roles.")]
     public Task Allow(params IRole[] roles) => SetSelfServe(roles, true);
 
     [Log]
     [Command("forbid")]
     [RequirePermission(GuildPermission.ManageRoles, Require.Bot)]
-    [RequirePermission(GuildPermission.ManageGuild | GuildPermission.ManageRoles, Require.User)]
+    [RequirePermission(new[] {GuildPermission.ManageGuild, GuildPermission.ManageRoles}, Require.BotOwnerOverride)]
     [Remarks("Disables self-serve for all provided roles.")]
     public Task Forbid(params IRole[] roles) => SetSelfServe(roles, false);
 
@@ -86,7 +86,6 @@ public partial class Admin {
       }
     }
 
-
     [Log]
     [Command("remove")]
     [GuildRateLimit(1, 0.5)]
@@ -94,14 +93,6 @@ public partial class Admin {
     [Remarks("Removes a role to all mentioned users.")]
     public Task Remove(IRole role, params IGuildUser[] users) =>
       ForEvery(users, Do(u => u.RemoveRoleAsync(role)));
-
-    [Log]
-    [Command("nuke")]
-    [GuildRateLimit(1, 1)]
-    [RequirePermission(GuildPermission.ManageRoles)]
-    [Remarks("Removes all roles from provided users.")]
-    public Task Nuke(params SocketGuildUser[] users) =>
-      ForEvery(users, Do(u => u.RemoveRolesAsync(u.GetRoles())));
 
     [Log]
     [Command("ban")]

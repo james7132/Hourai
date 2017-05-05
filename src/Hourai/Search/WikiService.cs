@@ -8,7 +8,8 @@ using System.Threading.Tasks;
 
 namespace Hourai.Search {
 
-  public class WikiService : IService {
+  [Service]
+  public class WikiService {
 
     HttpClient Client { get; }
 

@@ -30,7 +30,7 @@ public class FakeMessage : IUserMessage {
   public IReadOnlyCollection<IAttachment> Attachments => new ReadOnlyCollection<IAttachment>(new IAttachment[0]);
   public IReadOnlyCollection<IEmbed> Embeds => new ReadOnlyCollection<IEmbed>(new IEmbed[0]);
   public IReadOnlyCollection<ITag> Tags => new ReadOnlyCollection<ITag>(new ITag[0]);
-  public IReadOnlyDictionary<Emoji, ReactionMetadata> Reactions => new ReadOnlyDictionary<Emoji, ReactionMetadata>(new Dictionary<Emoji, ReactionMetadata>());
+  public IReadOnlyDictionary<IEmote, ReactionMetadata> Reactions => new ReadOnlyDictionary<IEmote, ReactionMetadata>(new Dictionary<IEmote, ReactionMetadata>());
   public IReadOnlyCollection<ulong> MentionedUserIds => new ReadOnlyCollection<ulong>(new ulong[0]);
   public IReadOnlyCollection<ulong> MentionedRoleIds => new ReadOnlyCollection<ulong>(new ulong[0]);
   public IReadOnlyCollection<ulong> MentionedChannelIds => new ReadOnlyCollection<ulong>(new ulong[0]);
@@ -38,11 +38,11 @@ public class FakeMessage : IUserMessage {
   public Task ModifyAsync(Action<MessageProperties> builder, RequestOptions options) => Task.CompletedTask;
   public Task PinAsync(RequestOptions options) => Task.CompletedTask;
   public Task UnpinAsync(RequestOptions options) => Task.CompletedTask;
-  public Task AddReactionAsync(Emoji emoji, RequestOptions options) => Task.CompletedTask;
+  public Task AddReactionAsync(IEmote emoji, RequestOptions options) => Task.CompletedTask;
   public Task AddReactionAsync(string emoji, RequestOptions options) => Task.CompletedTask;
   public Task DeleteAsync(RequestOptions options) => Task.CompletedTask;
   public Task<IReadOnlyCollection<IUser>> GetReactionUsersAsync(string emoji, int limit, ulong? afterUserId, RequestOptions options) => Task.FromResult<IReadOnlyCollection<IUser>>(null);
-  public Task RemoveReactionAsync(Emoji emoji, IUser user, RequestOptions options) => Task.CompletedTask;
+  public Task RemoveReactionAsync(IEmote emoji, IUser user, RequestOptions options) => Task.CompletedTask;
   public Task RemoveReactionAsync(string  emoji, IUser user, RequestOptions options) => Task.CompletedTask;
   public Task RemoveAllReactionsAsync(RequestOptions options) => Task.CompletedTask;
   public string Resolve(TagHandling userHandling, TagHandling channelHandling, TagHandling roleHandling, TagHandling everyoneHandling, TagHandling emojiHandling) => Content;
