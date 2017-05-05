@@ -20,7 +20,7 @@ namespace Hourai {
       Type = Check.NotNull(type);
       Config.Load();
       BasePath = Path.Combine(Config.ImageStoragePath, type);
-      Log.Info($"Storage Location for \"{type}\" images: {BasePath}");
+      //Log.Info($"Storage Location for \"{type}\" images: {BasePath}");
       if (!Directory.Exists(BasePath))
         Directory.CreateDirectory(BasePath);
     }
@@ -35,7 +35,7 @@ namespace Hourai {
       var uri = new Uri(link);
       string path;
       var baseName = Path.GetFileName(uri.AbsolutePath);
-      Log.Info(baseName);
+      //Log.Info(baseName);
       do {
         string filename = baseName + "_" + Guid.NewGuid().ToString();
         path = Path.Combine(BasePath, filename);

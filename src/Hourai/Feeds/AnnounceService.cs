@@ -3,6 +3,7 @@ using Discord.Net;
 using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,10 @@ namespace Hourai {
 [Service]
 public class AnnounceService {
 
-  public AnnounceService(DiscordShardedClient client) {
+  readonly ILogger _log;
+
+  public AnnounceService(DiscordShardedClient client,
+                         ILoggerFactory loggerFactory) {
     //TODO(james7132): make these messages configurable
     const string JoinMsg = "$mention has joined the server.";
     const string LeaveMsg = "**$user** has left the server.";
@@ -23,6 +27,7 @@ public class AnnounceService {
     client.UserBanned += GuildMessage(c => c.BanMessage, BanMsg);
     client.UserVoiceStateUpdated += VoiceStateChanged;
     client.UserPresenceUpdated += PresenceChanged;
+    _log = loggerFactory.CreateLogger<AnnounceService>();
   }
 
   async Task PresenceChanged(Optional<SocketGuild> guild,
@@ -67,7 +72,7 @@ public class AnnounceService {
           await dChannel.Respond(message);
           sent = true;
         } catch(HttpException) {
-          Log.Error($"Announcement {message.DoubleQuote()} failed in {guild.ToIDString()}. Notifying server owner.");
+          _log.LogError($"Announcement {message.DoubleQuote()} failed in {guild.ToIDString()}. Notifying server owner.");
           var owner = await dChannel.Guild.GetOwner();
           await owner.SendDMAsync($"There as an attempt to announce something in channel {dChannel.Mention} that failed. " +
               $"The announcement was {message.DoubleQuote()}. Please make sure the bot has the approriate permissions to do so or " +
@@ -75,7 +80,7 @@ public class AnnounceService {
         }
       }
       if (sent)
-        Log.Info($"Announcement in {guild.ToIDString()}: \"{message}\"");
+        _log.LogInformation($"Announcement in {guild.ToIDString()}: \"{message}\"");
     }
   }
 

@@ -128,7 +128,7 @@ public class ExecuteCommandAction : ProcessableEvent {
             (SocketUser)context.Guild?.CurrentUser ?? (SocketUser) context.Client.CurrentUser,
             context.Channel,
             db);
-        await context.ConfigService.Commands.ExecuteCommand(commandContext);
+        await context.Commands.ExecuteCommand(commandContext);
       }
     }
   }

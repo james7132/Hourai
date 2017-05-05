@@ -32,7 +32,6 @@ namespace Hourai {
              select $"{user.Username} ({user.Id})"
           );
 
-
       async Task SearchBot(string name, Func<Regex, IEnumerable<string>> resultFun) {
         var regex = new Regex(name, RegexOptions.Compiled | RegexOptions.IgnoreCase);
         var results = resultFun(regex);

@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +15,12 @@ namespace Hourai {
     public Bot Bot { get; set; }
     IMessageChannel OwnerChannel { get; set; }
     List<Exception> Exceptions { get; }
+    readonly ILogger _log;
 
-    public ErrorService() {
+    public ErrorService(ILoggerFactory loggerFactory) {
       Bot.RegularTasks += SendErrors;
       Exceptions = new List<Exception>();
+      _log = loggerFactory.CreateLogger<ErrorService>();
     }
 
     async Task SendErrors() {
@@ -31,7 +34,7 @@ namespace Hourai {
           Exceptions.Remove(exception);
           await Task.Delay(1000);
         } catch(Exception e) {
-          Log.Error(e);
+          _log.LogError(0, e, "Error sending errors to owner.");
           Exceptions.Add(e);
         }
       }

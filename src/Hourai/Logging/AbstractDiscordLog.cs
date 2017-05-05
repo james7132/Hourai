@@ -17,7 +17,7 @@ public abstract class AbstractDiscordLog {
 
   static AbstractDiscordLog() {
     LogDirectory = Config.LogDirectory;
-    Log.Info($"Chat Log Directory: { LogDirectory }");
+    //Log.Info($"Chat Log Directory: { LogDirectory }");
   }
 
   public virtual string SaveDirectory { get; protected set; }

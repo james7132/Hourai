@@ -24,7 +24,7 @@ namespace Hourai {
 
   public class Bot {
 
-    static void Main() => new Bot().Run().GetAwaiter().GetResult();
+    static void Main() => new Bot().RunAsync().GetAwaiter().GetResult();
 
     public static IUser Owner { get; private set; }
 
@@ -33,9 +33,9 @@ namespace Hourai {
 
     readonly ILoggerFactory _loggerFactory;
     readonly ILogger _log;
+
     DiscordShardedClient Client { get; set; }
     ErrorService ErrorService { get; set; }
-    CommandService CommandService { get; set; }
 
     static TaskCompletionSource<object> ExitSource { get; set; }
     bool _initialized;
@@ -57,8 +57,8 @@ namespace Hourai {
       Config.Load();
     }
 
-    public static void Exit() {
-      Log.Info("Bot exit has registered. Will exit on next cycle.");
+    public void Exit() {
+      _log.LogInformation("Bot exit has registered. Will exit on next cycle.");
       ExitSource.SetResult(new object());
     }
 
@@ -68,29 +68,35 @@ namespace Hourai {
       StartTime = DateTime.Now;
       _log.LogInformation("Initializing...");
       Client = new DiscordShardedClient(Config.DiscordConfig);
-      CommandService = new CommandService(new CommandServiceConfig() {
+      var commands = new CommandService(new CommandServiceConfig() {
         DefaultRunMode = RunMode.Sync
       });
       var services = new ServiceCollection();
       services.AddSingleton(this);
       services.AddSingleton(Client);
+      services.AddSingleton(commands);
+
+      services.AddSingleton(_loggerFactory);
 
       services.AddSingleton(new CounterSet(new ActivatorFactory<SimpleCounter>()));
       services.AddSingleton(new BotCounters());
       services.AddSingleton(new LogSet());
-
-      services.AddSingleton(ErrorService = new ErrorService());
       var entryAssembly = Assembly.GetEntryAssembly();
-      await CommandService.AddModulesAsync(entryAssembly);
+      await commands.AddModulesAsync(entryAssembly);
 
       _log.LogInformation("Loading Services...");
-      foreach(var serviceType in ServiceDiscovery.FindServices(entryAssembly)) {
+      var foundServices = ServiceDiscovery.FindServices(entryAssembly);
+      foreach(var serviceType in foundServices) {
         services.AddSingleton(serviceType);
-        services.GetService(serviceType);
+        _log.LogInformation($"Registered {serviceType.Name}");
+      }
+      var provider = new DefaultServiceProviderFactory().CreateServiceProvider(services);
+      foreach(var serviceType in foundServices) {
+        provider.GetService(serviceType);
         _log.LogInformation($"Loaded {serviceType.Name}");
       }
       _log.LogInformation("Services loaded.");
-
+      ErrorService = provider.GetService<ErrorService>();
       _initialized = true;
     }
 
@@ -103,7 +109,7 @@ namespace Hourai {
       }
     }
 
-    async Task Run() {
+    async Task RunAsync() {
       await Initialize();
       _log.LogInformation("Logging into Discord...");
       await Client.LoginAsync(TokenType.Bot, Config.Token, false);
@@ -119,7 +125,7 @@ namespace Hourai {
           try {
             await MainLoop();
           } catch (Exception error) {
-            Log.Error(error);
+            _log.LogError(0, error, "Bot error.");
             ErrorService.RegisterException(error);
           }
         }

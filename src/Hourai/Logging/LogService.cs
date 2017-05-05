@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,18 +16,25 @@ namespace Hourai {
 [Service]
 public class LogService {
 
-  public LogSet Logs { get; set; }
-  public DiscordShardedClient Client { get; set; }
-  public ErrorService ErrorService { get; }
+  readonly LogSet _logs;
+  readonly DiscordShardedClient _client;
+  readonly ErrorService _errors;
+
+  readonly ILogger _clientLog;
+  readonly ILogger _log;
+
   public string BotLog { get; private set; }
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
   public LogService(DiscordShardedClient client,
                    LogSet logs,
-                   ErrorService errors) {
-    Client = Check.NotNull(client);
-    Logs = Check.NotNull(logs);
-    ErrorService = Check.NotNull(errors);
+                   ErrorService errors,
+                   ILoggerFactory loggerFactory) {
+    _client = Check.NotNull(client);
+    _logs = Check.NotNull(logs);
+    _errors = Check.NotNull(errors);
+    _clientLog = loggerFactory.CreateLogger("DiscordClient");
+    _log = loggerFactory.CreateLogger<LogService>();
     SetupBotLog();
     ClientLogs();
     GuildLogs();
@@ -41,39 +49,34 @@ public class LogService {
     if(!Directory.Exists(logDirectory))
       Directory.CreateDirectory(logDirectory);
     BotLog = Path.Combine(logDirectory, DateTime.Now.ToString(LogStringFormat) + ".log");
-    Trace.Listeners.Clear();
-    var botLogFile = new FileStream(BotLog, FileMode.Create, FileAccess.Write, FileShare.Read);
-    Trace.Listeners.Add(new TextWriterTraceListener(botLogFile) {TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime});
-    Trace.Listeners.Add(new TextWriterTraceListener(Console.Out) {TraceOutputOptions = TraceOptions.DateTime});
-    Trace.AutoFlush = true;
   }
 
   void ClientLogs() {
-    Client.Log += delegate(LogMessage message) {
+    _client.Log += delegate(LogMessage message) {
       var messageStr = message.ToString(null, true, false);
       switch (message.Severity) {
         case LogSeverity.Critical:
+          _clientLog.LogCritical(messageStr);
+          break;
         case LogSeverity.Error:
-          Log.Error(messageStr);
+          _clientLog.LogError(messageStr);
           break;
         case LogSeverity.Warning:
-          Log.Warning(messageStr);
+          _clientLog.LogWarning(messageStr);
           break;
         case LogSeverity.Info:
-          Log.Info(messageStr);
+          _clientLog.LogInformation(messageStr);
           break;
         case LogSeverity.Verbose:
         case LogSeverity.Debug:
-          Log.Debug(messageStr);
+          _clientLog.LogDebug(messageStr);
           break;
         default:
           throw new ArgumentOutOfRangeException();
       }
       var exception = message.Exception;
-      if (exception != null) {
-        if (!(exception is WebSocketException && exception.Message.Contains("closed")))
-          ErrorService.RegisterException(message.Exception);
-      }
+      if (exception != null)
+        _errors.RegisterException(message.Exception);
       return Task.CompletedTask;
     };
   }
@@ -82,28 +85,28 @@ public class LogService {
   void GuildLogs() {
     //Client.GuildAvailable += GuildLog("Discovered");
     //Client.GuildUnavailable += GuildLog("Lost");
-    Client.GuildUpdated += GuildUpdated;
+    _client.GuildUpdated += GuildUpdated;
   }
 
   void ChannelLogs() {
-    Client.ChannelCreated += ChannelLog("created");
-    Client.ChannelDestroyed += ChannelLog("removed");
-    Client.ChannelUpdated += ChannelUpdated;
+    _client.ChannelCreated += ChannelLog("created");
+    _client.ChannelDestroyed += ChannelLog("removed");
+    _client.ChannelUpdated += ChannelUpdated;
   }
 
   void RoleLogs() {
-    Client.RoleCreated += RoleLog("created");
-    Client.RoleDeleted += RoleLog("deleted");
-    Client.RoleUpdated += RoleUpdated;
+    _client.RoleCreated += RoleLog("created");
+    _client.RoleDeleted += RoleLog("deleted");
+    _client.RoleUpdated += RoleUpdated;
   }
 
   void UserLogs() {
-    Client.UserJoined += u => UserLog("joined")(u, u.Guild);
-    Client.UserLeft += u => UserLog("left")(u, u.Guild);
-    Client.UserBanned += UserLog("banned");
-    Client.UserUnbanned += UserLog("unbanned");
-    Client.UserUpdated += UserUpdated;
-    Client.GuildMemberUpdated += (b, a) => UserUpdated(b, a);
+    _client.UserJoined += u => UserLog("joined")(u, u.Guild);
+    _client.UserLeft += u => UserLog("left")(u, u.Guild);
+    _client.UserBanned += UserLog("banned");
+    _client.UserUnbanned += UserLog("unbanned");
+    _client.UserUpdated += UserUpdated;
+    _client.GuildMemberUpdated += (b, a) => UserUpdated(b, a);
   }
 
   Task LogChange<T, TA>(GuildLog log,
@@ -140,7 +143,7 @@ public class LogService {
   }
 
   async Task GuildUpdated(IGuild b, IGuild a) {
-    var log = Logs.GetGuild(a);
+    var log = _logs.GetGuild(a);
     if(log == null)
       return;
     await LogChange(log, "Guild AFK Timeout", b, a, g => g.AFKTimeout);
@@ -169,7 +172,7 @@ public class LogService {
     var a = after as SocketGuildUser;
     if(b == null ||  a == null)
       return;
-    var log = Logs.GetGuild(a.Guild);
+    var log = _logs.GetGuild(a.Guild);
     var userString = a.ToIDString();
     await LogChange(log, $"User {userString} Username", b, a, u => u.Username);
     await LogChange(log, $"User {userString} Nickname", b, a, u => u.Nickname);
@@ -180,7 +183,7 @@ public class LogService {
     var guild = a.Guild;
     if(guild == null)
       return;
-    var log = Logs.GetGuild(guild);
+    var log = _logs.GetGuild(guild);
     var roleString = a.ToIDString();
     await LogChange(log, $"Role {roleString} Color", b, a, r => r.Color);
     await LogChange(log, $"Role {roleString} User List Seperation", b, a, r => r.IsHoisted);
@@ -194,7 +197,7 @@ public class LogService {
     var a = after as IGuildChannel;
     if(b == null || a == null)
       return;
-    var log = Logs.GetGuild(a.Guild);
+    var log = _logs.GetGuild(a.Guild);
     await LogChange(log, $"Channel {a.ToIDString()} Name", b, a, c => c.Name);
     await LogChange(log, $"Channel {a.ToIDString()} Position", b, a, c => c.Position);
     //TODO(james7132): Add Permission Overwrites
@@ -203,19 +206,19 @@ public class LogService {
   Func<IRole, Task> RoleLog(string eventType) {
     return async delegate(IRole role) {
       if(role == null) {
-        Log.Info($"Role {eventType}.");
+        _log.LogInformation($"Role {eventType}");
         return;
       }
-      await Logs.GetGuild(role.Guild).LogEvent($"Role {eventType}: { role.Name }");
+      await _logs.GetGuild(role.Guild).LogEvent($"Role {eventType}: { role.Name }");
     };
   }
 
   Func<IUser, IGuild, Task> UserLog(string eventType) {
     return delegate (IUser user, IGuild guild) {
       if (guild != null) {
-        return Logs.GetGuild(guild).LogEvent($"User {eventType}: {user.ToIDString()}");
+        return _logs.GetGuild(guild).LogEvent($"User {eventType}: {user.ToIDString()}");
       } else {
-        Log.Info($"User {user.ToIDString()} {eventType}");
+        _log.LogInformation($"User {user.ToIDString()} {eventType}");
       }
       return Task.CompletedTask;
     };
@@ -225,14 +228,14 @@ public class LogService {
     return delegate (IChannel channel) {
       var guildChannel = channel as IGuildChannel;
       if(guildChannel != null)
-        Logs.GetGuild(guildChannel.Guild).LogEvent($"Channel {eventType}: {guildChannel.ToIDString()}");
+        _logs.GetGuild(guildChannel.Guild).LogEvent($"Channel {eventType}: {guildChannel.ToIDString()}");
       return Task.CompletedTask;
     };
   }
 
   Func<IGuild, Task> GuildLog(string eventType) {
     return delegate (IGuild g) {
-      Log.Info($"{eventType} {g.ToIDString()}.");
+      _log.LogInformation($"{eventType} {g.ToIDString()}.");
       return Task.CompletedTask;
     };
   }

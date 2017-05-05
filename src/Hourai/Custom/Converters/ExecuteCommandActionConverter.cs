@@ -15,7 +15,6 @@ public class ExecuteCommandActionConverter : IYamlTypeConverter {
     var current = parser.Current;
     var scalar = current as Scalar;
     var sequenceStart = current as SequenceStart;
-    Log.Info(current);
     if (scalar != null && !string.IsNullOrWhiteSpace(scalar.Value)) {
       executeCommand.Commands = new List<string>() { scalar.Value };
       parser.MoveNext();

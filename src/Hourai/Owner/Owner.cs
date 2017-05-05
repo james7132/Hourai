@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using Discord.Commands;
 using Hourai.Model;
 using Hourai.Custom;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -20,13 +21,14 @@ namespace Hourai {
 public partial class Owner : HouraiModule {
 
   public Bot Bot { get; set; }
+
+  public LogService Logs { get; set; }
   public CounterSet Counters { get; set; }
-  public LogService LogService { get; set; }
 
   [Command("log")]
   [Remarks("Gets the log for the bot.")]
   public Task GetLog() =>
-    Context.Channel.SendFileRetry(LogService.BotLog);
+    Context.Channel.SendFileRetry(Logs.BotLog);
 
   [Command("counters")]
   [Remarks("Gets all of the counters and their values.")]
@@ -142,7 +144,7 @@ public partial class Owner : HouraiModule {
     [Command]
     [RequireContext(ContextType.Guild)]
     public async Task RefreshGuild() {
-      Log.Info($"Refreshing {Context.Guild.ToIDString()}...");
+      Log.LogInformation($"Refreshing {Context.Guild.ToIDString()}...");
       try {
         Db.AllowSave = false;
         await Db.RefreshGuild(Context.Guild);
@@ -150,18 +152,18 @@ public partial class Owner : HouraiModule {
         Db.AllowSave = true;
         await Db.Save();
       }
-      Log.Info("Done refreshing.");
+      Log.LogInformation("Done refreshing.");
       await Success();
     }
 
     [Command("all")]
     public async Task RefreshAll() {
-      Log.Info("Starting refresh...");
+      Log.LogInformation("Starting refresh...");
       foreach(var guild in Context.Client.Guilds) {
         await Db.RefreshGuild(guild);
         await Db.Save();
       }
-      Log.Info("Done refreshing.");
+      Log.LogInformation("Done refreshing.");
       await Success();
     }
 

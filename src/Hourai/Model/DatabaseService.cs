@@ -92,7 +92,6 @@ public class DatabaseService {
     using (var context = new BotDbContext()) {
       await context.Channels.Remove(guild_channel);
       await context.Save();
-      Log.Info($"Channel removed. Deleted from database.");
     }
   }
 

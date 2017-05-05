@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,14 +12,16 @@ namespace Hourai.Search {
   [Service]
   public class WikiService {
 
-    HttpClient Client { get; }
+    readonly HttpClient _client;
+    readonly ILogger _log;
 
     const string Endpoint = "/api.php";
 
-    public WikiService() {
-      Client = new HttpClient();
+    public WikiService(ILoggerFactory loggerFactory) {
+      _client = new HttpClient();
       var header = new ProductInfoHeaderValue("Hourai-Discord-Bot", Config.Version);
-      Client.DefaultRequestHeaders.UserAgent.Add(header);
+      _client.DefaultRequestHeaders.UserAgent.Add(header);
+      _log =loggerFactory.CreateLogger<WikiService>();
     }
 
     string AddQueryParam(string url, string param, string value) {
@@ -33,26 +36,26 @@ namespace Hourai.Search {
       url = AddQueryParam(url, "limit", limit.ToString());
       url = AddQueryParam(url, "namespace", "0");
       url = AddQueryParam(url, "format", "json");
-      Log.Debug(url);
-      var response = await Client.GetAsync(url);
-      var content = await response.Content.ReadAsStringAsync();
-      var json = JToken.Parse(content);
-      var names = json[1];
-      var descriptions = json[2];
-      var urls = json[3];
-      var count = new[] {names.Count(), descriptions.Count(), urls.Count()}.Max();
-      var results = new List<WikiSearchResult>();
-      for(var i = 0; i < count; i++) {
-        var result = new WikiSearchResult {
-              Name = names[i].ToObject<string>(),
-              Url = urls[i].ToObject<string>(),
-              Description = descriptions[i].ToObject<string>()
-            };
-        if (string.Compare(result.Name, query, true) == 0)
-          return new [] { result };
-        results.Add(result);
+      using(var response = await _client.GetAsync(url)) {
+        var content = await response.Content.ReadAsStringAsync();
+        var json = JToken.Parse(content);
+        var names = json[1];
+        var descriptions = json[2];
+        var urls = json[3];
+        var count = new[] {names.Count(), descriptions.Count(), urls.Count()}.Max();
+        var results = new List<WikiSearchResult>();
+        for(var i = 0; i < count; i++) {
+          var result = new WikiSearchResult {
+                Name = names[i].ToObject<string>(),
+                Url = urls[i].ToObject<string>(),
+                Description = descriptions[i].ToObject<string>()
+              };
+          if (string.Compare(result.Name, query, true) == 0)
+            return new [] { result };
+          results.Add(result);
+        }
+        return results;
       }
-      return results;
     }
 
   }

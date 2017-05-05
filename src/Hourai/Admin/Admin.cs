@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Preconditions;
 using Hourai.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Globalization;
 using System.IO;
@@ -135,13 +136,13 @@ public partial class Admin : HouraiModule {
       else
         return RespondAsync("No mod events logged thus far.");
     } catch(Exception e) {
-      Log.Error(e);
+      Log.LogError(0, e, "modlog failed.");
     }
     return Task.CompletedTask;
   }
 
   [Group("server")]
-  public class ServerGroup : HouraiModule {
+  public class Server : HouraiModule {
 
     [Command("permissions")]
     [UserRateLimit(1, 1)]

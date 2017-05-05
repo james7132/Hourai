@@ -46,12 +46,12 @@ public static class Utility {
           tries++;
           await Task.Delay(100);
         } else {
-          Log.Error("Failed to perform file IO. Max retries exceeded.");
+          //Log.Error("Failed to perform file IO. Max retries exceeded.");
           failure?.Invoke();
           throw;
         }
       } catch(Exception e) {
-        Log.Error(e);
+        //Log.Error(e);
       }
     }
   }

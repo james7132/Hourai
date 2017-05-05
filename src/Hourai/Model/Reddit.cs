@@ -33,7 +33,7 @@ public class Subreddit {
       if(discordChannel != null) {
         channels.Add(discordChannel);
       } else {
-        Log.Error($"Channel {channel.ChannelId} for subreddit {Name} cannot be found");
+        //Log.Error($"Channel {channel.ChannelId} for subreddit {Name} cannot be found");
       }
     }
     return channels;

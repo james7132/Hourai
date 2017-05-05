@@ -36,7 +36,7 @@ public class User {
     Check.NotNull(name);
     if(Username == name)
       return;
-    Log.Info($"User updated username: {Username} => {name} ({Id})");
+    //Log.Info($"User updated username: {Username} => {name} ({Id})");
     Username = name;
     Usernames.Add(new Username {
       User = this,

@@ -134,8 +134,8 @@ public class BotDbContext : DbContext {
     if(!AllowSave)
       return;
     var changes = await SaveChangesAsync();
-    if(changes > 0)
-      Log.Info($"Saved {changes} changes to the database.");
+    //if(changes > 0)
+      //Log.Info($"Saved {changes} changes to the database.");
   }
 
   public async Task<GuildUser>GetGuildUser(IGuildUser iuser) {
@@ -180,24 +180,24 @@ public class BotDbContext : DbContext {
   }
 
   public async Task RefreshUser(SocketGuildUser user) {
-    Log.Info($"Refreshing {user.ToIDString()}");
+    //Log.Info($"Refreshing {user.ToIDString()}");
     var guildUser = await GetGuildUser(user);
     await Entry(guildUser).Collection(u => u.Roles).LoadAsync();
-    Log.Info($"Loaded {user.ToIDString()} roles");
+    //Log.Info($"Loaded {user.ToIDString()} roles");
     var roleIds = new HashSet<ulong>(user.Roles.Select(r => r.Id));
     await Task.WhenAll(user.Guild.Roles.Select(async role => {
       var userRole = await GetUserRole(user, role);
       userRole.HasRole = roleIds.Contains(role.Id);
     }));
-    Log.Info($"Refreshed {user.ToIDString()}");
+    //Log.Info($"Refreshed {user.ToIDString()}");
   }
 
   public async Task RefreshGuild(SocketGuild guild) {
-    Log.Info($"Refreshing {guild.ToIDString()}");
+    //Log.Info($"Refreshing {guild.ToIDString()}");
     var dbGuild = await Guilds.Get(guild);
     await Entry(dbGuild).Collection(g => g.Channels).LoadAsync();
     await Entry(dbGuild).Collection(g => g.Roles).LoadAsync();
-    Log.Info($"Loaded {guild.ToIDString()} entities.");
+    //Log.Info($"Loaded {guild.ToIDString()} entities.");
     var messageChannels = guild.Channels.OfType<IMessageChannel>();
     var channelIds = new HashSet<ulong>(messageChannels.Select(c => c.Id));
     var roleIds = new HashSet<ulong>(guild.Roles.Select(r => r.Id));
@@ -206,7 +206,7 @@ public class BotDbContext : DbContext {
     //var rTask = Task.WhenAll(guild.Roles.Where(r => r.Id != guild.EveryoneRole.Id)
         //.Select(r => Roles.Get(r)));
     //await Task.WhenAll(chTask);
-    Log.Info($"Added new {guild.ToIDString()} entities.");
+    //Log.Info($"Added new {guild.ToIDString()} entities.");
     Channels.RemoveRange(dbGuild.Channels.Where(c => !channelIds.Contains(c.Id)));
     Roles.RemoveRange(dbGuild.Roles.Where(r => !roleIds.Contains(r.Id)));
     //Log.Info($"Removed deleted {guild.ToIDString()} entities.");
