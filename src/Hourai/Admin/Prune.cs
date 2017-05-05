@@ -25,7 +25,7 @@ public partial class Admin {
     [Command("user")]
     [ChannelRateLimit(5, 30)]
     [RequirePermission(GuildPermission.ManageMessages)]
-    [Remarks("Removes all messages from all mentioned users in the last 100 messages.")]
+    [Remarks("Removes all messages from all provided users in the last 100 messages.")]
     public Task User(params IGuildUser[] users) {
       var userSet = new HashSet<IUser>(users);
       return PruneMessages(m => userSet.Contains(m.Author));

@@ -30,6 +30,20 @@ public partial class Admin {
     public Task Delete(params IGuildChannel[] channels) =>
       ForEvery(channels, Do((IGuildChannel c) => c.DeleteAsync()));
 
+    //[Log]
+    //[Command("ban")]
+    //[RequirePermission(ChannelPermission.ManageChannel)]
+    //[Remarks("Bans all provided users from using the current channel.")]
+    //public Task Ban(params IGuildUser[] users) {
+      //var channel = Context.Channel as ITextChannel;
+      //return ForEvery(users, Do((IGuildUser user) =>  {
+        //var overwrite = channel.GetPermissionOverwrite(user) ??
+          //OverwritePermissions.InheritAll;
+        //overwrite.ReadMessages = PermValue.Deny;
+        //return channel.AddPermissionOverwriteAsync(user, overwrite);
+      //}));
+    //}
+
     [Command("list")]
     [UserRateLimit(1, 1)]
     [ChannelRateLimit(1, 15)]

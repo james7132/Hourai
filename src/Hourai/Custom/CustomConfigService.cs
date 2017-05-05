@@ -9,7 +9,8 @@ using System.Threading.Tasks;
 
 namespace Hourai.Custom {
 
-  public class CustomConfigService : IService {
+  [Service]
+  public class CustomConfigService {
 
     public ConcurrentDictionary<ulong, GuildConfig> _configs;
     public BotCommandService Commands { get; set; }

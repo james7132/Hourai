@@ -25,9 +25,6 @@ public class Guild {
   public ICollection<Role> Roles { get; set; }
   [Required]
   public List<CustomCommand> Commands { get; set; }
-  //[Required]
-  //public List<CounterEvent> Events { get; set; }
-  //
 
   public IList<MinRole> MinRoles { get; set; }
 

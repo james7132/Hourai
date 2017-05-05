@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using System;
 using System.Threading.Tasks;
 
 namespace Hourai.Preconditions {
@@ -9,7 +10,7 @@ public class ServerOwnerAttribute : PreconditionAttribute {
   public override Task<PreconditionResult> CheckPermissions(
       ICommandContext context,
       CommandInfo commandInfo,
-      IDependencyMap dependencies) {
+      IServiceProvider services) {
     if (QCheck.InGuild(context.Message) == null)
       return Task.FromResult(PreconditionResult.FromError("Not in server."));
     var user = context.Message.Author as IGuildUser;

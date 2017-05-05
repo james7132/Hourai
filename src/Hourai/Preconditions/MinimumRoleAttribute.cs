@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Commands;
 using Hourai.Model;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
 
@@ -19,14 +20,14 @@ public class MinimumRoleAttribute : PreconditionAttribute {
   public override async Task<PreconditionResult> CheckPermissions(
       ICommandContext context,
       CommandInfo commandInfo,
-      IDependencyMap dependencies) {
+      IServiceProvider services) {
     var user = context.User as IGuildUser;
     if(user == null)
       return PreconditionResult.FromError("Must be in server to execute this command");
     if (user?.Id == Bot.Owner?.Id || user.IsServerOwner())
       return PreconditionResult.FromSuccess();
     var guild = context.Guild;
-    ulong? minRole = dependencies.Get<DatabaseService>().Context.MinRoles.Find(guild.Id, (int)_roleType)?.RoleId;
+    ulong? minRole = services.GetService<DatabaseService>().Context.MinRoles.Find(guild.Id, (int)_roleType)?.RoleId;
     if (minRole == null)
       return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.ToString().Code()} is set.");
     var role = guild.GetRole(minRole.Value);

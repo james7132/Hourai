@@ -17,7 +17,8 @@ using DbSubreddit = Hourai.Model.Subreddit;
 
 namespace Hourai.Feeds {
 
-public class RedditService : IService {
+[Service]
+public class RedditService {
 
   public DiscordShardedClient Client { get; set; }
   BotWebAgent Agent { get; }
@@ -26,12 +27,12 @@ public class RedditService : IService {
   ConcurrentDictionary<string, RedditSharp.Things.Subreddit> Subreddits { get; }
 
   public RedditService() {
-    WebAgent.UserAgent = $"ubuntu:discord.bot.hourai:{Config.Version}";
     Agent = new BotWebAgent(Config.RedditUsername,
         Config.RedditPassword,
         Config.RedditClientID,
         Config.RedditClientSecret,
         Config.RedditRedirectUri);
+    Agent.UserAgent = $"ubuntu:discord.bot.hourai:{Config.Version}";
     Reddit = new Reddit(Agent, false);
     Subreddits = new ConcurrentDictionary<string, Subreddit>();
     Bot.RegularTasks += CheckReddits;

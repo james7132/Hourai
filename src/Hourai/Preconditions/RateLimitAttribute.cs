@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
@@ -51,7 +52,7 @@ namespace Hourai.Preconditions {
     public override Task<PreconditionResult> CheckPermissions(
         ICommandContext context,
         CommandInfo commandInfo,
-        IDependencyMap dependencies) {
+        IServiceProvider service) {
       var hContext = context as HouraiContext;
       if (hContext != null && hContext.IsHelp)
         return Task.FromResult(PreconditionResult.FromSuccess());

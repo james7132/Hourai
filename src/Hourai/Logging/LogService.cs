@@ -12,18 +12,21 @@ using System.Text;
 
 namespace Hourai {
 
+[Service]
 public class LogService {
 
-  public LogSet Logs { get; }
-  public DiscordShardedClient Client { get; }
+  public LogSet Logs { get; set; }
+  public DiscordShardedClient Client { get; set; }
   public ErrorService ErrorService { get; }
   public string BotLog { get; private set; }
   const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
 
-  public LogService(IDependencyMap map) {
-    Client = map.Get<DiscordShardedClient>();
-    Logs = map.Get<LogSet>();
-    ErrorService = map.Get<ErrorService>();
+  public LogService(DiscordShardedClient client,
+                   LogSet logs,
+                   ErrorService errors) {
+    Client = Check.NotNull(client);
+    Logs = Check.NotNull(logs);
+    ErrorService = Check.NotNull(errors);
     SetupBotLog();
     ClientLogs();
     GuildLogs();
@@ -150,7 +153,7 @@ public class LogService {
     await LogChange(log, "Guild Verification Level", b, a, g => g.VerificationLevel);
     await LogChange(log, "Guild Voice Region ID", b, a, g => g.VoiceRegionId);
     await LogSetChange(log, "Guild Features", b, a, g => g.Features, f => f);
-    await LogSetChange(log, "Guild Emojis", b, a, g => g.Emojis, e => e.Name);
+    await LogSetChange(log, "Guild Emotes", b, a, g => g.Emotes, e => e.Name);
     if(b.AFKChannelId != a.AFKChannelId)  {
       IGuildChannel bAfk = null, aAfk = null;
       if(b.AFKChannelId.HasValue)

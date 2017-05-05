@@ -1,5 +1,7 @@
 using Discord;
 using Discord.Commands;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -13,11 +15,11 @@ public class LogAttribute : DocumentedPreconditionAttribute {
   public override async Task<PreconditionResult> CheckPermissions(
       ICommandContext context,
       CommandInfo commandInfo,
-      IDependencyMap dependencies) {
+      IServiceProvider services) {
     var hContext = context as HouraiContext;
     if (hContext != null && hContext.IsHelp)
       return PreconditionResult.FromSuccess();
-    await dependencies.Get<LogSet>().GetGuild(context.Guild)
+    await services.GetService<LogSet>().GetGuild(context.Guild)
       .LogEvent($"{context.User.ToIDString()} used the command {context.Message.Content} in " +
           $"{context.Channel.ToIDString()}.");
     return PreconditionResult.FromSuccess();

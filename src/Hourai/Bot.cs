@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -8,7 +10,6 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-
 namespace Hourai {
 
   public class BotCounters {
@@ -30,6 +31,8 @@ namespace Hourai {
     public DateTime StartTime { get; private set; }
     public TimeSpan Uptime => DateTime.Now - StartTime;
 
+    readonly ILoggerFactory _loggerFactory;
+    readonly ILogger _log;
     DiscordShardedClient Client { get; set; }
     ErrorService ErrorService { get; set; }
     CommandService CommandService { get; set; }
@@ -38,8 +41,7 @@ namespace Hourai {
     bool _initialized;
 
     public static event Func<Task> RegularTasks {
-      add { _regularTasks.Add(Check.NotNull(value));
-      Log.Info($"Regular Tasks: {_regularTasks.Count}");}
+      add { _regularTasks.Add(Check.NotNull(value)); }
       remove { _regularTasks.Remove(value); }
     }
 
@@ -47,9 +49,11 @@ namespace Hourai {
 
     public Bot() {
       ExitSource = new TaskCompletionSource<object>();
-
       _regularTasks = new List<Func<Task>>();
-
+      _loggerFactory = new LoggerFactory()
+        .AddConsole()
+        .AddDebug();
+      _log = _loggerFactory.CreateLogger("Hourai");
       Config.Load();
     }
 
@@ -62,123 +66,54 @@ namespace Hourai {
       if (_initialized)
         return;
       StartTime = DateTime.Now;
-      Log.Info("Initializing...");
+      _log.LogInformation("Initializing...");
       Client = new DiscordShardedClient(Config.DiscordConfig);
       CommandService = new CommandService(new CommandServiceConfig() {
         DefaultRunMode = RunMode.Sync
       });
-      var map = new DependencyMap();
-      map.Add(this);
-      map.Add(Client);
+      var services = new ServiceCollection();
+      services.AddSingleton(this);
+      services.AddSingleton(Client);
 
-      map.Add(new CounterSet(new ActivatorFactory<SimpleCounter>()));
-      map.Add(new BotCounters());
-      map.Add(new LogSet());
+      services.AddSingleton(new CounterSet(new ActivatorFactory<SimpleCounter>()));
+      services.AddSingleton(new BotCounters());
+      services.AddSingleton(new LogSet());
 
-      map.Add(ErrorService = new ErrorService());
-      map.Add(new LogService(map));
-
-      //Log.Info($"Database: {Config.DbFilename}");
-
+      services.AddSingleton(ErrorService = new ErrorService());
       var entryAssembly = Assembly.GetEntryAssembly();
       await CommandService.AddModulesAsync(entryAssembly);
 
-      var serviceType = typeof(IService);
-      var services = from type in entryAssembly.GetTypes()
-                     where serviceType.IsAssignableFrom(type) && !type.GetTypeInfo().IsAbstract
-                     select type;
-
-      Log.Info("Loading services...");
-      foreach(var service in services) {
-        AddService(service, map);
+      _log.LogInformation("Loading Services...");
+      foreach(var serviceType in ServiceDiscovery.FindServices(entryAssembly)) {
+        services.AddSingleton(serviceType);
+        services.GetService(serviceType);
+        _log.LogInformation($"Loaded {serviceType.Name}");
       }
-      Log.Info("Services loaded!");
+      _log.LogInformation("Services loaded.");
 
       _initialized = true;
     }
 
-    object AddService(Type type, IDependencyMap map) {
-      object obj;
-      if (map.TryGet(type, out obj))
-        return obj;
-
-      var typeInfo = type.GetTypeInfo();
-      Log.Info($"Loading Service {type.Name}...");
-      var constructor = typeInfo.DeclaredConstructors.Where(x => !x.IsStatic).First();
-      var parameters = constructor.GetParameters();
-      var properties = typeInfo.DeclaredProperties.Where(p => p.CanWrite);
-
-      object[] args = new object[parameters.Length];
-
-      for (int i = 0; i < parameters.Length; i++)
-      {
-        var paramType = parameters[i].ParameterType;
-        Log.Info($"Found {type.Name} dependency => {paramType.Name}...");
-        object arg;
-        if (paramType == typeof(CommandService)) {
-          arg = CommandService;
-        } else if (map == null || !map.TryGet(paramType, out arg)) {
-          if (paramType == typeof(IDependencyMap))
-            arg = map;
-          else
-            arg = AddService(paramType, map);
-        }
-        args[i] = arg;
-      }
-
-      try
-      {
-        obj = constructor.Invoke(args);
-        var add = typeof(IDependencyMap).GetMethod("Add");
-        var method = add.MakeGenericMethod(type);
-        method.Invoke(map, new [] {obj});
-      }
-      catch (Exception ex)
-      {
-        throw new Exception($"Failed to create \"{type.FullName}\"", ex);
-      }
-
-      foreach(var property in properties)
-      {
-        var propType = property.PropertyType;
-        Log.Info($"Found {type.Name} dependency => {propType.Name}...");
-        object arg = null;
-        if (propType == typeof(CommandService)) {
-          arg = CommandService;
-        } else if (map == null || !map.TryGet(propType, out arg)) {
-          if (propType  == typeof(IDependencyMap))
-            arg = map;
-          else if (!property.IsDefined(typeof(NotServiceAttribute)))
-            arg = AddService(propType, map);
-        }
-        if (arg != null)
-          property.SetValue(obj, arg, null);
-      }
-      return obj;
-    }
-
     async Task MainLoop() {
       while (!ExitSource.Task.IsCompleted) {
-        Log.Info("Starting regular tasks...");
+        _log.LogInformation("Starting regular tasks...");
         var tasks = Task.WhenAll(_regularTasks.Select(t => t()));
-        if (Client.CurrentUser != null)
-          await Client.SetGameAsync(Config.Version);
-        Log.Info("Waiting ...");
+        _log.LogInformation("Waiting...");
         await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
       }
     }
 
     async Task Run() {
-      Log.Info($"Starting...");
       await Initialize();
-      Log.Info("Logging into Discord...");
+      _log.LogInformation("Logging into Discord...");
       await Client.LoginAsync(TokenType.Bot, Config.Token, false);
-      Log.Info("Starting Discord Client...");
+      _log.LogInformation("Starting Discord Client...");
       await Client.StartAsync();
-      //Log.Info($"Logged in as {User.ToIDString()}");
+      _log.LogInformation($"Logged in as {Client.CurrentUser.ToIDString()}");
 
       Owner = (await Client.GetApplicationInfoAsync()).Owner;
-      Log.Info($"Owner: {Owner.Username} ({Owner.Id})");
+      _log.LogInformation($"Owner: {Owner.ToIDString()}");
+      //await Client.SetGameAsync(Config.Version);
       try {
         while (!ExitSource.Task.IsCompleted) {
           try {
@@ -189,9 +124,9 @@ namespace Hourai {
           }
         }
       } finally {
-        Log.Info("Logging out...");
+        _log.LogInformation("Logging out...");
         await Client.LogoutAsync();
-        Log.Info("Stopping Discord client...");
+        _log.LogInformation("Stopping Discord client...");
         await Client.StopAsync();
       }
     }

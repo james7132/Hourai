@@ -8,12 +8,16 @@ using System.Threading.Tasks;
 
 namespace Hourai.Admin {
 
-public class TempService : IService {
+[Service]
+public class TempService {
 
-  public DiscordShardedClient Client { get; set; }
-  public ErrorService ErrorService { get; set; }
+  readonly DiscordShardedClient _client;
+  readonly ErrorService _errors;
 
-  public TempService() {
+  public TempService(DiscordShardedClient client,
+                     ErrorService errors) {
+    _client = client;
+    _errors = errors;
     Bot.RegularTasks += CheckTempActions;
   }
 
@@ -22,19 +26,18 @@ public class TempService : IService {
       await Task.WhenAll(context.TempActions
           .Where(a => a.Expiration < DateTimeOffset.Now)
           .AsEnumerable()
-          .Select(action =>
-            Task.Run(async () => {
+          .Select(async action => {
         try {
           if (action.Reverse)
-            await action.Apply(Client);
+            await action.Apply(_client);
           else
-            await action.Unapply(Client);
+            await action.Unapply(_client);
           context.TempActions.Remove(action);
         } catch(Exception e) {
           Log.Error(e);
-          ErrorService.RegisterException(e);
+          _errors.RegisterException(e);
         }
-      })));
+      }));
       await context.Save();
     }
   }
