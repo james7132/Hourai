@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;

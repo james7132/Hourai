@@ -3,6 +3,7 @@ using Discord.Net;
 using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Net;
 using System.Net.Http;
@@ -13,6 +14,10 @@ using System.Threading.Tasks;
 namespace Hourai {
 
 public abstract class HouraiModule : ModuleBase<HouraiContext> {
+
+  public ILoggerFactory LoggerFactory { get; set; }
+  ILogger _log;
+  protected ILogger Log => _log ?? (_log = LoggerFactory.CreateLogger(GetType()));
 
   public BotDbContext Db => Context.Db;
   public DiscordShardedClient Client => Context.Client;
@@ -46,7 +51,7 @@ public abstract class HouraiModule : ModuleBase<HouraiContext> {
     await RespondAsync(response);
   }
 
-  static Func<T, Task<string>> Do<T>( Func<T, Task> task,
+  Func<T, Task<string>> Do<T>( Func<T, Task> task,
       bool ignoreErrors,
       Func<T, string> name) {
     return async delegate (T obj) {
@@ -60,7 +65,7 @@ public abstract class HouraiModule : ModuleBase<HouraiContext> {
           result = httpException.Message;
       } catch (Exception exception) {
         result = exception.Message;
-        Log.Error(exception);
+        Log.LogError(0, exception, "Error in executing action.");
       }
       if (string.IsNullOrEmpty(result) || ignoreErrors)
         return $"{name(obj)}: { Config.SuccessResponse }";
@@ -68,15 +73,15 @@ public abstract class HouraiModule : ModuleBase<HouraiContext> {
     };
   }
 
-  protected static Func<IGuildUser, Task<string>> Do( Func<IGuildUser, Task> task,
+  protected Func<IGuildUser, Task<string>> Do( Func<IGuildUser, Task> task,
                                                 bool ignoreErrors = false)
     => Do(task, ignoreErrors, u => u.Username);
 
-  protected static Func<IRole, Task<string>> Do(Func<IRole, Task> task,
+  protected Func<IRole, Task<string>> Do(Func<IRole, Task> task,
                                                  bool ignoreErrors = false)
     => Do(task, ignoreErrors, r => r.Name);
 
-  protected static Func<IGuildChannel, Task<string>> Do(Func<IGuildChannel, Task> task,
+  protected Func<IGuildChannel, Task<string>> Do(Func<IGuildChannel, Task> task,
                                                        bool ignoreErrors = false)
     => Do(task, ignoreErrors, c => c.Name);
 

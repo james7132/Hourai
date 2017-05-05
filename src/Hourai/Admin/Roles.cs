@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Microsoft.Extensions.Logging;
 using Hourai.Model;
 using Hourai.Preconditions;
 using System.Globalization;
@@ -13,7 +14,7 @@ namespace Hourai.Admin {
 public partial class Admin {
 
   [Group("role")]
-  public class Roles : HouraiModule {
+  public class Role : HouraiModule {
 
     [Log]
     [Command("add")]

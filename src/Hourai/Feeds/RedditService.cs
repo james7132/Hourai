@@ -7,6 +7,7 @@ using Hourai.Extensions;
 using RedditSharp;
 using RedditSharp.Things;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -24,9 +25,10 @@ public class RedditService {
   BotWebAgent Agent { get; }
   public Reddit Reddit { get; }
 
+  readonly ILogger _log;
   ConcurrentDictionary<string, RedditSharp.Things.Subreddit> Subreddits { get; }
 
-  public RedditService() {
+  public RedditService(ILoggerFactory loggerFactory) {
     Agent = new BotWebAgent(Config.RedditUsername,
         Config.RedditPassword,
         Config.RedditClientID,
@@ -36,6 +38,7 @@ public class RedditService {
     Reddit = new Reddit(Agent, false);
     Subreddits = new ConcurrentDictionary<string, Subreddit>();
     Bot.RegularTasks += CheckReddits;
+    _log = loggerFactory.CreateLogger<RedditService>();
   }
 
   Embed PostToMessage(Post post) {
@@ -64,11 +67,11 @@ public class RedditService {
   }
 
   async Task CheckReddits() {
-    Log.Info("CHECKING SUBREDDITS");
+    _log.LogInformation("CHECKING SUBREDDITS");
     using (var context = new BotDbContext()) {
       var subreddits = await context.Subreddits.Include(s => s.Channels).ToListAsync();
       await Task.WhenAll(subreddits.Select(async dbSubreddit => {
-        Log.Info($"Checking {dbSubreddit.Name}");
+        _log.LogInformation($"Checking {dbSubreddit.Name}");
         if (!dbSubreddit.Channels.Any()) {
           context.Subreddits.Remove(dbSubreddit);
           return;
@@ -89,12 +92,12 @@ public class RedditService {
           .Where(p => p.CreatedUTC > latest)
           .OrderBy(p => p.CreatedUTC)
           .ForEachAwait(async post => {
-              Log.Info($"New post in /r/{dbSubreddit.Name}: {post.Title}");
+              _log.LogInformation($"New post in /r/{dbSubreddit.Name}: {post.Title}");
               var embed = PostToMessage(post);
               try {
                 await Task.WhenAll(channels.Select(c => c.SendMessageAsync(title, false, embed)));
               } catch (Exception e) {
-                Log.Error(e);
+                _log.LogError(0, e, "Reddit post broadcast failed.");
               }
               if (latestInPage < post.CreatedUTC) {
                 latestInPage = post.CreatedUTC;
@@ -103,7 +106,7 @@ public class RedditService {
         if (latestInPage > latest)
           dbSubreddit.LastPost = latestInPage;
       }));
-      Log.Info("Done checking subreddits");
+      _log.LogInformation("Done checking subreddits");
       await context.Save();
     }
   }

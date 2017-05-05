@@ -1,6 +1,7 @@
 using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,11 +14,14 @@ public class TempService {
 
   readonly DiscordShardedClient _client;
   readonly ErrorService _errors;
+  readonly ILogger _log;
 
   public TempService(DiscordShardedClient client,
-                     ErrorService errors) {
+                     ErrorService errors,
+                     ILoggerFactory loggerFactory) {
     _client = client;
     _errors = errors;
+    _log = loggerFactory.CreateLogger<TempService>();
     Bot.RegularTasks += CheckTempActions;
   }
 
@@ -34,7 +38,7 @@ public class TempService {
             await action.Unapply(_client);
           context.TempActions.Remove(action);
         } catch(Exception e) {
-          Log.Error(e);
+          _log.LogError(0, e, "Temp action execution failed.");
           _errors.RegisterException(e);
         }
       }));

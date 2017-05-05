@@ -22,7 +22,6 @@ public static class UserExtensions {
   }
 
   public static Task BanAsync(this IGuildUser user, int pruneDays = 0) {
-    Log.Info($"Ban Days: {pruneDays}");
     return Check.NotNull(user).Guild.AddBanAsync(user, pruneDays);
   }
 

@@ -125,7 +125,7 @@ namespace Hourai {
 
     public IEnumerable<IUser> Users { get; set;}
     public string Content => Message?.Content;
-    public CustomConfigService ConfigService { get; set; }
+    public BotCommandService Commands { get; set; }
 
     public bool IsAutoCommand { get; }
 

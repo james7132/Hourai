@@ -3,6 +3,7 @@ using Discord.Commands;
 using Hourai.Model;
 using Hourai.Custom;
 using Hourai.Preconditions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -14,9 +15,9 @@ public partial class Admin {
 
   [Group("config")]
   [RequireContext(ContextType.Guild)]
-  public class ConfigGroup : HouraiModule {
+  public class Config : HouraiModule {
 
-    public CustomConfigService ConfigService { get; set; }
+    public CustomConfigService Configs { get; set; }
 
     [Log]
     [Command("prefix")]
@@ -43,7 +44,7 @@ public partial class Admin {
         await RespondAsync("No provided configuration file.");
         return;
       }
-      var config = await ConfigService.GetConfig(Context.Guild);
+      var config = await Configs.GetConfig(Context.Guild);
       try {
         using (var httpClient = new HttpClient()) {
           using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url))) {
@@ -56,14 +57,14 @@ public partial class Admin {
         await RespondAsync($"{e.GetType().Name}: {e.Message}");
         return;
       }
-      await ConfigService.Save(Context.Guild, config);
+      await Configs.Save(Context.Guild, config);
     }
 
     [Command("dump")]
     [GuildRateLimit(1, 60)]
     public async Task Dump() =>
       await Context.Channel.SendMemoryFile($"{Context.Guild.Name}.yaml",
-          (await ConfigService.GetConfig(Context.Guild)).ToString());
+          (await Configs.GetConfig(Context.Guild)).ToString());
 
   }
 

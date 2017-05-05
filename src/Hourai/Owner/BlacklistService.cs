@@ -2,6 +2,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -10,9 +11,13 @@ namespace Hourai {
 [Service]
 public class BlacklistService {
 
-  public BlacklistService(DiscordShardedClient client) {
+  readonly ILogger _log;
+
+  public BlacklistService(DiscordShardedClient client,
+                          ILoggerFactory loggerFactory) {
     client.GuildAvailable += CheckBlacklist(false);
     client.JoinedGuild += CheckBlacklist(true);
+    _log = loggerFactory.CreateLogger<BlacklistService>();
   }
 
   Func<SocketGuild, Task> CheckBlacklist(bool normalJoin) {
@@ -23,7 +28,7 @@ public class BlacklistService {
         if (defaultChannel == null)
           return;
         if(config.IsBlacklisted) {
-          Log.Info($"Added to blacklisted guild {guild.Name} ({guild.Id})");
+          _log.LogInformation($"Added to blacklisted guild {guild.Name} ({guild.Id})");
           await defaultChannel.Respond("This server has been blacklisted by this bot. " +
               "Please do not add it again. Leaving...");
           await guild.LeaveAsync();

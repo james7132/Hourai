@@ -44,7 +44,7 @@ public class TempBan : AbstractTempAction {
   public override async Task Unapply(DiscordShardedClient client) {
     var guild = client.GetGuild(GuildId);
     await guild.RemoveBanAsync(UserId);
-    Log.Info($"{UserId}'s temp ban from {GuildId} has been lifted.");
+    //Log.Info($"{UserId}'s temp ban from {GuildId} has been lifted.");
   }
 
 }

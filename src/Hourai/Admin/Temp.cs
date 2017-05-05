@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Preconditions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -62,7 +63,7 @@ public partial class Admin {
           await user.SendDMAsync($"You have been temporarily banned from {guild.Name}. " +
              $"You will be unbanned at {tempAction.Expiration} UTC.");
         } catch(Exception e) {
-          Log.Error(e);
+          Log.LogError(0, e, "Temp ban notification failed.");
         }
       };
       return TempAction("ban", time, users, u => new TempBan());

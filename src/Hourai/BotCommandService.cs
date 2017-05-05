@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Custom;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -14,27 +15,38 @@ namespace Hourai {
 [Service]
 public class BotCommandService {
 
+  readonly IServiceProvider _services;
   readonly DiscordShardedClient _client;
   readonly CommandService _commands;
-  readonly IServiceProvider _services;
-  public DatabaseService Database { get; set; }
-  public ErrorService ErrorService { get; set; }
-  public CustomConfigService ConfigService { get; set; }
-  public CounterSet Counters { get; set; }
+  readonly DatabaseService _database;
+  readonly ErrorService _errors;
+  readonly CustomConfigService _config;
+  readonly CounterSet _counters;
 
-  public BotCommandService(IServiceProvider services) {
+  readonly ILogger _log;
+
+  public BotCommandService(IServiceProvider services,
+                           DiscordShardedClient client,
+                           CommandService commands,
+                           DatabaseService database,
+                           CustomConfigService custom,
+                           ErrorService errors,
+                           CounterSet counters,
+                           ILoggerFactory loggerFactory) {
     _services = Check.NotNull(services);
-    _client = services.GetService<DiscordShardedClient>();
-    _commands = services.GetService<CommandService>();
+    _client = client;
+    _commands = commands;
+    _database = database;
+    _config = custom;
+    _counters = counters;
+    _errors = errors;
+
+    _log = loggerFactory.CreateLogger("Commands");
 
     _client.MessageReceived += HandleMessage;
     if (_commands != null) {
-      foreach(var module in _commands.Modules) {
-        Log.Info("Loaded module: " + module.Name);
-        foreach (var cmd in module.Commands) {
-          Log.Info("Command: " + cmd.GetFullName());
-        }
-      }
+      _log.LogInformation($"Loaded modules: {_commands.Modules.Select(m => m.Name).Join(", ")}");
+      _log.LogInformation($"Loaded commands: {_commands.Commands.Select(c => c.GetFullName()).Join(", ")}");
     }
   }
 
@@ -44,7 +56,7 @@ public class BotCommandService {
         msg.Author.IsBot ||
         msg.Author?.Id == _client?.CurrentUser?.Id)
       return;
-    using (var db = Database.CreateContext()) {
+    using (var db = _database.CreateContext()) {
       var user = await db.Users.Get(msg.Author);
       if(user.IsBlacklisted)
         return;
@@ -79,7 +91,7 @@ public class BotCommandService {
   public async Task ExecuteCommand(HouraiContext context, int argPos = 0) {
     var command = context.Message.Content.Substring(argPos);
     if (context.Guild != null) {
-      var customConfig = await ConfigService.GetConfig(context.Guild);
+      var customConfig = await _config.GetConfig(context.Guild);
       if (customConfig.Aliases != null) {
         foreach (var alias in customConfig.Aliases) {
           if (command.StartsWith(alias.Key)) {
@@ -101,8 +113,8 @@ public class BotCommandService {
     string channelMsg = guildChannel != null ? $"in {guildChannel.Name} on {guildChannel.Guild.ToIDString()}."
       : "in private channel.";
     if (result.IsSuccess) {
-      Log.Info($"Command successfully executed {context.Message.Content.DoubleQuote()} {channelMsg}");
-      Counters.Get("command-success").Increment();
+      _log.LogInformation($"Command successfully executed {context.Message.Content.DoubleQuote()} {channelMsg}");
+      _counters.Get("command-success").Increment();
       return true;
     }
     switch (result.Error) {
@@ -110,14 +122,14 @@ public class BotCommandService {
       case CommandError.UnknownCommand:
         break;
       default:
-        Log.Error($"Command failed {command.DoubleQuote()} {channelMsg} ({result.Error})");
-        Counters.Get("command-failed").Increment();
+        _log.LogError($"Command failed {command.DoubleQuote()} {channelMsg} ({result.Error})");
+        _counters.Get("command-failed").Increment();
         if(result is ExecuteResult) {
           var executeResult = (ExecuteResult) result;
-          ErrorService.RegisterException(executeResult.Exception);
-          Log.Error(executeResult.Exception);
+          _errors.RegisterException(executeResult.Exception);
+          _log.LogError(0, executeResult.Exception, "Command Failed.");
         } else {
-          Log.Error(result.ErrorReason);
+          _log.LogError(result.ErrorReason);
         }
         await context.Channel.Respond(result.ErrorReason);
         break;
@@ -136,7 +148,7 @@ public class BotCommandService {
     if (command == null)
       return false;
     await command.Execute(msg, cmd);
-    Counters.Get("custom-command-executed").Increment();
+    _counters.Get("custom-command-executed").Increment();
     return true;
   }
 

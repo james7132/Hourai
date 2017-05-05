@@ -24,11 +24,11 @@ public class Config {
   public static void Load() {
     if (IsLoaded)
       return;
-    Log.Info($"Loading config from {ConfigFilePath}...");
+    //Log.Info($"Loading config from {ConfigFilePath}...");
     JsonConvert.DeserializeObject<Config>(File.ReadAllText(ConfigFilePath));
-    Log.Info($"Setting log directory to: { LogDirectory }");
-    Log.Info($"Setting database to: { DbFilename }");
-    Log.Info("Config loaded.");
+    //Log.Info($"Setting log directory to: { LogDirectory }");
+    //Log.Info($"Setting database to: { DbFilename }");
+    //Log.Info("Config loaded.");
     IsLoaded = true;
   }
 
