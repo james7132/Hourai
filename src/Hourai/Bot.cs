@@ -134,6 +134,10 @@ namespace Hourai {
       var entryAssembly = Assembly.GetEntryAssembly();
 
       await commands.AddModulesAsync(entryAssembly);
+      await Hourai.Nitori.Touhou.BuildModule(commands, storageConfig,
+            new [] { "honk", "2hu", "unyu", "9ball", "uuu",
+              "alice", "awoo", "ayaya", "kappa", "mokou", "mukyu", "yuyuko",
+              "zun" }, _log);
 
       _log.LogInformation("Loading Services...");
       var foundServices = ServiceDiscovery.FindServices(entryAssembly);
