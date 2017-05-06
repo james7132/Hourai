@@ -2,6 +2,7 @@ using Discord;
 using Discord.Commands;
 using Discord.Commands.Builders;
 using Hourai.Nitori.GensokyoRadio;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,25 +22,28 @@ namespace Hourai.Nitori {
 
     public static Task BuildModule(CommandService command,
                                    StorageConfig config,
-                                   IEnumerable<string> imageCommands) {
-      return command.CreateModuleAsync("Touhou", builder => {
+                                   IEnumerable<string> imageCommands,
+                                   ILogger logger) {
+      return command.CreateModuleAsync("", builder => {
+            builder.Name = "Touhou";
             builder.AddCommand("radio", NowPlaying, cmd => {
                   cmd.RunMode = RunMode.Async;
                   cmd.Remarks = "Pulls the currently playing song from Gensokyo Radio.";
                 });
-            imageCommands = new [] { "honk", "2hu", "unyu", "9ball", "uuu",
-              "alice", "awoo", "ayaya", "kappa", "mokou", "mukyu", "yuyuko",
-              "zun" };
             foreach(var image in imageCommands)
-              AddImageModule(builder, config, image);
+              AddImageModule(command, builder, config, image, logger);
+            builder.Build(command);
           });
     }
 
-    static void AddImageModule(ModuleBuilder builder,
+    static void AddImageModule(CommandService commands,
+                               ModuleBuilder builder,
                                StorageConfig config,
-                               string name) {
+                               string name,
+                               ILogger logger) {
       builder.AddModule(name, module => {
         var storage = new ImageStorage(config.ImageStoragePath, name);
+        logger.LogInformation($"Storing {name} images in {storage.BasePath}");
         module.AddCommand("",
             (context, param, serv) => storage.SendImage(context),
             command => {});
@@ -51,6 +55,7 @@ namespace Hourai.Nitori {
                     param.IsRemainder = true;
                   });
             });
+        module.Build(commands);
       });
     }
 

@@ -28,6 +28,7 @@ public class Help : HouraiModule {
     _services = services;
   }
 
+  [Hide]
   [Command("help")]
   [UserRateLimit(1, 1)]
   public Task GetHelp([Remainder] string command = "") {
