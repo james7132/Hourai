@@ -12,13 +12,6 @@ public static class Utility {
   const int MaxRetries = 20;
   const string LogDateFormat = "yyyy-MM-dd HH:mm:ss";
 
-  public static string Success(string followup = null) {
-    var response = Config.SuccessResponse;
-    if (!string.IsNullOrEmpty(followup))
-      response += ": " + followup;
-    return response;
-  }
-
   public static bool RoleCheck(IGuildUser user, IRole role) {
     return user.IsServerOwner() || user.GetRoles().Any(r => r.Position >= role.Position);
   }

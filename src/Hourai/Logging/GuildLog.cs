@@ -8,7 +8,7 @@ public class GuildLog : AbstractDiscordLog {
 
   public IGuild Guild { get; }
 
-  public GuildLog(IGuild guild) {
+  public GuildLog(string logDirectory, IGuild guild) : base(logDirectory) {
     Guild = guild;
     SaveDirectory = GetGuildDirectory(guild);
   }

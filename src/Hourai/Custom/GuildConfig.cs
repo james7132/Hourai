@@ -120,16 +120,15 @@ public class ExecuteCommandAction : ProcessableEvent {
   public List<string> Commands { get; set; }
 
   public override async Task Process(HouraiContext context) {
-    using (var db = new BotDbContext()) {
-      foreach (var command in Commands) {
-        var commandContext = new HouraiContext(
-            context.Client,
-            context.Process(command),
-            (SocketUser)context.Guild?.CurrentUser ?? (SocketUser) context.Client.CurrentUser,
-            context.Channel,
-            db);
-        await context.Commands.ExecuteCommand(commandContext);
-      }
+    foreach (var command in Commands) {
+      var commandContext = new HouraiContext(
+          context.Client,
+          context.Process(command),
+          (SocketUser) context.Guild?.CurrentUser ??
+            (SocketUser) context.Client.CurrentUser,
+          context.Channel,
+          context.Db);
+      await context.Commands.ExecuteCommand(commandContext);
     }
   }
 

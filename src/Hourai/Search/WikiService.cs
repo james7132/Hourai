@@ -17,11 +17,12 @@ namespace Hourai.Search {
 
     const string Endpoint = "/api.php";
 
-    public WikiService(ILoggerFactory loggerFactory) {
+    public WikiService(ILoggerFactory loggerFactory,
+                       Bot bot) {
       _client = new HttpClient();
-      var header = new ProductInfoHeaderValue("Hourai-Discord-Bot", Config.Version);
+      var header = new ProductInfoHeaderValue("Hourai-Discord-Bot", bot.Version);
       _client.DefaultRequestHeaders.UserAgent.Add(header);
-      _log =loggerFactory.CreateLogger<WikiService>();
+      _log = loggerFactory.CreateLogger<WikiService>();
     }
 
     string AddQueryParam(string url, string param, string value) {

@@ -1,25 +1,34 @@
 {
+  "Version": "v0.4.0",
+  "TestServer": 208460178863947776,
+  "Discord": {
+    "Token": ,
     "CommandPrefix": "~",
-    "Version": "v0.3.0-alpha",
     "SuccessResponse": ":thumbsup:",
-
-    "ImageStorageDirectory": "/var/bot/hourai/images",
-    "LogDirectory": "/var/log/hourai",
-    "DbFilename": "/db/bot_prod.db",
-
-    "DiscordConfig": {
-      "TotalShards": 1
-    },
-
-    "Error": [
+    "ErrorBlacklist": [
       "Websocket connection was closed"
-    ],
-
-    "Token": "",
-
-    "RedditUsername": "",
-    "RedditPassword": "",
-    "RedditClientID": "",
-    "RedditClientSecret": "",
-    "RedditRedirectUri": ""
+    ]
+  },
+  "Logging": {
+    "PathFormat": "/var/log/hourai/{Date}.log",
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft": "Warning"
+    }
+  },
+  "Storage": {
+    "LogDirectory": "/var/log/hourai",
+    "DbFilename": "",
+    "ImageStorageDirectory": "/var/bot/hourai/images/prod"
+  },
+  "DiscordSocket": {
+    "TotalShards": 1
+  },
+  "Reddit": {
+    "Username": "",
+    "Password": "",
+    "ClientID": "",
+    "ClientSecret": "",
+    "RedirectUri": ""
+  }
 }

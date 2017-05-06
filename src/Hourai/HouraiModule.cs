@@ -3,6 +3,7 @@ using Discord.Net;
 using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net;
@@ -15,7 +16,11 @@ namespace Hourai {
 
 public abstract class HouraiModule : ModuleBase<HouraiContext> {
 
+  // Injected values
   public ILoggerFactory LoggerFactory { get; set; }
+  public IOptions<DiscordBotConfig> ConfigOption { get; set; }
+  public DiscordBotConfig Config => ConfigOption.Value;
+
   ILogger _log;
   protected ILogger Log => _log ?? (_log = LoggerFactory.CreateLogger(GetType()));
 

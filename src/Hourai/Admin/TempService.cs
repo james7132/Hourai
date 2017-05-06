@@ -1,6 +1,7 @@
 using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -14,19 +15,22 @@ public class TempService {
 
   readonly DiscordShardedClient _client;
   readonly ErrorService _errors;
+  readonly IServiceProvider _services;
   readonly ILogger _log;
 
   public TempService(DiscordShardedClient client,
                      ErrorService errors,
-                     ILoggerFactory loggerFactory) {
+                     ILoggerFactory loggerFactory,
+                     IServiceProvider services) {
     _client = client;
     _errors = errors;
     _log = loggerFactory.CreateLogger<TempService>();
+    _services = services;
     Bot.RegularTasks += CheckTempActions;
   }
 
   async Task CheckTempActions() {
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       await Task.WhenAll(context.TempActions
           .Where(a => a.Expiration < DateTimeOffset.Now)
           .AsEnumerable()

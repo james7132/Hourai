@@ -1,6 +1,7 @@
 using Discord;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -95,10 +96,13 @@ namespace Hourai.Custom {
 
     readonly ConcurrentDictionary<ulong, GuildConfig> _configs;
     readonly DiscordShardedClient _client;
+    readonly IServiceProvider _services;
 
-    public CustomConfigService(DiscordShardedClient client) {
+    public CustomConfigService(DiscordShardedClient client,
+                               IServiceProvider services) {
       _configs = new ConcurrentDictionary<ulong, GuildConfig>();
       _client = client;
+      _services = services;
       client.LeftGuild += g => {
         GuildConfig config;
         _configs.TryRemove(g.Id, out config);
@@ -112,7 +116,7 @@ namespace Hourai.Custom {
       GuildConfig config;
       if (_configs.TryGetValue(guild.Id, out config))
         return config;
-      using(var db = new BotDbContext()) {
+      using(var db = _services.GetService<BotDbContext>()) {
         config = await db.Configs.FindAsync(guild.Id);
         if (config == null)
           config = new GuildConfig();
@@ -126,7 +130,7 @@ namespace Hourai.Custom {
         throw new ArgumentNullException(nameof(guild));
       if (config == null)
         throw new ArgumentNullException(nameof(config));
-      using (var db = new BotDbContext()) {
+      using(var db = _services.GetService<BotDbContext>()) {
         var dbConfig = await db.Configs.Get(guild);
         dbConfig.Save(config);
         await db.Save();

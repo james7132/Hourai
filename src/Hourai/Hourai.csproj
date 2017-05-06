@@ -19,14 +19,19 @@
     <PackageReference Include="System.Diagnostics.TextWriterTraceListener" Version="4.0.0-*" />
     <PackageReference Include="System.Reflection.Extensions" Version="4.3.0-*" />
     <PackageReference Include="System.Xml.XmlSerializer" Version="4.3.0-*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="1.1.0-*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="1.1.0-*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="1.1.0-*" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="1.1.0-*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="1.1.0-*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="1.1.0-*" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="1.1.0-*" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="1.1.0-*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="1.1.0-*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="1.1.0-*">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Serilog.Extensions.Logging.File" Version="1.0.1-*" />
     <PackageReference Include="RedditSharp" Version="2.0.0-*" />
     <PackageReference Include="YamlDotNet" Version="4.1.0-*" />
   </ItemGroup>

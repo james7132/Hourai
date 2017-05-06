@@ -71,15 +71,13 @@ public class BotDbContext : DbContext {
 
   public bool AllowSave { get; set; } = true;
 
-  protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
-    if (!Config.IsLoaded) {
-      Config.Load();
-      Console.WriteLine($"Database File: {Config.DbFilename}");
-    }
-    optionsBuilder.UseMySql(Config.DbFilename);
+  public BotDbContext(DbContextOptions<BotDbContext> options) : base(options){
   }
 
   protected override void OnModelCreating(ModelBuilder builder) {
+    builder.Entity<Guild>()
+      .Property(g => g.Prefix)
+      .HasDefaultValue("~");
     builder.Entity<CustomCommand>(b =>{
         b.HasKey(c => new { c.GuildId, c.Name });
         b.HasIndex(c => c.GuildId);

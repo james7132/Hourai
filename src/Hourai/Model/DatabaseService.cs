@@ -2,6 +2,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,15 +13,12 @@ namespace Hourai.Model {
 [Service]
 public class DatabaseService {
 
-  public BotDbContext Context { get; private set; }
-
+  IServiceProvider _services;
   ICollection<ulong> _guilds;
 
-  public BotDbContext CreateContext() {
-    return (Context = new BotDbContext());
-  }
-
-  public DatabaseService(DiscordShardedClient client) {
+  public DatabaseService(DiscordShardedClient client,
+                         IServiceProvider services) {
+    _services = services;
     client.ChannelCreated += AddChannel;
     client.ChannelDestroyed += AddChannel;
     client.UserJoined += AddUser;
@@ -35,21 +33,21 @@ public class DatabaseService {
   }
 
   async Task Add<T>(Func<BotDbContext, DbSet<T>> setFunc, IEntity<ulong> entity) where T :class {
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       await setFunc(context).Get(entity);
       await context.Save();
     }
   }
 
   async Task Remove<T>(Func<BotDbContext, DbSet<T>> setFunc, IEntity<ulong> entity) where T :class {
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       await setFunc(context).Remove(entity);
       await context.Save();
     }
   }
 
   async Task AddRole(IRole role) {
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       await context.Guilds.Get(role.Guild);
       await context.Roles.Get(role);
       await context.Save();
@@ -59,7 +57,7 @@ public class DatabaseService {
   async Task AddUser(IUser iuser) {
     if(iuser.Username == null)
       return;
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       var user = await context.Users.Get(iuser);
       await context.Entry(user).Collection(u => u.Usernames).LoadAsync();
       user.AddName(iuser.Username);
@@ -71,7 +69,7 @@ public class DatabaseService {
     var guild_channel = channel as IGuildChannel;
     if (guild_channel == null)
       return;
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       await context.Guilds.Get(guild_channel.Guild);
       await context.Channels.Get(guild_channel);
       await context.Save();
@@ -89,7 +87,7 @@ public class DatabaseService {
     var guild_channel = channel as IGuildChannel;
     if (guild_channel == null)
       return;
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       await context.Channels.Remove(guild_channel);
       await context.Save();
     }
@@ -98,7 +96,7 @@ public class DatabaseService {
   async Task AddGuild(SocketGuild guild) {
     if (_guilds.Contains(guild.Id))
       return;
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       await context.RefreshGuild(guild);
       await context.Save();
     }

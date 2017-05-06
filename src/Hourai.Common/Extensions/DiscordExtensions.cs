@@ -43,13 +43,6 @@ public static class DiscordExtensions {
     return Task.CompletedTask;
   }
 
-  public static Task Success(this IMessage message,
-                                  string followup = null)
-    => message.Channel.Success(followup);
-
-  public static Task Success(this IMessageChannel channel, string followup) =>
-    channel.Respond(Utility.Success(followup));
-
   public static Task SendFileRetry(this IMessageChannel user,
                                         string path,
                                         string text = null) {

@@ -1,0 +1,12 @@
+[Unit]
+Description=Discord Bot
+After=network-online.service
+
+[Service]
+ExecStart=/usr/bin/dotnet /home/james/Hourai/src/Hourai/bin/Release/netcoreapp1.0/Hourai.dll
+Restart=always
+User=james
+Group=james
+
+[Install]
+WantedBy=multi-user.target
