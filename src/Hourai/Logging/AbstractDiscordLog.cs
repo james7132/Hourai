@@ -13,17 +13,16 @@ public abstract class AbstractDiscordLog {
   /// <summary>
   /// The absolute path to the directory where all of the logs are stored.
   /// </summary>
-  public static readonly string LogDirectory;
+  public string LogDirectory { get; }
 
-  static AbstractDiscordLog() {
-    LogDirectory = Config.LogDirectory;
-    //Log.Info($"Chat Log Directory: { LogDirectory }");
+  protected AbstractDiscordLog(string logDirectory) {
+    LogDirectory = logDirectory;
   }
 
   public virtual string SaveDirectory { get; protected set; }
   public string GuildDirectory { get; protected set; }
 
-  public static string GetGuildDirectory(IGuild guild) {
+  protected string GetGuildDirectory(IGuild guild) {
     return Path.Combine(LogDirectory, Check.NotNull(guild).Id.ToString());
   }
 

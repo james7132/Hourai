@@ -23,9 +23,6 @@ public class LogService {
   readonly ILogger _clientLog;
   readonly ILogger _log;
 
-  public string BotLog { get; private set; }
-  const string LogStringFormat = "yyyy-MM-dd_HH_mm_ss";
-
   public LogService(DiscordShardedClient client,
                    LogSet logs,
                    ErrorService errors,
@@ -35,7 +32,6 @@ public class LogService {
     _errors = Check.NotNull(errors);
     _clientLog = loggerFactory.CreateLogger("DiscordClient");
     _log = loggerFactory.CreateLogger<LogService>();
-    SetupBotLog();
     ClientLogs();
     GuildLogs();
     ChannelLogs();
@@ -45,10 +41,6 @@ public class LogService {
 
   void SetupBotLog() {
     Console.OutputEncoding = Encoding.UTF8;
-    var logDirectory = Config.LogDirectory;
-    if(!Directory.Exists(logDirectory))
-      Directory.CreateDirectory(logDirectory);
-    BotLog = Path.Combine(logDirectory, DateTime.Now.ToString(LogStringFormat) + ".log");
   }
 
   void ClientLogs() {

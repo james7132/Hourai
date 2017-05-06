@@ -21,14 +21,12 @@ namespace Hourai {
 public partial class Owner : HouraiModule {
 
   public Bot Bot { get; set; }
-
-  public LogService Logs { get; set; }
   public CounterSet Counters { get; set; }
 
   [Command("log")]
   [Remarks("Gets the log for the bot.")]
   public Task GetLog() =>
-    Context.Channel.SendFileRetry(Logs.BotLog);
+    Context.Channel.SendFileRetry(Bot.BotLog);
 
   [Command("counters")]
   [Remarks("Gets all of the counters and their values.")]

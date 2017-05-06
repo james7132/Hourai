@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using Discord.Commands.Builders;
 using Hourai.Nitori.GensokyoRadio;
 using System;
 using System.Collections.Generic;
@@ -12,18 +13,54 @@ using System.Xml.Serialization;
 
 namespace Hourai.Nitori {
 
-  public class Touhou : HouraiModule {
+  public static class Touhou {
 
     const string GensokyoRadioEndpoint = "http://gensokyoradio.net/xml/";
     static XmlSerializer GensokyoRadioSerializer =
       new XmlSerializer(typeof(GensokyoRadioData));
 
-    [Command("radio", RunMode = RunMode.Async)]
-    [Remarks("Pulls the currently playing song from Gensokyo Radio.")]
-    public async Task NowPlaying() {
+    public static Task BuildModule(CommandService command,
+                                   StorageConfig config,
+                                   IEnumerable<string> imageCommands) {
+      return command.CreateModuleAsync("Touhou", builder => {
+            builder.AddCommand("radio", NowPlaying, cmd => {
+                  cmd.RunMode = RunMode.Async;
+                  cmd.Remarks = "Pulls the currently playing song from Gensokyo Radio.";
+                });
+            imageCommands = new [] { "honk", "2hu", "unyu", "9ball", "uuu",
+              "alice", "awoo", "ayaya", "kappa", "mokou", "mukyu", "yuyuko",
+              "zun" };
+            foreach(var image in imageCommands)
+              AddImageModule(builder, config, image);
+          });
+    }
+
+    static void AddImageModule(ModuleBuilder builder,
+                               StorageConfig config,
+                               string name) {
+      builder.AddModule(name, module => {
+        var storage = new ImageStorage(config.ImageStoragePath, name);
+        module.AddCommand("",
+            (context, param, serv) => storage.SendImage(context),
+            command => {});
+        module.AddCommand("add",
+            (context, param, serv) => storage.AddImage(context),
+            command => {
+              command.AddPrecondition(new RequireOwnerAttribute());
+              command.AddParameter<string>("link", param => {
+                    param.IsRemainder = true;
+                  });
+            });
+      });
+    }
+
+    static async Task NowPlaying(ICommandContext context,
+                                object[] param,
+                                IServiceProvider services) {
       GensokyoRadioData data = await GetData();
       if (data == null) {
-        await RespondAsync("Gensokyo Radio appears to be down, try again in a bit.");
+        await context.Channel.SendMessageAsync(
+            "Gensokyo Radio appears to be down, try again in a bit.");
         return;
       }
       StringBuilder output = new StringBuilder();
@@ -61,7 +98,8 @@ namespace Hourai.Nitori {
             embed.WithImageUrl(@"http://gensokyoradio.net/images/albums/200/" +
                 data.Misc.AlbumArt);
 
-          await ReplyAsync(output.ToString(), false, embed);
+          await context.Channel.SendMessageAsync(output.ToString(),
+              false, embed);
 
           //if (data.MISC.CIRCLEART != "")
           //{
@@ -79,7 +117,7 @@ namespace Hourai.Nitori {
 
     }
 
-    async Task<GensokyoRadioData> GetData() {
+    static async Task<GensokyoRadioData> GetData() {
       using (var httpClient = new HttpClient())
       using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(GensokyoRadioEndpoint)))
       using (var stream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync())
@@ -93,190 +131,5 @@ namespace Hourai.Nitori {
             return data;
       }
     }
-
-    [Group("honk")]
-    public class Honk : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("honk");
-
-      [Command]
-      public Task SendHonk() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task AddHonk([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("2hu")]
-    public class Twohu : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("2hu");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("9ball")]
-    public class Nineball : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("9ball");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("alice")]
-    public class Alice : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("alice");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("awoo")]
-    public class Awoo : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("awoo");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("ayaya")]
-    public class Ayaya : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("ayaya");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("kappa")]
-    public class Kappa : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("kappa");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("mokou")]
-    public class Mokou : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("mokou");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("mukyu")]
-    public class Mukyu : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("mukyu");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("unyu")]
-    public class Unyu : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("unyu");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("uuu")]
-    public class Uuu : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("uuu");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("yuyuko")]
-    public class Yuyuko : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("yuyuko");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
-
-    [Group("zun")]
-    public class Zun : HouraiModule {
-
-      static ImageStorage storage = new ImageStorage("zun");
-
-      [Command]
-      public Task Send() => storage.SendImage(Context);
-
-      [Command("add")]
-      [RequireOwner]
-      public Task Add([Remainder] string link) => storage.AddImage(Context);
-
-    }
   }
-
-
-
 }

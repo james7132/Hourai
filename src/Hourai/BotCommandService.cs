@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Custom;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -15,20 +16,20 @@ namespace Hourai {
 [Service]
 public class BotCommandService {
 
+  readonly DiscordBotConfig _config;
   readonly IServiceProvider _services;
   readonly DiscordShardedClient _client;
   readonly CommandService _commands;
-  readonly DatabaseService _database;
   readonly ErrorService _errors;
-  readonly CustomConfigService _config;
+  readonly CustomConfigService _configService;
   readonly CounterSet _counters;
 
   readonly ILogger _log;
 
   public BotCommandService(IServiceProvider services,
+                           IOptions<DiscordBotConfig> config,
                            DiscordShardedClient client,
                            CommandService commands,
-                           DatabaseService database,
                            CustomConfigService custom,
                            ErrorService errors,
                            CounterSet counters,
@@ -36,8 +37,8 @@ public class BotCommandService {
     _services = Check.NotNull(services);
     _client = client;
     _commands = commands;
-    _database = database;
-    _config = custom;
+    _config = config.Value;
+    _configService = custom;
     _counters = counters;
     _errors = errors;
 
@@ -56,22 +57,18 @@ public class BotCommandService {
         msg.Author.IsBot ||
         msg.Author?.Id == _client?.CurrentUser?.Id)
       return;
-    using (var db = _database.CreateContext()) {
-      var user = await db.Users.Get(msg.Author);
-      if(user.IsBlacklisted)
-        return;
-
+    using (var db = _services.GetService<BotDbContext>()) {
       // Marks where the command begins
       var argPos = 0;
 
       Guild dbGuild = null;
-      char prefix = Config.CommandPrefix;
+      char prefix = _config.CommandPrefix;
       var guild = (m.Channel as IGuildChannel)?.Guild;
       if(guild != null) {
         dbGuild = await db.Guilds.Get(guild);
         var prefixString = dbGuild.Prefix;
         if(string.IsNullOrEmpty(prefixString)) {
-          prefix = Config.CommandPrefix;
+          prefix = _config.CommandPrefix;
           dbGuild.Prefix = prefix.ToString();
         } else {
           prefix = prefixString[0];
@@ -81,6 +78,11 @@ public class BotCommandService {
       // Determine if the msg is a command, based on if it starts with the defined command prefix
       if (!msg.HasCharPrefix(prefix, ref argPos))
         return;
+
+      var user = await db.Users.Get(msg.Author);
+      if(user.IsBlacklisted)
+        return;
+
       // Execute the command. (result does not indicate a return value,
       // rather an object stating if the command executed succesfully)
       var context = new HouraiContext(_client, msg, db, user, dbGuild);
@@ -91,7 +93,7 @@ public class BotCommandService {
   public async Task ExecuteCommand(HouraiContext context, int argPos = 0) {
     var command = context.Message.Content.Substring(argPos);
     if (context.Guild != null) {
-      var customConfig = await _config.GetConfig(context.Guild);
+      var customConfig = await _configService.GetConfig(context.Guild);
       if (customConfig.Aliases != null) {
         foreach (var alias in customConfig.Aliases) {
           if (command.StartsWith(alias.Key)) {

@@ -28,12 +28,10 @@ public class Guild {
 
   public IList<MinRole> MinRoles { get; set; }
 
-  [DatabaseGenerated(DatabaseGeneratedOption.None)]
   [MaxLength(1)]
   public string Prefix { get; set; }
 
   public Guild() {
-    Prefix = Config.CommandPrefix.ToString();
   }
 
   public Guild(IGuild guild) : this() {

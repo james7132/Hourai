@@ -16,10 +16,9 @@ namespace Hourai {
 
     static IList<string> _validImageTypes = new [] { "png", "gif", "jpg", "jpeg" };
 
-    public ImageStorage(string type) {
+    public ImageStorage(string storagePath, string type) {
       Type = Check.NotNull(type);
-      Config.Load();
-      BasePath = Path.Combine(Config.ImageStoragePath, type);
+      BasePath = Path.Combine(storagePath, type);
       //Log.Info($"Storage Location for \"{type}\" images: {BasePath}");
       if (!Directory.Exists(BasePath))
         Directory.CreateDirectory(BasePath);
@@ -47,7 +46,7 @@ namespace Hourai {
       using (var fileStream = File.Open(path, FileMode.Create, FileAccess.Write)) {
         await httpStream.CopyToAsync(fileStream);
       }
-      await context.Message.Success($"Added image for {Type.Code()}");
+      await context.Channel.SendMessageAsync($"Added image for {Type.Code()}");
     }
 
     public async Task SendImage(ICommandContext context) {

@@ -3,6 +3,7 @@ using Discord.Net;
 using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -15,13 +16,16 @@ namespace Hourai {
 public class AnnounceService {
 
   readonly ILogger _log;
+  readonly IServiceProvider _services;
 
   public AnnounceService(DiscordShardedClient client,
-                         ILoggerFactory loggerFactory) {
+                         ILoggerFactory loggerFactory,
+                         IServiceProvider services) {
     //TODO(james7132): make these messages configurable
     const string JoinMsg = "$mention has joined the server.";
     const string LeaveMsg = "**$user** has left the server.";
     const string BanMsg = "**$user** has been banned.";
+    _services = services;
     client.UserJoined += u => GuildMessage(c => c.JoinMessage, JoinMsg)(u, u.Guild);
     client.UserLeft += u => GuildMessage(c => c.LeaveMessage, LeaveMsg)(u, u.Guild);
     client.UserBanned += GuildMessage(c => c.BanMessage, BanMsg);
@@ -55,7 +59,7 @@ public class AnnounceService {
   }
 
   async Task ForEachChannel(IGuild guild, Func<Channel, bool> validFunc, string message) {
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       var guildConfig = await context.Guilds.Get(guild);
       await context.Entry(guildConfig).Collection(g => g.Channels).LoadAsync();
       var sent = false;

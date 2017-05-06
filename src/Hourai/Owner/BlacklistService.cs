@@ -2,6 +2,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Hourai.Model;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
@@ -12,9 +13,12 @@ namespace Hourai {
 public class BlacklistService {
 
   readonly ILogger _log;
+  readonly IServiceProvider _services;
 
   public BlacklistService(DiscordShardedClient client,
-                          ILoggerFactory loggerFactory) {
+                          ILoggerFactory loggerFactory,
+                          IServiceProvider services) {
+    _services = services;
     client.GuildAvailable += CheckBlacklist(false);
     client.JoinedGuild += CheckBlacklist(true);
     _log = loggerFactory.CreateLogger<BlacklistService>();
@@ -22,7 +26,7 @@ public class BlacklistService {
 
   Func<SocketGuild, Task> CheckBlacklist(bool normalJoin) {
     return async guild => {
-      using (var context = new BotDbContext()) {
+      using (var context = _services.GetService<BotDbContext>()) {
         var config = await context.Guilds.Get(guild);
         var defaultChannel = guild.DefaultChannel;
         if (defaultChannel == null)

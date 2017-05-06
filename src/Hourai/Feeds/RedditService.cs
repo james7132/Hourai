@@ -7,6 +7,8 @@ using Hourai.Extensions;
 using RedditSharp;
 using RedditSharp.Things;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
@@ -22,20 +24,25 @@ namespace Hourai.Feeds {
 public class RedditService {
 
   public DiscordShardedClient Client { get; set; }
-  BotWebAgent Agent { get; }
   public Reddit Reddit { get; }
 
+  readonly IServiceProvider _services;
   readonly ILogger _log;
-  ConcurrentDictionary<string, RedditSharp.Things.Subreddit> Subreddits { get; }
+  ConcurrentDictionary<string, Subreddit> Subreddits { get; }
 
-  public RedditService(ILoggerFactory loggerFactory) {
-    Agent = new BotWebAgent(Config.RedditUsername,
-        Config.RedditPassword,
-        Config.RedditClientID,
-        Config.RedditClientSecret,
-        Config.RedditRedirectUri);
-    Agent.UserAgent = $"ubuntu:discord.bot.hourai:{Config.Version}";
-    Reddit = new Reddit(Agent, false);
+  public RedditService(IOptions<RedditConfig> redditConfig,
+                       ILoggerFactory loggerFactory,
+                       IServiceProvider services,
+                       Bot bot) {
+    _services = services;
+    var reddit = redditConfig.Value;
+    var agent = new BotWebAgent(reddit.Username,
+        reddit.Password,
+        reddit.ClientID,
+        reddit.ClientSecret,
+        reddit.RedirectUri);
+    agent.UserAgent = $"discord.bot.hourai:{bot.Version}";
+    Reddit = new Reddit(agent, false);
     Subreddits = new ConcurrentDictionary<string, Subreddit>();
     Bot.RegularTasks += CheckReddits;
     _log = loggerFactory.CreateLogger<RedditService>();
@@ -47,8 +54,7 @@ public class RedditService {
     if (post.IsSelfPost) {
       var selfText = post.SelfText;
       if (selfText.Length > maxLength) {
-        description = selfText.Substring(0, maxLength) + "...";
-      } else {
+        description = selfText.Substring(0, maxLength) + "..."; } else {
         description = selfText;
       }
     } else {
@@ -68,7 +74,7 @@ public class RedditService {
 
   async Task CheckReddits() {
     _log.LogInformation("CHECKING SUBREDDITS");
-    using (var context = new BotDbContext()) {
+    using (var context = _services.GetService<BotDbContext>()) {
       var subreddits = await context.Subreddits.Include(s => s.Channels).ToListAsync();
       await Task.WhenAll(subreddits.Select(async dbSubreddit => {
         _log.LogInformation($"Checking {dbSubreddit.Name}");
