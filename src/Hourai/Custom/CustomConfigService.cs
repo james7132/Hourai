@@ -62,13 +62,13 @@ namespace Hourai.Custom {
           };
           var gEvent = evt(config);
           if (gEvent != null)
-            await gEvent.ProcessEvent(context, _log);
+            await gEvent.ProcessEvent(context);
           ChannelConfig chConfig;
           if (config.Channels != null &&
               config.Channels.TryGetValue(message.Channel.Name, out chConfig) &&
               evt(chConfig) != null) {
             _log.LogInformation($"MESSAGE CHANNEL {message.Channel.Name}");
-            await evt(chConfig).ProcessEvent(context, _log);
+            await evt(chConfig).ProcessEvent(context);
           }
         }
       };
@@ -89,7 +89,7 @@ namespace Hourai.Custom {
           };
           var gEvent = evt(config);
           if (gEvent != null)
-            await gEvent.ProcessEvent(context, _log);
+            await gEvent.ProcessEvent(context);
           if (config.Channels == null)
             return;
           foreach (var channel in config.Channels) {
@@ -98,7 +98,7 @@ namespace Hourai.Custom {
               continue;
             var chEvent = evt(channel.Value);
             if (chEvent != null)
-              await chEvent.ProcessEvent(context, _log);
+              await chEvent.ProcessEvent(context);
           }
         }
       };
