@@ -121,7 +121,7 @@ namespace Hourai {
 
     public User Author { get; }
     public Guild DbGuild { get; }
-    public BotDbContext Db { get; }
+    public BotDbContext Db { get; set; }
 
     public IEnumerable<IUser> Users { get; set;}
     public string Content => Message?.Content;
