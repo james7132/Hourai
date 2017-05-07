@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using Hourai.Model;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -16,15 +17,21 @@ namespace Hourai.Custom {
     readonly DiscordShardedClient _client;
     readonly CustomConfigService _config;
     readonly BotCommandService _commands;
+    readonly ILogger _log;
+    readonly IServiceProvider _services;
     public BotCommandService Commands { get; }
 
     public CustomConfigExecutionService(DiscordShardedClient client,
                                         CustomConfigService config,
-                                        BotCommandService commands) {
+                                        BotCommandService commands,
+                                        ILoggerFactory loggerFactory,
+                                        IServiceProvider services) {
       Commands = commands;
       _config = config;
       _client = client;
       _commands = commands;
+      _services = services;
+      _log = loggerFactory.CreateLogger("CustomConfig");
       client.JoinedGuild += g => _config.GetConfig(g);
       client.GuildAvailable += g => _config.GetConfig(g);
       client.MessageReceived += OnMessage(g => g.OnMessage);
@@ -44,21 +51,26 @@ namespace Hourai.Custom {
         if (guild == null)
           return;
         var config = await _config.GetConfig(guild);
-        var context = new HouraiContext {
-          Commands = _commands,
-          Client = _client,
-          Message = um,
-          Channel = channel,
-          Guild = guild
-        };
-        var gEvent = evt(config);
-        if (gEvent != null)
-          await gEvent.ProcessEvent(context);
-        ChannelConfig chConfig;
-        if (config.Channels != null &&
-            config.Channels.TryGetValue(message.Channel.Name, out chConfig) &&
-            evt(chConfig) != null)
-          await evt(chConfig).ProcessEvent(context);
+        using (var db = _services.GetService<BotDbContext>()) {
+          var context = new HouraiContext {
+            Commands = _commands,
+            Client = _client,
+            Message = um,
+            Channel = channel,
+            Guild = guild,
+            Db = db
+          };
+          var gEvent = evt(config);
+          if (gEvent != null)
+            await gEvent.ProcessEvent(context, _log);
+          ChannelConfig chConfig;
+          if (config.Channels != null &&
+              config.Channels.TryGetValue(message.Channel.Name, out chConfig) &&
+              evt(chConfig) != null) {
+            _log.LogInformation($"MESSAGE CHANNEL {message.Channel.Name}");
+            await evt(chConfig).ProcessEvent(context, _log);
+          }
+        }
       };
     }
 
@@ -67,24 +79,27 @@ namespace Hourai.Custom {
         if (guild == null)
           return;
         var config = await _config.GetConfig(guild);
-        var context = new HouraiContext {
-          Commands = _commands,
-          Client = _client,
-          Guild = guild,
-          Users = new [] { user }
-        };
-        var gEvent = evt(config);
-        if (gEvent != null)
-          await gEvent.ProcessEvent(context);
-        if (config.Channels == null)
-          return;
-        foreach (var channel in config.Channels) {
-          context.Channel = guild.Channels.OfType<SocketTextChannel>().Where(ch => ch.Name == channel.Key).FirstOrDefault();
-          if (context.Channel == null)
-            continue;
-          var chEvent = evt(channel.Value);
-          if (chEvent != null)
-            await chEvent.ProcessEvent(context);
+        using (var db = _services.GetService<BotDbContext>()) {
+          var context = new HouraiContext {
+            Commands = _commands,
+            Client = _client,
+            Guild = guild,
+            Users = new [] { user },
+            Db = db
+          };
+          var gEvent = evt(config);
+          if (gEvent != null)
+            await gEvent.ProcessEvent(context, _log);
+          if (config.Channels == null)
+            return;
+          foreach (var channel in config.Channels) {
+            context.Channel = guild.Channels.OfType<SocketTextChannel>().Where(ch => ch.Name == channel.Key).FirstOrDefault();
+            if (context.Channel == null)
+              continue;
+            var chEvent = evt(channel.Value);
+            if (chEvent != null)
+              await chEvent.ProcessEvent(context, _log);
+          }
         }
       };
     }

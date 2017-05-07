@@ -91,7 +91,7 @@ public class BotCommandService {
   }
 
   public async Task ExecuteCommand(HouraiContext context, int argPos = 0) {
-    var command = context.Message.Content.Substring(argPos);
+    var command = context.Content.Substring(argPos);
     if (context.Guild != null) {
       var customConfig = await _configService.GetConfig(context.Guild);
       if (customConfig.Aliases != null) {
