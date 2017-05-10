@@ -46,14 +46,14 @@ public partial class Admin {
     [Log]
     [Command("allow")]
     [RequirePermission(GuildPermission.ManageRoles, Require.Bot)]
-    [RequirePermission(new[] {GuildPermission.ManageGuild, GuildPermission.ManageRoles}, Require.BotOwnerOverride)]
+    [RequirePermission(new[] {GuildPermission.ManageGuild, GuildPermission.ManageRoles}, Require.User | Require.BotOwnerOverride)]
     [Remarks("Enables self-serve for all provided roles.")]
     public Task Allow(params IRole[] roles) => SetSelfServe(roles, true);
 
     [Log]
     [Command("forbid")]
     [RequirePermission(GuildPermission.ManageRoles, Require.Bot)]
-    [RequirePermission(new[] {GuildPermission.ManageGuild, GuildPermission.ManageRoles}, Require.BotOwnerOverride)]
+    [RequirePermission(new[] {GuildPermission.ManageGuild, GuildPermission.ManageRoles}, Require.User | Require.BotOwnerOverride)]
     [Remarks("Disables self-serve for all provided roles.")]
     public Task Forbid(params IRole[] roles) => SetSelfServe(roles, false);
 
