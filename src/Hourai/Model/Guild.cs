@@ -27,6 +27,7 @@ public class Guild {
   public List<CustomCommand> Commands { get; set; }
 
   public IList<MinRole> MinRoles { get; set; }
+  public IList<Quote> Quotes { get; set; }
 
   [MaxLength(1)]
   public string Prefix { get; set; }
