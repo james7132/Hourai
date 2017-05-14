@@ -8,9 +8,10 @@ using Hourai.Model;
 namespace Hourai.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    partial class BotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20170514072105_Quotes")]
+    partial class Quotes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
             modelBuilder
                 .HasAnnotation("ProductVersion", "1.1.0-rtm-22752");
@@ -148,9 +149,6 @@ namespace Hourai.Migrations
                         .IsRequired();
 
                     b.Property<ulong>("AuthorId");
-
-                    b.Property<string>("Content")
-                        .IsRequired();
 
                     b.Property<DateTimeOffset>("Created");
 
@@ -357,7 +355,7 @@ namespace Hourai.Migrations
             modelBuilder.Entity("Hourai.Model.Quote", b =>
                 {
                     b.HasOne("Hourai.Model.Guild", "Guild")
-                        .WithMany("Quotes")
+                        .WithMany()
                         .HasForeignKey("GuildId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });

@@ -110,7 +110,7 @@ namespace Hourai {
         DefaultRunMode = RunMode.Sync
       });
 
-      IServiceCollection services = new ServiceCollection();
+      var services = new ServiceCollection();
 
       services.Configure<DiscordBotConfig>(Config.GetSection("Discord"));
       services.Configure<RedditConfig>(Config.GetSection("Reddit"));

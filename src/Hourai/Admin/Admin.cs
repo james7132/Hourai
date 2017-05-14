@@ -27,23 +27,32 @@ public partial class Admin : HouraiModule {
   public Task Kick(params IGuildUser[] users) =>
     ForEvery(users, Do(u => u.KickAsync()));
 
-  [Log]
-  [Command("ban")]
-  [GuildRateLimit(1, 1)]
+  [Group("ban")]
   [RequirePermission(GuildPermission.BanMembers)]
-  [Remarks("Bans all mentioned users.")]
-  public Task Ban(params IGuildUser[] users) =>
-    ForEvery(users, Do(u => u.BanAsync()));
+  public class BanGroup : HouraiModule {
 
-  [Log]
-  [Command("ban")]
-  [GuildRateLimit(1, 1)]
-  [RequirePermission(GuildPermission.BanMembers)]
-  [Remarks("Bans all mentioned users.")]
-  public async Task Ban(params ulong[] users) {
-    var guild = Context.Guild;
-    await Task.WhenAll(users.Select(u => guild.AddBanAsync(u)));
-    await Success();
+    [Log]
+    [Command]
+    [GuildRateLimit(1, 1)]
+    [Remarks("Bans all provided users.")]
+    public Task Ban(params IGuildUser[] users) =>
+      ForEvery(users, Do(u => u.BanAsync()));
+
+    [Log]
+    [Command]
+    [GuildRateLimit(1, 1)]
+    [Remarks("Bans all provided user ids.")]
+    public async Task Ban(params ulong[] users) {
+      var guild = Context.Guild;
+      await Task.WhenAll(users.Select(u => guild.AddBanAsync(u)));
+      await Success();
+    }
+
+    [Command("list")]
+    public async Task Banlist() => await RespondAsync(
+        (await Context.Guild.GetBansAsync()).Select(u =>
+          $"{u.User.ToIDString()}: {u.Reason}").Join("\n"));
+
   }
 
   [Log]

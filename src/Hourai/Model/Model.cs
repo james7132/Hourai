@@ -1,6 +1,10 @@
 using Discord;
 using Discord.WebSocket;
+using Hourai;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,6 +44,25 @@ public static class DbSetExtensions {
 
 }
 
+public class BotDbContextFactory : IDbContextFactory<BotDbContext> {
+
+  public BotDbContext Create(DbContextFactoryOptions opts) {
+      IConfiguration Config = new ConfigurationBuilder()
+        .SetBasePath(Bot.BaseDataPath)
+        .AddJsonFile(Bot.ConfigFile)
+        .Build();
+      var services = new ServiceCollection();
+      var storageConfig = new StorageConfig();
+      Config.GetSection("Storage").Bind(storageConfig);
+      services.AddDbContext<BotDbContext>(options => {
+        options.UseMySql(storageConfig.DbFilename);
+      }, ServiceLifetime.Transient);
+      var provider = new DefaultServiceProviderFactory().CreateServiceProvider(services);
+      return provider.GetService<BotDbContext>();
+  }
+
+}
+
 public class BotDbContext : DbContext {
 
   // Discord Data
@@ -54,6 +77,7 @@ public class BotDbContext : DbContext {
   public DbSet<MinRole> MinRoles { get; set; }
 
   public DbSet<CustomConfig> Configs { get; set; }
+  public DbSet<Quote> Quotes { get; set; }
 
   // Temporary Action Data
   public DbSet<AbstractTempAction> TempActions { get; set; }
