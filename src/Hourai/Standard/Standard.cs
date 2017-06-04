@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+// using System.TimeZoneInfo;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -38,12 +39,14 @@ public partial class Standard : HouraiModule {
     return RespondAsync($"I choose {choices.SelectRandom()}!");
   }
   
-  // [Command("time")]
-  // [ChannelRateLimit(1, 1)]
-  // [Remarks("Commands relating to calculations of date and time.")]
-  // public Task Time ... something {
-  // something
-  // }
+  [Command("time")]
+  [ChannelRateLimit(1, 1)]
+  [Remarks("Command relating to calculations of date and time.")]
+  public Task Echo([Remainder] string remainder) => ReplyAsync(Context.Process(remainder));
+  // temp placeholder
+  // params: local_time_zone, remote_time_zone
+  // public static TimeZoneInfo Local {get;}
+  
   
 
   [Command("avatar")]
