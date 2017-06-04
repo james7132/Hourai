@@ -37,6 +37,14 @@ public partial class Standard : HouraiModule {
       return RespondAsync($"There is nothing to choose from!");
     return RespondAsync($"I choose {choices.SelectRandom()}!");
   }
+  
+  // [Command("time")]
+  // [ChannelRateLimit(1, 1)]
+  // [Remarks("Commands relating to calculations of date and time.")]
+  // public Task Time ... something {
+  // something
+  // }
+  
 
   [Command("avatar")]
   [ChannelRateLimit(3, 1)]
