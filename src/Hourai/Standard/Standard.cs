@@ -42,10 +42,14 @@ public partial class Standard : HouraiModule {
   [Command("time")]
   [ChannelRateLimit(1, 1)]
   [Remarks("Command relating to calculations of date and time.")]
-  public Task Echo([Remainder] string remainder) => ReplyAsync(Context.Process(remainder));
-  // temp placeholder
-  // params: local_time_zone, remote_time_zone
-  // public static TimeZoneInfo Local {get;}
+  public Task TimeFrame(params string[] country) {
+    if (country == "USA" or "US" or "United States")
+      Echo("**-04:00:** Eastern Time Zone - New York, Charlotte, Miami")
+      Echo("**-05:00:** Central Time Zone - Omaha, Kansas City, Chicago")
+      Echo("**-06:00:** Mountain Time Zone - Denver, Helena")
+      Echo("**-07:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas")
+    else
+      Echo("No time zone posted for your country, or you typed it in wrong. Check back soon for updates.")
   
   
 
