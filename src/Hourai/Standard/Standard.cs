@@ -40,13 +40,25 @@ public partial class Standard : HouraiModule {
   
   [Command("time")]
   [ChannelRateLimit(1, 1)]
-  [Remarks("Command relating to calculations of date and time.")]
+  [Remarks("Command relating to calculations of date and time. All times listed compared to Greenwich Mean Time. Daylight savings time NOT shown.")]
   public Task TimeFrame(params string[] country) {
+    Echo("WARNING: The time zone readings you may see below do not take into consideration if DST is in effect. If in doubt, double check.")
     if (country == "USA" or "US" or "United States")
-      Echo("**-04:00:** Eastern Time Zone - New York, Charlotte, Miami")
-      Echo("**-05:00:** Central Time Zone - Omaha, Kansas City, Chicago")
-      Echo("**-06:00:** Mountain Time Zone - Denver, Helena")
-      Echo("**-07:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas")
+      Echo("**-05:00:** Eastern Time Zone - New York, Charlotte, Miami")
+      Echo("**-06:00:** Central Time Zone - Omaha, Kansas City, Chicago")
+      Echo("**-07:00:** Mountain Time Zone - Denver, Helena")
+      Echo("**-08:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas")
+      Echo("**-09:00:** Alaska Time Zone - Anchorage")
+      Echo("**-10:00:** Hawaii Time Zone - Honolulu, Aleutian Islands")
+    else if (country == "Japan" or "JP")
+      Echo("**+09:00:** Japan Standard - Tokyo, Kyoto")
+    else if (country == "Canada" or "CAN")
+      Echo("**-03:30:** Newfoundland Time Zone - Newfoundland")
+      Echo("**-04:00:** Atlantic Time Zone")
+      Echo("**-05:00:** Eastern Time Zone - Toronto")
+      Echo("**-06:00:** Central Time Zone - Winnipeg")
+      Echo("**-07:00:** Mountain Time Zone")
+      Echo("**-08:00:** Pacific Time Zone")
     else
       Echo("No time zone posted for your country, or you typed it in wrong. Check back soon for updates.")
   
