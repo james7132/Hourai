@@ -1,4 +1,5 @@
 using Discord;
+using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -25,18 +26,10 @@ public class Subreddit {
 
   public ICollection<SubredditChannel> Channels { get; set; }
 
-  public async Task<IEnumerable<IMessageChannel>> GetChannelsAsync(IDiscordClient client) {
+  public IEnumerable<ISocketMessageChannel> GetChannels(DiscordShardedClient client) {
     Check.NotNull(client);
-    var channels = new List<IMessageChannel>();
-    foreach(var channel in Channels) {
-      var discordChannel = (await client.GetChannelAsync(channel.ChannelId)) as IMessageChannel;
-      if(discordChannel != null) {
-        channels.Add(discordChannel);
-      } else {
-        //Log.Error($"Channel {channel.ChannelId} for subreddit {Name} cannot be found");
-      }
-    }
-    return channels;
+    return Channels.Select(c => client.GetChannel(c.ChannelId) as ISocketMessageChannel)
+        .Where(c => c != null);
   }
 
   public static string SanitizeName(string name) {
