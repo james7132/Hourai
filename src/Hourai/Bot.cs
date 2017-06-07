@@ -80,7 +80,6 @@ namespace Hourai {
     }
 
     void SetupLogs() {
-      const string logStringFormat = "yyyy-MM-dd_HH_mm_ss";
       var logDirectory = Config["Storage:LogDirectory"];
       if(!Directory.Exists(logDirectory))
         Directory.CreateDirectory(logDirectory);
@@ -161,8 +160,14 @@ namespace Hourai {
     async Task MainLoop() {
       while (!ExitSource.Task.IsCompleted) {
         _log.LogInformation("Starting regular tasks...");
-        var tasks = Task.WhenAll(_regularTasks.Select(t => t()));
-        _log.LogInformation("Waiting...");
+        var task = Task.WhenAll(_regularTasks.Select(async t => {
+                try {
+                  await t();
+                } catch (Exception error) {
+                  _log.LogError(0, error, "Error in running regular task.");
+                  ErrorService.RegisterException(error);
+                }
+              }));
         await Task.WhenAny(Task.Delay(60000), ExitSource.Task);
       }
     }

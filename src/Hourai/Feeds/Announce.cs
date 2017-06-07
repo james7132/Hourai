@@ -12,6 +12,7 @@ namespace Hourai.Feeds {
 public partial class Feeds {
 
   [Group("announce")]
+  [RequireContext(ContextType.Guild)]
   [RequirePermission(GuildPermission.SendMessages, Require.Bot)]
   public class Announce : HouraiModule {
 

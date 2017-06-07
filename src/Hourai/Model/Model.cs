@@ -37,7 +37,7 @@ public static class DbSetExtensions {
     var channel = await set.FindAsync(ichannel.Id);
     if (channel == null)
       channel = set.Add(new Channel(ichannel) {
-            GuildId = channel.Guild.Id
+            GuildId = ichannel.Guild.Id
           }).Entity;
     return channel;
   }

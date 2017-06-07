@@ -35,6 +35,7 @@ public partial class Feeds {
           }
           dbSubreddit = await Db.GetSubreddit(sub);
         }
+        await Context.Db.Entry(dbSubreddit).Collection(c => c.Channels).LoadAsync();
         subreddit = dbSubreddit.Name;
         if (dbSubreddit.Channels.Any(c => c.ChannelId == channel.Id)) {
           await RespondAsync($"Subreddit /r/{subreddit} already posts to this channel.");
@@ -79,6 +80,7 @@ public partial class Feeds {
     [Remarks("Lists all subreddits that feed into this channel.")]
     public async Task List() {
       var channel = await Db.Channels.Get(Check.InGuild(Context.Message));
+      await Db.Entry(channel).Collection(c => c.Subreddits).LoadAsync();
       if (!channel.Subreddits.Any())
         await RespondAsync("No subreddits currently tied to this channel");
       else

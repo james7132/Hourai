@@ -23,7 +23,7 @@ namespace Hourai.Feeds {
 [Service]
 public class RedditService {
 
-  public DiscordShardedClient Client { get; set; }
+  public DiscordShardedClient Client { get; }
   public Reddit Reddit { get; }
 
   readonly IServiceProvider _services;
@@ -31,9 +31,11 @@ public class RedditService {
   ConcurrentDictionary<string, Subreddit> Subreddits { get; }
 
   public RedditService(IOptions<RedditConfig> redditConfig,
+                       DiscordShardedClient client,
                        ILoggerFactory loggerFactory,
                        IServiceProvider services,
                        Bot bot) {
+    Client = client;
     _services = services;
     var reddit = redditConfig.Value;
     var agent = new BotWebAgent(reddit.Username,
@@ -46,6 +48,17 @@ public class RedditService {
     Subreddits = new ConcurrentDictionary<string, Subreddit>();
     Bot.RegularTasks += CheckReddits;
     _log = loggerFactory.CreateLogger<RedditService>();
+  }
+
+  async Task<Subreddit> GetSubredditAsync(string name) {
+      Subreddit subreddit;
+      if (!Subreddits.TryGetValue(name, out subreddit)) {
+        _log.LogInformation($"Getting subreddit: {name}");
+        subreddit = await Reddit.GetSubredditAsync(name);
+        Subreddits[name] = subreddit;
+        _log.LogInformation($"Got subreddit: {name}");
+      }
+      return subreddit;
   }
 
   Embed PostToMessage(Post post) {
@@ -82,19 +95,15 @@ public class RedditService {
           context.Subreddits.Remove(dbSubreddit);
           return;
         }
-        var name = dbSubreddit.Name;
-        RedditSharp.Things.Subreddit subreddit;
-        if (!Subreddits.TryGetValue(name, out subreddit)) {
-          subreddit = await Reddit.GetSubredditAsync(name);
-          Subreddits[name] = subreddit;
-        }
-        var channels = await dbSubreddit.GetChannelsAsync(Client);
+        var channels = dbSubreddit.GetChannels(Client);
         if (!channels.Any())
           return;
+        var name = dbSubreddit.Name;
+        var subreddit = await GetSubredditAsync(name);
         DateTimeOffset latest = dbSubreddit.LastPost ?? DateTimeOffset.UtcNow;
         var latestInPage = latest;
         var title = $"Post in /r/{dbSubreddit.Name}:";
-        await subreddit.GetPosts(Subreddit.Sort.New).Take(25)
+        await subreddit.GetPosts(Subreddit.Sort.New, 25)
           .Where(p => p.CreatedUTC > latest)
           .OrderBy(p => p.CreatedUTC)
           .ForEachAwait(async post => {
