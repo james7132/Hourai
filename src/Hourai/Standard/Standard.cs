@@ -44,13 +44,13 @@ public partial class Standard : HouraiModule {
   public Task TimeFrame(params string[] country) {
     Echo("WARNING: The time zone readings you may see below do not take into consideration if DST is in effect. If in doubt, double check.")
     if (country == "USA" or "US" or "United States")
-      Echo("**-05:00:** Eastern Time Zone - New York, Charlotte, Miami")
+      Echo("**-05:00:** Eastern Time Zone - New York, Charlotte, Miami") // server based in Eastern Time Zone
       Echo("**-06:00:** Central Time Zone - Omaha, Kansas City, Chicago")
       Echo("**-07:00:** Mountain Time Zone - Denver, Helena")
       Echo("**-08:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas")
       Echo("**-09:00:** Alaska Time Zone - Anchorage")
       Echo("**-10:00:** Hawaii Time Zone - Honolulu, Aleutian Islands")
-    else if (country == "Japan" or "JP")
+    else if (country == "Japan" or "JAP" or "JP")
       Echo("**+09:00:** Japan Standard - Tokyo, Kyoto")
     else if (country == "Canada" or "CAN")
       Echo("**-03:30:** Newfoundland Time Zone - Newfoundland")
@@ -59,8 +59,20 @@ public partial class Standard : HouraiModule {
       Echo("**-06:00:** Central Time Zone - Winnipeg")
       Echo("**-07:00:** Mountain Time Zone")
       Echo("**-08:00:** Pacific Time Zone")
+    else if (country == "Russia" or "RUS" or "Russian Federation" or "RU") // because why not
+      Echo("**+02:00:** Eastern European Zone - Kaliningrad")
+      Echo("**+03:00:** Moscow Standard Time - Moscow")
+      Echo("**+04:00:** Samara")
+      Echo("**+05:00:** Yekaterinburg")
+      Echo("**+06:00:** Omsk")
+      Echo("**+07:00:** 'Middle Siberian Time Zone' - Krasnoyarsk, Novosibirsk")
+      Echo("**+08:00:** Irkutsk")
+      Echo("**+09:00:** Chita")
+      Echo("**+10:00:** Vladvistok")
+      Echo("**+11:00:** 'Russian Pacific Time Zone' - Magadan, Sakalin, Srednokolymsk")
+      Echo("**+12:00:** Kamchatka Time Zone - Kamchatka, Anadyr")
     else
-      Echo("No time zone posted for your country, or you typed it in wrong. Check back soon for updates.")
+      Echo("No time zone posted for your country, or you typed it in wrong. Hourai accepts names like *United States* or *Russia*. Check back soon for updates.")
   
   
 

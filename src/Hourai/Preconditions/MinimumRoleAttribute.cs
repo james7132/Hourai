@@ -33,7 +33,7 @@ public class MinimumRoleAttribute : PreconditionAttribute {
       return PreconditionResult.FromError($"{user.Mention} is not the server owner, and no minimum role for {_roleType.ToString().Code()} is set.");
     var role = guild.GetRole(minRole.Value);
     if (role == null) {
-      return PreconditionResult.FromError($"{guild.Owner.Mention} the role for {_roleType.ToString().Code()} no longer exists, and you are the only one who can now run this command.");
+      return PreconditionResult.FromError($"{guild.Owner.Mention} the role for {_roleType.ToString().Code()} **no longer exists**, and you are the only one who can now run this command.");
     }
     if (!Utility.RoleCheck(user, role))
       return PreconditionResult.FromError($"{user.Mention} you do not have the minimum role to run this command. You need at least the {role.Name.Code()} to run it.");
