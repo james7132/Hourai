@@ -41,6 +41,7 @@ public partial class Standard : HouraiModule {
   [Command("time")]
   [ChannelRateLimit(1, 1)]
   [Remarks("Command relating to calculations of date and time. All times listed compared to Greenwich Mean Time. Daylight savings time NOT shown.")]
+  // revised
   public Task TimeFrame(params string[] country) {
     Echo("WARNING: The time zone readings you may see below do not take into consideration if DST is in effect. If in doubt, double check.")
     if (country == "USA" or "US" or "United States")

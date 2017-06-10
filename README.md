@@ -10,8 +10,8 @@
 </p>
 
 ### Setup
-Simply click this [link](https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF) to add Hourai to your server (you need the Manage Server permission to do so)
+Simply click this [link](https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF) to add Houhai to your server (you need the Manage Server permission to do so)
 
 ### Documentation
 For full documentation on how to use the bot see it's site
-[here](https://jamessliu.com/Hourai/).
+[here](https://jamessliu.com/hourai/).
