@@ -94,16 +94,16 @@ public class TempRole : AbstractTempAction {
     var guild = client.GetGuild(GuildId);
     var user = guild.GetUser(UserId);
     var role = guild.GetRole(RoleId);
-    if(role == null)
+    if(user == null || role == null)
       return;
     await user.AddRoleAsync(role);
   }
 
   public override async Task Unapply(DiscordShardedClient client) {
     var guild = client.GetGuild(GuildId);
-    var user = guild.GetUser(UserId);
-    var role = guild.GetRole(RoleId);
-    if(role == null)
+    var user = guild?.GetUser(UserId);
+    var role = guild?.GetRole(RoleId);
+    if(user == null || role == null)
       return;
     await user.RemoveRoleAsync(role);
   }
