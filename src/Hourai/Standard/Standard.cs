@@ -41,7 +41,7 @@ public partial class Standard : HouraiModule {
   [Command("time")]
   [ChannelRateLimit(1, 1)]
   [Remarks("Command relating to calculations of date and time. All times listed compared to Greenwich Mean Time. Daylight savings time NOT shown.")]
-  public Task TimeFrame(string[] country) {
+  public Task TimeFrame([Remainder] string country) {
     return RespondAsync($"WARNING: The time zone readings you may see below do not take into consideration if DST is in effect. If in doubt, double check.")
    if (country == "USA" || country == "US" || country == "United States") {
       return RespondAsync($"**-05:00:** Eastern Time Zone - New York, Charlotte, Miami" + \r\n + "**-06:00:** Central Time Zone - Omaha, Kansas City, Chicago" + \r\n + "**-07:00:** Mountain Time Zone - Denver, Helena" + \r\n + "**-08:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas" + \r\n + "**-09:00:** Alaska Time Zone - Anchorage" + \r\n + "**-10:00:** Hawaii Time Zone - Honolulu, Aleutian Islands")
