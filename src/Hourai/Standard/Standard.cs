@@ -60,7 +60,7 @@ public partial class Standard : HouraiModule {
       Echo("**-06:00:** Central Time Zone - Winnipeg")
       Echo("**-07:00:** Mountain Time Zone")
       Echo("**-08:00:** Pacific Time Zone")
-    else if (country == "Russia" or "RUS" or "Russian Federation" or "RU" or "SU") // because why not
+    else if (country == "Russia" or "RUS" or "Russian Federation" or "RU") // because why not
       Echo("**+02:00:** Eastern European Zone - Kaliningrad")
       Echo("**+03:00:** Moscow Standard Time - Moscow")
       Echo("**+04:00:** Samara")
@@ -72,23 +72,6 @@ public partial class Standard : HouraiModule {
       Echo("**+10:00:** Vladvistok")
       Echo("**+11:00:** 'Russian Pacific Time Zone' - Magadan, Sakalin, Srednokolymsk")
       Echo("**+12:00:** Kamchatka Time Zone - Kamchatka, Anadyr")
-    else if (country == "Far East" or "Asiatic Post-Soviet States" or "FE" or "APSS")
-      Echo("**+04:00:** Armenia, Azerbijan, Georgia)
-      Echo("**+04:30:** Afghanistan, Iran)
-      Echo("**+05:00:** Tajikistan, Turkmenistan, Uzbekistan, western Kazakhstan, Pakistan")
-      Echo("**+06:00:** Kyrgyzstan, eastern Kazakhstan")
-      Echo("**+07:00:** Western Mongolia)
-      Echo("**+08:00:** Central and Eastern Mongolia, China")
-      Echo("~~**+08:30:** Pyongyang~~") // we shouldn't have any users from here, but it's here for reference
-      Echo("**+09:00:** Korea, Japan")
-    else if (country == "Southeast Asia" or "SEA" or "Indochina" or "IC")
-      Echo("**+07:00:** Vietnam, Laos, Cambodia, Thailand, western Indonesia")
-      Echo("**+08:00:** Phillipines, Taiwan, China, Malaysia, eastern and northern islands of Indonesia, Brunei, western Australia, Christmas Island")
-      Echo("**+09:30:** Central Australia")
-      Echo("**+10:00:** Eastern Australia")
-      Echo("**+10:30:** Lord Howe Island")
-      Echo("**+12:00:** New Zealand")
-      Echo("**+11:00 to -06:00:** Numerous islands in the Pacific Ocean")
     else
       Echo("No time zone posted for your country, or you typed it in wrong. Hourai accepts names like *United States* or *Russia*. Check back soon for updates.")
   
