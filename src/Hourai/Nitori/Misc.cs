@@ -59,7 +59,6 @@ namespace Hourai.Nitori {
       RespondAsync($"Blah to you too, {Context.User.Mention}");
 
     [Command("roll")]
-	[Alias("dice")]
     public async Task Roll([Remainder] string dice) {
       var userMention = Context.User.Mention;
       if (Dice.IsMatch(dice)) {
@@ -198,7 +197,7 @@ namespace Hourai.Nitori {
     }
 
     [Command("lmgtfy")]
-    [Alias("goog", "lmg", "google")]
+    [Alias("goog", "lmg")]
     public Task LetMeGoogleThatForYou([Remainder] string query) =>
       RespondAsync($"https://lmgtfy.com/?q={WebUtility.UrlEncode(query)}");
 
