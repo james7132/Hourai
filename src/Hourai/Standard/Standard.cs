@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using Hourai.Model;
 using Hourai.Preconditions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -36,6 +37,19 @@ public partial class Standard : HouraiModule {
     if (choices.Length <= 0)
       return RespondAsync($"There is nothing to choose from!");
     return RespondAsync($"I choose {choices.SelectRandom()}!");
+  }
+
+  [Command("convert")]
+  [ChannelRateLimit(3, 1)]
+  [Remarks("Converts units from one unit to another. Format must be `<source> to <target>`\n" +
+           "For example: `~convert 100 m to ft`")]
+  public async Task ConvertCommand([Remainder] string query) {
+    var entries = query.Split(new []{"to"}, StringSplitOptions.RemoveEmptyEntries)
+                       .Select(entry => entry.Trim()).ToArray();
+    var converted = await UnitConversionService.ConvertAsync(entries[0], entries[1]);
+    if (converted == null)
+      converted = "No such conversion exists";
+    await RespondAsync(converted.ToString());
   }
 
   [Command("avatar")]

@@ -34,6 +34,7 @@
     <PackageReference Include="Serilog.Extensions.Logging.File" Version="1.0.1-*" />
     <PackageReference Include="RedditSharp" Version="2.0.0-*" />
     <PackageReference Include="YamlDotNet" Version="4.1.0-*" />
+    <PackageReference Include="UnitsNet" Version="3.64.0-*" />
   </ItemGroup>
 
   <ItemGroup>

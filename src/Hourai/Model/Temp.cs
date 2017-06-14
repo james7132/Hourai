@@ -9,7 +9,8 @@ namespace Hourai.Model {
 
 [Table("temp_actions")]
 public class AbstractTempAction {
-[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)] public long Id { get; set; }
+  [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+  public long Id { get; set; }
   [Required]
   public ulong UserId { get; set; }
   [Required]
