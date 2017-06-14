@@ -41,56 +41,30 @@ public partial class Standard : HouraiModule {
   [Command("time")]
   [ChannelRateLimit(1, 1)]
   [Remarks("Command relating to calculations of date and time. All times listed compared to Greenwich Mean Time. Daylight savings time NOT shown.")]
-  // revised, I think
-  public Task TimeFrame(params string[] country) {
+  public Task TimeFrame(string[] country) {
     return RespondAsync($"WARNING: The time zone readings you may see below do not take into consideration if DST is in effect. If in doubt, double check.")
-    if (country == "USA" or "US" or "United States")
-      return RespondAsync($"**-05:00:** Eastern Time Zone - New York, Charlotte, Miami") // server based in Eastern Time Zone
-      return RespondAsync($"**-06:00:** Central Time Zone - Omaha, Kansas City, Chicago")
-      return RespondAsync($"**-07:00:** Mountain Time Zone - Denver, Helena")
-      return RespondAsync($"**-08:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas")
-      return RespondAsync($"**-09:00:** Alaska Time Zone - Anchorage")
-      return RespondAsync($"**-10:00:** Hawaii Time Zone - Honolulu, Aleutian Islands")
-    else if (country == "Japan" or "JAP" or "JP")
+   if (country == "USA" || country == "US" || country == "United States") {
+      return RespondAsync($"**-05:00:** Eastern Time Zone - New York, Charlotte, Miami" + \r\n + "**-06:00:** Central Time Zone - Omaha, Kansas City, Chicago" + \r\n + "**-07:00:** Mountain Time Zone - Denver, Helena" + \r\n + "**-08:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas" + \r\n + "**-09:00:** Alaska Time Zone - Anchorage" + \r\n + "**-10:00:** Hawaii Time Zone - Honolulu, Aleutian Islands")
+   }
+    else if (country == "Japan" || country == "JAP" || country == "JP") {
       return RespondAsync($"**+09:00:** Japan Standard - Tokyo, Kyoto")
-    else if (country == "Canada" or "CAN")
-      return RespondAsync($"**-03:30:** Newfoundland Time Zone - Newfoundland")
-      return RespondAsync($"**-04:00:** Atlantic Time Zone")
-      return RespondAsync($"**-05:00:** Eastern Time Zone - Toronto")
-      return RespondAsync($"**-06:00:** Central Time Zone - Winnipeg")
-      return RespondAsync($"**-07:00:** Mountain Time Zone")
-      return RespondAsync($"**-08:00:** Pacific Time Zone")
-    else if (country == "Russia" or "RUS" or "Russian Federation" or "RU" or "SU") // because why not
-      return RespondAsync($"**+02:00:** Eastern European Zone - Kaliningrad")
-      return RespondAsync($"**+03:00:** Moscow Standard Time - Moscow")
-      return RespondAsync($"**+04:00:** Samara")
-      return RespondAsync($"**+05:00:** Yekaterinburg")
-      return RespondAsync($"**+06:00:** Omsk")
-      return RespondAsync($"**+07:00:** 'Middle Siberian Time Zone' - Krasnoyarsk, Novosibirsk")
-      return RespondAsync($"**+08:00:** Irkutsk")
-      return RespondAsync($"**+09:00:** Chita")
-      return RespondAsync($"**+10:00:** Vladvistok")
-      return RespondAsync($"**+11:00:** 'Russian Pacific Time Zone' - Magadan, Sakalin, Srednokolymsk")
-      return RespondAsync($"**+12:00:** Kamchatka Time Zone - Kamchatka, Anadyr")
-    else if (country == "Far East" or "Asiatic Post-Soviet States" or "FE" or "APSS")
-      return RespondAsync($"**+04:00:** Armenia, Azerbijan, Georgia")
-      return RespondAsync($"**+04:30:** Afghanistan, Iran")
-      return RespondAsync($"**+05:00:** Tajikistan, Turkmenistan, Uzbekistan, western Kazakhstan, Pakistan")
-      return RespondAsync($"**+06:00:** Kyrgyzstan, eastern Kazakhstan")
-      return RespondAsync($"**+07:00:** Western Mongolia")
-      return RespondAsync($"**+08:00:** Central and Eastern Mongolia, China")
-      return RespondAsync($"**+09:00:** Korea, Japan")
-    else if (country == "Southeast Asia" or "SEA" or "Indochina" or "IC")
-      return RespondAsync($"**+07:00:** Vietnam, Laos, Cambodia, Thailand, western Indonesia")
-      return RespondAsync($"**+08:00:** Phillipines, Taiwan, China, Malaysia, eastern and northern islands of Indonesia, Brunei, western Australia, Christmas Island")
-      return RespondAsync($"**+09:30:** Central Australia")
-      return RespondAsync($"**+10:00:** Eastern Australia")
-      return RespondAsync($"**+10:30:** Lord Howe Island")
-      return RespondAsync($"**+12:00:** New Zealand")
-      return RespondAsync($"**+11:00 to -06:00:** Numerous islands in the Pacific Ocean")
-    else
+    }
+    else if (country == "Canada" || country == "CAN") {
+      return RespondAsync($"**-03:30:** Newfoundland Time Zone - Newfoundland" + \r\n + "**-04:00:** Atlantic Time Zone" + \r\n + "**-05:00:** Eastern Time Zone - Toronto" + \r\n + "**-06:00:** Central Time Zone - Winnipeg" + \r\n + "**-07:00:** Mountain Time Zone" \r\n + "**-08:00:** Pacific Time Zone")
+    }
+    else if (country == "Russia" || country == "RUS") {
+      return RespondAsync($"**+02:00:** Eastern European Zone - Kaliningrad" + \r\n + "**+03:00:** Moscow Standard Time - Moscow" + \r\n + "**+04:00:** Samara" + \r\n + "**+05:00:** Yekaterinburg" + \r\n + "**+06:00:** Omsk" + \r\n + "**+07:00:** Middle Siberian Time Zone - Krasnoyarsk, Novosibirsk" + \r\n + "**+08:00:** Irkutsk" + \r\n + "**+09:00:** Chita" + \r\n + "**+10:00:** Vladvistok" + \r\n + "**+11:00:** Russian Pacific Time Zone - Magadan, Sakalin, Srednokolymsk" + \r\n + "**+12:00:** Kamchatka Time Zone - Kamchatka, Anadyr")
+    }
+    else if (country == "Far East") {
+      return RespondAsync($"**+04:00:** Armenia, Azerbijan, Georgia" + \r\n + "**+04:30:** Afghanistan, Iran" + \r\n + "**+05:00:** Tajikistan, Turkmenistan, Uzbekistan, western Kazakhstan, Pakistan" + \r\n + "**+06:00:** Kyrgyzstan, eastern Kazakhstan" + \r\n + "**+07:00:** Western Mongolia" + \r\n + "**+08:00:** Central and Eastern Mongolia, China" + \r\n + "**+09:00:** Korea, Japan")
+    }
+    else if (country == "Asia") {
+      return RespondAsync($"**+07:00:** Vietnam, Laos, Cambodia, Thailand, western Indonesia" + \r\n + "**+08:00:** Phillipines, Taiwan, China, Malaysia, eastern and northern islands of Indonesia, Brunei, western Australia, Christmas Island" + \r\n"**+09:30:** Central Australia" + \r\n + "**+10:00:** Eastern Australia" + \r\n + "**+10:30:** Lord Howe Island" + \r\n + "**+12:00:** New Zealand")
+    }
+    else {
       return RespondAsync($"No time zone posted for your country, or you typed it in wrong. Hourai accepts names like *United States* or *Russia*. Check back soon for updates.")
-  
+    }
+  }
   
 
   [Command("avatar")]
