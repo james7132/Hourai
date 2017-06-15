@@ -42,28 +42,30 @@ public partial class Standard : HouraiModule {
   [ChannelRateLimit(1, 1)]
   [Remarks("Command relating to calculations of date and time. All times listed compared to Greenwich Mean Time. Daylight savings time NOT shown.")]
   public Task TimeFrame([Remainder] string country) {
-    return RespondAsync($"WARNING: The time zone readings you may see below do not take into consideration if DST is in effect. If in doubt, double check.")
+    StringBuilder timing = new StringBuilder()
+    timing.AppendLine("WARNING: The time zone readings you may see below do not take into consideration if DST is in effect. If in doubt, double check.")
    if (country == "USA" || country == "US" || country == "United States") {
-      return RespondAsync($"**-05:00:** Eastern Time Zone - New York, Charlotte, Miami" + \r\n + "**-06:00:** Central Time Zone - Omaha, Kansas City, Chicago" + \r\n + "**-07:00:** Mountain Time Zone - Denver, Helena" + \r\n + "**-08:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas" + \r\n + "**-09:00:** Alaska Time Zone - Anchorage" + \r\n + "**-10:00:** Hawaii Time Zone - Honolulu, Aleutian Islands")
+      timing.AppendLine("**-05:00:** Eastern Time Zone - New York, Charlotte, Miami" + \r\n + "**-06:00:** Central Time Zone - Omaha, Kansas City, Chicago" + \r\n + "**-07:00:** Mountain Time Zone - Denver, Helena" + \r\n + "**-08:00:** Pacific Time Zone - San Francisco, Seattle, Las Vegas" + \r\n + "**-09:00:** Alaska Time Zone - Anchorage" + \r\n + "**-10:00:** Hawaii Time Zone - Honolulu, Aleutian Islands")
    }
     else if (country == "Japan" || country == "JAP" || country == "JP") {
-      return RespondAsync($"**+09:00:** Japan Standard - Tokyo, Kyoto")
+      timing.AppendLine("**+09:00:** Japan Standard - Tokyo, Kyoto")
     }
     else if (country == "Canada" || country == "CAN") {
-      return RespondAsync($"**-03:30:** Newfoundland Time Zone - Newfoundland" + \r\n + "**-04:00:** Atlantic Time Zone" + \r\n + "**-05:00:** Eastern Time Zone - Toronto" + \r\n + "**-06:00:** Central Time Zone - Winnipeg" + \r\n + "**-07:00:** Mountain Time Zone" \r\n + "**-08:00:** Pacific Time Zone")
+      timing.AppendLine("**-03:30:** Newfoundland Time Zone - Newfoundland" + \r\n + "**-04:00:** Atlantic Time Zone" + \r\n + "**-05:00:** Eastern Time Zone - Toronto" + \r\n + "**-06:00:** Central Time Zone - Winnipeg" + \r\n + "**-07:00:** Mountain Time Zone" \r\n + "**-08:00:** Pacific Time Zone")
     }
     else if (country == "Russia" || country == "RUS") {
-      return RespondAsync($"**+02:00:** Eastern European Zone - Kaliningrad" + \r\n + "**+03:00:** Moscow Standard Time - Moscow" + \r\n + "**+04:00:** Samara" + \r\n + "**+05:00:** Yekaterinburg" + \r\n + "**+06:00:** Omsk" + \r\n + "**+07:00:** Middle Siberian Time Zone - Krasnoyarsk, Novosibirsk" + \r\n + "**+08:00:** Irkutsk" + \r\n + "**+09:00:** Chita" + \r\n + "**+10:00:** Vladvistok" + \r\n + "**+11:00:** Russian Pacific Time Zone - Magadan, Sakalin, Srednokolymsk" + \r\n + "**+12:00:** Kamchatka Time Zone - Kamchatka, Anadyr")
+      timing.AppendLine("**+02:00:** Eastern European Zone - Kaliningrad" + \r\n + "**+03:00:** Moscow Standard Time - Moscow" + \r\n + "**+04:00:** Samara" + \r\n + "**+05:00:** Yekaterinburg" + \r\n + "**+06:00:** Omsk" + \r\n + "**+07:00:** Middle Siberian Time Zone - Krasnoyarsk, Novosibirsk" + \r\n + "**+08:00:** Irkutsk" + \r\n + "**+09:00:** Chita" + \r\n + "**+10:00:** Vladvistok" + \r\n + "**+11:00:** Russian Pacific Time Zone - Magadan, Sakalin, Srednokolymsk" + \r\n + "**+12:00:** Kamchatka Time Zone - Kamchatka, Anadyr")
     }
     else if (country == "Far East") {
-      return RespondAsync($"**+04:00:** Armenia, Azerbijan, Georgia" + \r\n + "**+04:30:** Afghanistan, Iran" + \r\n + "**+05:00:** Tajikistan, Turkmenistan, Uzbekistan, western Kazakhstan, Pakistan" + \r\n + "**+06:00:** Kyrgyzstan, eastern Kazakhstan" + \r\n + "**+07:00:** Western Mongolia" + \r\n + "**+08:00:** Central and Eastern Mongolia, China" + \r\n + "**+09:00:** Korea, Japan")
+      timing.AppendLine("**+04:00:** Armenia, Azerbijan, Georgia" + \r\n + "**+04:30:** Afghanistan, Iran" + \r\n + "**+05:00:** Tajikistan, Turkmenistan, Uzbekistan, western Kazakhstan, Pakistan" + \r\n + "**+06:00:** Kyrgyzstan, eastern Kazakhstan" + \r\n + "**+07:00:** Western Mongolia" + \r\n + "**+08:00:** Central and Eastern Mongolia, China" + \r\n + "**+09:00:** Korea, Japan")
     }
     else if (country == "Asia") {
-      return RespondAsync($"**+07:00:** Vietnam, Laos, Cambodia, Thailand, western Indonesia" + \r\n + "**+08:00:** Phillipines, Taiwan, China, Malaysia, eastern and northern islands of Indonesia, Brunei, western Australia, Christmas Island" + \r\n"**+09:30:** Central Australia" + \r\n + "**+10:00:** Eastern Australia" + \r\n + "**+10:30:** Lord Howe Island" + \r\n + "**+12:00:** New Zealand")
+      timing.AppendLine("**+07:00:** Vietnam, Laos, Cambodia, Thailand, western Indonesia" + \r\n + "**+08:00:** Phillipines, Taiwan, China, Malaysia, eastern and northern islands of Indonesia, Brunei, western Australia, Christmas Island" + \r\n"**+09:30:** Central Australia" + \r\n + "**+10:00:** Eastern Australia" + \r\n + "**+10:30:** Lord Howe Island" + \r\n + "**+12:00:** New Zealand")
     }
     else {
-      return RespondAsync($"No time zone posted for your country, or you typed it in wrong. Hourai accepts names like *United States* or *Russia*. Check back soon for updates.")
+      timing.AppendLine("No time zone posted for your country, or you typed it in wrong. Hourai accepts names like *United States* or *Russia*. Check back soon for updates.")
     }
+    return RespondAsync(timing)
   }
   
 
