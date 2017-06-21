@@ -31,7 +31,7 @@ namespace Hourai {
       if (Exceptions.Count <= 0)
         return;
       if (OwnerChannel == null)
-        OwnerChannel = await Bot.Owner.CreateDMChannelAsync();
+        OwnerChannel = await Bot.Owner.GetOrCreateDMChannelAsync();
       foreach(var exception in Exceptions.ToArray()) {
         try {
           await SendError(exception);
@@ -46,7 +46,7 @@ namespace Hourai {
 
     public async void RegisterException(Exception e) {
       if (OwnerChannel == null)
-        OwnerChannel = await Bot.Owner.CreateDMChannelAsync();
+        OwnerChannel = await Bot.Owner.GetOrCreateDMChannelAsync();
       if (_config.ErrorBlacklist.Any(e.Message.Contains))
         return;
       try {

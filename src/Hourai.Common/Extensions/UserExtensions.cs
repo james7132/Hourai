@@ -17,7 +17,7 @@ public static class UserExtensions {
   public static bool IsServerOwner(this IGuildUser user) => user.Guild.OwnerId == user.Id;
 
   public static async Task SendDMAsync(this IUser user, string message) {
-    var channel = await user.CreateDMChannelAsync();
+    var channel = await user.GetOrCreateDMChannelAsync();
     await channel.SendMessageAsync(message);
   }
 
