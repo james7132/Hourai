@@ -34,8 +34,6 @@ namespace Hourai {
     public object Convert(string src, string targetUnit) {
       src = ProcessInput(src);
       targetUnit = ProcessInput(targetUnit);
-      System.Console.WriteLine(src);
-      System.Console.WriteLine(targetUnit);
       return _baseConverter.Convert(src, targetUnit);
     }
 
