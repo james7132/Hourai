@@ -14,6 +14,33 @@ namespace Hourai {
 
   }
 
+  public class TempConverter : IConverter {
+
+    const char AdditionalCharacter = '°';
+    static string[] Replacements = new[] {"F", "C"};
+
+    UnitConverter<Temperature, TemperatureUnit> _baseConverter;
+
+    public TempConverter() {
+      _baseConverter = new UnitConverter<Temperature, TemperatureUnit>();
+    }
+
+    string ProcessInput(string val) {
+      foreach(var replacement in Replacements)
+        val = val.Replace(replacement, AdditionalCharacter + replacement);
+      return val;
+    }
+
+    public object Convert(string src, string targetUnit) {
+      src = ProcessInput(src);
+      targetUnit = ProcessInput(targetUnit);
+      System.Console.WriteLine(src);
+      System.Console.WriteLine(targetUnit);
+      return _baseConverter.Convert(src, targetUnit);
+    }
+
+  }
+
   public class UnitConverter<T, TUnit> : IConverter {
 
     MethodInfo _parser;
@@ -44,7 +71,7 @@ namespace Hourai {
       System.Console.WriteLine(assembly.ToString());
       var converterType = typeof(UnitConverter<object, object>);
       converterType = converterType.GetGenericTypeDefinition();
-      var converters = new List<IConverter>();
+      var converters = new List<IConverter>() { new TempConverter() };
       foreach(var type in assembly.GetTypes()) {
         var unitName = string.Format("UnitsNet.Units.{0}Unit", type.Name);
         var unitType = assembly.GetType(unitName, false);

@@ -39,6 +39,13 @@ public partial class Admin {
     public Task Embed(int count = 100) =>
       PruneMessages(m => m.Embeds.Any() || m.Attachments.Any(), count);
 
+    [Command("emoji")]
+    [ChannelRateLimit(5, 30)]
+    [RequirePermission(GuildPermission.ManageMessages)]
+    [Remarks("Removes all messages with emojis in the last X messages.")]
+    public Task Emote(int count = 100) =>
+      PruneMessages(m => m.Tags.Any(t => t.Type == TagType.Emoji), count);
+
     [Command("mine")]
     [UserRateLimit(1, 5)]
     [Remarks("Removes all messages from the user using the command in the last X messages.")]
