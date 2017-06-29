@@ -14,4 +14,4 @@ Simply click this [link](https://discordapp.com/oauth2/authorize?client_id=20846
 
 ### Documentation
 For full documentation on how to use the bot see it's site
-[here](https://jamessliu.com/Hourai/).
+[here](https://jamessliu.com/hourai/).
