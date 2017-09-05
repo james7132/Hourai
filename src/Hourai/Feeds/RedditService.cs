@@ -74,7 +74,7 @@ public class RedditService {
       description = post.Url.ToString();
     }
     return new EmbedBuilder {
-        Title = post.Title,
+        Title = post.Title.Ellipisize(256),
         Url = "https://reddit.com" + post.Permalink.ToString(),
         Description = description,
         Timestamp = post.CreatedUTC,

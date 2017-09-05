@@ -57,10 +57,18 @@ public class DatabaseService {
   async Task AddUser(IUser iuser) {
     if(iuser.Username == null)
       return;
+    const int maxUsernameCount = 20;
     using (var context = _services.GetService<BotDbContext>()) {
       var user = await context.Users.Get(iuser);
       await context.Entry(user).Collection(u => u.Usernames).LoadAsync();
+
       user.AddName(iuser.Username);
+      // Delete old usernames
+      var oldUsernames = user.Usernames.OrderByDescending(n => n.Date)
+                                       .Skip(maxUsernameCount);
+      foreach (var username in oldUsernames)
+        context.Usernames.Remove(username);
+
       await context.Save();
     }
   }

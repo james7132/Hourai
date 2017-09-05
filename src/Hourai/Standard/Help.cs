@@ -135,7 +135,7 @@ public class Help : HouraiModule {
       var builder = new StringBuilder();
       var command = commands.First();
       using(builder.Code()) {
-        builder.Append(Context.DbGuild.Prefix)
+        builder.Append(Context.DbGuild?.Prefix ?? "~")
           .Append(command.GetFullName())
           .Append(" ")
           .AppendLine(command.Parameters.Select(p => {

@@ -45,10 +45,10 @@ namespace Hourai.Nitori {
         var storage = new ImageStorage(config.ImageStoragePath, name);
         logger.LogInformation($"Storing {name} images in {storage.BasePath}");
         module.AddCommand("",
-            (context, param, serv) => storage.SendImage(context),
+            (context, param, serv, command) => storage.SendImage(context),
             command => {});
         module.AddCommand("add",
-            (context, param, serv) => storage.AddImage(context),
+            (context, param, serv, command) => storage.AddImage(context),
             command => {
               command.AddPrecondition(new RequireOwnerAttribute());
               command.AddParameter<string>("link", param => {
@@ -61,7 +61,8 @@ namespace Hourai.Nitori {
 
     static async Task NowPlaying(ICommandContext context,
                                 object[] param,
-                                IServiceProvider services) {
+                                IServiceProvider services,
+                                CommandInfo command) {
       GensokyoRadioData data = await GetData();
       if (data == null) {
         await context.Channel.SendMessageAsync(
