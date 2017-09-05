@@ -143,14 +143,14 @@ public partial class Standard : HouraiModule {
     if (guildUser != null)
       builder.AppendLine($"Joined on: {TimeSummary(guildUser.JoinedAt).Code()}");
     var count = Client.Guilds.Count(g => g.GetUser(user.Id) != null);
-    var bans = await Task.WhenAll(from guild in Client.Guilds
-                                  where guild.CurrentUser.GuildPermissions.BanMembers
-                                  select guild.GetBansAsync());
-    var banCount = bans.Count(banSet => banSet.Any(b => b.User.Id == user.Id));
+    //var bans = await Task.WhenAll(from guild in Client.Guilds
+                                  //where guild.CurrentUser.GuildPermissions.BanMembers
+                                  //select guild.GetBansAsync());
+    //var banCount = bans.Count(banSet => banSet.Any(b => b.User.Id == user.Id));
     if (count > 1)
         builder.AppendLine($"Seen on **{count - 1}** other servers.");
-    if (banCount > 1)
-      builder.AppendLine($"Banned from **{banCount - 1}** other servers.");
+    //if (banCount > 1)
+      //builder.AppendLine($"Banned from **{banCount - 1}** other servers.");
     if (guildUser != null) {
       var roles = guildUser.GetRoles().Where(r => r.Id != guildUser.Guild.EveryoneRole.Id);
       if(roles.Any())
@@ -166,8 +166,9 @@ public partial class Standard : HouraiModule {
     if(usernames.Any()) {
       using(builder.MultilineCode()) {
         foreach(var username in usernames) {
-          builder.Append(username.Name.PadRight(spacing))
-            .AppendLine(username.Date.ToString("yyyy-MM-dd"));
+          builder.Append(username.Date.ToString("yyyy-MM-dd"))
+            .Append("  ")
+            .AppendLine(username.Name);
         }
       }
     }

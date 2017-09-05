@@ -24,9 +24,7 @@ namespace Hourai {
     public BotCounters() {
       Reconnects = new SimpleCounter();
     }
-
-  }
-
+}
   public class Bot {
 
     static void Main() => new Bot().RunAsync().GetAwaiter().GetResult();

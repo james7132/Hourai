@@ -25,6 +25,8 @@ namespace Hourai {
       Exceptions = new List<Exception>();
       _log = loggerFactory.CreateLogger<ErrorService>();
       _config = config.Value;
+      foreach (var blacklistedError in _config.ErrorBlacklist)
+        _log.LogInformation($"Error Blacklist: \"{blacklistedError}\"");
     }
 
     async Task SendErrors() {
@@ -47,7 +49,7 @@ namespace Hourai {
     public async void RegisterException(Exception e) {
       if (OwnerChannel == null)
         OwnerChannel = await Bot.Owner.GetOrCreateDMChannelAsync();
-      if (_config.ErrorBlacklist.Any(e.Message.Contains))
+      if (_config.ErrorBlacklist.Any(e.ToString().Contains))
         return;
       try {
         await SendError(e);
