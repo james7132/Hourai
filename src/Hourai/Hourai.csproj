@@ -13,8 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Discord.Net" Version="1.0.0-*" />
-    <PackageReference Include="Discord.Net.Commands" Version="1.0.0-*" />
+    <PackageReference Include="Discord.Net" Version="1.0.2-*" />
+    <PackageReference Include="Discord.Net.Commands" Version="1.0.2-*" />
     <PackageReference Include="System.Collections.Concurrent" Version="4.3.0-*" />
     <PackageReference Include="System.Diagnostics.TextWriterTraceListener" Version="4.0.0-*" />
     <PackageReference Include="System.Reflection.Extensions" Version="4.3.0-*" />
