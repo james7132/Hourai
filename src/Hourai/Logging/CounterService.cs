@@ -12,12 +12,6 @@ namespace Hourai {
 [Service]
 public class CounterService {
 
-  static readonly Regex UrlRegex = new Regex(@"^(http|https|ftp)\://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(:[a-zA-Z0-9]*)?/?([a-zA-Z0-9\-\._\?\,\'/\\\+&amp;%\$#\=~])*$",
-                                          RegexOptions.Compiled |
-                                          RegexOptions.IgnoreCase);
-  static readonly Regex PunctuationRegex = new Regex(@"[^a-zA-Z\d\s']",
-                                              RegexOptions.Compiled);
-
   readonly CounterSet _counters;
 
   Task Increment(string key) {
@@ -33,17 +27,6 @@ public class CounterService {
         var um = m as IUserMessage;
         if (um == null || m.Author?.Id == client?.CurrentUser?.Id)
           return Task.CompletedTask;
-        var text =  um.Resolve(TagHandling.Remove,
-                            TagHandling.Remove,
-                            TagHandling.Remove,
-                            TagHandling.Remove)
-                        .ToLowerInvariant();
-        text = UrlRegex.Replace(text, string.Empty);
-        text = PunctuationRegex.Replace(text, string.Empty);
-        var words = text.SplitWhitespace();
-        foreach (var word in words)
-            if(!word.IsNullOrEmpty())
-                _counters.Get("word-" + word).Increment();
         _counters.Get("messages-recieved").Increment();
         var guild = (m.Channel as IGuildChannel)?.Guild;
         if (guild != null) {
@@ -55,13 +38,6 @@ public class CounterService {
             }
           }
         }
-        _counters.Get("messages-attachments").IncrementBy((ulong) um.Attachments.Count);
-        _counters.Get("messages-embeds").IncrementBy((ulong) um.Embeds.Count);
-        _counters.Get("messages-user-mentions").IncrementBy((ulong) um.MentionedUserIds.Count);
-        _counters.Get("messages-channel-mentions").IncrementBy((ulong) um.MentionedChannelIds.Count);
-        _counters.Get("messages-role-mentions").IncrementBy((ulong) um.MentionedRoleIds.Count);
-        if(m.IsTTS)
-          _counters.Get("messages-text-to-speech").Increment();
         return Task.CompletedTask;
     };
 
