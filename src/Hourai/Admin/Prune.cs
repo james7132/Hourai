@@ -3,6 +3,7 @@ using Discord.Commands;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,6 +68,15 @@ public partial class Admin {
     [Remarks("Removes all messages from all bots in the last X messages.")]
     public Task Bot(int count = 100) =>
       PruneMessages(m => m.Author.IsBot, count);
+
+    [Command("match")]
+    [ChannelRateLimit(5, 30)]
+    [RequirePermission(GuildPermission.ManageMessages)]
+    [Remarks("Removes all messages from in the last 100 messages.")]
+    public Task Match([Remainder] string pattern)  {
+      var regex = new Regex(pattern);
+      return PruneMessages(m => regex.IsMatch(m.Content), 100);
+    }
 
     [Command("reaction")]
     [ChannelRateLimit(1, 15)]

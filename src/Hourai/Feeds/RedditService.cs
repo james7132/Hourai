@@ -67,11 +67,17 @@ public class RedditService {
     if (post.IsSelfPost) {
       var selfText = post.SelfText;
       if (selfText.Length > maxLength) {
-        description = selfText.Substring(0, maxLength) + "..."; } else {
+        description = selfText.Substring(0, maxLength) + "...";
+      } else {
         description = selfText;
       }
     } else {
-      description = post.Url.ToString();
+      var url = post.Url.ToString();
+      if (url.Length > 2000) {
+        description = url.Substring(0, 2000) + "...";
+      } else {
+        description = url;
+      }
     }
     return new EmbedBuilder {
         Title = post.Title.Ellipisize(256),
