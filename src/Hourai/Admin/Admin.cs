@@ -124,7 +124,9 @@ public partial class Admin : HouraiModule {
       }
       allUsers = new[] { author };
     }
-    if(!author.GuildPermissions.ManageNicknames) {
+    if(author.Id == Bot.Owner.Id && allUsers.Length == 1 && allUsers[0].Id ==
+        Context.Client.CurrentUser.Id) {
+    } else if(!author.GuildPermissions.ManageNicknames) {
       await RespondAsync($"{author.Mention} you do not have the ``Manage Nicknames`` permission. See ``{Context.DbGuild.Prefix}help nickname``");
       return;
     }
