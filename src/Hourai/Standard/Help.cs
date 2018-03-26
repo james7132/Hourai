@@ -30,7 +30,7 @@ public class Help : HouraiModule {
 
   [Hide]
   [Command("help")]
-  [UserRateLimit(1, 1)]
+  //[UserRateLimit(1, 1)]
   public Task GetHelp([Remainder] string command = "") {
     Context.IsHelp = true;
     if(string.IsNullOrEmpty(command))

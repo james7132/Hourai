@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using Hourai.Extensions;
 using Hourai.Model;
 using Hourai.Custom.Converters;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,7 +29,6 @@ public abstract class DiscordContextConfig {
 }
 
 public class ChannelConfig : DiscordContextConfig {
-
 }
 
 public class GuildConfig : DiscordContextConfig {
@@ -65,28 +65,38 @@ public abstract class ProcessableEvent {
     _properties = new Dictionary<Type, PropertyInfo[]>();
   }
 
-  public async Task PropogateEvent(HouraiContext context) {
+  protected ILogger Logger;
+
+  async Task PropogateEvent(HouraiContext context, ILogger logger) {
     var eventType = typeof(ProcessableEvent);
     PropertyInfo[] properties;
     if (!_properties.TryGetValue(GetType(), out properties)) {
       properties = (from property in GetType().GetTypeInfo().GetProperties()
                    where eventType.IsAssignableFrom(property.PropertyType)
                    select property).ToArray();
+      _properties[GetType()] = properties;
     }
     var events = properties.Select(p => p.GetValue(this)).OfType<ProcessableEvent>();
-    await Task.WhenAll(events.Select(e => e.ProcessEvent(context)));
+    logger.LogInformation(events.Count().ToString());
+    foreach (var evt in events) {
+      logger.LogInformation(evt.GetType().ToString());
+    }
+    await Task.WhenAll(events.Select(e => e.ProcessEvent(context, logger)));
   }
 
-  public virtual Task Process(HouraiContext context) =>
-    Task.CompletedTask;
+  public virtual Task Process(HouraiContext context) => Task.CompletedTask;
 
   public virtual Task<bool> IsValid(HouraiContext context) => (true).ToTask();
 
-  public async Task ProcessEvent(HouraiContext context) {
-    if (!(await IsValid(context)))
-      return;
-    await Process(context);
-    await PropogateEvent(context);
+  public async Task ProcessEvent(HouraiContext context, ILogger logger) {
+    Logger = logger;
+    try {
+      if (!(await IsValid(context))) return;
+      await Process(context);
+      await PropogateEvent(context, logger);
+    } catch (Exception e) {
+      logger.LogError(0, e, "Error in running custom event.");
+    }
   }
 }
 
@@ -102,6 +112,9 @@ public class CustomEvent : ActionableEvent {
   [YamlMember(Alias="content")]
   public MessageContentFilter ContentFilter { get; set; }
 
+  [YamlMember(Alias="username")]
+  public UsernameFilter UsernameFilter { get; set; }
+
 }
 
 public class MessageContentFilter : ActionableEvent {
@@ -111,6 +124,18 @@ public class MessageContentFilter : ActionableEvent {
 
   public override Task<bool> IsValid(HouraiContext context) =>
     Regex.IsMatch(context.Content, Match).ToTask();
+
+}
+
+public class UsernameFilter : ActionableEvent {
+
+  [YamlMember(Alias="match")]
+  public string Match { get; set; }
+
+  public override Task<bool> IsValid(HouraiContext context) {
+    return context.Users.Any(u =>
+           Regex.IsMatch(u.Username, Match)).ToTask();
+  }
 
 }
 

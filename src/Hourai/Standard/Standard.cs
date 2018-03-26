@@ -26,12 +26,12 @@ public partial class Standard : HouraiModule {
   const ushort AvatarSize = 1024;
 
   [Command("echo")]
-  [ChannelRateLimit(3, 1)]
+  //[ChannelRateLimit(3, 1)]
   [Remarks("Has the bot repeat what you say")]
   public Task Echo([Remainder] string remainder) => ReplyAsync(Context.Process(remainder));
 
   [Command("choose")]
-  [ChannelRateLimit(3, 1)]
+  //[ChannelRateLimit(3, 1)]
   [Remarks("Chooses between several provided choices. Seperated by spaces. Quote choices with spaces in them.")]
   public Task Choose(params string[] choices) {
     if (choices.Length <= 0)
@@ -40,7 +40,7 @@ public partial class Standard : HouraiModule {
   }
 
   [Command("convert")]
-  [ChannelRateLimit(3, 1)]
+  //[ChannelRateLimit(3, 1)]
   [Remarks("Converts units from one unit to another. Format must be `<source> to <target>`\n" +
            "For example: `~convert 100 m to ft`")]
   public async Task ConvertCommand([Remainder] string query) {
@@ -53,7 +53,7 @@ public partial class Standard : HouraiModule {
   }
 
   [Command("avatar")]
-  [ChannelRateLimit(3, 1)]
+  //[ChannelRateLimit(3, 1)]
   [Remarks("Gets the avatar url of the provided users. If no user is provided, your avatar is shown instead.")]
   public Task Avatar(params IGuildUser[] users) {
     IUser[] allUsers = users;
@@ -63,13 +63,13 @@ public partial class Standard : HouraiModule {
   }
 
   [Command("invite")]
-  [ChannelRateLimit(1, 1)]
+  //[ChannelRateLimit(1, 1)]
   [Remarks("Provides a invite link to add this bot to your server")]
   public Task Invite() =>
     RespondAsync("Use this link to add me to your server: https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF");
 
   [Command("playing")]
-  [ChannelRateLimit(1, 1)]
+  //[ChannelRateLimit(1, 1)]
   [RequireContext(ContextType.Guild)]
   [Remarks("Gets all users currently playing a certain game.")]
   public async Task IsPlaying([Remainder] string game) {
@@ -101,7 +101,7 @@ public partial class Standard : HouraiModule {
   }
 
   [Command("serverinfo")]
-  [ChannelRateLimit(3, 1)]
+  //[ChannelRateLimit(3, 1)]
   [RequireContext(ContextType.Guild)]
   [Remarks("Gets general information about the current server")]
   public async Task ServerInfo() {
@@ -120,15 +120,41 @@ public partial class Standard : HouraiModule {
     if(roles.Any())
       builder.AppendLine($"Roles: {roles.Order().Select(r => r.Name.Code()).Join(", ")}");
     builder.AppendLine($"Text Channels: {textChannels.Join(", ")}")
-      .AppendLine($"Voice Channels: {voiceChannels.Join(", ")}")
-      .AppendLine($"Bot Command Prefix: {Context.DbGuild.Prefix}");
+      .AppendLine($"Voice Channels: {voiceChannels.Join(", ")}");
     if(!string.IsNullOrEmpty(server.IconUrl))
       builder.AppendLine(server.IconUrl);
     await Context.Message.Respond(builder.ToString());
   }
 
+  [Command("pingmod")]
+  [Remarks("Randomly pings one online moderator or admin. Pings server owner if no mods are online.")]
+  public async Task PingMod() {
+    var guild = Context.Guild;
+    var matchedRoles =
+        new HashSet<ulong>(guild.Roles.Where(r => {
+          var lower = r.Name.ToLower();
+          return lower.Contains("mod") || lower.Contains("admin");
+        }).Select(r => r.Id));
+    var userList = new List<IUser>();
+    foreach (var user in guild.Users) {
+      if (user.Status != UserStatus.Online) continue;
+      foreach (var role in user.Roles) {
+        if (matchedRoles.Contains(role.Id)) {
+          userList.Add(user);
+          break;
+        }
+      }
+    }
+
+    if (userList.Count <= 0) {
+      await Context.Message.Respond($"{guild.Owner.Mention}, No mods online!");
+    } else {
+      await Context.Message.Respond(userList.SelectRandom().Mention);
+    }
+  }
+
   [Command("whois")]
-  [ChannelRateLimit(3, 1)]
+  //[ChannelRateLimit(3, 1)]
   [Remarks("Gets information on a specified users")]
   public async Task WhoIs(IUser user) {
     const int spacing = 80;
@@ -176,7 +202,7 @@ public partial class Standard : HouraiModule {
   }
 
   [Command("topic")]
-  [ChannelRateLimit(3, 1)]
+  //[ChannelRateLimit(3, 1)]
   [Remarks("Returns the mentioned channels' topics. If none are mentioned, the current channel is used.")]
   public Task Topic(params IGuildChannel[] channels) {
     if(channels.Length <= 0)
