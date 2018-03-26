@@ -21,7 +21,7 @@ public partial class Admin : HouraiModule {
 
   [Log]
   [Command("kick")]
-  [GuildRateLimit(1, 1)]
+  //[GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.KickMembers)]
   [Remarks("Kicks all mentioned users.")]
   public Task Kick(params IGuildUser[] users) =>
@@ -33,14 +33,14 @@ public partial class Admin : HouraiModule {
 
     [Log]
     [Command]
-    [GuildRateLimit(1, 1)]
+    //[GuildRateLimit(1, 1)]
     [Remarks("Bans all provided users.")]
     public Task Ban(params IGuildUser[] users) =>
       ForEvery(users, Do(u => u.BanAsync()));
 
     [Log]
     [Command]
-    [GuildRateLimit(1, 1)]
+    //[GuildRateLimit(1, 1)]
     [Remarks("Bans all provided user ids.")]
     public async Task Ban(params ulong[] users) {
       var guild = Context.Guild;
@@ -57,7 +57,7 @@ public partial class Admin : HouraiModule {
 
   [Log]
   [Command("softban")]
-  [GuildRateLimit(1, 1)]
+  //[GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.BanMembers)]
   [Remarks("Softbans all mentioned users.")]
   public Task Softban(params IGuildUser[] users) =>
@@ -69,7 +69,7 @@ public partial class Admin : HouraiModule {
 
   [Log]
   [Command("mute")]
-  [GuildRateLimit(1, 1)]
+  //[GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.MuteMembers)]
   [Remarks("Server mutes all mentioned users.")]
   public Task Mute(params IGuildUser[] users) =>
@@ -77,7 +77,7 @@ public partial class Admin : HouraiModule {
 
   [Log]
   [Command("unmute")]
-  [GuildRateLimit(1, 1)]
+  //[GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.MuteMembers)]
   [Remarks( "Server unmutes all mentioned users.")]
   public Task Unmute(params IGuildUser[] users) =>
@@ -85,7 +85,7 @@ public partial class Admin : HouraiModule {
 
   [Log]
   [Command("deafen")]
-  [GuildRateLimit(1, 1)]
+  //[GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.DeafenMembers)]
   [Remarks( "Server deafens all mentioned users.")]
   public Task Deafen(params IGuildUser[] users) =>
@@ -93,7 +93,7 @@ public partial class Admin : HouraiModule {
 
   [Log]
   [Command("undeafen")]
-  [GuildRateLimit(1, 1)]
+  //[GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.DeafenMembers)]
   [Remarks( "Server undeafens all mentioned users.")]
   public Task Undeafen(params IGuildUser[] users) =>
@@ -101,7 +101,7 @@ public partial class Admin : HouraiModule {
 
   [Log]
   [Command("move")]
-  [GuildRateLimit(1, 1)]
+  //[GuildRateLimit(1, 1)]
   [RequirePermission(GuildPermission.MoveMembers)]
   [Remarks("Moves all users from the `src` voice channel to `dst`.")]
   public async Task Move(IVoiceChannel src, IVoiceChannel dst) =>
@@ -109,8 +109,8 @@ public partial class Admin : HouraiModule {
 
   [Log]
   [Command("nickname")]
-  [UserRateLimit(1, 1)]
-  [ChannelRateLimit(4, 1)]
+  //[UserRateLimit(1, 1)]
+  //[ChannelRateLimit(4, 1)]
   [Remarks("Sets the nickname of all mentioned users, or nicknames yourself.\nIf no ``users`` is empty, nicknames the user who used the command"
   + "and requires the ``Change Nickname`` permission.\nIf at least one ``user`` is specified, nicknames the mentioned users and requires the "
   + "``Manage Nicknames`` permission.")]
@@ -135,8 +135,8 @@ public partial class Admin : HouraiModule {
   }
 
   [Command("modlog")]
-  [UserRateLimit(1, 1)]
-  [ChannelRateLimit(1, 1)]
+  //[UserRateLimit(1, 1)]
+  //[ChannelRateLimit(1, 1)]
   [Remarks("Gets the most recent changes on the server")]
   public Task Modlog() {
     try  {
@@ -156,7 +156,7 @@ public partial class Admin : HouraiModule {
   public class Server : HouraiModule {
 
     [Command("permissions")]
-    [UserRateLimit(1, 1)]
+    //[UserRateLimit(1, 1)]
     [Remarks("Shows the channel permissions for one user on the current channel.\nShows your permisisons if no other user is specified")]
     public async Task Permissions(IGuildUser user = null) {
       user = user ?? (Context.Message.Author as IGuildUser);

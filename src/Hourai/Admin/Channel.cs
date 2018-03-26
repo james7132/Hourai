@@ -15,7 +15,7 @@ public partial class Admin {
 
     [Log]
     [Command("create")]
-    [GuildRateLimit(1, 5)]
+    //[GuildRateLimit(1, 5)]
     [RequirePermission(GuildPermission.ManageChannels)]
     [Remarks("Creates a public channel with a specified name.")]
     public async Task Create(string name) {
@@ -25,7 +25,7 @@ public partial class Admin {
 
     [Log]
     [Command("delete")]
-    [GuildRateLimit(1, 5)]
+    //[GuildRateLimit(1, 5)]
     [RequirePermission(GuildPermission.ManageChannels)]
     [Remarks("Deletes all provided channels.")]
     public Task Delete(params IGuildChannel[] channels) =>
@@ -46,8 +46,8 @@ public partial class Admin {
     //}
 
     [Command("list")]
-    [UserRateLimit(1, 1)]
-    [ChannelRateLimit(1, 15)]
+    //[UserRateLimit(1, 1)]
+    //[ChannelRateLimit(1, 15)]
     [Remarks("Responds with a list of all text channels that the bot can see on this server.")]
     public async Task List() {
       var channels = Check.NotNull(Context.Guild).Channels.OfType<ITextChannel>();
@@ -55,8 +55,8 @@ public partial class Admin {
     }
 
     [Command("permissions")]
-    [UserRateLimit(1, 1)]
-    [ChannelRateLimit(1, 15)]
+    //[UserRateLimit(1, 1)]
+    //[ChannelRateLimit(1, 15)]
     [Remarks("Shows the channel permissions for one user on the current channel.\nShows your permisisons if no other user is specified")]
     public async Task Permissions(IGuildUser user = null) {
       user = user ?? (Context.User as IGuildUser);

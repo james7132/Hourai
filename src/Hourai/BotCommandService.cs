@@ -53,35 +53,22 @@ public class BotCommandService {
 
   public async Task HandleMessage(IMessage m) {
     var msg = m as SocketUserMessage;
-    if (msg == null ||
-        msg.Author.IsBot ||
+    if (msg == null || msg.Author.IsBot ||
         msg.Author?.Id == _client?.CurrentUser?.Id)
       return;
+
+    // Marks where the command begins
+    var argPos = 0;
+
+    // Determine if the msg is a command, based on if it starts with the defined command prefix
+    if (!msg.HasCharPrefix(_config.CommandPrefix, ref argPos)) return;
+
     using (var db = _services.GetService<BotDbContext>()) {
-      // Marks where the command begins
-      var argPos = 0;
-
-      Guild dbGuild = null;
-      char prefix = _config.CommandPrefix;
-      var guild = (m.Channel as IGuildChannel)?.Guild;
-      if(guild != null) {
-        dbGuild = await db.Guilds.Get(guild);
-        var prefixString = dbGuild.Prefix;
-        if(string.IsNullOrEmpty(prefixString)) {
-          prefix = _config.CommandPrefix;
-          dbGuild.Prefix = prefix.ToString();
-        } else {
-          prefix = prefixString[0];
-        }
-      }
-
-      // Determine if the msg is a command, based on if it starts with the defined command prefix
-      if (!msg.HasCharPrefix(prefix, ref argPos))
-        return;
-
       var user = await db.Users.Get(msg.Author);
-      if(user.IsBlacklisted)
-        return;
+      if(user.IsBlacklisted) return;
+
+      var guild = (m.Channel as IGuildChannel)?.Guild;
+      Guild dbGuild = (guild == null) ? null : await db.Guilds.Get(guild);
 
       // Execute the command. (result does not indicate a return value,
       // rather an object stating if the command executed succesfully)

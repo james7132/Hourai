@@ -15,7 +15,7 @@ public partial class Search {
     public WikiService Service { get; set; }
 
     [Command]
-    [ChannelRateLimit(2, 1)]
+    //[ChannelRateLimit(2, 1)]
     public async Task Search([Remainder] string query) {
       //TODO(james7132): generalize this
       var results = await Service.SearchAsync("https://en.touhouwiki.net", query);

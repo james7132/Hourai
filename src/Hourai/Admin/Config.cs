@@ -21,7 +21,7 @@ public partial class Admin {
 
     [Log]
     [Command("prefix")]
-    [GuildRateLimit(1, 60)]
+    //[GuildRateLimit(1, 60)]
     [Remarks("Sets the bot's command prefix for this server.")]
     [RequirePermission(GuildPermission.ManageGuild, Require.User | Require.BotOwnerOverride)]
     public async Task Prefix([Remainder] string prefix) {
@@ -61,7 +61,7 @@ public partial class Admin {
     }
 
     [Command("dump")]
-    [GuildRateLimit(1, 60)]
+    //[GuildRateLimit(1, 60)]
     public async Task Dump() =>
       await Context.Channel.SendMemoryFile($"{Context.Guild.Name}.yaml",
           (await ConfigService.GetConfig(Context.Guild)).ToString());

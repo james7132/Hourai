@@ -9,7 +9,7 @@ using Hourai.Preconditions;
 namespace Hourai.Feeds {
 
 [Log]
-[ChannelRateLimit(1, 1)]
+//[ChannelRateLimit(1, 1)]
 [RequireContext(ContextType.Guild)]
 [RequirePermission(GuildPermission.ManageGuild, Require.User | Require.BotOwnerOverride)]
 public partial class Feeds : HouraiModule {

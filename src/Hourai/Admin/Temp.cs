@@ -53,7 +53,7 @@ public partial class Admin {
 
     [Log]
     [Command("ban")]
-    [GuildRateLimit(1, 1)]
+    //[GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.BanMembers)]
     [Remarks("Temporarily bans user(s) from the server.")]
     public Task Ban(TimeSpan time, params IGuildUser[] users) {
@@ -71,7 +71,7 @@ public partial class Admin {
 
     [Log]
     [Command("mute")]
-    [GuildRateLimit(1, 1)]
+    //[GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.BanMembers)]
     [Remarks("Temporarily mute user(s).")]
     public Task Mute(TimeSpan time, params IGuildUser[] users) =>
@@ -79,7 +79,7 @@ public partial class Admin {
 
     [Log]
     [Command("unmute")]
-    [GuildRateLimit(1, 1)]
+    //[GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.BanMembers)]
     [Remarks("Temporarily unmute user(s).")]
     public Task Unmute(TimeSpan time, params IGuildUser[] users) =>
@@ -87,7 +87,7 @@ public partial class Admin {
 
     [Log]
     [Command("deafen")]
-    [GuildRateLimit(1, 1)]
+    //[GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.BanMembers)]
     [Remarks("Temporarily deafens user(s).")]
     public Task Deafen(TimeSpan time, params IGuildUser[] users) =>
@@ -95,7 +95,7 @@ public partial class Admin {
 
     [Log]
     [Command("undeafen")]
-    [GuildRateLimit(1, 1)]
+    //[GuildRateLimit(1, 1)]
     [RequirePermission(GuildPermission.BanMembers)]
     [Remarks("Temporarily undeafens user(s).")]
     public Task Undeafen(TimeSpan time, params IGuildUser[] users) =>
@@ -107,7 +107,7 @@ public partial class Admin {
     public class Roles : TempModule {
 
       [Command("add")]
-      [GuildRateLimit(1, 1)]
+      //[GuildRateLimit(1, 1)]
       public async Task Add(TimeSpan time, IRole role, params IGuildUser[] users) {
         await Db.Roles.Get(role);
         await TempAction("add role", time, users, user => new TempRole {
@@ -116,7 +116,7 @@ public partial class Admin {
       }
 
       [Command("remove")]
-      [GuildRateLimit(1, 1)]
+      //[GuildRateLimit(1, 1)]
       public async Task Remove(TimeSpan time, IRole role, params IGuildUser[] users) {
         await Db.Roles.Get(role);
         await TempAction("remove role", time, users, user => new TempRole {

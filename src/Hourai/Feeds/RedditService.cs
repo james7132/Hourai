@@ -92,11 +92,9 @@ public class RedditService {
   }
 
   async Task CheckReddits() {
-    _log.LogInformation("CHECKING SUBREDDITS");
     using (var context = _services.GetService<BotDbContext>()) {
       var subreddits = await context.Subreddits.Include(s => s.Channels).ToListAsync();
       await Task.WhenAll(subreddits.Select(async dbSubreddit => {
-        _log.LogInformation($"Checking {dbSubreddit.Name}");
         if (!dbSubreddit.Channels.Any()) {
           context.Subreddits.Remove(dbSubreddit);
           return;
@@ -127,7 +125,6 @@ public class RedditService {
         if (latestInPage > latest)
           dbSubreddit.LastPost = latestInPage;
       }));
-      _log.LogInformation("Done checking subreddits");
       await context.Save();
     }
   }
