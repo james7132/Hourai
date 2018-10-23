@@ -1,0 +1,3 @@
+
+def setup(bot):
+    pass

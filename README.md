@@ -1,17 +1,42 @@
-# Hourai - A Discord Bot
+# Goliath
 
-<p align="center">
-    <a href="https://opensource.org/licenses/mit-license.php">
-        <img src="https://img.shields.io/badge/license-MIT%20License-blue.svg" alt="MIT License">
-    </a>
-    <a href="https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF">
-        <img src="https://img.shields.io/badge/discord-add--to--server-738bd7.svg" alt="Add Hourai to your server!">
-    </a>
-</p>
+Goliath is the second iteration of the
+[Hourai](https://github.com/james7132/Hourai) Discord Bot, written in Python 3.7+.
+
+
+## Development/Self-Hosting
 
 ### Setup
-Simply click this [link](https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF) to add Houhai to your server (you need the Manage Server permission to do so)
 
-### Documentation
-For full documentation on how to use the bot see it's site
-[here](https://jamessliu.com/Hourai/).
+Requirements:
+
+ * Python 3.5.2+
+ * pip
+ * Google Protobuf Compiler
+
+```sh
+virtualenv -p python3 venv
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### Launching the Bot
+
+```sh
+source venv/bin/activate
+
+# Run the Protobuf compiler
+protoc **/*.proto --python_out=.
+
+# Run the bot
+python -m hourai
+```
+
+### Containerization
+```sh
+# Build the image
+docker build .
+
+# Run the image
+```

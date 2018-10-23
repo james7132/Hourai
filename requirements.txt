@@ -1,0 +1,4 @@
+git+https://github.com/Rapptz/discord.py@rewrite
+protobuf==3.6.1
+click==7.0
+lmdb==0.94

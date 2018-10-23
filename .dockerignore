@@ -1,0 +1,5 @@
+venv/
+proto/
+*.md
+Dockerfile
+*_test.py

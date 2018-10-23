@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package hourai.models;
+
+import "google/protobuf/timestamp.proto";
+
+message MemberId {
+  uint64 user_id = 1;
+  uint64 guild_id = 2;
+}
+
+message User {
+  uint64 id = 1;
+  repeated Username usernames = 2;
+}
+
+message Username {
+  string name = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
+message DiscordMessage {
+  uint64 id = 1;
+  uint64 user_id = 2;
+  uint64 channel_id = 3;
+  uint64 guild_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+  string content = 6;
+}
+
+message BotCommand {
+  // The original message that triggered the command
+  DiscordMessage message = 1;
+}
