@@ -1,15 +1,88 @@
+import aiohttp
+import asyncio
+import discord
 import logging
 import traceback
-from discord.ext import commands
+from functools import wraps
+from discord.ext.commands import Bot, Context, Cog, AutoShardedBot
+
+GUILD_TESTS = (lambda arg: arg.guild,
+               lambda arg: arg.channel.guild,
+               lambda arg: arg.message.channel.guild)
 
 log = logging.getLogger(__name__)
 
 
-class HouraiContext(commands.Context):
-    pass
+def _get_guild_id(arg):
+    if isinstance(arg, discord.Guild):
+        return arg.id
+    for test in GUILD_TESTS:
+        try:
+            return _get_guild_id(test(arg))
+        except:
+            pass
+    return None
 
 
-class Hourai(commands.AutoShardedBot):
+class BaseCog(Cog):
+
+    def __init__(self):
+        print("Cog {} loaded.".format(self.__class__.__name__))
+
+
+class GuildSpecificCog(BaseCog):
+
+    def __init__(self, *, guilds=set()):
+        super().__init__()
+        self.__allowed_guilds = set(g if isinstance(g, int) else g.id
+                                    for g in guilds)
+        print(self.__allowed_guilds)
+
+        for name, method in self.get_listeners():
+            method_name = method.__name__
+            print(method_name)
+            setattr(self, method_name, self.__check_guilds(method))
+
+    def cog_check(self, ctx):
+        return ctx.guild is not None and ctx.guild.id in self.__allowed_guilds
+
+    def __check_guilds(self, func):
+        @wraps(func)
+        async def _check_guilds(*args, **kwargs):
+            for arg in args:
+                guild_id = _get_guild_id(arg)
+                print(guild_id, self.__allowed_guilds)
+                if guild_id is not None and guild_id in self.__allowed_guilds:
+                    await func(*args, **kwargs)
+                    return
+            for kwarg in kwargs.items():
+                guild_id = __get_guild_id(kwarg)
+                print(guild_id, self.__allowed_guilds)
+                if guild_id is not None and guild_id in self.__allowed_guilds:
+                    await func(*args, **kwargs)
+                    return
+        return _check_guilds
+
+
+class HouraiContext(Context):
+
+    def __init__(self, session_class, **attrs):
+        super().__init__(**attrs)
+        self.session_class = session_class
+        self.session = None
+
+    def __enter__(self):
+        self.session = self.session_class()
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        if exc is None:
+            self.session.commit()
+        else:
+            self.session.rollback()
+
+
+class Hourai(AutoShardedBot):
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')
@@ -20,12 +93,15 @@ class Hourai(commands.AutoShardedBot):
         await self.process_commands(message)
 
     async def process_commands(self, message):
-        ctx = await self.get_context(message, cls=HouraiContext)
+        ctx = await self.get_context(message,
+                                     cls=HouraiContext,
+                                     session_class=self.session_class)
 
         if ctx.command is None:
             return
 
-        await self.invoke(ctx)
+        with ctx:
+            await self.invoke(ctx)
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.NoPrivateMessage):
@@ -38,17 +114,6 @@ class Hourai(commands.AutoShardedBot):
             trace_str = '\n'.join(trace)
             log.error(f'In {ctx.command.qualified_name}:\n{trace_str}\n')
 
-    async def _run_single_action(self, action):
-        # TODO(james7132): Change these to be immutable
-        # TODO(james7132): Log the action
-        try:
-            await action.commit(self)
-            action.proto.status.code = ActionStatusCode.SUCCESS
-        except Exception as e:
-            action.proto.status.code = ActionStatusCode.ERROR
-            action.proto.status.error_message = str(e)
-        return action
-
-    async def execute_actions(self, action):
-        tasks = (_run_single_action(action) for action in actions)
-        return await kasyncio.gather(*tasks)
+    async def execute_actions(self, actions):
+        tasks = (action.execute(self) for action in actions)
+        await kasyncio.gather(*tasks)

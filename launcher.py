@@ -1,8 +1,6 @@
 import click
 import os
 import logging
-import hourai.data
-import hourai.db as database
 from hourai import config
 from hourai.bot import Hourai
 
@@ -13,8 +11,6 @@ def main():
 @main.command()
 def run():
     bot = Hourai(command_prefix=config.COMMAND_PREFIX)
-
-    database.init()
 
     extensions = map(lambda x: config.EXTENSION_PREFIX + x, config.EXTENSIONS)
 
@@ -32,6 +28,15 @@ def run():
 @main.group()
 def db():
     pass
+
+@db.command()
+def create():
+    from hourai.db import models
+    from sqlalchemy import create_engine
+
+    engine = create_engine('sqlite:///hourai.sqlite')
+    models.Base.metadata.create_all(engine)
+
 
 @db.command()
 def backup():

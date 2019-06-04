@@ -5,11 +5,7 @@ import hourai.db as db
 from discord import Member, Role
 from discord.ext import commands
 from discord.ext.commands.cooldowns import BucketType
-from google.protobuf import text_format
-from hourai.data import action_util
-from hourai.data.admin_pb2 import *
-from hourai.data.actions_pb2 import *
-from hourai.data.models_pb2 import *
+from hourai.db import models
 
 DAYS = 24 * 60 * 60
 
@@ -97,20 +93,13 @@ class Admin(util.BaseCog):
     @commands.guild_only()
     @commands.is_owner()
     async def set(self, ctx, *, config: str):
-        with db.admin_configs.begin(write=True) as txn:
-            admin = AdminConfig()
-            text_format.Merge(config.strip(), admin)
-            txn.put(ctx.guild, admin)
-        await success()
+        raise NotImplementedError
 
-    @config.command()
+    @config.command(name='dump')
     @commands.guild_only()
     @commands.is_owner()
-    async def dump(self, ctx):
-        config = db.admin_configs.get(
-            ctx.guild) or _default_admin_config(ctx.guild)
-        text_proto = text_format.MessageToString(config, as_utf8=True)
-        await ctx.send(f'```{text_proto}```')
+    async def config_dump(self, ctx):
+        raise NotImplementedError
 
     @commands.command()
     @commands.guild_only()
@@ -151,7 +140,7 @@ class Admin(util.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    @commands.cooldown(5, 5, BucketType.user)
+    @commands.cooldown(5, 5, BucketType.guild)
     @util.action_command
     async def role_add(self, ctx, role: Role, *members: Member):
         """Adds a role to all listed users."""
@@ -179,22 +168,6 @@ class Admin(util.BaseCog):
             action.change_role.member_id.CopyFrom(id_proto)
             yield copy.deepcopy(action)
 
-    @role.command(name="toggle")
-    @commands.guild_only()
-    @commands.has_permissions(manage_roles=True)
-    @commands.bot_has_permissions(manage_roles=True)
-    @commands.cooldown(5, 5, BucketType.user)
-    @util.action_command
-    async def role_toggle(self, ctx, role: Role, *members: Member):
-        """Removes a role to all listed users."""
-        action = action_util.create_action(ctx)
-        action.change_role.role_id.append(role.id)
-        action.change_role.type = ChangeRole.TOGGLE
-        for member in members:
-            id_proto = _get_id_proto(member)
-            action.change_role.member_id.CopyFrom(id_proto)
-            yield copy.deepcopy(action)
-
     @role.command(name="get")
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
@@ -207,14 +180,14 @@ class Admin(util.BaseCog):
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
     @commands.cooldown(5, 5, BucketType.user)
-    async def role_get(self, ctx, role: Role, *embers: Member):
+    async def role_drop(self, ctx, role: Role, *embers: Member):
         """Removes a self-serve role to the caller.."""
         pass
 
     @role.command(name="list")
     @commands.guild_only()
     @commands.cooldown(5, 5, BucketType.user)
-    async def role_get(self, ctx, role: Role, *embers: Member):
+    async def role_list(self, ctx, role: Role, *embers: Member):
         """Lists all of the roles on the server."""
         await ctx.say(", ".joiin(f"`{role.name}`" for role in ctx.guild.roles))
 
