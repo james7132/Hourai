@@ -2,15 +2,26 @@ import aiohttp
 import asyncio
 import discord
 import logging
+import pkgutil
 import traceback
 from functools import wraps
-from discord.ext.commands import Bot, Context, Cog, AutoShardedBot
+from discord.ext import commands
 
 GUILD_TESTS = (lambda arg: arg.guild,
                lambda arg: arg.channel.guild,
                lambda arg: arg.message.channel.guild)
 
 log = logging.getLogger(__name__)
+
+
+def action_command(func):
+    @wraps(func)
+    async def command(*args, **kwargs):
+        async for action in func(*args, **kwargs):
+            result = await action.execute(ctx.bot)
+            # TODO(james7132): do something with this
+        # TODO(james7132): add response here
+    return command
 
 
 def _get_guild_id(arg):
@@ -24,10 +35,10 @@ def _get_guild_id(arg):
     return None
 
 
-class BaseCog(Cog):
+class BaseCog(commands.Cog):
 
     def __init__(self):
-        print("Cog {} loaded.".format(self.__class__.__name__))
+        log.info("Cog {} loaded.".format(self.__class__.__name__))
 
 
 class GuildSpecificCog(BaseCog):
@@ -64,15 +75,14 @@ class GuildSpecificCog(BaseCog):
         return _check_guilds
 
 
-class HouraiContext(Context):
+class HouraiContext(commands.Context):
 
-    def __init__(self, session_class, **attrs):
+    def __init__(self,  **attrs):
         super().__init__(**attrs)
-        self.session_class = session_class
         self.session = None
 
     def __enter__(self):
-        self.session = self.session_class()
+        self.session = self.bot.session_class()
         return self
 
     def __exit__(self, exc_type, exc, traceback):
@@ -81,8 +91,17 @@ class HouraiContext(Context):
         else:
             self.session.rollback()
 
+    @property
+    def logger(self):
+        return self.bot.logger
 
-class Hourai(AutoShardedBot):
+
+class Hourai(commands.AutoShardedBot):
+
+    def __init__(self, *args, **kwargs):
+        self.logger = log
+        self.session_class = kwargs.pop('session_class', None)
+        super().__init__(*args, **kwargs)
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')
@@ -92,16 +111,23 @@ class Hourai(AutoShardedBot):
             return
         await self.process_commands(message)
 
-    async def process_commands(self, message):
-        ctx = await self.get_context(message,
-                                     cls=HouraiContext,
-                                     session_class=self.session_class)
+    def get_context(self, msg, *args, **kwargs):
+        return super().get_context(msg, cls=HouraiContext, **kwargs)
+
+    async def process_commands(self, msg):
+        ctx = await self.get_context(msg)
 
         if ctx.command is None:
             return
 
         with ctx:
             await self.invoke(ctx)
+
+    async def on_guild_available(self, guild):
+        self.logger.info(f'Guild available: {guild.name}')
+
+    async def on_guild_unavailable(self, guild):
+        self.logger.info(f'Guild unavailable: {guild.name}')
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.NoPrivateMessage):
@@ -117,3 +143,21 @@ class Hourai(AutoShardedBot):
     async def execute_actions(self, actions):
         tasks = (action.execute(self) for action in actions)
         await kasyncio.gather(*tasks)
+
+    def load_extension(self, module):
+        try:
+            super().load_extension(module)
+            self.logger.info(f'Loaded extension: {module}')
+        except:
+            self.logger.exception(f'Failed to load extension: {module}')
+
+    def load_all_extensions(self, base_module):
+        modules = pkgutil.walk_packages(base_module.__path__,
+                                        base_module.__name__ + '.')
+        modules = filter(lambda mod: not mod.ispkg, modules)
+        for module in modules:
+
+            self.load_extension(module.name)
+
+    def get_all_matching_members(self, user):
+       return (m for m in self.get_all_members() if m.id == user.id)

@@ -1,49 +1,47 @@
-import hourai.util as util
+import hourai.utils as utils
 import hourai.config as config
 import sys
 import traceback
 import copy
+from hourai import bot, extensions
 from discord.ext import commands
 
 
-class Owner(util.BaseCog):
+class Owner(bot.BaseCog):
 
-    def __init__(self, bot):
-        super().__init__(bot)
+    async def cog_check(self, ctx):
+        return await ctx.bot.is_owner(ctx.author)
 
-    async def __local_check(self, ctx):
-        return await self.bot.is_owner(ctx.author)
-
-    @commands.command(hidden=True)
+    @commands.command()
     async def kill(self, ctx):
         """Kills the bot. """
-        await util.success(ctx)
-        sys.exit(0)
+        await utils.success(ctx)
+        await ctx.bot.logout()
 
-    @commands.command(hidden=True)
+    @commands.command()
     async def reload(self, ctx,  *, extension: str):
         """Reloads the specified bot module."""
-        extension = config.EXTENSION_PREFIX + extension
+        extension = f'{extensions.__name__}.{extension}'
         try:
-            self.bot.unload_extension(extension)
-            self.bot.load_extension(extension)
+            ctx.bot.unload_extension(extension)
+            ctx.bot.load_extension(extension)
         except Exception as e:
             trace = traceback.format_tb(error.original.__traceback__)
             await ctx.send(f'**ERROR**: {type(e).__name__} - {e}\n```{trace}```)')
         else:
-            await util.success(ctx)
+            await utils.success(ctx)
 
-    @commands.command(hidden=True)
+    @commands.command()
     async def repeat(self, ctx, times: int, *, command):
         """Repeats a command a specified number of times."""
         msg = copy.copy(ctx.message)
         msg.content = command
 
-        new_ctx = await self.get_context(msg, cls=context.Context)
+        new_ctx = await ctx.bot.get_context(msg, cls=context.Context)
         new_ctx.db = ctx.db
 
         for i in range(times):
             await new_ctx.reinvoke()
 
 def setup(bot):
-    bot.add_cog(Owner(bot))
+    bot.add_cog(Owner())
