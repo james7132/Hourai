@@ -1,39 +1,37 @@
 import click
 import os
 import logging
-from hourai import config
+from hourai import config, extensions
 from hourai.bot import Hourai
+from hourai.db import models
+from sqlalchemy import create_engine, orm
+
+log = logging.getLogger(__name__)
+
 
 @click.group()
 def main():
     pass
 
+
 @main.command()
 def run():
-    bot = Hourai(command_prefix=config.COMMAND_PREFIX)
+    engine = create_engine('sqlite:///hourai.sqlite')
+    session_class = orm.sessionmaker(bind=engine)
+    log.info(session_class)
+    bot = Hourai(command_prefix=config.COMMAND_PREFIX,
+                 session_class=session_class)
+    bot.load_all_extensions(extensions)
+    bot.run(config.BOT_TOKEN, bot=True, reconnect=True)
 
-    extensions = map(lambda x: config.EXTENSION_PREFIX + x, config.EXTENSIONS)
-
-    for extension in extensions:
-        try:
-            bot.load_extension(extension)
-            logging.info(f'Loaded extension: {extension}')
-        except:
-            logging.exception(f'Failed to load extension: {extension}')
-
-    bot.run(config.BOT_TOKEN,
-            bot=True,
-            reconnect=True)
 
 @main.group()
 def db():
     pass
 
+
 @db.command()
 def create():
-    from hourai.db import models
-    from sqlalchemy import create_engine
-
     engine = create_engine('sqlite:///hourai.sqlite')
     models.Base.metadata.create_all(engine)
 
@@ -41,6 +39,7 @@ def create():
 @db.command()
 def backup():
     pass
+
 
 if __name__ == '__main__':
     main()
