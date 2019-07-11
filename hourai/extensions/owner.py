@@ -12,11 +12,11 @@ class Owner(bot.BaseCog):
     async def cog_check(self, ctx):
         return await ctx.bot.is_owner(ctx.author)
 
-    @commands.command()
-    async def kill(self, ctx):
-        """Kills the bot. """
-        await utils.success(ctx)
-        await ctx.bot.logout()
+    # @commands.command()
+    # async def kill(self, ctx):
+        # """Kills the bot. """
+        # await utils.success(ctx)
+        # await ctx.bot.logout()
 
     @commands.command()
     async def reload(self, ctx,  *, extension: str):
@@ -24,10 +24,13 @@ class Owner(bot.BaseCog):
         extension = f'{extensions.__name__}.{extension}'
         try:
             ctx.bot.unload_extension(extension)
+        except Exception as e:
+            pass
+        try:
             ctx.bot.load_extension(extension)
         except Exception as e:
-            trace = traceback.format_tb(error.original.__traceback__)
-            await ctx.send(f'**ERROR**: {type(e).__name__} - {e}\n```{trace}```)')
+            trace = traceback.format_exc()
+            await ctx.send(f'**ERROR**: {type(e).__name__} - {e}\n```{trace}```')
         else:
             await utils.success(ctx)
 
