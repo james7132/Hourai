@@ -36,113 +36,11 @@ class ActionState(enum.Enum):
     FAILURE = enum.auto()
 
 
-class DiscordResourceBase():
-    pass
-
-
-def DiscordResourceMixin(resource_cls, *args, **kwargs):
-
-    class Mixin(DiscordResourceBase):
-
-        _resource_class = resource_cls
-
-        id = Column(BigInteger, *args, primary_key=True, autoincrement=False,
-                    **kwargs)
-
-        @abstractmethod
-        def get_resource(self, bot):
-            pass
-
-        @classmethod
-        def create_from_resource(cls, resource, *args, **kwargs):
-            assert isinstance(resource, resource_cls)
-            kwargs.update({'id': resource.id})
-            return cls(*args, **kwargs)
-
-        @classmethod
-        def query_from_resource(cls, session, resource):
-            assert isinstance(resource, resource_cls)
-            return session.query(cls).get(resource.id)
-
-        @classmethod
-        def query_all_from_resource(cls, session, *resources):
-            assert all(isinstance(r, resource_cls) for r in resources)
-            resource_map = {r.id: r for r in resources}
-            int_ids = set(resource_map.keys())
-            results = session.query(cls).filter(cls.id.in_(int_ids)).all()
-            results = {val.id: val for val in results}
-            return {k: (resource_map[k], results.get(k)) for k in int_ids}
-
-    Mixin.__name__ = 'GuildResource' + resource_cls.__name__ + 'Mixin'
-    return Mixin
-
-
-def GuildResourceMixin(resource_cls, *args, id_required=True, **kwargs):
-
-    class Mixin(DiscordResourceMixin(resource_cls, *args, **kwargs)):
-
-        @declared_attr
-        def guild_id(cls):
-            return Column(BigInteger, ForeignKey('guilds.id'),
-                          nullable=not id_required)
-
-        def get_guild(self, bot):
-            return bot.get_guild(self.guild_id)
-
-        def get_resource(self, bot):
-            guild = self.get_guild(bot)
-            return self._get_resource_impl(bot, guild)
-
-        @abstractmethod
-        def _get_resource_impl(self, bot, guild):
-            pass
-
-        @classmethod
-        def from_resource(cls, resource, *args, **kwargs):
-            kwargs['id'] = resource.id
-            if hasattr('guild', resource):
-                kwargs['guild_id'] = resource.guild.id
-            return cls(*args, **kwargs)
-
-    Mixin.__name__ = 'GuildResource' + resource_cls.__name__ + 'Mixin'
-    return Mixin
-
-
-class Guild(Base, DiscordResourceMixin(discord.Guild)):
-    __tablename__ = 'guilds'
-
-    def get_resource(self, bot):
-        return bot.get_guild(self.id)
-
-
-class Role(Base, GuildResourceMixin(discord.Role)):
-    __tablename__ = 'roles'
-
-    self_serve = Column(Boolean)
-
-    def _get_resource_impl(self, bot, guild):
-        return guild.get_role(self.id)
-
-
-class Channel(Base, GuildResourceMixin(discord.TextChannel, id_required=False)):
-    __tablename__ = 'channels'
-
-    feeds = relationship("Feeds", secondary=feed_channels_table,
-                         back_populates="channels")
-
-    def get_resource(self, bot):
-        return bot.get_channel(self.id)
-
-
-class User(Base, DiscordResourceMixin(discord.User)):
-    __tablename__ = 'users'
-
 
 class Username(Base):
     __tablename__ = 'usernames'
 
-    user_id = Column(BigInteger, ForeignKey('users.id'),
-                     primary_key=True, autoincrement=False)
+    user_id = Column(BigInteger, primary_key=True, autoincrement=False)
     username = Column(String(255), primary_key=True)
     timestamp = Column(DateTime, nullable=False)
 
@@ -156,12 +54,30 @@ class Username(Base):
         return cls(*args, **kwargs)
 
 
+class GuildValidationConfig(Base):
+    __tablename__ = 'guild_validation_configs'
+
+    guild_id = Column(BigInteger, primary_key=True, autoincrement=False)
+    validation_role_id = Column(BigInteger, nullable=False)
+    validation_channel_id = Column(BigInteger, nullable=False)
+
+
 class CustomCommand(Base):
     __tablename__ = 'commands'
 
     guild_id = Column(BigInteger, primary_key=True, autoincrement=False)
     name = Column(String(2000), primary_key=True)
     content = Column(String(2000))
+
+
+class Channel(Base):
+    __tablename__ = 'channels'
+
+    id = Column(BigInteger, primary_key=True, autoincrement=False)
+    guild_id = Column(BigInteger, nullable=True)
+
+    feeds = relationship("Feed", secondary=feed_channels_table,
+                         back_populates="channels")
 
 
 class Feed(Base):
@@ -172,8 +88,8 @@ class Feed(Base):
     _type = Column('type', String(255), nullable=False)
     source = Column(String(8192), nullable=False)
 
-    channels = relationship("Channels", secondary=feed_channels_table,
-                            back_populates="channels")
+    channels = relationship("Channel", secondary=feed_channels_table,
+                            back_populates="feeds")
 
     @property
     def type(self):
@@ -193,10 +109,8 @@ class ActionSource(Base):
     __tablename__ = 'action_source'
 
     id = Column(BigInteger, primary_key=True)
-    authorizer_id = Column(BigInteger, ForeignKey('users.id'), nullable=False)
+    authorizer_id = Column(BigInteger, nullable=False)
     timestamp = Column(DateTime, nullable=False)
-
-    authorizer = relationship("Users")
 
     message_id = Column(BigInteger)
     message_content = Column(String(2000))
@@ -208,18 +122,13 @@ class Action(Base):
     id = Column(BigInteger, primary_key=True)
     type = Column(String(255), nullable=False)
     state = Column(Enum(ActionState), nullable=False)
-    guild_id = Column(BigInteger, ForeignKey('guilds.id'))
-    user_id = Column(BigInteger, ForeignKey('users.id'))
-    channel_id = Column(BigInteger, ForeignKey('channels.id'))
-    role_id = Column(BigInteger, ForeignKey('roles.id'))
+    guild_id = Column(BigInteger)
+    user_id = Column(BigInteger)
+    channel_id = Column(BigInteger)
+    role_id = Column(BigInteger)
     start_timestamp = Column(DateTime)
     end_timestamp = Column(DateTime)
     action_metadata = Column(LargeBinary)
-
-    guild = relationship('Guild')
-    user = relationship('User')
-    channel = relationship('Channel')
-    role = relationship('Role')
 
     __mapper_args__ = {
         'polymorphic_on': type,
@@ -314,20 +223,3 @@ class RemoveRoleAction(Action):
 
     async def apply(self, bot):
         await self.get_member().remove_roles(self.get_role())
-
-
-def __create_resource_mapping():
-    def get_all_subclasses(cls):
-        subclasses = set(cls.__subclasses__())
-        all_subclasses = set(subclasses)
-        for subclass in subclasses:
-            all_subclasses.update(get_all_subclasses(subclass))
-        return all_subclasses
-    resource_subclasses = get_all_subclasses(DiscordResourceBase)
-    base_subclasses = get_all_subclasses(Base)
-    concrete_subclasses = resource_subclasses & base_subclasses
-    return {cls._resource_class: cls for cls in concrete_subclasses}
-
-
-RESOURCE_CLASS_MAP = __create_resource_mapping()
-print(RESOURCE_CLASS_MAP)

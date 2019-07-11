@@ -22,6 +22,8 @@ def run():
     bot = Hourai(command_prefix=config.COMMAND_PREFIX,
                  session_class=session_class)
     bot.load_all_extensions(extensions)
+    # TODO(james7132): Remove this when possible
+    bot.remove_command('help')
     bot.run(config.BOT_TOKEN, bot=True, reconnect=True)
 
 

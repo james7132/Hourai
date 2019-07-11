@@ -79,13 +79,14 @@ class HouraiContext(commands.Context):
 
     def __init__(self,  **attrs):
         super().__init__(**attrs)
-        self.session = None
 
     def __enter__(self):
-        self.session = self.bot.session_class()
+        self.session = self.bot.create_db_session()
         return self
 
     def __exit__(self, exc_type, exc, traceback):
+        if self.session is None:
+            return
         if exc is None:
             self.session.commit()
         else:
@@ -102,6 +103,9 @@ class Hourai(commands.AutoShardedBot):
         self.logger = log
         self.session_class = kwargs.pop('session_class', None)
         super().__init__(*args, **kwargs)
+
+    def create_db_session(self):
+        return self.session_class()
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')
