@@ -6,6 +6,7 @@ import pkgutil
 import traceback
 from functools import wraps
 from discord.ext import commands
+from hourai.db import proxies
 
 GUILD_TESTS = (lambda arg: arg.guild,
                lambda arg: arg.channel.guild,
@@ -96,6 +97,8 @@ class HouraiContext(commands.Context):
     def logger(self):
         return self.bot.logger
 
+    def get_guild_proxy(self, guild=None):
+        return proxies.GuildProxy(guild or self.guild, self.session)
 
 class Hourai(commands.AutoShardedBot):
 

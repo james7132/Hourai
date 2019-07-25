@@ -47,3 +47,6 @@ def ellipsize(val: str, max_length=2000, keep_end=False):
 
 code_list = _list('code_list', ', ', transform=code)
 vertical_list = _list('vertical_list', '\n')
+
+def bullet_list(seq, bullet='- ', indent=3):
+    return vertical_list(seq, transform=lambda s: indent * ' ' + bullet + s)

@@ -2,7 +2,7 @@ import discord
 import pint
 import random
 import typing
-from hourai import bot
+from hourai import bot, utils
 from hourai.utils import format
 from discord.ext import commands
 
@@ -53,32 +53,15 @@ class Standard(bot.BaseCog):
     @commands.command()
     @commands.guild_only()
     async def pingmod(self, ctx):
+        """
+        Pings a moderator on the server. Mod roles begin with "mod" or
+        "admin" or have the administrator permission.
+        """
         if not ctx.guild.chunked:
             await ctx.bot.request_offline_members(ctx.guild)
+        await ctx.send(utils.mention_random_online_moderator(ctx.guild))
 
-        owner = ctx.guild.owner
-
-        def is_mod_role(role):
-            role_name = role.name.lower()
-            return (role.permissions.administrator or
-                    role_name.startswith('mod') or
-                    role_name.startswith('admin'))
-
-        roles = set(role.id for role in ctx.guild.roles if is_mod_role(role))
-
-        def is_online_mod(self, member):
-            return (member.status == discord.Status.online and
-                    (len(roles.intersection(m.roles)) > 0 or owner == member))
-
-        matching_members = [m for m in ctx.guild.members if is_online_mod(m)]
-        if len(matching_members) > 0:
-            response = random.choice(matching_members).mention
-        else:
-            response = f'{owner.mention}, no mods are online!'
-
-        await ctx.say(response)
-
-    @command.commands()
+    @commands.command()
     async def whois(self, ctx, user: typing.Union[discord.Member, discord.User]):
         lines = []
         def add_field(field_name, value):

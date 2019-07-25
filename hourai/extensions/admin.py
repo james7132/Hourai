@@ -11,39 +11,6 @@ from hourai.db import models
 DAYS = 24 * 60 * 60
 
 
-def _get_id_proto(member, ctx):
-    if isinstance(member, int):
-        guild_id = ctx.channel.guild.id
-        return MemberId(user_id=id, guild_id=guild_id)
-    elif isinstance(member, Member):
-        return action_util.id_to_proto(member)
-    return None
-
-
-def _get_admin_config(guild):
-    config = db.admin_configs.get(guild)
-    if config is not None:
-        return config
-
-    config = AdminConfig(guild_id=guild.id)
-
-    warn = config.ladder.rung.add()
-    warn.deescalation_period.FromSeconds(90 * DAYS)
-    warn.action.send_message.content = 'This is a formal warning from the mods. Please correct your behavior'
-    warn.action.context.description = "Warning"
-
-    kick = config.ladder.rung.add()
-    kick.deescalation_period.FromSeconds(90 * DAYS)
-    kick.action.kick_member.SetInParent()
-    kick.action.context.description = "Kick"
-
-    ban = config.ladder.rung.add()
-    ban.action.ban_member.SetInParent()
-    ban.action.context.description = "Ban"
-
-    return config
-
-
 def _get_moderated_user(member):
     moderated_user = db.moderated_user.get(member)
     if moderated_user is not None:
