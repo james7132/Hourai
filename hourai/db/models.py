@@ -61,6 +61,28 @@ class GuildValidationConfig(Base):
     validation_role_id = Column(BigInteger, nullable=False)
     validation_channel_id = Column(BigInteger, nullable=False)
 
+    @property
+    def is_valid(self):
+        components = (self.validation_role_id, self.validation_channel_id)
+        return all(x is not None for x in components)
+
+
+class LoggingConfig(Base):
+    __tablename__ = 'guild_logging_configs'
+
+    guild_id = Column(BigInteger, primary_key=True, autoincrement=False)
+    modlog_channel_id = Column(BigInteger)
+    log_deleted_messages = Column(Boolean, nullable=False, default=False)
+    log_edited_messages = Column(Boolean, nullable=False, default=False)
+
+
+class Ban(Base):
+    __tablename__ = 'bans'
+
+    guild_id = Column(BigInteger, primary_key=True, autoincrement=False)
+    user_id = Column(BigInteger, primary_key=True, autoincrement=False)
+    reason = Column(String(2000))
+
 
 class CustomCommand(Base):
     __tablename__ = 'commands'
