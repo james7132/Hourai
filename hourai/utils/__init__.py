@@ -1,10 +1,20 @@
+import asyncio
 import discord
 import inspect
 import time
+import random
 import functools
 from hourai import config
 
 MODERATOR_PREFIX = 'mod'
+
+async def broadcast(channels, *args, **kwargs):
+    """
+    Broadcasts a message to multiple channels at once.
+    Channels must be an iterable collection of MessageChannels.
+    """
+    tasks = [ch.send(*args, **kwargs) for ch in channels if ch is not None]
+    return await asyncio.gather(*tasks)
 
 async def success(ctx, suffix=None):
     if suffix:
@@ -84,7 +94,7 @@ def find_moderator_roles(guild):
 
 def find_moderators(guild):
     """ Finds all of the moderators on a server. Returns a generator of members. """
-    return all_with_roles(find_moderator_roles(guild), guild.members)
+    return all_with_roles(guild.members, find_moderator_roles(guild))
 
 def find_bots(guild):
     """ Finds all of the bots on a server. Returns a generator of members. """
@@ -92,7 +102,7 @@ def find_bots(guild):
 
 def find_online_moderators(guild):
     """ Finds all of the online moderators on a server. Returns a generator of members. """
-    return filter(is_online, guild.members)
+    return filter(is_online, find_moderators(guild))
 
 def mention_random_online_mod(guild):
     """
@@ -100,7 +110,7 @@ def mention_random_online_mod(guild):
     If no moderator is online, returns a ping to the server owner.
     """
     moderators = list(find_online_moderators(guild))
-    if len(online_mods) > 0:
+    if len(moderators) > 0:
         return random.choice(moderators).mention
     else:
         return f'{ctx.guild.owner.mention}, no mods are online!'

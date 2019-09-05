@@ -7,6 +7,7 @@ from discord.ext import tasks, commands
 from datetime import datetime, timedelta
 from hourai import bot, db, utils
 from hourai.db import models, proxies
+from hourai.utils import format
 
 PURGE_LOOKBACK = timedelta(hours=6)
 PURGE_DM = """
@@ -167,7 +168,7 @@ class Validation(bot.BaseCog):
         self.purge_unverified.cancel()
         self.reload_bans.cancel()
 
-    @tasks.loop(seconds=60*60)
+    @tasks.loop(minutes=5)
     async def reload_bans(self):
         print('RELOADING BANS')
         await self._update_ban_list()
@@ -177,26 +178,32 @@ class Validation(bot.BaseCog):
         await self.bot.wait_until_ready()
 
     @tasks.loop(seconds=5.0)
-    @utils.log_time
     async def purge_unverified(self):
-        print('PURGING UNVERIFIED USERS')
-        pass
         session = self.bot.create_db_session()
-        configs = session.query(models.GuildValidationConfig).all()
+        configs = session.query(models.GuildValidationConfig) \
+                        .filter_by(is_propogated=True) \
+                        .all()
         guilds = ((conf, self.bot.get_guild(conf.guild_id)) for conf in configs)
         check_time = datetime.utcnow() - PURGE_LOOKBACK
         def _is_kickable(member):
-            return member.joined_at is not None and member.joined_at <= check_time
+            # Does not kick
+            #  * Bots
+            #  * Nitro Boosters
+            #  * Verified users
+            #  * Unverified users who have joined less than 6 hours ago.
+            checks = (not member.bot,
+                      member.premium_since is None,
+                      member.joined_at is not None,
+                      member.joined_at <= check_time)
+            return all(checks)
         async def _kick_member(member):
-            print('Purged {} from {} for not being verified in time..'.format(
-                  utils.pretty_print(member), utils.pretty_print(member.guild)))
-            pass
             try:
                 await utils.send_dm(member, PURGE_DM.format(member.guild.name))
             except:
                 pass
             await member.kick(reason='Unverified in sufficient time.')
-            # TODO(james7132): Add modlog logging here.
+            self.bot.logger.info('Purged {} from {} for not being verified in time.'.format(
+                  utils.pretty_print(member), utils.pretty_print(member.guild)))
         tasks = list()
         for conf, guild in guilds:
             role = guild.get_role(conf.validation_role_id)
@@ -204,10 +211,9 @@ class Validation(bot.BaseCog):
                 continue
             if not guild.chunked:
                 await self.bot.request_offline_members(guild)
-            unvalidated_members = utils.all_without_roles(tuple(role), guild.members)
+            unvalidated_members = utils.all_without_roles(guild.members, (role,))
             kickable_members = filter(_is_kickable, unvalidated_members)
             tasks.extend(_kick_member(member) for member in kickable_members)
-        print('Total tasks: ' + len(tasks))
         await asyncio.gather(*tasks)
 
     @purge_unverified.before_loop
@@ -217,20 +223,21 @@ class Validation(bot.BaseCog):
     async def _update_ban_list(self):
         session = self.bot.create_db_session()
         async def _get_bans(guild):
-            if guild.me.guild_permissions.ban_members:
-                try:
-                    return [models.Ban(guild_id=guild.id, user_id=b.user.id,
-                                                reason=b.reason)
-                                    for b in await guild.bans()]
-                except discord.Forbidden as e:
-                    print('Failed to fetch {}\'s bans'.format(guild.name))
-                    return list()
-            return list()
+            if not guild.me.guild_permissions.ban_members:
+                return list()
+            try:
+                return [models.Ban(guild_id=guild.id, user_id=b.user.id,
+                                            reason=b.reason)
+                                for b in await guild.bans()]
+            except discord.Forbidden as e:
+                print('Failed to fetch {}\'s bans'.format(guild.name))
+                return list()
         bans = await asyncio.gather(*[_get_bans(g) for g in self.bot.guilds])
         session.query(models.Ban).delete()
         for ban_list in bans:
             session.add_all(ban_list)
         session.commit()
+        self.bot.logger.info('Updated ban list')
 
     @commands.command(name="setmodlog")
     @commands.guild_only()
@@ -270,20 +277,38 @@ class Validation(bot.BaseCog):
         if not ctx.guild.chunked:
             await ctx.bot.request_offline_members(ctx.guild)
         role = ctx.guild.get_role(config.validation_role_id)
-        member_count = len(ctx.guild.members)
-        total_processed = 0
-        async def add_role(member, role):
-            try:
-                reasons = list(_get_validation_reasons(member))
-                if len(reasons) < 0:
-                    await member.add_roles(role)
-            except discord.errors.Forbidden:
-                pass
-        for chunk in _chunk_iter(ctx.guild.members, BATCH_SIZE):
-            await asyncio.gather(*[add_role(mem, role) for mem in chunk])
-            total_processed += len(chunk)
-            await msg.edit(content=f'Propagation Ongoing ({total_processed}/{member_count})...')
-        await msg.edit(content=f'Propagation conplete!')
+        if role is None:
+            await ctx.send("Verification role not found.")
+            config.is_propogated = False
+            session.add(config)
+            session.commit()
+            return
+        while True:
+            filtered_members = [m for m in guild.members if role not in m.roles]
+            member_count = len(filtered_members)
+            total_processed = 0
+            async def add_role(member, role):
+                if role in member.roles:
+                    return
+                try:
+                    reasons = list(_get_validation_reasons(member))
+                    if len(reasons) < 0:
+                        await member.add_roles(role)
+                except discord.errors.Forbidden:
+                    pass
+            for chunk in _chunk_iter(ctx.guild.members, BATCH_SIZE):
+                await asyncio.gather(*[add_role(mem, role) for mem in chunk])
+                total_processed += len(chunk)
+                await msg.edit(content=f'Propagation Ongoing ({total_processed}/{member_count})...')
+            await msg.edit(content=f'Propagation conplete!')
+
+            members_with_role = [m for m in guild.members if role in m.roles]
+            if float(len(members_with_role)) / float(member_count) > 0.99:
+                config.is_propogated = True
+                session.add(config)
+                session.commit()
+                return
+
 
     @validation.command(name="lockdown")
     @commands.bot_has_permissions(manage_channels=True)
@@ -327,24 +352,25 @@ class Validation(bot.BaseCog):
             return
         reasons = list(_get_rejection_reasons(self.bot, member))
         if len(reasons) > 0:
-            response = ("{}. User {} ({}) requires manual verification. \n"
-                        "Rejected for the following reasons: \n{}")
-            response.format(utils.mention_random_online_moderator(member.guild),
-                            member.name, member.id, format.bullet_list(reasons))
-            await proxy.send_modlog_message(response)
+            response = (f"{utils.mention_random_online_mod(member.guild)}. "
+                        f"User {member.name} ({member.id}) requires manual verification. \n"
+                        f"Rejected for the following reasons: "
+                        f"\n{format.bullet_list(reasons)}")
+            await proxy.send_modlog_message(content=response)
             # print('{} ({}) rejected!'.format(member.name.encode('utf-8'), member.id))
             # for reason in reasons:
                 # print('  Rejected for: {}'.format(reason))
             return
-        print('{} ({}) verified!'.format(member.name.encode('utf-8'), member.id))
-        role = member.guild.get_role(config.validation_role_id)
+        role = member.guild.get_role(proxy.validation_config.validation_role_id)
         await member.add_roles(role)
-        await proxy.send_modlog_message("Verified user: {} ({}).")
+        await proxy.send_modlog_message(content="Verified user: {} ({}).".format(
+            member.mention, member.id))
+        print('{} ({}) verified!'.format(member.name.encode('utf-8'), member.id))
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
         session = self.bot.create_db_session()
-        ban = models.Ban(guild_id=guild.id, user_id=b.user.id)
+        ban = models.Ban(guild_id=guild.id, user_id=user.id)
         try:
             ban_info = await guild.fetch_ban(user)
             ban.reason = ban_info.reason
@@ -368,7 +394,7 @@ class Validation(bot.BaseCog):
         contents = None
         if ban_info.reason is None:
             contents = ("User {} ({}) has been banned from another server.".format(
-                user.mention, user.id)
+                user.mention, user.id))
         else:
             contents = ("User {} ({}) has been banned from another server for "
                         "the following reason: `{}`").format(

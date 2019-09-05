@@ -1,6 +1,13 @@
 # Generated Protobuf Python files
 *_pb2.py
 
+# Private Bot Extensions
+hourai/extensions/private/
+
+# Private Bot Configurations
+config/config_prod.env
+config/config_dev.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

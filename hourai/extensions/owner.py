@@ -18,6 +18,18 @@ class Owner(bot.BaseCog):
         # await utils.success(ctx)
         # await ctx.bot.logout()
 
+    @commands.group()
+    async def s(self, ctx):
+        pass
+
+    @s.command(name='info')
+    async def server_search(self, ctx, id: int):
+        guild = ctx.bot.get_guild(id)
+        if guild is None:
+            await ctx.send('Server for ID {} not found.'.format(id))
+            return
+        await ctx.send('{} ({})'.format(guild.name, guild.id))
+
     @commands.command()
     async def reload(self, ctx,  *, extension: str):
         """Reloads the specified bot module."""
