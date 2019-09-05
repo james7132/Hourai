@@ -3,9 +3,10 @@ import discord
 import enum
 import inspect
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from abc import abstractmethod
-from sqlalchemy import Column, LargeBinary, BigInteger, Boolean, DateTime, Enum, String, UniqueConstraint
+from sqlalchemy import types
+from sqlalchemy import Column, LargeBinary, BigInteger, Boolean, Enum, String, UniqueConstraint, Integer
 from sqlalchemy.schema import Table, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
@@ -20,6 +21,17 @@ feed_channels_table = Table('feed_channels', Base.metadata,
                             Column('channel_id', BigInteger,
                                    ForeignKey('channels.id')))
 
+class UnixTimestamp(types.TypeDecorator):
+    impl = BigInteger
+
+    def __init__(self):
+        types.TypeDecorator.__init__(self)
+
+    def process_bind_param(self, value, dialect):
+        return int(value.replace(tzinfo=timezone.utc).timestamp() * 1000)
+
+    def process_result_value(self, value, dialect):
+        return datetime.utcfromtimestamp(value / 1000)
 
 @enum.unique
 class FeedType(enum.Enum):
@@ -42,7 +54,7 @@ class Username(Base):
 
     user_id = Column(BigInteger, primary_key=True, autoincrement=False)
     username = Column(String(255), primary_key=True)
-    timestamp = Column(DateTime, nullable=False)
+    timestamp = Column(UnixTimestamp, nullable=False)
 
     @classmethod
     def from_resource(cls, resource, *args, **kwargs):
@@ -60,6 +72,7 @@ class GuildValidationConfig(Base):
     guild_id = Column(BigInteger, primary_key=True, autoincrement=False)
     validation_role_id = Column(BigInteger, nullable=False)
     validation_channel_id = Column(BigInteger, nullable=False)
+    is_propogated = Column(Boolean, nullable=False, default=False)
 
     @property
     def is_valid(self):
@@ -101,14 +114,18 @@ class Channel(Base):
     feeds = relationship("Feed", secondary=feed_channels_table,
                          back_populates="channels")
 
+    def get_resource(self, bot):
+        return bot.get_channel(self.id)
 
 class Feed(Base):
     __tablename__ = 'feeds'
     __table_args__ = (UniqueConstraint('type', 'source'),)
 
-    id = Column(BigInteger, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     _type = Column('type', String(255), nullable=False)
-    source = Column(String(8192), nullable=False)
+    source = Column(String(8192), nullable=False
+            )
+    last_updated = Column(UnixTimestamp, nullable=False)
 
     channels = relationship("Channel", secondary=feed_channels_table,
                             back_populates="feeds")
@@ -130,9 +147,9 @@ class Feed(Base):
 class ActionSource(Base):
     __tablename__ = 'action_source'
 
-    id = Column(BigInteger, primary_key=True)
+    id = Column(Integer, primary_key=True)
     authorizer_id = Column(BigInteger, nullable=False)
-    timestamp = Column(DateTime, nullable=False)
+    timestamp = Column(UnixTimestamp, nullable=False)
 
     message_id = Column(BigInteger)
     message_content = Column(String(2000))
@@ -141,15 +158,15 @@ class ActionSource(Base):
 class Action(Base):
     __tablename__ = 'actions'
 
-    id = Column(BigInteger, primary_key=True)
+    id = Column(Integer, primary_key=True)
     type = Column(String(255), nullable=False)
     state = Column(Enum(ActionState), nullable=False)
     guild_id = Column(BigInteger)
     user_id = Column(BigInteger)
     channel_id = Column(BigInteger)
     role_id = Column(BigInteger)
-    start_timestamp = Column(DateTime)
-    end_timestamp = Column(DateTime)
+    start_timestamp = Column(UnixTimestamp)
+    end_timestamp = Column(UnixTimestamp)
     action_metadata = Column(LargeBinary)
 
     __mapper_args__ = {

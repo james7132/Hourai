@@ -4,10 +4,15 @@ import logging
 from hourai import config, extensions
 from hourai.bot import Hourai
 from hourai.db import models
+from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy import create_engine, orm
 
 log = logging.getLogger(__name__)
 
+def create_db_engine(connection_string):
+    return create_engine(connection_string,
+                         poolclass=SingletonThreadPool,
+                         connect_args={'check_same_thread': False})
 
 @click.group()
 def main():
@@ -16,11 +21,11 @@ def main():
 
 @main.command()
 def run():
-    engine = create_engine('sqlite:///hourai.sqlite')
+    engine = create_db_engine('sqlite:///hourai.sqlite')
     session_class = orm.sessionmaker(bind=engine)
-    log.info(session_class)
     bot = Hourai(command_prefix=config.COMMAND_PREFIX,
-                 session_class=session_class)
+                 session_class=session_class,
+                 max_messages=500000)
     bot.load_all_extensions(extensions)
     # TODO(james7132): Remove this when possible
     bot.remove_command('help')
@@ -34,7 +39,7 @@ def db():
 
 @db.command()
 def create():
-    engine = create_engine('sqlite:///hourai.sqlite')
+    engine = create_db_engine('sqlite:///hourai.sqlite')
     models.Base.metadata.create_all(engine)
 
 
