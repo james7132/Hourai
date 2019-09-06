@@ -1,6 +1,13 @@
 import os
 import logging
 
+# Use uvloop where possible
+try:
+    import uvloop
+    uvloop.install()
+except ImportError:
+    pass
+
 # Logging Config
 
 logging.basicConfig(level=logging.INFO)
