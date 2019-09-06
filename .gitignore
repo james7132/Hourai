@@ -1,6 +1,8 @@
 # Generated Protobuf Python files
 *_pb2.py
 
+node_modules/
+
 # Private Bot Extensions
 hourai/extensions/private/
 
