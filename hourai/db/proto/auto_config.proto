@@ -1,0 +1,41 @@
+syntax = "proto2";
+
+package hourai.db.proto;
+
+import "hourai/db/proto/action.proto";
+
+message AutoConfig {
+  repeated EventGroup guild_events = 1;
+  map<string, EventGroup> channel_events = 2;
+}
+
+message EventGroup {
+  // Event: User sends or edits a message.
+  repeated MessageEvent on_message = 1;
+  repeated UserChangeEvent on_join = 2;
+  repeated UserChangeEvent on_left = 3;
+  repeated UserChangeEvent on_ban = 4;
+}
+
+message MessageEvent {
+  enum Type {
+    MESSAGE_CREATES = 1;
+    MESSAGE_EDITS = 2;
+    ALL_MESSAGES = 3;
+  }
+  repeated Action action = 1;
+  optional FilterSettings content_filter = 2;
+  optional Type type = 3;
+  // Optional: if true, deletes the message after the EventResponses complete.
+  optional bool delete_message = 4;
+}
+
+message UserChangeEvent {
+  repeated Action action = 1;
+  optional FilterSettings username_filter = 2;
+}
+
+message FilterSettings {
+  repeated string blacklist = 1;
+  repeated string whitelilst = 2;
+}

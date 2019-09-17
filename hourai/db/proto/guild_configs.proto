@@ -1,0 +1,86 @@
+syntax = "proto2";
+
+package hourai.db.proto;
+
+import "hourai/db/proto/auto_config.proto";
+import "hourai/db/proto/escaltion.proto";
+
+message GuildConfig {
+  optional LoggingConfig logging = 1;
+  optional ValidationConfig validation = 2;
+  optional AutoConfig auto = 3;
+  optional ModerationConfig moderation = 4;
+}
+
+// ------------------------------------------------------------------------------
+// Logging Configs
+// ------------------------------------------------------------------------------
+
+message LoggingConfig {
+  // Required. The channel to make modlog messages to.
+  optional uint64 modlog_channel_id = 1;
+
+  // Optional: If set to true, deleted messages are logged to the modlog channel.
+  optional bool log_deleted_messages = 2;
+  // Optional: If set to true, edited messages are logged to the modlog channel.
+  // optional bool log_edited_messages = 2;
+}
+
+// ------------------------------------------------------------------------------
+// Moderation Configs
+// ------------------------------------------------------------------------------
+
+message ModerationConfig {
+  optional EscalationLadder escalation_ladder = 1;
+}
+
+// ------------------------------------------------------------------------------
+// Validation Configs
+// ------------------------------------------------------------------------------
+
+message ValidationConfig {
+  // Required. The role to use for validation.
+  optional uint64 role_id = 1;
+
+  // Optional: If set, unvalildated users are kicked after the number of seconds
+  // passes. Minimum value is 1 hour (3600 seconds).
+  optional uint64 kick_unvalidated_users_after = 2;
+
+  // Optional: If set,
+  optional uint64 minimum_account_age = 3;
+
+  // Optional: aspect specific configurations. If not set, the default values are
+  // used.
+  optional AvatarValidationConfig avatar = 4;
+  optional UsernameValidationConfig username = 5;
+  optional CrossGuildValidationConfig cross_server = 6;
+}
+
+message AvatarValidationConfig {
+  optional bool reject_default_avatars = 1 [default = true];
+  // TODO(james7132): Enable this when adding further avatar validation.
+  //optional bool reject_sexual_avatars = 1 [default = true];
+  //optional bool reject_violent_avatars = 1 [default = true];
+}
+
+message UsernameValidationConfig {
+  // Optional: The blacklist applies first. If any matches, the user is rejected,
+  // unless the any entry in the whitelist applies. Both are lists of regexes.
+  repeated string username_blacklist = 1;
+  repeated string username_whitelist = 2;
+
+  optional bool reject_sexual_usernames = 3 [default = true];
+  optional bool reject_offensive_usernames = 4 [default = true];
+  optional bool reject_likely_user_bots = 5 [default = true];
+}
+
+message CrossGuildValidationConfig {
+  // Optional: If set to true, users banned from other servers
+  optional bool reject_banned_users = 1 [default = true];
+  // Optional: This marks the minimum size of other servers to check against. If
+  // not set, the default of 150 users is used. This
+  optional uint64 minimum_guild_size = 2 [default = 150];
+  // TODO(james7132): Update this when the Discord Hotline integration is
+  // available.
+  // optional bool reject_hotline_reported_users = 3 [default = true];
+}
