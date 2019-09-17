@@ -1,0 +1,59 @@
+syntax = "proto2";
+
+package hourai.db.proto;
+
+message Action {
+  optional uint64 user_id   = 1;
+  optional string reason    = 2;
+  // Optional: duration, in milliseconds, after which the action is undone.
+  optional uint64 duration  = 3;
+  oneof details {
+    KickMember kick = 4;
+    BanMember ban = 5;
+    EscalateMember escalate = 6;
+    ChangeRole change_role = 7;
+    DirectMessage direct_message = 8;
+    SendMessage send_message = 9;
+    ExecuteCommand command = 10;
+  }
+}
+
+message KickMember {
+}
+
+message BanMember {
+  // Optional: if set to true, the user will immediately be unbanned following
+  // the ban.
+  optional bool softban = 1;
+}
+
+message ChangeRole {
+  enum Type {
+    ADD     = 1;
+    REMOVE  = 2;
+    TOGGLE  = 3;
+  }
+  // Required: the direction and change that was applied.
+  optional Type type = 1;
+  // Required: the roles used by the action.
+  repeated uint64 role_ids = 2;
+}
+
+message EscalateMember {
+  // Required. Can be negative. If negative, will deescalate the user.
+  optional int64 amount = 1 [default = 1];
+}
+
+message DirectMessage {
+  optional string content = 1;
+}
+
+message SendMessage {
+  optional string content = 1;
+  optional uint64 channel_id = 2;
+}
+
+message ExecuteCommand {
+  optional string command = 1;
+  optional uint64 channel_id = 2;
+}

@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+package hourai.db.proto;
+
+import "hourai/db/proto/action.proto";
+
+message EscalationLadder {
+  repeated EscalationLadderRung rung = 1;
+}
+
+message EscalationLadderRung {
+  // Required: The actions to apply.
+  repeated Action actions = 1;
+  // Required: The display name to show when listing out the ladder.
+  optional string display_name = 2;
+  // Optional: if set, after X period of time (in milliseconds), the user will be
+  // deescalated.
+  repeated uint64 deescalation_period = 3;
+}

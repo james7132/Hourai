@@ -1,11 +1,13 @@
 import discord
 import asyncio
-import humanize
 import traceback
-import re
+from .rejectors import *
+from .approvers import *
+from .raid import *
+from .storage import BanStorage
 from discord.ext import tasks, commands
 from datetime import datetime, timedelta
-from hourai import bot, db, utils
+from hourai import bot, utils
 from hourai.db import models, proxies
 from hourai.utils import format
 
@@ -17,135 +19,133 @@ If you feel this is in error, please contact a mod regarding this.
 BATCH_SIZE = 10
 MINIMUM_GUILD_SIZE = 150
 
-def _split_camel_case(val):
-    return re.sub('([a-z])([A-Z0-9])', '$1 $2', val).split()
-
-def _generalize_filter(filter_value):
-    filter_value = re.escape(filter_value)
-    def _generalize_character(char):
-        return char + '+' if char.isalnum() else char
-    return '(?i)' + ''.join(_generalize_character(char) for char in filter_value)
-
-class Validator():
-
-    def get_rejection_reasons(self, bot, member):
-        return iter(())
-
-class NameMatchValidator(Validator):
-
-    def __init__(self, *, prefix, filter_func, subfield=None, member_selector=None):
-        self.filter = filter_func
-        self.subfield = subfield or (lambda m: m.name)
-        self.member_selector = member_selector or (lambda m: m.name)
-
-    def get_rejection_reasons(self, bot, member):
-        member_names = {}
-        for guild_member in filter(self.filter, member.guild.members):
-            name = self.member_selector(guild_member) or ''
-            member_names.update({
-                p: _generalize_filter(p) for p in _split_camel_case(name)
-            })
-        field_value = self.subfield(member)
-        for filter_name, regex in member_names.items():
-            if re.search(regex, field_value):
-                yield prefix + 'Matches: `{}`'.format(filter_name)
-
-class StringFilterValidator(Validator):
-
-    def __init__(self, *, prefix, filters, subfield=None):
-        self.prefix = prefix or ''
-        self.filters = [(f, re.compile(_generalize_filter(f))) for f in filters]
-        self.subfield = subfield or (lambda m: m.name)
-        print(self.filters)
-
-    def get_rejection_reasons(self, bot, member):
-        field_value = self.subfield(member)
-        for filter_name, regex in self.filters:
-            if regex.search(field_value):
-                yield prefix + 'Matches: `{}`'.format(filter_name)
-
-class NewAccountValidator(Validator):
-
-    def __init__(self, *, lookback):
-        self.lookback = lookback
-
-    def get_rejection_reasons(self, bot, member):
-        if member.created_at > datetime.utcnow() - self.lookback:
-            yield "Account created less than {}".format(humanize.naturaltime(self.lookback))
-
-class NoAvatarValidator(Validator):
-
-    def get_rejection_reasons(self, bot, member):
-        if member.avatar is None:
-            yield "User has no avatar."
-
-class BannedUserValidator(Validator):
-
-    def __init__(self, *, min_guild_size):
-        self.min_guild_size = min_guild_size
-
-    def get_rejection_reasons(self, bot, member):
-        db_session = bot.create_db_session()
-        bans = db_session.query(models.Ban).filter_by(user_id=member.id).all()
-        ban_guilds = ((ban, bot.get_guild(ban.guild_id)) for ban in bans
-                      if self._is_valid_guild(ban, bot.get_guild(ban.guild_id)))
-        reasons = set(ban.reason for ban, guild in ban_guilds)
-        if reasons == set([None]):
-            yield "Banned on another server."
-        else:
-            yield from ("Banned on another server. Reason: `{}`.".format(r)
-                        for r in reasons)
-
-    def _is_valid_guild(self, ban, guild):
-        return guild is not None and guild.member_count >= self.min_guild_size
-
+# TODO(james7132): Add per-server validation configuration.
 # TODO(james7132): Add filter for pornographic or violent avatars
-VALIDATORS = (NewAccountValidator(lookback=timedelta(days=1)),
-              NoAvatarValidator(),
-              BannedUserValidator(min_guild_size=MINIMUM_GUILD_SIZE),
+# Validators are applied in order from first to last. If a later validator has an
+# approval reason, it overrides all previous rejection reasons.
+VALIDATORS = (# -----------------------------------------------------------------
+              # Suspicion Level Validators
+              #     Validators here are mostly for suspicious characteristics.
+              #     These are designed with a high-recall, low precision
+              #     methdology. False positives from these are more likely.
+              #     These are low severity checks.
+              # -----------------------------------------------------------------
+
+              # New user accounts are commonly used for alts of banned users.
+              NewAccountRejector(lookback=timedelta(days=30)),
+              # Low effort user bots and alt accounts tend not to set an avatar.
+              NoAvatarRejector(),
+              # Deleted accounts shouldn't be able to join new servers. A user
+              # joining that is seemingly deleted is suspicious.
+              DeletedAccountRejector(),
+
+              # Filter likely user bots based on usernames.
+              StringFilterRejector(
+                  prefix='Likely user bot. ',
+                  filters=['discord\.gg', 'twitter\.com', 'twitch\.tv',
+                           'youtube\.com', 'youtu\.be',
+                           '@everyone', '@here', 'admin', 'mod']),
+              StringFilterRejector(
+                  prefix='Likely user bot. ',
+                  full_match=True,
+                  filters=['[0-9a-fA-F]+', # Full Hexadecimal name
+                            '\d+',         # Full Decimal name
+                          ]),
+
+              # If a user has Nitro, they probably aren't an alt or user bot.
+              NitroApprover(),
+
+              # -----------------------------------------------------------------
+              # Questionable Level Validators
+              #     Validators here are mostly for red flags of unruly or
+              #     potentially troublesome.  These are designed with a
+              #     high-recall, high-precision methdology. False positives from
+              #     these are more likely to occur.
+              # -----------------------------------------------------------------
 
               # Filter usernames and nicknames that match moderator users.
-              NameMatchValidator(prefix='Username matches moderator\'s. ',
+              NameMatchRejector(prefix='Username matches moderator\'s. ',
                                 filter_func=utils.is_moderator),
-              NameMatchValidator(prefix='Username matches moderator\'s. ',
+              NameMatchRejector(prefix='Username matches moderator\'s. ',
                                 filter_func=utils.is_moderator,
                                 member_selector=lambda m: m.nick),
 
               # Filter usernames and nicknames that match bot users.
-              NameMatchValidator(prefix='Username matches bot\'s. ',
+              NameMatchRejector(prefix='Username matches bot\'s. ',
                                 filter_func=lambda m: m.bot),
-              NameMatchValidator(prefix='Username matches bot\'s. ',
+              NameMatchRejector(prefix='Username matches bot\'s. ',
                                 filter_func=lambda m: m.bot,
-                                 member_selector=lambda m: m.nick),
+                                member_selector=lambda m: m.nick),
 
               # Filter offensive usernames.
-              StringFilterValidator(
+              StringFilterRejector(
                   prefix='Offensive username. ',
                   filters=['nigger', 'nigga', 'faggot', 'cuck', 'retard']),
 
               # Filter sexually inapproriate usernames.
-              StringFilterValidator(
+              StringFilterRejector(
                   prefix='Sexually inapproriate username. ',
                   filters=['anal', 'cock', 'vore', 'scat', 'fuck', 'pussy',
-                           'penis', 'piss', 'shit']),
+                           'penis', 'piss', 'shit', 'cum']),
 
-              # Filter likely user bots.
-              StringFilterValidator(
-                  prefix='Likely user bot. ',
-                  filters=['discord\.gg', 'twitter\.com', 'twitch\.tv',
-                           'youtube\.com', 'youtu\.be',
-                           '@everyone', '@here']))
+              # -----------------------------------------------------------------
+              # Malicious Level Validators
+              #     Validators here are mostly for known offenders.
+              #     These are designed with a low-recall, high precision
+              #     methdology. False positives from these are far less likely to
+              #     occur.
+              # -----------------------------------------------------------------
+
+              # Make sure the user is not banned on other servers.
+              BannedUserRejector(min_guild_size=150),
+
+              # Check the username against known banned users from the current
+              # server.
+              # BannedUserNameMatchRejector(min_guild_size=150)
+
+              # -----------------------------------------------------------------
+              # Raid Level Validators
+              #     Validators here operate on more tha just one user, and look
+              #     at the overall rate of users joining the server.
+              # ----------------------------------------------------------------
+
+              # TODO(james7132): Add the raid validators
+
+              # -----------------------------------------------------------------
+              # Override Level Validators
+              #     Validators here are made to explictly override previous
+              #     validators. These are specifically targetted at a small
+              #     specific group of individiuals. False positives and negatives
+              #     at this level are not possible.
+              # -----------------------------------------------------------------
+              BotApprover(),
+              BotOwnerApprover(),
+              BotTeamApprover(),
+              )
 
 def _get_validation_config(ctx):
     return ctx.session.query(models.GuildValidationConfig).get(ctx.guild.id)
 
-def _get_rejection_reasons(bot, member):
+async def _validate_member(bot, member):
+    approval = True
+    approval_reasons = []
+    rejection_reasons = []
     for validator in VALIDATORS:
         try:
-            yield from validator.get_rejection_reasons(bot, member)
+            async for reason in validator.get_rejection_reasons(bot, member):
+                if reason is None:
+                    continue
+                rejection_reasons.append(reason)
+                approval = False
+            async for reason in validator.get_approval_reasons(bot, member):
+                if reason is None:
+                    continue
+                approval_reasons.append(reason)
+                approval = True
         except:
             # TODO(james7132) Handle the error
             traceback.print_exc()
+    return approval, approval_reasons, rejection_reasons
 
 def _chunk_iter(src, chunk_size):
     chunk = []
@@ -161,6 +161,7 @@ class Validation(bot.BaseCog):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
+        self.ban_storage = BanStorage(bot, timeout=300)
         self.purge_unverified.start()
         self.reload_bans.start()
 
@@ -168,10 +169,15 @@ class Validation(bot.BaseCog):
         self.purge_unverified.cancel()
         self.reload_bans.cancel()
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(seconds=5)
     async def reload_bans(self):
-        print('RELOADING BANS')
-        await self._update_ban_list()
+        try:
+            self.bot.logger.info('RELOADING BANS')
+            for guild in self.bot.guilds:
+                await self.ban_storage.save_bans(guild)
+            self.bot.logger.info('BANS RELOADED')
+        except:
+            self.bot.logger.exception("Exception while reloading bans")
 
     @reload_bans.before_loop
     async def before_reload_bans(self):
@@ -192,7 +198,6 @@ class Validation(bot.BaseCog):
             #  * Verified users
             #  * Unverified users who have joined less than 6 hours ago.
             checks = (not member.bot,
-                      member.premium_since is None,
                       member.joined_at is not None,
                       member.joined_at <= check_time)
             return all(checks)
@@ -220,24 +225,24 @@ class Validation(bot.BaseCog):
     async def before_purge_unverified(self):
         await self.bot.wait_until_ready()
 
-    async def _update_ban_list(self):
-        session = self.bot.create_db_session()
-        async def _get_bans(guild):
-            if not guild.me.guild_permissions.ban_members:
-                return list()
-            try:
-                return [models.Ban(guild_id=guild.id, user_id=b.user.id,
-                                            reason=b.reason)
-                                for b in await guild.bans()]
-            except discord.Forbidden as e:
-                print('Failed to fetch {}\'s bans'.format(guild.name))
-                return list()
-        bans = await asyncio.gather(*[_get_bans(g) for g in self.bot.guilds])
-        session.query(models.Ban).delete()
-        for ban_list in bans:
-            session.add_all(ban_list)
-        session.commit()
-        self.bot.logger.info('Updated ban list')
+    # async def _update_ban_list(self):
+        # session = self.bot.create_db_session()
+        # async def _get_bans(guild):
+            # if not guild.me.guild_permissions.ban_members:
+                # return list()
+            # try:
+                # return [models.Ban(guild_id=guild.id, user_id=b.user.id,
+                                            # reason=b.reason)
+                                # for b in await guild.bans()]
+            # except discord.Forbidden as e:
+                # print('Failed to fetch {}\'s bans'.format(guild.name))
+                # return list()
+        # bans = await asyncio.gather(*[_get_bans(g) for g in self.bot.guilds])
+        # session.query(models.Ban).delete()
+        # for ban_list in bans:
+            # session.add_all(ban_list)
+        # session.commit()
+        # self.bot.logger.info('Updated ban list')
 
     @commands.command(name="setmodlog")
     @commands.guild_only()
@@ -291,7 +296,8 @@ class Validation(bot.BaseCog):
                 if role in member.roles:
                     return
                 try:
-                    reasons = list(_get_validation_reasons(member))
+                    async_iter = _get_rejection_reasons(member)
+                    reasons = await utils.collect(async_iter)
                     if len(reasons) < 0:
                         await member.add_roles(role)
                 except discord.errors.Forbidden:
@@ -350,33 +356,32 @@ class Validation(bot.BaseCog):
         proxy = proxies.GuildProxy(member.guild, session)
         if not proxy.validation_config.is_valid:
             return
-        reasons = list(_get_rejection_reasons(self.bot, member))
-        if len(reasons) > 0:
-            response = (f"{utils.mention_random_online_mod(member.guild)}. "
-                        f"User {member.name} ({member.id}) requires manual verification. \n"
-                        f"Rejected for the following reasons: "
-                        f"\n{format.bullet_list(reasons)}")
-            await proxy.send_modlog_message(content=response)
-            # print('{} ({}) rejected!'.format(member.name.encode('utf-8'), member.id))
-            # for reason in reasons:
-                # print('  Rejected for: {}'.format(reason))
-            return
-        role = member.guild.get_role(proxy.validation_config.validation_role_id)
-        await member.add_roles(role)
-        await proxy.send_modlog_message(content="Verified user: {} ({}).".format(
-            member.mention, member.id))
-        print('{} ({}) verified!'.format(member.name.encode('utf-8'), member.id))
+        approved, reasons_a, reasons_r = await _validate_member(self.bot, member)
+        if approved:
+            message = f"Verified user: {member.metion} ({member.id})."
+        else:
+            message = (f"{utils.mention_random_online_mod(member.guild)}. "
+                       f"User {member.name} ({member.id}) requires manual "
+                       f"verification.")
+        if len(reasons_a) > 0:
+            message += ("\nApproved for the following reaasons: \n"
+                        f"{ormat.bullet_list(reasons_a)}")
+        if len(reasons_r) > 0:
+            message += ("\nRejected for the following reaasons: \n"
+                        f"{format.bullet_list(reasons_r)}")
+        await proxy.send_modlog_message(content=response)
+        if approved:
+            role_id = proxy.validation_config.validation_role_id
+            role = member.guild.get_role(role_id)
+            await member.add_roles(role)
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        session = self.bot.create_db_session()
-        ban = models.Ban(guild_id=guild.id, user_id=user.id)
         try:
             ban_info = await guild.fetch_ban(user)
-            ban.reason = ban_info.reason
-        finally:
-            session.add(ban)
-            session.commit()
+            await self.ban_storage.save_ban(guild, ban_info)
+        except discord.Forbidden:
+            pass
 
         if guild.member_count >= MINIMUM_GUILD_SIZE:
             # TODO(james7132): Enable this after adding deduplication.
@@ -402,6 +407,5 @@ class Validation(bot.BaseCog):
 
         await asyncio.gather(*[proxy.send_modlog_message(contents)
                                for proxy in guild_proxies])
-
 def setup(bot):
     bot.add_cog(Validation(bot))

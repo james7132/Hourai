@@ -6,7 +6,11 @@ import pkgutil
 import traceback
 from functools import wraps
 from discord.ext import commands
+from hourai import config
 from hourai.db import proxies
+from hourai.utils.replacement import StringReplacer
+
+MAX_CONTEXT_DEPTH = 255
 
 GUILD_TESTS = (lambda arg: arg.guild,
                lambda arg: arg.channel.guild,
@@ -97,23 +101,36 @@ class GuildSpecificCog(BaseCog):
                     return
         return _check_guilds
 
-
 class HouraiContext(commands.Context):
 
+    REPLACER = StringReplacer({
+        '$author':              lambda ctx: ctx.author.display_name,
+        '$author_id':           lambda ctx: ctx.author.id,
+        '$author_mention':      lambda ctx: ctx.author.mention,
+        '$channel':             lambda ctx: ctx.channel.name,
+        '$channel_id':          lambda ctx: ctx.channel.id,
+        '$channel_mention':     lambda ctx: ctx.channel.mention,
+        '$server':              lambda ctx: ctx.guild.name,
+        '$server_id':           lambda ctx: ctx.guild.id,
+    })
+
     def __init__(self,  **attrs):
+        self.parent = attrs.pop('parent', None)
+        self.depth = attrs.pop('depth', 1)
         super().__init__(**attrs)
 
-    def __enter__(self):
-        self.session = self.bot.create_db_session()
+    async def __aenter__(self):
+        self.session = self.bot.get_storage_session()
+        await self.session.__aenter()
         return self
 
-    def __exit__(self, exc_type, exc, traceback):
+    async def __aexit__(self, exc_type, exc, traceback):
         if self.session is None:
             return
-        if exc is None:
-            self.session.commit()
-        else:
-            self.session.rollback()
+        await self.session.__aexit__(exc_type, exc, traceback)
+
+    def substitute_content(self, repeats=20):
+        return REPLACER.substitute(self.content, context=self, repeats=repeats)
 
     @property
     def is_automated(self):
@@ -126,18 +143,53 @@ class HouraiContext(commands.Context):
     def get_guild_proxy(self, guild=None):
         return proxies.GuildProxy(guild or self.guild, self.session)
 
-    def get_automated_context(self):
-        return self.bot.get_automated_context(message=self.message)
+    def get_automated_context(self, msg=None):
+        if self.depth > MAX_CONTEXT_DEPTH:
+            raise RecursionError
+        return self.bot.get_automated_context(message=msg or self.message,
+                                              parent=self,
+                                              depth=self.depth + 1)
+
+    def get_ancestors(self):
+        current_context = self.parent
+        while current_context is not None:
+            yield current_context
+            current_context = current_context.parent
+
+class CommandInterpreter:
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    async def execute(self, ctx):
+        raise NotImplementedError
+
+class AliasInterpreter(CommandInterpreter):
+    pass
+
+class CustomCommandInterpreter(CommandInterpreter):
+    pass
+
+class DefaultCommandInterpreter(CommandInterpreter):
+
+    async def execute(self, ctx):
+        await self.bot.invoke(ctx)
 
 class Hourai(commands.AutoShardedBot):
 
     def __init__(self, *args, **kwargs):
         self.logger = log
-        self.session_class = kwargs.pop('session_class', None)
+        self.storage = kwargs.pop('storage', None)
+        if self.storage is None:
+            self.storage = Storage()
         super().__init__(*args, **kwargs)
 
-    def create_db_session(self):
-        return self.session_class()
+    def create_storage_session(self):
+        return self.storage.get_session()
+
+    async def start(self, *args, **kwargs):
+        await self.storage.init()
+        await super().start(*args, **kwargs)
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')
@@ -169,7 +221,11 @@ class Hourai(commands.AutoShardedBot):
             return
 
         ctx = await self.get_context(msg)
-        with ctx:
+
+        if ctx.prefix is None:
+            return
+
+        async with ctx:
             await self.invoke(ctx)
 
     async def on_guild_available(self, guild):

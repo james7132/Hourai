@@ -1,7 +1,7 @@
 FROM python:3.7-alpine3.8 as base
 
 FROM base as builder
-RUN apk add --no-cache git protobuf
+RUN apk update && apk add --upgrade git protobuf gcc musl-dev
 COPY requirements.txt /
 RUN pip install --prefix /install -r /requirements.txt
 WORKDIR /app

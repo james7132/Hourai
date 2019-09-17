@@ -1,53 +1,36 @@
 import re
 import inspect
-from models import Session, Replacement
 
-REPLACEMENT_REGEX = re.compile('{{(.*)}}')
+class StringReplacer:
 
-def replace_values(session, input_str:str, context=None):
-    current_str = input_str
-    success = True
-    while success:
-        success, current_str = _replace_iteration(session, current_str)
-    return current_str
+    def __init__(self, substitutions):
+        substrings = sorted(substitutions, key=len, reverse=True)
+        self.regex = re.compile('|'.join(map(re.escape, substrings)))
+        self.substitutions = substitutions
 
-def _replace_iteration(session, input_str:str, context=None):
-    last_index = 0
-    components = []
-    for match in REPLACEMENT_REGEX.finditer(input_str):
-        match_start, match_end = match.span(0)
-        components.append(input_str[last_index:match_start])
-        replacement = lookup_and_replace(session, match.group(1))
-        components.append(match.group(0) if replacement is None else replacement)
-        last_index = match_end + 1
+    def subsittute(original, context=None, repeats=0):
+        """
+        A version of str.replace that supports providing multiple string matches.
 
-    if last_index < len(input_str):
-        components.append(input_str[last_index:])
-
-    current_str = ''.join(components)
-
-    return (current_str != input_str), current_str
-
-def lookup_and_replace(session, input_str:str, context=None):
-    key, end = tuple(input_str.split(' ', 1))
-    replacement = session.query(Replacement).get(key)
-    if replacement is None:
-        return None
-    context = dict(context or {}) 
-    context['$input'] = end
-    return substitute(replacement.response, context)
-
-def substitute(val:str, replacements):
-    """
-    Replace values in a string based on a dict of values.
-    If the values are executable, they will be called to generate
-    a replacement if and only if the original is in the value.
-    """
-    for original, replacement in replacements.items():
-        if original not in val:
-            continue
-        if callable(replacement):
-            val = val.replace(original, replacement())
+            original[str]- the string to search substitutes in.
+            substitutions[dict] -
+                a mapping between substrings to search for and their replacements.
+                If context is None, this is a string-string mapping. otherwise,
+                it's a string-function mapping, where the functions are single
+                argument that are passed the context object.
+            context[any] - a parameterization for the subsittutions.
+            repeats[int] -
+                the number of times to repeat the substitution. The repeat will
+                short circuit as soon as there is nothing to replace, thus it is
+                safe to set this to arbitrarily large values.
+        """
+        if context is None:
+            sub_func = lambda m: self.substitutions[m.group(0)]
         else:
-            val = val.replace(original, replacement)
-    return val
+            sub_func = lambda m: self.substitutions[m.group(0)](context)
+        last = original
+        while True:
+            current = self.regex.sub(sub_func, last)
+            if repeats > 0 or current == last:
+                break
+        return current

@@ -1,0 +1,36 @@
+version: "2"
+services:
+  hourai:
+    build: .
+    command: python launcher.py run
+    environment:
+      # Bot Configuration
+      - BOT_TOKEN=""
+      # Database Configuration
+      - DB_CONNECTION=sqlite://
+      - REDIS_CONNECTION=redis://hourai_redis_dev
+      # Reddit Feed Configuration
+      - REDDIT_CLIENT_ID=""
+      - REDDIT_CLIENT_SECRET=""
+      - REDDIT_USER_AGENT=""
+      - REDDIT_USERNAME=""
+      - REDDIT_PASSWORD=""
+      - REDDIT_BASE_URL=https://reddit.com
+      - REDDIT_FETCH_LIMIT=20
+    depends_on:
+      - main_database
+      - redis_cache
+  main_database:
+    image: "postgres:11-alpine"
+    container_name: "hourai_postgres_dev"
+    volumes:
+      - hourai_dbdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=hourai
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+  redis_cache:
+    image: "redis:5.0-alpine"
+    container_name: "hourai_redis_dev"
+volumes:
+  hourai_dbdata:

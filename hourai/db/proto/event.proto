@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+package hourai.db.proto;
+
+import "hourai/db/proto/action.proto";
+
+message Event {
+  optional EventSource source = 1;
+  repeated Action actions = 2;
+}
+
+message EventSource {
+  optional uint64 guild_id = 1;
+  optional uint64 executor_user_id = 2;
+  optional uint64 authorizer_user_id = 3;
+  optional uint64 channel_id = 4;
+  optional uint64 timestamp = 5;
+  oneof details {
+    BotCommand command = 6;
+  }
+}
+
+message BotCommand {
+  optional DiscordMessage message = 1;
+}
+
+message DiscordMessage {
+  optional uint64 channel_id = 1;
+  optional uint64 user_id = 2;
+  optional string content = 3;
+  optional uint64 timestamp = 4;
+}

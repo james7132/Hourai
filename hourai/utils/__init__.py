@@ -1,12 +1,14 @@
 import asyncio
 import discord
-import inspect
-import time
-import random
 import functools
+import inspect
+import random
+import re
+import time
 from hourai import config
 
 MODERATOR_PREFIX = 'mod'
+DELETED_USER_REGEX = re.compile('Deleted User\s+[0-9a-fA-F]+')
 
 async def broadcast(channels, *args, **kwargs):
     """
@@ -29,6 +31,18 @@ def pretty_print(resource):
     if hasattr(resource, 'id'):
         output.append('({})'.format(resource.id))
     return ' '.join(output)
+
+async def maybe_coroutine(f, *args, **kwargs):
+    value = f(*args, **kwargs)
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
+async def collect(async_iter):
+    vals = []
+    async for val in async_iter:
+        vals.append(val)
+    return vals
 
 def log_time(func):
     """ Logs the time to run a function to std out. """
@@ -66,6 +80,12 @@ async def send_dm(user, *args, **kwargs):
 
 def any_in(population, seq):
     return any(val in population for val in seq)
+
+def is_deleted_user(user):
+    """ Checks if a user is deleted or not by Discord. Works on discord.User
+    and discord.Member.
+    """
+    return user.avatar is None and DELETED_USER_REGEX.match(user.name)
 
 def is_moderator(member):
     """ Checks if a user is a moderator. """

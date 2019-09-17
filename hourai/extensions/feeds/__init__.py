@@ -44,9 +44,7 @@ class Feeds(bot.BaseCog):
 
         session = self.bot.create_db_session()
         feeds = session.query(models.Feed) \
-                .options(joinedload(models.Feed.channels)) \
-                .yield_per(config.FEED_FETCH_PARALLELISM) \
-                .enable_eagerloads(False)
+                .options(joinedload(models.Feed.channels))
 
         try:
             results = await self.scan_feeds(feeds)
@@ -65,6 +63,11 @@ class Feeds(bot.BaseCog):
             self.bot.logger.exception('Error while scanning feeds.')
         finally:
             session.close()
+
+    @scan_all_feeds.before_loop
+    async def before_scan_all_feeds(self):
+        await self.bot.wait_until_ready()
+
 
 def setup(bot):
     bot.add_cog(Feeds(bot))

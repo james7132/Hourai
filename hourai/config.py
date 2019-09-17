@@ -1,25 +1,20 @@
 import os
 import logging
 
-# Use uvloop where possible
-try:
-    import uvloop
-    uvloop.install()
-except ImportError:
-    pass
-
 # Logging Config
 
 logging.basicConfig(level=logging.INFO)
-logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-logging.getLogger('prawcore').setLevel(logging.DEBUG)
+for mod in ('sqlalchemy.engine', 'prawcore', 'aioredis'):
+    logging.getLogger(mod).setLevel(logging.DEBUG)
 
 BOT_TOKEN = ''
 
 COMMAND_PREFIX = '~'
 SUCCESS_RESPONSE = ':thumbsup:'
 
-DB_LOCATION = 'hourai.sqlite'
+# Storage Configuration
+DB_CONNECTION = 'sqlite://'
+REDIS_CONNECTION = "redis://"
 
 # Reddit Feed Configuration
 REDDIT_USER_AGENT = "linux:discord.hourai.reddit:v2.0 (by /u/james7132)"
