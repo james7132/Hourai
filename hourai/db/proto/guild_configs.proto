@@ -3,7 +3,7 @@ syntax = "proto2";
 package hourai.db.proto;
 
 import "hourai/db/proto/auto_config.proto";
-import "hourai/db/proto/escaltion.proto";
+import "hourai/db/proto/escalation.proto";
 
 message GuildConfig {
   optional LoggingConfig logging = 1;
@@ -39,21 +39,24 @@ message ModerationConfig {
 // ------------------------------------------------------------------------------
 
 message ValidationConfig {
-  // Required. The role to use for validation.
-  optional uint64 role_id = 1;
+  // If set to true, validation as a whole is enabled.
+  optional bool enabled = 1;
+
+  // Optional: The role to use for validation. If not set, no role will be given.
+  optional uint64 role_id = 2;
 
   // Optional: If set, unvalildated users are kicked after the number of seconds
   // passes. Minimum value is 1 hour (3600 seconds).
-  optional uint64 kick_unvalidated_users_after = 2;
+  optional uint64 kick_unvalidated_users_after = 3;
 
-  // Optional: If set,
-  optional uint64 minimum_account_age = 3;
+  // Optional: If set, accounts under the age, in seconds, will be rejected.
+  optional uint64 minimum_account_age = 4 [default = 259200];
 
   // Optional: aspect specific configurations. If not set, the default values are
   // used.
-  optional AvatarValidationConfig avatar = 4;
-  optional UsernameValidationConfig username = 5;
-  optional CrossGuildValidationConfig cross_server = 6;
+  optional AvatarValidationConfig avatar = 5;
+  optional UsernameValidationConfig username = 6;
+  optional CrossGuildValidationConfig cross_server = 7;
 }
 
 message AvatarValidationConfig {

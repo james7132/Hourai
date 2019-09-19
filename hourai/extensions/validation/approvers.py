@@ -28,8 +28,8 @@ class BotApprover(Validator):
     """A override level validator that approves other bots."""
 
     async def get_approval_reasons(self, bot, member):
-        if member.bot
-            yield 'User is a official bot that can only be manually added.'
+        if member.bot:
+            yield 'User is an OAuth2 bot that can only be manually added.'
 
 class BotOwnerApprover(Validator):
     """An override level validator that approves the owner of the bot."""
