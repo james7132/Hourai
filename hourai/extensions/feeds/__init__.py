@@ -42,11 +42,11 @@ class Feeds(bot.BaseCog):
     async def scan_all_feeds(self):
         self.bot.logger.info('Scanning feeds...')
 
-        session = self.bot.create_db_session()
-        feeds = session.query(models.Feed) \
-                .options(joinedload(models.Feed.channels))
-
+        session = self.bot.create_storage_session()
         try:
+            feeds = session.query(models.Feed) \
+                    .options(joinedload(models.Feed.channels))
+
             results = await self.scan_feeds(feeds)
 
             # Broadcast Results

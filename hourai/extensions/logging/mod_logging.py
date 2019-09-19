@@ -17,7 +17,7 @@ class ModLogging(bot.BaseCog):
         guild = self.bot.get_guild(guild_id)
         if guild is None:
             return None
-        return proxies.GuildProxy(guild, self.bot.create_db_session())
+        return proxies.GuildProxy(guild, self.bot.create_storage_session())
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload):

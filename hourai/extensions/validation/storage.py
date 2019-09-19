@@ -1,22 +1,25 @@
 import asyncio
 import struct
 import collections
+from hourai.db.storage import StoragePrefix
 
 BanEntry = collections.namedtuple('BanEntry', ['guild_id', 'user_id', 'reason'])
 PACK_FORMAT = ">Q"
 
+PREFIX = bytes([StoragePrefix.BANS.value])
+
 def _get_key(guild_id, user_id):
     # User ID first to make it easier to look up
-    key = b'ban:%b:%b' % (struct.pack(PACK_FORMAT, user_id),
-                          struct.pack(PACK_FORMAT, guild_id))
-    assert len(key) == 21
+    key = b'%b%b%b' % (PREFIX, struct.pack(PACK_FORMAT, user_id),
+                       struct.pack(PACK_FORMAT, guild_id))
+    assert len(key) == 17
     return key
 
 def _parse_key(key):
     """Return format: user_id, guild_id"""
-    assert len(key) == 21
-    return (struct.unpack_from(PACK_FORMAT, key, 4),
-            struct.unpack_from(PACK_FORMAT, key, 13))
+    assert len(key) == 17
+    return (struct.unpack_from(PACK_FORMAT, key, 1),
+            struct.unpack_from(PACK_FORMAT, key, 9))
 
 def weave(*gens):
     for vals in zip(*gens):

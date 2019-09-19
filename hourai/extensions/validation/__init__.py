@@ -185,7 +185,7 @@ class Validation(bot.BaseCog):
 
     @tasks.loop(seconds=5.0)
     async def purge_unverified(self):
-        session = self.bot.create_db_session()
+        session = self.bot.create_storage_session()
         configs = session.query(models.GuildValidationConfig) \
                         .filter_by(is_propogated=True) \
                         .all()
@@ -226,7 +226,7 @@ class Validation(bot.BaseCog):
         await self.bot.wait_until_ready()
 
     # async def _update_ban_list(self):
-        # session = self.bot.create_db_session()
+        # session = self.bot.create_storage_session()
         # async def _get_bans(guild):
             # if not guild.me.guild_permissions.ban_members:
                 # return list()
@@ -352,7 +352,7 @@ class Validation(bot.BaseCog):
     async def on_member_join(self, member):
         print('{} ({}) joined {} ({})'.format(member.name.encode('utf-8'), member.id,
             member.guild.name.encode('utf-8'), member.guild.id))
-        session = self.bot.create_db_session()
+        session = self.bot.create_storage_session()
         proxy = proxies.GuildProxy(member.guild, session)
         if not proxy.validation_config.is_valid:
             return
@@ -389,7 +389,7 @@ class Validation(bot.BaseCog):
             pass
 
     async def report_bans(self, ban_info):
-        session = self.bot.create_db_session()
+        session = self.bot.create_storage_session()
         guild_proxies = []
         for guild in self.bot.guilds:
             member = guild.get_member(user.id)

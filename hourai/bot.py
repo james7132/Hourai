@@ -185,7 +185,7 @@ class Hourai(commands.AutoShardedBot):
         super().__init__(*args, **kwargs)
 
     def create_storage_session(self):
-        return self.storage.get_session()
+        return self.storage.create_session()
 
     async def start(self, *args, **kwargs):
         await self.storage.init()
