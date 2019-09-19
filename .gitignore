@@ -1,6 +1,8 @@
 # Generated Protobuf Python files
 *_pb2.py
 
+docker-compose.yml
+
 node_modules/
 
 # Private Bot Extensions
