@@ -2,7 +2,9 @@ version: "2"
 services:
   hourai:
     build: .
+    container_name: "hourai"
     command: python launcher.py run
+    restart: unless-stopped
     environment:
       # Bot Configuration
       - BOT_TOKEN=""
@@ -22,15 +24,22 @@ services:
       - redis_cache
   main_database:
     image: "postgres:11-alpine"
-    container_name: "hourai_postgres_dev"
+    container_name: "postgres"
+    restart: unless-stopped
     volumes:
-      - hourai_dbdata:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=hourai
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
   redis_cache:
     image: "redis:5.0-alpine"
-    container_name: "hourai_redis_dev"
+    container_name: "redis"
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    mem_limit: 100m
 volumes:
-  hourai_dbdata:
+  db-data:
+  redis-data:
