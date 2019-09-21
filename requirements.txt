@@ -1,5 +1,5 @@
 aiohttp==3.5.4
-discord.py==1.1.1
+discord.py==1.2.3
 Click==7.0
 Pint==0.9
 SQLAlchemy==1.3.4
