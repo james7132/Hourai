@@ -4,10 +4,14 @@ class Validator():
     """Base class for all validators."""
 
     async def get_approval_reasons(self, bot, member):
-        return iter(())
+        # Empty async generator
+        if False:
+            yield None
 
     async def get_rejection_reasons(self, bot, member):
-        return iter(())
+        # Empty async generator
+        if False:
+            yield None
 
 def split_camel_case(val):
     return re.sub('([a-z])([A-Z0-9])', '$1 $2', val).split()

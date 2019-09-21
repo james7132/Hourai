@@ -1,6 +1,9 @@
 import humanize
 import re
-from .common import Validator, generalize_filter
+from datetime import datetime
+from hourai import utils
+from .common import Validator, generalize_filter, split_camel_case
+from .storage import BanStorage
 
 class NameMatchRejector(Validator):
     """A suspicion level validator that rejects users for username proximity to
@@ -17,7 +20,7 @@ class NameMatchRejector(Validator):
         for guild_member in filter(self.filter, member.guild.members):
             name = self.member_selector(guild_member) or ''
             member_names.update({
-                p: generalize_filter(p) for p in _split_camel_case(name)
+                p: generalize_filter(p) for p in split_camel_case(name)
             })
         field_value = self.subfield(member)
         for filter_name, regex in member_names.items():
@@ -43,7 +46,7 @@ class StringFilterRejector(Validator):
         field_value = self.subfield(member)
         for filter_name, regex in self.filters:
             if self.match_func(regex)(field_value):
-                yield prefix + 'Matches: `{}`'.format(filter_name)
+                yield self.prefix + 'Matches: `{}`'.format(filter_name)
 
 class NewAccountRejector(Validator):
     """A suspicion level validator that rejects users that were recently
@@ -81,18 +84,20 @@ class BannedUserRejector(Validator):
         self.min_guild_size = min_guild_size
 
     async def get_rejection_reasons(self, bot, member):
-        storage = BanStorage(bot)
-        bans = storage.get_bans(member.id)
-        ban_guilds = ((ban, bot.get_guild(ban.guild_id)) for ban in bans
-                      if self._is_valid_guild(ban, bot.get_guild(ban.guild_id)))
-        reasons = set(ban.reason for ban, guild in ban_guilds)
-        if reasons == set([None]):
-            yield "Banned on another server."
-        else:
-            for reason in reasons:
-                if reason is None:
-                    continue
+        banned = False
+        reasons = set()
+        guild_ids = [g.id for g in bot.guilds if self._is_valid_guild(g)]
+        bans = await BanStorage(bot).get_bans(member.id, guild_ids)
+        for ban in bans:
+            guild = bot.get_guild(ban.guild_id)
+            assert self._is_valid_guild(guild)
+            if ban.reason is not None and ban.reason not in reasons:
                 yield "Banned on another server. Reason: `{}`.".format(r)
+                reasons.add(ban.reason)
+            banned = True
 
-    def _is_valid_guild(self, ban, guild):
+        if len(reasons) == 0 and banned:
+            yield "Banned on another server."
+
+    def _is_valid_guild(self, guild):
         return guild is not None and guild.member_count >= self.min_guild_size
