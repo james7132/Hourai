@@ -1,5 +1,15 @@
 from .common import Validator
 
+def _is_nitro_booster(bot, member):
+    """Checks if the user is boosting any server the bot is on."""
+    return any(m.id == member.id
+               for g in bot.guilds
+               for m in g.premium_subscribers)
+
+def _has_nitro(bot, member):
+    return member.is_avatar_animated() or \
+           _is_nitro_booster(bot, member)
+
 class NitroApprover(Validator):
     """A suspicion level validator that approves users that have Nitro.
 
@@ -15,14 +25,8 @@ class NitroApprover(Validator):
     """
 
     async def get_approval_reasons(self, bot, member):
-        if member.is_avatar_animated() or _is_nitro_booster(bot, member):
+        if _has_nitro(bot, member):
             yield 'User has Nitro. Probably not a user bot.'
-
-    def _is_nitro_booster(self, bot, member):
-        """Checks if the user is boosting any server the bot is on."""
-        return any(m.id == member.id
-                   for g in bot.guilds
-                   for m in g.premium_subscribers)
 
 class BotApprover(Validator):
     """A override level validator that approves other bots."""
@@ -32,20 +36,9 @@ class BotApprover(Validator):
             yield 'User is an OAuth2 bot that can only be manually added.'
 
 class BotOwnerApprover(Validator):
-    """An override level validator that approves the owner of the bot."""
+    """An override level validator that approves the owner of the bot or part of
+    the team that owns the bot."""
 
     async def get_approval_reasons(self, bot, member):
-        app_info = await bot.application_info()
-        if member.owner == member:
+        if (await bot.is_owner(member)):
             yield "User owns this bot."
-
-class BotTeamApprover(Validator):
-    """An override level validator that approves members of the Discord Team that
-    manages the bot."""
-
-    async def get_approval_reasons(self, bot, member):
-        app_info = await bot.application_info()
-        if bot.team is None:
-            return
-        if any(team_member.id == member.id for team_member in bot.team.members):
-            yield "User is on the team that manages this bot."

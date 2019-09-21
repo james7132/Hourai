@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import traceback
+import logging
 from .rejectors import *
 from .approvers import *
 from .raid import *
@@ -10,6 +11,8 @@ from datetime import datetime, timedelta
 from hourai import bot, utils
 from hourai.db import models, proxies
 from hourai.utils import format
+
+log = logging.getLogger(__name__)
 
 PURGE_LOOKBACK = timedelta(hours=6)
 PURGE_DM = """
@@ -120,11 +123,13 @@ VALIDATORS = (# ----------------------------------------------------------------
               # -----------------------------------------------------------------
               BotApprover(),
               BotOwnerApprover(),
-              BotTeamApprover(),
               )
 
-def _get_validation_config(ctx):
-    return ctx.session.query(models.GuildValidationConfig).get(ctx.guild.id)
+def _get_config(session, guild, model=models.GuildValidationConfig, default=None):
+    config = session.query(model).get(guild.id)
+    if config is None and default is not None:
+        return default()
+    return config
 
 async def _validate_member(bot, member):
     approval = True
@@ -144,7 +149,7 @@ async def _validate_member(bot, member):
                 approval = True
         except:
             # TODO(james7132) Handle the error
-            traceback.print_exc()
+            log.exception('Error while running validator:')
     return approval, approval_reasons, rejection_reasons
 
 def _chunk_iter(src, chunk_size):
@@ -169,24 +174,42 @@ class Validation(bot.BaseCog):
         self.purge_unverified.cancel()
         self.reload_bans.cancel()
 
-    @tasks.loop(seconds=5)
+    @tasks.loop(seconds=150)
     async def reload_bans(self):
-        try:
-            self.bot.logger.info('RELOADING BANS')
-            for guild in self.bot.guilds:
+        for guild in self.bot.guilds:
+            try:
                 await self.ban_storage.save_bans(guild)
-            self.bot.logger.info('BANS RELOADED')
-        except:
-            self.bot.logger.exception("Exception while reloading bans")
+            except:
+                log.exception(
+                        f"Exception while reloading bans for guild {guild.id}:")
 
     @reload_bans.before_loop
     async def before_reload_bans(self):
         await self.bot.wait_until_ready()
 
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild, user):
+        try:
+            ban_info = await guild.fetch_ban(user)
+            await self.ban_storage.save_ban(guild, ban_info)
+        except discord.Forbidden:
+            pass
+
+        if guild.member_count >= MINIMUM_GUILD_SIZE:
+            # TODO(james7132): Enable this after adding deduplication.
+            # await self.report_bans(ban)
+            pass
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild, user):
+        await self.ban_storage.clear_ban(guild, user)
+
     @tasks.loop(seconds=5.0)
     async def purge_unverified(self):
         session = self.bot.create_storage_session()
+        guild_ids = [g.id for g in self.bot.guilds]
         configs = session.query(models.GuildValidationConfig) \
+                        .filter(models.GuildValidationConfig.guild_id.in_(guild_ids)) \
                         .filter_by(is_propogated=True) \
                         .all()
         guilds = ((conf, self.bot.get_guild(conf.guild_id)) for conf in configs)
@@ -207,7 +230,7 @@ class Validation(bot.BaseCog):
             except:
                 pass
             await member.kick(reason='Unverified in sufficient time.')
-            self.bot.logger.info('Purged {} from {} for not being verified in time.'.format(
+            log.info('Purged {} from {} for not being verified in time.'.format(
                   utils.pretty_print(member), utils.pretty_print(member.guild)))
         tasks = list()
         for conf, guild in guilds:
@@ -225,25 +248,6 @@ class Validation(bot.BaseCog):
     async def before_purge_unverified(self):
         await self.bot.wait_until_ready()
 
-    # async def _update_ban_list(self):
-        # session = self.bot.create_storage_session()
-        # async def _get_bans(guild):
-            # if not guild.me.guild_permissions.ban_members:
-                # return list()
-            # try:
-                # return [models.Ban(guild_id=guild.id, user_id=b.user.id,
-                                            # reason=b.reason)
-                                # for b in await guild.bans()]
-            # except discord.Forbidden as e:
-                # print('Failed to fetch {}\'s bans'.format(guild.name))
-                # return list()
-        # bans = await asyncio.gather(*[_get_bans(g) for g in self.bot.guilds])
-        # session.query(models.Ban).delete()
-        # for ban_list in bans:
-            # session.add_all(ban_list)
-        # session.commit()
-        # self.bot.logger.info('Updated ban list')
-
     @commands.command(name="setmodlog")
     @commands.guild_only()
     async def setmodlog(self, ctx, channel: discord.TextChannel=None):
@@ -256,6 +260,14 @@ class Validation(bot.BaseCog):
         await ctx.send(":thumbsup: Set {}'s modlog to {}.".format(
             ctx.guild.name, channel.mention))
 
+    @commands.command()
+    @commands.is_owner()
+    async def getbans(self, ctx, id: int):
+        guild_ids = [g.id for g in ctx.bot.guilds]
+        bans = await self.ban_storage.get_bans(id, guild_ids)
+        guilds = (f"{b.guild_id}: {b.reason}" for b in bans)
+        await ctx.send(format.vertical_list(guilds))
+
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
     async def validation(self, ctx):
@@ -263,7 +275,7 @@ class Validation(bot.BaseCog):
 
     @validation.command(name="setup")
     async def validation_setup(self, ctx, role: discord.Role, channel: discord.TextChannel):
-        config = _get_validation_config(ctx) or models.GuildValidationConfig()
+        config = _get_config(ctx.session, ctx.guild, default=models.GuildValidationConfig)
         config.guild_id = ctx.guild.id
         config.validation_role_id = role.id
         config.validation_channel_id = channel.id
@@ -274,7 +286,7 @@ class Validation(bot.BaseCog):
     @validation.command(name="propagate")
     @commands.bot_has_permissions(manage_roles=True)
     async def validation_propagate(self, ctx):
-        config = _get_validation_config(ctx)
+        config = _get_config(ctx.session, ctx.guild)
         if config is None:
             await ctx.send('No validation config was found. Please run `~valdiation setup`')
             return
@@ -319,7 +331,7 @@ class Validation(bot.BaseCog):
     @validation.command(name="lockdown")
     @commands.bot_has_permissions(manage_channels=True)
     async def validation_lockdown(self, ctx):
-        config = _get_validation_config(ctx)
+        config = _get_validation_config(ctx.session, ctx.guild)
         if config is None:
             await ctx.send('No validation config was found. Please run `~valdiation setup`')
             return
@@ -350,43 +362,27 @@ class Validation(bot.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        print('{} ({}) joined {} ({})'.format(member.name.encode('utf-8'), member.id,
-            member.guild.name.encode('utf-8'), member.guild.id))
         session = self.bot.create_storage_session()
         proxy = proxies.GuildProxy(member.guild, session)
         if not proxy.validation_config.is_valid:
             return
         approved, reasons_a, reasons_r = await _validate_member(self.bot, member)
         if approved:
-            message = f"Verified user: {member.metion} ({member.id})."
+            role_id = proxy.validation_config.validation_role_id
+            role = member.guild.get_role(role_id)
+            await member.add_roles(role)
+            message = f"Verified user: {member.mention} ({member.id})."
         else:
             message = (f"{utils.mention_random_online_mod(member.guild)}. "
                        f"User {member.name} ({member.id}) requires manual "
                        f"verification.")
         if len(reasons_a) > 0:
             message += ("\nApproved for the following reaasons: \n"
-                        f"{ormat.bullet_list(reasons_a)}")
+                        f"```\n{format.bullet_list(reasons_a)}\n```")
         if len(reasons_r) > 0:
             message += ("\nRejected for the following reaasons: \n"
-                        f"{format.bullet_list(reasons_r)}")
-        await proxy.send_modlog_message(content=response)
-        if approved:
-            role_id = proxy.validation_config.validation_role_id
-            role = member.guild.get_role(role_id)
-            await member.add_roles(role)
-
-    @commands.Cog.listener()
-    async def on_member_ban(self, guild, user):
-        try:
-            ban_info = await guild.fetch_ban(user)
-            await self.ban_storage.save_ban(guild, ban_info)
-        except discord.Forbidden:
-            pass
-
-        if guild.member_count >= MINIMUM_GUILD_SIZE:
-            # TODO(james7132): Enable this after adding deduplication.
-            # await self.report_bans(ban)
-            pass
+                        f"```\n{format.bullet_list(reasons_r)}\n```")
+        await proxy.send_modlog_message(content=message)
 
     async def report_bans(self, ban_info):
         session = self.bot.create_storage_session()
