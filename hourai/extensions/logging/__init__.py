@@ -1,4 +1,7 @@
 from .mod_logging import ModLogging
+from .username_logging import UsernameLogging
 
 def setup(bot):
-    bot.add_cog(ModLogging(bot))
+    cogs = (ModLogging(bot), UsernameLogging(bot))
+    for cog in cogs:
+        bot.add_cog(cog)
