@@ -1,10 +1,13 @@
 import discord
 import praw
 import threading
+import logging
 from .types import FeedScanResult, Broadcast
 from datetime import datetime
 from hourai import config
 from hourai.utils import format
+
+log = logging.getLogger(__name__)
 
 thread_locals = threading.local()
 
@@ -16,7 +19,7 @@ class RedditScanner():
     def get_reddit_client(self):
         client = getattr(thread_locals, 'reddit_client', None)
         if client is None:
-            self.bot.logger.info("Starting reddit client!")
+            log.info("Starting reddit client!")
             reddit_args = {
                 'client_id': config.REDDIT_CLIENT_ID,
                 'client_secret': config.REDDIT_CLIENT_SECRET,
@@ -66,7 +69,7 @@ class RedditScanner():
         last_updated = feed.last_updated
         posts = []
         for submission in latest_posts:
-            self.bot.logger.info('New Reddit Post in {}: {}'.format(
+            log.info('New Reddit Post in {}: {}'.format(
                 feed.source, submission.title))
             posts.append(Broadcast(
                 content='Post in /r/{}:'.format(submission.subreddit.display_name),

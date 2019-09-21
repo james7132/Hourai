@@ -32,7 +32,8 @@ class Feeds(bot.BaseCog):
 
         tasks = []
         for feed in feeds:
-            if len(feed.channels) <= 0:
+            channels = list(feed.get_channels(self.bot))
+            if len(channels) <= 0:
                 self.bot.logger.info('Feed without channels: {}'.format(feed.id))
                 continue
             tasks.append(loop.run_in_executor(None, self.scan_single_feed, feed))

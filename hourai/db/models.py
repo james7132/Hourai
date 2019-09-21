@@ -81,6 +81,18 @@ class Guild(Base):
     moderation = Column(Protobuf(guild_configs_pb2.ModerationConfig),
                         nullable=True)
 
+class LoggingConfig(Base):
+    __tablename__ = 'guild_logging_configs'
+
+    guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
+    modlog_channel_id = Column(types.BigInteger)
+    log_deleted_messages = Column(types.Boolean, nullable=False)
+    log_edited_messages = Column(types.Boolean, nullable=False)
+
+    @property
+    def is_valid(self):
+        components = (self.validation_role_id, self.validation_channel_id)
+        return all(x is not None for x in components)
 
 class GuildValidationConfig(Base):
     __tablename__ = 'guild_validation_configs'
