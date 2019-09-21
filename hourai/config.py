@@ -4,8 +4,8 @@ import logging
 # Logging Config
 
 logging.basicConfig(level=logging.INFO)
-for mod in ('sqlalchemy.engine', 'prawcore', 'aioredis'):
-    logging.getLogger(mod).setLevel(logging.DEBUG)
+for mod in ('prawcore', 'aioredis'):
+    logging.getLogger(mod).setLevel(logging.INFO)
 
 BOT_TOKEN = ''
 

@@ -120,8 +120,8 @@ class HouraiContext(commands.Context):
         super().__init__(**attrs)
 
     async def __aenter__(self):
-        self.session = self.bot.get_storage_session()
-        await self.session.__aenter()
+        self.session = self.bot.create_storage_session()
+        await self.session.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc, traceback):
@@ -235,7 +235,8 @@ class Hourai(commands.AutoShardedBot):
         self.logger.info(f'Guild unavailable: {guild.name}')
 
     async def on_error(self, event, *args, **kwargs):
-        self.logger.exception(f'Exception in event {event}:')
+        error = f'Exception in event {event} (args={args}, kwargs={kwargs}):'
+        self.logger.exception(error)
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.NoPrivateMessage):
