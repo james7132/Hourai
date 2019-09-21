@@ -55,8 +55,14 @@ class Username(Base):
     __tablename__ = 'usernames'
 
     user_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    username = Column(types.String(255), primary_key=True)
-    timestamp = Column(UnixTimestamp, nullable=False)
+    timestamp = Column(UnixTimestamp, primary_key=True)
+    name = Column(types.String(255), nullable=False)
+    discriminator = Column(types.Integer)
+
+    def to_fullname(self):
+        return (self.name
+                if self.discriminator is None
+                else f'{self.name}#{self.discriminator}')
 
     @classmethod
     def from_resource(cls, resource, *args, **kwargs):
