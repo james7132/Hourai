@@ -42,12 +42,12 @@ class ChainCoder(Coder):
         self.deserialize_coders = tuple(reversed(sub_coders))
 
     def serialize(self, msg):
-        return reduce(lambda c, m: c.serialize(m),
-                      self.serialize_coders, msg)
+        return functools.reduce(lambda m, c: c.serialize(m),
+                                self.serialize_coders, msg)
 
     def deserialize(self, buf):
-        return reduce(lambda c, m: c.deserialize(m),
-                      self.deserialize_coders, buf)
+        return functools.reduce(lambda m, c: c.deserialize(m),
+                                self.deserialize_coders, msg)
 
 class IntCoder(Coder):
 
@@ -66,7 +66,7 @@ class PrefixCoder(Coder):
         self.prefix = prefix
 
     def serialize(self, msg):
-        return prefix + msg
+        return self.prefix + msg
 
     def deserialize(self, buf):
         return buf.replace(self.prefix, '')

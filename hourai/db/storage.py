@@ -19,7 +19,7 @@ class StoragePrefix(enum.Enum):
     BANS                        = 4
 
 def _make_prefixed_coder(prefix):
-    return ChainCoder([IntCoder, PrefixCoder(prefix)])
+    return ChainCoder([IntCoder(), PrefixCoder(prefix)])
 
 class Storage:
     """A generic interface for managing the remote storage services connected to
