@@ -5,7 +5,7 @@ package hourai.db.proto;
 import "hourai/db/proto/action.proto";
 
 message AutoConfig {
-  repeated EventGroup guild_events = 1;
+  optional EventGroup guild_events = 1;
   map<string, EventGroup> channel_events = 2;
 }
 
@@ -13,8 +13,9 @@ message EventGroup {
   // Event: User sends or edits a message.
   repeated MessageEvent on_message = 1;
   repeated UserChangeEvent on_join = 2;
-  repeated UserChangeEvent on_left = 3;
+  repeated UserChangeEvent on_leave = 3;
   repeated UserChangeEvent on_ban = 4;
+  repeated UserChangeEvent on_verify = 5;
 }
 
 message MessageEvent {
