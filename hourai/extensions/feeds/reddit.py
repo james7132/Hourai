@@ -2,6 +2,7 @@ import discord
 import praw
 import threading
 import logging
+from prawcore import exceptions
 from .types import FeedScanResult, Broadcast
 from datetime import datetime
 from hourai import config
@@ -61,20 +62,23 @@ class RedditScanner():
         return embed
 
     def scan(self, feed):
-        subreddit = self.get_reddit_client().subreddit(feed.source)
-        latest_posts = filter(lambda s: datetime.utcfromtimestamp(s.created_utc) > feed.last_updated,
-                              subreddit.new(limit=config.REDDIT_FETCH_LIMIT))
-        latest_posts = sorted(latest_posts, key=lambda s: s.created_utc)
+        try:
+            subreddit = self.get_reddit_client().subreddit(feed.source)
+            latest_posts = filter(lambda s: datetime.utcfromtimestamp(s.created_utc) > feed.last_updated,
+                                  subreddit.new(limit=config.REDDIT_FETCH_LIMIT))
+            latest_posts = sorted(latest_posts, key=lambda s: s.created_utc)
 
-        last_updated = feed.last_updated
-        posts = []
-        for submission in latest_posts:
-            log.info('New Reddit Post in {}: {}'.format(
-                feed.source, submission.title))
-            posts.append(Broadcast(
-                content='Post in /r/{}:'.format(submission.subreddit.display_name),
-                embed=self.submission_to_embed(submission)))
-            feed.last_updated = max(feed.last_updated,
-                                    datetime.utcfromtimestamp(submission.created_utc))
-        return FeedScanResult(feed=feed, posts=posts,
-                              is_updated=feed.last_updated > last_updated)
+            last_updated = feed.last_updated
+            posts = []
+            for submission in latest_posts:
+                log.info('New Reddit Post in {}: {}'.format(
+                    feed.source, submission.title))
+                posts.append(Broadcast(
+                    content='Post in /r/{}:'.format(submission.subreddit.display_name),
+                    embed=self.submission_to_embed(submission)))
+                feed.last_updated = max(feed.last_updated,
+                                        datetime.utcfromtimestamp(submission.created_utc))
+            return FeedScanResult(feed=feed, posts=posts,
+                                  is_updated=feed.last_updated > last_updated)
+        except exceptions.NotFound:
+            pass
