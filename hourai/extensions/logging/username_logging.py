@@ -33,7 +33,8 @@ class UsernameLogging(bot.BaseCog):
     async def on_member_remove(self, member):
         await self.log_username_change(member)
 
-    @commands.Cog.listener()
+    @commands.Co
+    g.listener()
     async def on_member_ban(self, guild, user):
         await self.log_username_changes(user)
 
@@ -79,11 +80,14 @@ class UsernameLogging(bot.BaseCog):
     def merge_usernames(self, usernames, session):
         before = None
         for username in list(sorted(usernames, key=lambda u: u.timestamp)):
-            if before is not None and before.name == username.name
+            if before is not None and before.name == username.name:
                 before.timestamp = min(before.timestamp, username.timestamp)
                 before.discriminator = (before.discriminator or
                                         username.discriminator)
                 usernames.remove(username)
-                session.delete(username)
+                try:
+                    session.delete(username)
+                except:
+                    pass
             else:
                 before = username

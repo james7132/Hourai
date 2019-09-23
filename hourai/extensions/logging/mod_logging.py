@@ -29,13 +29,19 @@ class ModLogging(bot.BaseCog):
             title='ID: {}'.format(payload.message_id),
             color=discord.Colour.dark_red(),
             timestamp=datetime.utcnow())
-        if payload.cached_message is not None:
-            msg = payload.cached_message
-            content = 'Message by {} deleted in {}.'.format(
-                       msg.author.mention, msg.channel.mention)
-            embed.description = msg.content
-            embed.set_author(name='{}#{} ({})'.format(msg.author.name, msg.author.discriminator, msg.author.id),
-                             icon_url=msg.author.avatar_url)
+        msg = payload.cached_message
+        if msg is not None or msg.author.bot:
+            await proxy.send_modlog_message(content=content, embed=embed)
+            return
+        content = 'Message by {} deleted in {}.'.format(
+                   msg.author.mention, msg.channel.mention)
+        embed.description = msg.content
+        embed.set_author(name='{}#{} ({})'.format(msg.author.name, msg.author.discriminator, msg.author.id),
+                         icon_url=msg.author.avatar_url)
+        if len(msg.attachments) >= 0)
+            attachements = (attach.url for attach in msg.attachments)
+            field = format.vertical_list(attachments)
+            embed.add_field(name='Attachments', value=field)
         await proxy.send_modlog_message(content=content, embed=embed)
 
     @commands.Cog.listener()
