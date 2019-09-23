@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from hourai import bot, utils
 from hourai.db import models, proxies
 from hourai.utils import format
-
 log = logging.getLogger(__name__)
 
 PURGE_LOOKBACK = timedelta(hours=6)
@@ -21,6 +20,11 @@ If you feel this is in error, please contact a mod regarding this.
 """
 BATCH_SIZE = 10
 MINIMUM_GUILD_SIZE = 150
+
+APPROVE_REACTION = '\u2705'
+KICK_REACTION = '\u274C'
+BAN_REACTION = '\u2620'
+MODLOG_REACTIONS = (APPROVE_REACTION, KICK_REACTION, BAN_REACTION)
 
 # TODO(james7132): Add per-server validation configuration.
 # TODO(james7132): Add filter for pornographic or violent avatars
@@ -367,10 +371,23 @@ class Validation(bot.BaseCog):
         if not proxy.validation_config.is_valid:
             return
         approved, reasons_a, reasons_r = await _validate_member(self.bot, member)
+        tasks = [self.send_verification_modlog(proxy, member, approved,
+                                               reasons_a, reasons_r)]
         if approved:
-            role_id = proxy.validation_config.validation_role_id
+            tasks.append(self.verify_member(member, proxy))
+        await asyncio.gather(*tasks)
+
+    async def verify_member(self, member, proxy):
+        role_id = proxy.validation_config.validation_role_id
+        if role_id is not None:
             role = member.guild.get_role(role_id)
-            await member.add_roles(role)
+            if role is not None:
+                await member.add_roles(role)
+        self.bot.dispatch('on_verify', member)
+
+    async def send_verification_modlog(self, proxy, member,
+                                       approved, reasons_a, reasons_r):
+        if approved:
             message = f"Verified user: {member.mention} ({member.id})."
         else:
             message = (f"{utils.mention_random_online_mod(member.guild)}. "
@@ -382,7 +399,11 @@ class Validation(bot.BaseCog):
         if len(reasons_r) > 0:
             message += ("\nRejected for the following reaasons: \n"
                         f"```\n{format.bullet_list(reasons_r)}\n```")
-        await proxy.send_modlog_message(content=message)
+        modlog_msg= await proxy.send_modlog_message(content=message)
+        if modlog_msg is None:
+            return
+        for reaction in MODLOG_REACTIONS:
+            await modlog_msg.add_reaction(reaction)
 
     async def report_bans(self, ban_info):
         session = self.bot.create_storage_session()
