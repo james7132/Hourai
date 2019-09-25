@@ -55,9 +55,7 @@ def _get_guild_id(arg):
 
 
 class BaseCog(commands.Cog):
-
-    def __init__(self):
-        log.info("Cog {} loaded.".format(self.__class__.__name__))
+    pass
 
 class PrivateCog(commands.Cog(command_attrs={"hidden": True})):
     """
@@ -118,15 +116,13 @@ class HouraiContext(commands.Context):
         self.parent = attrs.pop('parent', None)
         self.depth = attrs.pop('depth', 1)
         super().__init__(**attrs)
+        self.session = self.bot.create_storage_session()
 
     async def __aenter__(self):
-        self.session = self.bot.create_storage_session()
         await self.session.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc, traceback):
-        if self.session is None:
-            return
         await self.session.__aexit__(exc_type, exc, traceback)
 
     def substitute_content(self, repeats=20):
@@ -227,6 +223,10 @@ class Hourai(commands.AutoShardedBot):
 
         async with ctx:
             await self.invoke(ctx)
+
+    def add_cog(self, cog):
+        super().add_cog(cog)
+        log.info("Cog {} loaded.".format(cog.__class__.__name__))
 
     async def on_guild_available(self, guild):
         self.logger.info(f'Guild available: {guild.name}')

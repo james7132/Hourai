@@ -10,10 +10,10 @@ message EscalationLadder {
 
 message EscalationLadderRung {
   // Required: The actions to apply.
-  repeated Action actions = 1;
+  repeated Action action = 1;
   // Required: The display name to show when listing out the ladder.
   optional string display_name = 2;
-  // Optional: if set, after X period of time (in milliseconds), the user will be
+  // Optional: if set, after X period of time (in seconds), the user will be
   // deescalated.
   repeated uint64 deescalation_period = 3;
 }

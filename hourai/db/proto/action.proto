@@ -5,7 +5,7 @@ package hourai.db.proto;
 message Action {
   optional uint64 user_id   = 1;
   optional string reason    = 2;
-  // Optional: duration, in milliseconds, after which the action is undone.
+  // Optional: duration, in seconds, after which the action is undone.
   optional uint64 duration  = 3;
   oneof details {
     KickMember kick = 4;

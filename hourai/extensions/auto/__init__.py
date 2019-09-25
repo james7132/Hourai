@@ -90,13 +90,13 @@ class Auto(bot.BaseCog):
         config = await self.get_auto_config(guild)
         if config is None:
             return
-        for evt in getattr(auto_config.guild_events, event_type):
+        for evt in getattr(config.guild_events, event_type):
             yield None, evt
-        for key in auto_config.channel_events:
+        for key in config.channel_events:
             channel = discord.utils.get(guild.channels, name=key)
             if channel is None:
                 continue
-            for evt in getattr(auto_config.channel_events[key], event_type):
+            for evt in getattr(config.channel_events[key], event_type):
                 yield channel, evt
 
     async def get_auto_config(self, guild):

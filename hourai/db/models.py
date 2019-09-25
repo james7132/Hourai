@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from abc import abstractmethod
 from sqlalchemy import types
 from sqlalchemy import Column, UniqueConstraint
-from sqlalchemy.schema import Table, ForeignKey
+from sqlalchemy.schema import Table, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -73,6 +73,7 @@ class Username(Base):
         })
         return cls(*args, **kwargs)
 
+Index("idx_username_user_id", Username.user_id)
 
 class Guild(Base):
     __tablename__ = 'guilds'

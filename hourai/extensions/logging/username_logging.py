@@ -33,22 +33,21 @@ class UsernameLogging(bot.BaseCog):
     async def on_member_remove(self, member):
         await self.log_username_change(member)
 
-    @commands.Co
-    g.listener()
+    @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        await self.log_username_changes(user)
+        await self.log_username_change(user)
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
-        await self.log_username_changes(user)
+        await self.log_username_change(user)
 
     @commands.Cog.listener()
     async def on_group_join(self, group, user):
-        await self.log_username_changes(user)
+        await self.log_username_change(user)
 
     @commands.Cog.listener()
     async def on_group_remove(self, group, user):
-        await self.log_username_changes(user)
+        await self.log_username_change(user)
 
     async def log_all_member_changes(self, guild):
         if not guild.chunked:

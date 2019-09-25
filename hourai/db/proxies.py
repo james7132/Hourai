@@ -76,11 +76,11 @@ class GuildProxy():
             modlog = self.get_modlog_channel()
             if modlog is not None:
                 return await modlog.send(*args, **kwargs)
-        except:
-            message_contents = ("Oops! A message for the modlog in `{}` failed"
-                                "to send! Please make sure the bot can write to"
-                                "a modlog channel properly!")
-            message_contents.format(self.guild.name)
+        except discord.Forbidden:
+            content = ("Oops! A message for the modlog in `{}` failed to send! "
+                       "Please make sure the bot can write to a modlog channel "
+                       "properly!")
+            content = content.format(self.guild.name)
             await self.guild.owner.send(message_contents)
             return None
 
