@@ -1,93 +1,111 @@
+import asyncio
 import functools
-import struct
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from hourai import utils
+from coders import IdentityCoder
 
-class Coder:
 
-    @abstractmethod
-    def serialize(self, msg):
-        pass
-
-    @abstractmethod
-    def deserialize(self, buf):
-        pass
-
-class BackingStore:
+class BackingStore(ABC):
 
     @abstractmethod
     async def get(self, key):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def set(self, key, value):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def clear(self, key):
-        pass
+        raise NotImplementedError
 
-class IdentityCoder(Coder):
+    async def get_all(self, keys):
+        tasks = [(key, self.get(key)) for key in keys]
+        await asyncio.gather(*[task for key, task in tasks])
+        return {key: task.result() for key, task in tasks}
 
-    def serialize(self, msg):
-        return msg
+    async def set_all(self, mapping):
+        await asyncio.gather(*[
+            self.set(key, value) for key, value in mapping.items()
+        ])
 
-    def deserialize(self, buf):
-        return buf
+    async def clear_all(self, keys):
+        await asyncio.gather(*[self.clear(key) for key in keys])
 
-class ChainCoder(Coder):
-
-    def __init__(self, sub_coders):
-        self.serialize_coders = tuple(sub_coders)
-        self.deserialize_coders = tuple(reversed(sub_coders))
-
-    def serialize(self, msg):
-        return functools.reduce(lambda m, c: c.serialize(m),
-                                self.serialize_coders, msg)
-
-    def deserialize(self, buf):
-        return functools.reduce(lambda m, c: c.deserialize(m),
-                                self.deserialize_coders, msg)
-
-class IntCoder(Coder):
-
-    def __init__(self, format=">Q"):
-        self.format = format
-
-    def serialize(self, msg):
-        return struct.pack(self.format, msg)
-
-    def deserialize(self, buf):
-        return struct.unpack(self.format, buf)
-
-class PrefixCoder(Coder):
-
-    def __init__(self, prefix):
-        self.prefix = prefix
-
-    def serialize(self, msg):
-        return self.prefix + msg
-
-    def deserialize(self, buf):
-        return buf.replace(self.prefix, '')
-
-class ProtobufCoder(Coder):
-
-    def __init__(self, message_type):
-        self.message_type = message_type
-
-    def serialize(self, msg):
-        return msg.MessageToString()
-
-    def deserialize(self, buf):
-        return self.message_type.ParseFromString(buf)
 
 class RedisStore(BackingStore):
 
-    def __init__(self, redis):
-        self.get = redis.get
-        self.set = redis.set
-        self.clear = redis.delete
+    def __init__(self, redis, timeout=0):
+        self.redis = redis
+        self.timeout = timeout
+
+    async def get(self, key):
+        return await self.redis.get(key)
+
+    async def set(self, key, value):
+        await self.redis.set(key, value, expire=self.timeout)
+
+    async def clear(self, key):
+        await self.redis.delete(key)
+
+    async def clear_all(self, keys):
+        await self._batch_do(keys, lambda tr, key: tr.delete(key))
+
+    async def _batch_do(self, iterable, func):
+        tr = self.redis.multi_exec()
+        tasks = [func(tr, value) for value in iterable]
+        results = await tr.execute()
+        results_check = await asyncio.gather(*tasks)
+        assert results == results_check
+        return results
+
+
+class RedisHashStore(RedisStore):
+    """ Stores values in Redis hash fields. Key value is a 2-Tuple of
+    (key, field)
+    """
+
+    async def get(self, key):
+        return await self.redis.hget(*key)
+
+    async def set(self, key, value):
+        if self.timeout == 0:
+            await self.redis.hset(key[0], key[1], value)
+            return
+        tr = self.redis.multi_exec()
+        tr.hset(key[0], key[1], value)
+        tr.expire(key[0], self.timeout)
+        await tr.execute()
+
+    async def clear(self, key):
+        await self.redis.hdel(key[0], key[1])
+
+    async def get_all(self, keys):
+        results = await self._batch_do(keys, lambda tr, key: tr.hget(*key))
+        return dict(zip(keys, results))
+
+    async def set_all(self, mapping):
+        tasks = []
+        tr = self.redis.multi_exec()
+        for key, group in self._group_by_key(mapping):
+            tasks.append(tr.hmset_dict(key, group))
+            if self.timeout != 0:
+                tasks.append(tr.expire(key, self.timeout))
+        results = await tr.execute()
+        results_check = await asyncio.gather(*tasks)
+        assert results == results_check
+
+    async def clear_all(self, keys):
+        await self._batch_do(keys, lambda tr, key: tr.hdel(*key))
+
+    def _group_by_key(self, mapping):
+        groups = {}
+        for key, value in mapping.items():
+            key, field = key
+            if key not in groups:
+                groups[key] = []
+            groups[key].append((field, value))
+        return ((key, dict(group)) for key, group in groups.items())
 
 class Cache(BackingStore):
     """A wrapper around a backing store for caching data."""
@@ -99,22 +117,31 @@ class Cache(BackingStore):
         self.store = store
         self.key_coder = key_coder
         self.value_coder = value_coder
-        self.timeout = timeout
 
     async def set(self, key, message):
-        assert isinstance(message, self.message_type)
-        await self.store.set(self.key_coder.serialize(key),
-                             self.value_coder.serialize(message),
-                             expire=self.timeout)
+        await self.store.set(self.key_coder.encode(key),
+                             self.value_coder.encode(message))
 
     async def get(self, key):
-        value = await self.store.get(self.key_coder.serialize(key))
+        value = await self.store.get(self.key_coder.encode(key))
         if value is None:
             return None
-        return self.value_coder.deserialize(value)
+        return self.value_coder.decode(value)
 
     async def clear(self, key):
-        await self.store.clear(self.key_coder.serialize(key))
+        await self.store.clear(self.key_coder.encode(key))
+
+    async def get_all(self, keys):
+        encoded_keys = [self.key_coder.encode(key) for key in keys]
+        results = await self.store.get_all(encoded_keys)
+        return {self.key_coder.decode(key):
+                self.value_coder.decode(value) if value is not None else None
+                for key, value in results.items()}
+
+    async def set_all(self, mapping):
+        mapping = {self.key_coder.encode(key): self.value_coder.encode(value)
+                   for key, value in mapping.items()}
+        await self.store.set_all(mapping)
 
     def getter(self, func, key_func):
         """Decorator funtion that caches a getter function for a Protobuffer.

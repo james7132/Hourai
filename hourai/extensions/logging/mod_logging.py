@@ -3,6 +3,7 @@ from discord.ext import commands
 from datetime import datetime
 from hourai import bot
 from hourai.db import proxies
+from hourai.utils import format
 
 class ModLogging(bot.BaseCog):
     """ Cog for logging Discord and bot events to a servers' modlog channels. """
@@ -30,7 +31,7 @@ class ModLogging(bot.BaseCog):
             color=discord.Colour.dark_red(),
             timestamp=datetime.utcnow())
         msg = payload.cached_message
-        if msg is not None or msg.author.bot:
+        if msg is None or msg.author.bot:
             await proxy.send_modlog_message(content=content, embed=embed)
             return
         content = 'Message by {} deleted in {}.'.format(
@@ -38,8 +39,8 @@ class ModLogging(bot.BaseCog):
         embed.description = msg.content
         embed.set_author(name='{}#{} ({})'.format(msg.author.name, msg.author.discriminator, msg.author.id),
                          icon_url=msg.author.avatar_url)
-        if len(msg.attachments) >= 0)
-            attachements = (attach.url for attach in msg.attachments)
+        if len(msg.attachments) > 0:
+            attachments = (attach.url for attach in msg.attachments)
             field = format.vertical_list(attachments)
             embed.add_field(name='Attachments', value=field)
         await proxy.send_modlog_message(content=content, embed=embed)

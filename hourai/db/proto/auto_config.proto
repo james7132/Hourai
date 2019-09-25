@@ -38,5 +38,5 @@ message UserChangeEvent {
 
 message FilterSettings {
   repeated string blacklist = 1;
-  repeated string whitelilst = 2;
+  repeated string whitelist = 2;
 }

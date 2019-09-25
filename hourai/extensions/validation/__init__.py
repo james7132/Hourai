@@ -1,7 +1,8 @@
-import discord
 import asyncio
-import traceback
+import discord
+import io
 import logging
+import traceback
 from .rejectors import *
 from .approvers import *
 from .raid import *
@@ -9,15 +10,16 @@ from .storage import BanStorage
 from discord.ext import tasks, commands
 from datetime import datetime, timedelta
 from hourai import bot, utils
-from hourai.db import models, proxies
-from hourai.utils import format
+from hourai.db import models, proxies, proto
+from hourai.utils import format, embed
+from google.protobuf import text_format
+
 log = logging.getLogger(__name__)
 
 PURGE_LOOKBACK = timedelta(hours=6)
-PURGE_DM = """
-You have been kicked from {} due to not being verified within sufficient time.
-If you feel this is in error, please contact a mod regarding this.
-"""
+PURGE_DM = ("You have been kicked from {} due to not being verified within "
+            "sufficient time.  If you feel this is in error, please contact a "
+            "mod regarding this.")
 BATCH_SIZE = 10
 MINIMUM_GUILD_SIZE = 150
 
@@ -264,13 +266,13 @@ class Validation(bot.BaseCog):
         await ctx.send(":thumbsup: Set {}'s modlog to {}.".format(
             ctx.guild.name, channel.mention))
 
-    @commands.command()
+    @commands.command(name="getbans")
     @commands.is_owner()
-    async def getbans(self, ctx, id: int):
-        guild_ids = [g.id for g in ctx.bot.guilds]
-        bans = await self.ban_storage.get_bans(id, guild_ids)
-        guilds = (f"{b.guild_id}: {b.reason}" for b in bans)
-        await ctx.send(format.vertical_list(guilds))
+    async def getbans(self, ctx, user_id: int):
+        guild_ids = (g.id for g in ctx.bot.guilds)
+        bans = await self.ban_storage.get_bans(user_id, guild_ids)
+        bans = (f'{ban.guild_id}: {ban.reason}' for ban in bans)
+        await ctx.send(format.vertical_list(bans))
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
@@ -331,7 +333,6 @@ class Validation(bot.BaseCog):
                 session.commit()
                 return
 
-
     @validation.command(name="lockdown")
     @commands.bot_has_permissions(manage_channels=True)
     async def validation_lockdown(self, ctx):
@@ -363,6 +364,52 @@ class Validation(bot.BaseCog):
 
         await asyncio.gather(*tasks)
         await msg.edit(f'Lockdown complete! Make sure your mods can read the validation channel!')
+
+    @commands.group(name="pconfig", invoke_without_command=True)
+    @commands.is_owner()
+    @commands.guild_only()
+    async def config(self, ctx):
+        pass
+
+    @config.command(name="upload")
+    async def config_upload(self, ctx):
+        if len(ctx.message.attachments) <= 0:
+            await ctx.send('Must provide a config file!')
+            return
+        config = proto.GuildConfig()
+        text_format.Merge(await ctx.message.attachments[0].read(), config)
+
+        guild_id = ctx.guild.id
+
+        tasks = []
+        for cache, field in self.get_mapping(ctx.session.storage):
+            if config.HasField(field):
+                tasks.append(cache.set(guild_id, getattr(config, field)))
+        await asyncio.gather(*tasks)
+        await ctx.send('Config successfully uploaded.')
+
+    @config.command(name="dump")
+    async def config_dump(self, ctx):
+        # TODO(james7132): Make the operation atomic
+        config = proto.GuildConfig()
+        async def _get_field(cache, field):
+            result = await cache.get(ctx.guild.id)
+            if result is not None:
+                getattr(config, field).CopyFrom(result)
+        await asyncio.gather(*[
+            _get_field(c, f) for c, f in self.get_mapping(ctx.session.storage)
+        ])
+        output = text_format.MessageToString(config, indent=2)
+        bytes_io = io.BytesIO(output.encode('utf-8'))
+        await ctx.send(file=discord.File(bytes_io))
+
+    def get_mapping(self, storage):
+        return (
+            (storage.logging_configs    , 'logging'),
+            (storage.validation_configs , 'validation'),
+            (storage.auto_configs       , 'auto'),
+            (storage.moderation_configs , 'moderation'),
+        )
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -399,11 +446,15 @@ class Validation(bot.BaseCog):
         if len(reasons_r) > 0:
             message += ("\nRejected for the following reaasons: \n"
                         f"```\n{format.bullet_list(reasons_r)}\n```")
-        modlog_msg= await proxy.send_modlog_message(content=message)
-        if modlog_msg is None:
-            return
-        for reaction in MODLOG_REACTIONS:
-            await modlog_msg.add_reaction(reaction)
+        ctx = await self.bot.get_automated_context(content='', author=member)
+        async with ctx:
+            whois_embed = embed.make_whois_embed(ctx, member)
+            modlog_msg= await proxy.send_modlog_message(content=message,
+                                                        embed=whois_embed)
+            if modlog_msg is None:
+                return
+            for reaction in MODLOG_REACTIONS:
+                await modlog_msg.add_reaction(reaction)
 
     async def report_bans(self, ban_info):
         session = self.bot.create_storage_session()
