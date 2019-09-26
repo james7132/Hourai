@@ -160,10 +160,10 @@ class StorageSession:
     def executor(self):
         return self.storage.executor
 
-    async def __aenter__(self):
+    def __enter__(self):
         return self
 
-    async def __aexit__(self, exc, exc_type, tb):
+    def __exit__(self, exc, exc_type, tb):
         if exc is None:
             self.db_session.commit()
         else:

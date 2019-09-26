@@ -249,6 +249,7 @@ class Validation(bot.BaseCog):
             kickable_members = filter(_is_kickable, unvalidated_members)
             tasks.extend(_kick_member(member) for member in kickable_members)
         await asyncio.gather(*tasks)
+        session.close()
 
     @purge_unverified.before_loop
     async def before_purge_unverified(self):
