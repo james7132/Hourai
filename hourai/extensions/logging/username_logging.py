@@ -57,7 +57,7 @@ class UsernameLogging(bot.BaseCog):
         ])
 
     async def log_username_change(self, user):
-        async with self.bot.create_storage_session() as session:
+        with self.bot.create_storage_session() as session:
             usernames = session.query(models.Username) \
                                .filter_by(user_id=user.id) \
                                .order_by(models.Username.timestamp)

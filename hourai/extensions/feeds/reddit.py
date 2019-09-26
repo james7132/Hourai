@@ -3,8 +3,8 @@ import praw
 import threading
 import logging
 from prawcore import exceptions
-from .types import FeedScanResult, Broadcast
-from datetime import datetime
+from .types import FeedScanResult, Broadcast, Scanner
+from datetime import datetime, timezone
 from hourai import config
 from hourai.utils import format
 
@@ -12,10 +12,10 @@ log = logging.getLogger(__name__)
 
 thread_locals = threading.local()
 
-class RedditScanner():
+class RedditScanner(Scanner):
 
     def __init__(self, cog):
-        self.bot = cog.bot
+        super().__init__(cog, 'REDDIT')
 
     def get_reddit_client(self):
         client = getattr(thread_locals, 'reddit_client', None)
@@ -35,18 +35,26 @@ class RedditScanner():
             thread_locals.reddit_client = client
         return client
 
-    def build_embed_link(self, submission, embed):
-        if submission.is_self:
-            embed.description = format.ellipsize(submission.selftext)
-            return
+    def get_result(self, feed):
         try:
-            post_hint = submission.post_hint
-            if post_hint == 'image':
-                embed.set_image(url=submission.url)
-            else:
-                embed.description = submission.url
-        except AttributeError:
-            embed.description = submission.url
+            last_updated = feed.last_updated
+            last_updated_unix = last_updated.replace(tzinfo=timezone.utc) \
+                                            .timestamp()
+            posts = []
+            subreddit = self.get_reddit_client().subreddit(feed.source)
+            for submission in subreddit.new():
+                if submission.created_utc <= last_updated_unix:
+                    break
+                log.info(f'New Reddit Post in {feed.source}: {submission.title}')
+                posts.append(Broadcast(
+                    content=f'Post in /r/{submission.subreddit.display_name}:',
+                    embed=self.submission_to_embed(submission)))
+                created_utc = datetime.utcfromtimestamp(submission.created_utc)
+                feed.last_updated = max(feed.last_updated, created_utc)
+            return FeedScanResult.from_feed( feed, posts=posts,
+                    is_updated=feed.last_updated > last_updated)
+        except exceptions.NotFound:
+            pass
 
     def submission_to_embed(self, submission):
         embed = discord.Embed(
@@ -61,24 +69,15 @@ class RedditScanner():
             embed.set_footer(text=submission.link_flair_text)
         return embed
 
-    def scan(self, feed):
+    def build_embed_link(self, submission, embed):
+        if submission.is_self:
+            embed.description = format.ellipsize(submission.selftext)
+            return
         try:
-            subreddit = self.get_reddit_client().subreddit(feed.source)
-            latest_posts = filter(lambda s: datetime.utcfromtimestamp(s.created_utc) > feed.last_updated,
-                                  subreddit.new(limit=config.REDDIT_FETCH_LIMIT))
-            latest_posts = sorted(latest_posts, key=lambda s: s.created_utc)
-
-            last_updated = feed.last_updated
-            posts = []
-            for submission in latest_posts:
-                log.info('New Reddit Post in {}: {}'.format(
-                    feed.source, submission.title))
-                posts.append(Broadcast(
-                    content='Post in /r/{}:'.format(submission.subreddit.display_name),
-                    embed=self.submission_to_embed(submission)))
-                feed.last_updated = max(feed.last_updated,
-                                        datetime.utcfromtimestamp(submission.created_utc))
-            return FeedScanResult(feed=feed, posts=posts,
-                                  is_updated=feed.last_updated > last_updated)
-        except exceptions.NotFound:
-            pass
+            post_hint = submission.post_hint
+            if post_hint == 'image':
+                embed.set_image(url=submission.url)
+            else:
+                embed.description = submission.url
+        except AttributeError:
+            embed.description = submission.url

@@ -10,13 +10,15 @@ class Feeds(bot.BaseCog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.feed_dispatch = {
-            models.FeedType.REDDIT: RedditScanner(self).scan,
-        }
-        self.scan_all_feeds.start()
+        self.scanners = (RedditScanner(self),)
+        self.feed_dispatch = {}
+        if len(self.feed_dispatch) > 0:
+            self.scan_all_feeds.start()
 
     def cog_unload(self):
         self.scan_all_feeds.cancel()
+        for scanner in self.scanners:
+            scanner.close()
 
     def scan_single_feed(self, feed):
         try:
@@ -26,6 +28,13 @@ class Feeds(bot.BaseCog):
             msg = 'Failed to fetch posts from feed: "{}, {}"'.format(
                 feed.type, feed.source)
             self.bot.logger.exception(msg)
+
+    def update_feed(self, scan_result):
+        if not scan_result.is_updated:
+            return
+        with self.bot.create_storage_session() as session:
+            session.add(scan_result.feed)
+            session.commit()
 
     async def scan_feeds(self, feeds):
         loop = asyncio.get_event_loop()
@@ -55,11 +64,6 @@ class Feeds(bot.BaseCog):
                 if scan_result is None:
                     continue
 
-                await scan_result.push(self.bot)
-
-                if scan_result.is_updated:
-                    session.add(scan_result.feed)
-                    session.commit()
         except:
             self.bot.logger.exception('Error while scanning feeds.')
         finally:

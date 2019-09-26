@@ -119,11 +119,11 @@ class HouraiContext(commands.Context):
         self.session = self.bot.create_storage_session()
 
     async def __aenter__(self):
-        await self.session.__aenter__()
+        self.session.__enter__()
         return self
 
     async def __aexit__(self, exc_type, exc, traceback):
-        await self.session.__aexit__(exc_type, exc, traceback)
+        self.session.__exit__(exc_type, exc, traceback)
 
     def substitute_content(self, repeats=20):
         return REPLACER.substitute(self.content, context=self, repeats=repeats)
@@ -265,6 +265,10 @@ class Hourai(commands.AutoShardedBot):
                                        base_module.__name__ + '.')
         for module in modules:
             self.load_extension(module.name)
+
+    def spin_wait_until_ready(self):
+        while not self.is_ready():
+            pass
 
     def get_all_matching_members(self, user):
        return (m for m in self.get_all_members() if m.id == user.id)
