@@ -1,34 +1,51 @@
+import re
 import hourai.utils as utils
 import hourai.config as config
 import sys
 import traceback
 import copy
 from hourai import bot, extensions
+from hourai.db import models
 from discord.ext import commands
 
 
 class Owner(bot.BaseCog):
 
+    GUILD_CRITERIA = (
+        lambda g: g.name,
+        lambda g: str(g.id)
+    )
+
+    USER_CRITERIA = (
+        lambda u: u.name,
+        lambda u: str(u.id),
+        lambda u: (f'{u.discriminator:0>4d}' if u.discriminator is not None
+                   else 'None'),
+    )
+
     async def cog_check(self, ctx):
         return await ctx.bot.is_owner(ctx.author)
 
-    # @commands.command()
-    # async def kill(self, ctx):
-        # """Kills the bot. """
-        # await utils.success(ctx)
-        # await ctx.bot.logout()
-
     @commands.group()
-    async def s(self, ctx):
+    async def search(self, ctx, regex):
         pass
 
-    @s.command(name='info')
-    async def server_search(self, ctx, id: int):
-        guild = ctx.bot.get_guild(id)
-        if guild is None:
-            await ctx.send('Server for ID {} not found.'.format(id))
-            return
-        await ctx.send('{} ({})'.format(guild.name, guild.id))
+    @search.command(name="server")
+    async def search_guild(self, ctx, regex):
+        regex = re.compile(regex)
+        guilds = (f'{g.id}: {g.name}' for g in ctx.bot.guilds
+                  if any(regex.search(func(g)) for func in self.GUILD_CRITERIA))
+        await ctx.send(format.multiline_code(format.vertical_list(guilds)))
+
+    @search.command(name="user")
+    async def search_user(self, ctx, regex):
+        regex = re.compile(regex)
+        query = ctx.session.query(models.Usernames).all()
+        # Deduplicate entries
+        users = {u.id: u for u in usernames
+                 if any(re.search(func(u)) for func in self.USER_CRITERIA)}
+        users = (f'{u.id}: {u.name}#{u.discriminator}' for _, u in users.items())
+        await ctx.send(format.multiline_code(format.vertical_list(users)))
 
     @commands.command()
     async def reload(self, ctx,  *, extension: str):
@@ -57,6 +74,7 @@ class Owner(bot.BaseCog):
 
         for i in range(times):
             await new_ctx.reinvoke()
+
 
 def setup(bot):
     bot.add_cog(Owner())
