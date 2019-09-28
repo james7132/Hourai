@@ -7,6 +7,7 @@ log = logging.getLogger(__name__)
 
 BanEntry = collections.namedtuple('BanEntry', 'guild_id user_id reason')
 
+
 class BanStorage:
     """An interface for access store all of the bans seen by the bot.
 

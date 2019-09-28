@@ -1,12 +1,14 @@
 import re
 import hourai.utils as utils
-import hourai.config as config
-import sys
 import traceback
 import copy
 from hourai import bot, extensions
 from hourai.db import models
 from discord.ext import commands
+
+
+def regex_multi_attr_match(context, regex, attrs):
+    return any(regex.search(func(context)) for func in attrs)
 
 
 class Owner(bot.BaseCog):
@@ -34,17 +36,18 @@ class Owner(bot.BaseCog):
     async def search_guild(self, ctx, regex):
         regex = re.compile(regex)
         guilds = (f'{g.id}: {g.name}' for g in ctx.bot.guilds
-                  if any(regex.search(func(g)) for func in self.GUILD_CRITERIA))
+                  if regex_multi_attr_match(regex, g, self.GUILD_CRITERIA))
         await ctx.send(format.multiline_code(format.vertical_list(guilds)))
 
     @search.command(name="user")
     async def search_user(self, ctx, regex):
         regex = re.compile(regex)
-        query = ctx.session.query(models.Usernames).all()
+        usernames = ctx.session.query(models.Usernames).all()
         # Deduplicate entries
         users = {u.id: u for u in usernames
-                 if any(re.search(func(u)) for func in self.USER_CRITERIA)}
-        users = (f'{u.id}: {u.name}#{u.discriminator}' for _, u in users.items())
+                 if regex_multi_attr_match(regex, u, self.USER_CRITERIA)}
+        users = (f'{u.id}: {u.name}#{u.discriminator}' for _,
+                 u in users.items())
         await ctx.send(format.multiline_code(format.vertical_list(users)))
 
     @commands.command()
@@ -53,13 +56,14 @@ class Owner(bot.BaseCog):
         extension = f'{extensions.__name__}.{extension}'
         try:
             ctx.bot.unload_extension(extension)
-        except Exception as e:
+        except Exception:
             pass
         try:
             ctx.bot.load_extension(extension)
         except Exception as e:
-            trace = traceback.format_exc()
-            await ctx.send(f'**ERROR**: {type(e).__name__} - {e}\n```{trace}```')
+            trace = utils.format.ellipsize(traceback.format_exc())
+            err_type = type(e).__name__
+            await ctx.send(f'**ERROR**: {err_type} - {e}\n```{trace}```')
         else:
             await utils.success(ctx)
 
@@ -69,7 +73,7 @@ class Owner(bot.BaseCog):
         msg = copy.copy(ctx.message)
         msg.content = command
 
-        new_ctx = await ctx.bot.get_context(msg, cls=context.Context)
+        new_ctx = await ctx.bot.get_context(msg)
         new_ctx.db = ctx.db
 
         for i in range(times):

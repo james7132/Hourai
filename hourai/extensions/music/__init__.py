@@ -26,17 +26,17 @@ class Music(GuildSpecificCog):
         self.bot.loop.create_task(self.start_nodes())
 
     async def start_nodes(self):
-        bot.check_config_value('lavalink.nodes')
-
         await self.bot.wait_until_ready()
 
-        async def iniitalize_node(node_config):
+        async def initialize_node(node_cfg):
             # Initiate our nodes. For now only using one
-            node = await self.bot.wavelink.initiate_node(**node_config)
+            node = await self.bot.wavelink.initiate_node(**node_cfg._asdict())
             node.set_hook(self.on_wavelink_event)
 
+        nodes = self.bot.get_config_value('lavalink.nodes', default=(),
+                                          type=tuple)
         await asyncio.gather(*[initialize_node(node_cfg)
-                               for node_cfg in self.config['nodes'])
+                               for node_cfg in nodes])
 
     def on_lavalink_event(self, event):
         """Our event hook. Dispatched when an event occurs on our Node."""
@@ -78,7 +78,8 @@ class Music(GuildSpecificCog):
         msg = await ctx.send('**Loading...**')
         tracks = await ctx.bot.wavelink.get_tracks(f'ytsearch:{target}')
         if not tracks:
-            await msg.edit(f'Could not find any songs that meet the query: **{target}**')
+            await msg.edit(
+                f'Could not find any songs that meet the query: **{target}**')
             return
 
         if not player.is_connected:
@@ -100,7 +101,7 @@ class Music(GuildSpecificCog):
             await ctx.send('Something needs to be specified to play.')
             return
         await player.set_pause(False)
-        await ctx.send(f'resumed {format.bold(name)}.')
+        await ctx.send(f'Resumed {format.bold(player.current.name)}.')
 
     @commands.command()
     @commands.guild_only()

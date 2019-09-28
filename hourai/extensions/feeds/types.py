@@ -30,11 +30,11 @@ class Broadcast(namedtuple('BroadcastBase', ['content', 'embed'])):
         try:
             await utils.broadcast(channels, content=self.content,
                                   embed=self.embed)
-        except:
+        except Exception:
             log.exception('Error while broadcasting post.')
 
 
-class Scanner:
+class Scanner(ABC):
 
     def __init__(self, cog, feed_type):
         self.bot = cog.bot
@@ -44,9 +44,10 @@ class Scanner:
         self.fetcher_thread.start()
 
     def run(self):
-        log.info(f'{type(self).__name__} initialized. Waiting for bot to be ready.')
+        type_name = type(self).__name__
+        log.info(f'{type_name} initialized. Waiting for bot to be ready.')
         self.bot.spin_wait_until_ready()
-        log.info(f'{type(self).__name__} started.')
+        log.info(f'{type_name} started.')
         while not self.stopped():
             with self.bot.create_storage_session() as session:
                 for feed in self.get_feeds(session):
@@ -59,19 +60,21 @@ class Scanner:
                     if self.stopped():
                         break
         log.info(f'{type(self).__name__}: Stopping.')
+
     @abstractmethod
     def get_result(self, feed):
         raise NotImplementedError
 
     def get_feeds(self, session):
         query = session.query(models.Feed) \
-                       .filter(models.Feed._type==self.feed_type) \
+                       .filter(models.Feed._type == self.feed_type) \
                        .options(joinedload(models.Feed.channels))
         return list(query)
 
     def _publish(self, session, result, feed):
         if result is None or len(result.posts) <= 0:
             return
+
         async def callback():
             await result.push(self.bot)
             if result.is_updated:

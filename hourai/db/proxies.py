@@ -1,9 +1,10 @@
 import discord
-import typing
 from hourai.db import models
+
 
 class NotFoundError(Exception):
     pass
+
 
 class GuildProxy():
 
@@ -27,7 +28,8 @@ class GuildProxy():
     @property
     def logging_config(self):
         if self._logging_config is None:
-            self._logging_config = self._get_or_create_model(models.LoggingConfig)
+            self._logging_config = self._get_or_create_model(
+                models.LoggingConfig)
         return self._logging_config
 
     @logging_config.setter
@@ -40,7 +42,7 @@ class GuildProxy():
     def validation_config(self):
         if self._validation_config is None:
             self._validation_config = self._get_or_create_model(
-                    models.GuildValidationConfig)
+                models.GuildValidationConfig)
         return self._validation_config
 
     @validation_config.setter
@@ -69,19 +71,19 @@ class GuildProxy():
 
     async def send_modlog_message(self, *args, **kwargs):
         """
-        Sends a message in the modlog channel of the guild. If the message fails,
-        a DM to the server owner is sent.
+        Sends a message in the modlog channel of the guild. If the message
+        fails, a DM to the server owner is sent.
         """
         try:
             modlog = self.get_modlog_channel()
             if modlog is not None:
                 return await modlog.send(*args, **kwargs)
         except discord.Forbidden:
-            content = ("Oops! A message for the modlog in `{}` failed to send! "
-                       "Please make sure the bot can write to a modlog channel "
-                       "properly!")
+            content = ("Oops! A message for the modlog in `{}` failed to "
+                       "send! Please make sure the bot can write to a modlog "
+                       "channel properly!")
             content = content.format(self.guild.name)
-            await self.guild.owner.send(message_contents)
+            await self.guild.owner.send(content)
             return None
 
     def _get_model(self, model):

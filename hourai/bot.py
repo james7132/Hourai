@@ -1,4 +1,3 @@
-import aiohttp
 import asyncio
 import discord
 import logging
@@ -7,7 +6,7 @@ import traceback
 from functools import wraps
 from discord.ext import commands
 from . import config
-from .db import proxies
+from .db import proxies, storage
 from .utils.replacement import StringReplacer
 
 MAX_CONTEXT_DEPTH = 255
@@ -21,6 +20,7 @@ log = logging.getLogger(__name__)
 _FAKE_MESSAGE_ATTRS = (
     'content', 'channel', 'guild', 'author', '_state'
 )
+
 
 class CogLoadError(Exception):
     pass
@@ -37,13 +37,13 @@ class FakeMessage:
                 setattr(self, attr, kwargs.pop(attr, None))
 
 
-def _get_guild_id(arg):
+def __get_guild_id(arg):
     if isinstance(arg, discord.Guild):
         return arg.id
     for test in GUILD_TESTS:
         try:
-            return _get_guild_id(test(arg))
-        except:
+            return __get_guild_id(test(arg))
+        except Exception:
             pass
     return None
 
@@ -51,9 +51,11 @@ def _get_guild_id(arg):
 class BaseCog(commands.Cog):
     pass
 
+
 class PrivateCog(commands.Cog(command_attrs={"hidden": True})):
     """A cog that does not show any of it's commands in the help command."""
     pass
+
 
 class GuildSpecificCog(BaseCog):
     """A cog that operates only on specific servers, provided as guild IDs at
@@ -76,7 +78,7 @@ class GuildSpecificCog(BaseCog):
         @wraps(func)
         async def _check_guilds(*args, **kwargs):
             for arg in args:
-                guild_id = _get_guild_id(arg)
+                guild_id = __get_guild_id(arg)
                 if guild_id is not None and guild_id in self.__allowed_guilds:
                     await func(*args, **kwargs)
                     return
@@ -87,20 +89,21 @@ class GuildSpecificCog(BaseCog):
                     return
         return _check_guilds
 
+
 class HouraiContext(commands.Context):
 
     REPLACER = StringReplacer({
-        '$author':              lambda ctx: ctx.author.display_name,
-        '$author_id':           lambda ctx: ctx.author.id,
-        '$author_mention':      lambda ctx: ctx.author.mention,
-        '$channel':             lambda ctx: ctx.channel.name,
-        '$channel_id':          lambda ctx: ctx.channel.id,
-        '$channel_mention':     lambda ctx: ctx.channel.mention,
-        '$server':              lambda ctx: ctx.guild.name,
-        '$server_id':           lambda ctx: ctx.guild.id,
+        '$author': lambda ctx: ctx.author.display_name,
+        '$author_id': lambda ctx: ctx.author.id,
+        '$author_mention': lambda ctx: ctx.author.mention,
+        '$channel': lambda ctx: ctx.channel.name,
+        '$channel_id': lambda ctx: ctx.channel.id,
+        '$channel_mention': lambda ctx: ctx.channel.mention,
+        '$server': lambda ctx: ctx.guild.name,
+        '$server_id': lambda ctx: ctx.guild.id,
     })
 
-    def __init__(self,  **attrs):
+    def __init__(self, **attrs):
         self.parent = attrs.pop('parent', None)
         self.depth = attrs.pop('depth', 1)
         super().__init__(**attrs)
@@ -114,7 +117,8 @@ class HouraiContext(commands.Context):
         self.session.__exit__(exc_type, exc, traceback)
 
     def substitute_content(self, repeats=20):
-        return REPLACER.substitute(self.content, context=self, repeats=repeats)
+        return self.REPLACER.substitute(self.content, context=self,
+                                        repeats=repeats)
 
     @property
     def is_automated(self):
@@ -140,6 +144,7 @@ class HouraiContext(commands.Context):
             yield current_context
             current_context = current_context.parent
 
+
 class CommandInterpreter:
 
     def __init__(self, bot):
@@ -148,16 +153,20 @@ class CommandInterpreter:
     async def execute(self, ctx):
         raise NotImplementedError
 
+
 class AliasInterpreter(CommandInterpreter):
     pass
 
+
 class CustomCommandInterpreter(CommandInterpreter):
     pass
+
 
 class DefaultCommandInterpreter(CommandInterpreter):
 
     async def execute(self, ctx):
         await self.bot.invoke(ctx)
+
 
 class Hourai(commands.AutoShardedBot):
 
@@ -168,7 +177,7 @@ class Hourai(commands.AutoShardedBot):
             raise ValueError(
                     '"config" must be specified when initialzing Hourai.')
         self.logger = log
-        self.storage = kwargs.get('storage') or Storage(self.config)
+        self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
 
     def create_storage_session(self):
@@ -230,25 +239,28 @@ class Hourai(commands.AutoShardedBot):
         self.logger.exception(error)
 
     async def on_command_error(self, ctx, error):
+        err_msg = None
         if isinstance(error, commands.NoPrivateMessage):
-            await ctx.author.send('This command cannot be used in private messages.')
+            err_msg = 'This command cannot be used in private messages.'
         elif isinstance(error, commands.DisabledCommand):
-            await ctx.author.send('Sorry. This command is disabled and cannot be used.')
+            err_msg = 'Sorry. This command is disabled and cannot be used.'
         elif isinstance(error, commands.CommandInvokeError):
             trace = traceback.format_exception(type(error), error,
                                                error.__traceback__)
             trace_str = '\n'.join(trace)
             log.error(f'In {ctx.command.qualified_name}:\n{trace_str}\n')
+        if err_msg is not None:
+            await ctx.send(err_msg)
 
     async def execute_actions(self, actions):
         tasks = (action.execute(self) for action in actions)
-        await kasyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
 
     def load_extension(self, module):
         try:
             super().load_extension(module)
             self.logger.info(f'Loaded extension: {module}')
-        except:
+        except Exception:
             self.logger.exception(f'Failed to load extension: {module}')
 
     def load_all_extensions(self, base_module):
@@ -262,7 +274,7 @@ class Hourai(commands.AutoShardedBot):
             pass
 
     def get_all_matching_members(self, user):
-       return (m for m in self.get_all_members() if m.id == user.id)
+        return (m for m in self.get_all_members() if m.id == user.id)
 
-   def check_config_value(self, path):
-       config.check_config_value(self.config, path)
+    def get_config_value(self, *args, **kwargs):
+        return config.get_config_value(self.config, *args, **kwargs)

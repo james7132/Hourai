@@ -107,6 +107,7 @@ class RedisHashStore(RedisStore):
             groups[key].append((field, value))
         return ((key, dict(group)) for key, group in groups.items())
 
+
 class Cache(BackingStore):
     """A wrapper around a backing store for caching data."""
 
@@ -161,12 +162,13 @@ class Cache(BackingStore):
             return value
         return get_message
 
-    def getter(self, func, key_func):
-        """Decorator funtion that properly clears a cache value when changing the
-        value of it in a setter function."""
+    def setter(self, func, key_func):
+        """Decorator funtion that properly clears a cache value when changing
+        the value of it in a setter function.
+        """
         @functools.wraps(func)
         async def clear_message(self, *args, **kwargs):
             key = key_func(*args, **kwargs)
             await self.clear(key)
             await utils.maybe_coroutine(func, *args, **kwargs)
-        return get_message
+        return clear_message

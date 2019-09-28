@@ -1,26 +1,25 @@
-import os
 import logging
 import _jsonnet
 import json
 from hourai.utils.tupperware import tupperware, conform, ProtectedDict
 
 
-__DEFAULT_TYPE = object()
+__DEFAULT = object()
 __CONFIG = None
 
 
 def load_config(file_path, env):
-    config = _jsonnet.evaluate_from_file(filename)
+    config = _jsonnet.evaluate_from_file(file_path)
     config = json.loads(config)
     config = config[env]
     conform(config, __make_configuration_template())
     __CONFIG = tupperware(config)
-    _configure_logging()
+    __configure_logging(__CONFIG)
     return __CONFIG
 
 
 def get_config():
-    if __CONIFG is None:
+    if __CONFIG is None:
         raise ConfigNotLoaded
     return __CONFIG
 
@@ -33,12 +32,11 @@ def get_config_value(config, path, *, type=__DEFAULT, default=__DEFAULT):
             value = getattr(value, attr)
     except AttributeError:
         pass
-    matches_type =
     if not has_value:
         if default != __DEFAULT:
             return default
         raise MissingConfigError(path)
-    if type is not __DEFAULT_TYPE and not isinstance(value, type):
+    if type is not __DEFAULT and not isinstance(value, type):
         raise TypeError(f'Config value at "{path}" is not of type "{type}".')
     return value
 

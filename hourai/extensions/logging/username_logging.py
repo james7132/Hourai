@@ -1,11 +1,11 @@
 import asyncio
-import discord
 from discord.ext import commands
 from datetime import datetime
 from hourai import bot
 from hourai.db import models
 
 MAX_STORED_USERNAMES = 20
+
 
 class UsernameLogging(bot.BaseCog):
     """ Cog for logging username changes. """
@@ -86,7 +86,7 @@ class UsernameLogging(bot.BaseCog):
                 usernames.remove(username)
                 try:
                     session.delete(username)
-                except:
+                except Exception:
                     pass
             else:
                 before = username

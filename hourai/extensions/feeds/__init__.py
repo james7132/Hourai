@@ -1,10 +1,10 @@
 import asyncio
-from discord.ext import tasks, commands
-from hourai import bot, utils, config
+from discord.ext import tasks
+from hourai import bot
 from hourai.db import models
 from sqlalchemy.orm import joinedload
-
 from .reddit import RedditScanner
+
 
 class Feeds(bot.BaseCog):
 
@@ -24,7 +24,7 @@ class Feeds(bot.BaseCog):
         try:
             dispatch = self.feed_dispatch.get(feed.type)
             return dispatch(feed) if dispatch is not None else None
-        except:
+        except Exception:
             msg = 'Failed to fetch posts from feed: "{}, {}"'.format(
                 feed.type, feed.source)
             self.bot.logger.exception(msg)
@@ -43,9 +43,10 @@ class Feeds(bot.BaseCog):
         for feed in feeds:
             channels = list(feed.get_channels(self.bot))
             if len(channels) <= 0:
-                self.bot.logger.info('Feed without channels: {}'.format(feed.id))
+                self.bot.logger.info(f'Feed without channels: {feed.id}')
                 continue
-            tasks.append(loop.run_in_executor(None, self.scan_single_feed, feed))
+            tasks.append(
+                    loop.run_in_executor(None, self.scan_single_feed, feed))
         return await asyncio.gather(*tasks)
 
     @tasks.loop(seconds=60.0)
@@ -64,7 +65,7 @@ class Feeds(bot.BaseCog):
                 if scan_result is None:
                     continue
 
-        except:
+        except Exception:
             self.bot.logger.exception('Error while scanning feeds.')
         finally:
             session.close()

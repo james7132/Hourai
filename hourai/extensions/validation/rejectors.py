@@ -5,13 +5,16 @@ from hourai import utils
 from .common import Validator, generalize_filter, split_camel_case
 from .storage import BanStorage
 
+
 class NameMatchRejector(Validator):
     """A suspicion level validator that rejects users for username proximity to
     other users already on the server.
     """
 
-    def __init__(self, *, prefix, filter_func, subfield=None, member_selector=None):
+    def __init__(self, *, prefix, filter_func, subfield=None,
+                 member_selector=None):
         self.filter = filter_func
+        self.prefix = prefix
         self.subfield = subfield or (lambda m: m.name)
         self.member_selector = member_selector or (lambda m: m.name)
 
@@ -25,7 +28,8 @@ class NameMatchRejector(Validator):
         field_value = self.subfield(member)
         for filter_name, regex in member_names.items():
             if re.search(regex, field_value):
-                yield prefix + 'Matches: `{}`'.format(filter_name)
+                yield self.prefix + 'Matches: `{}`'.format(filter_name)
+
 
 class StringFilterRejector(Validator):
     """A general validator that rejects users that have a field that matches
@@ -48,6 +52,7 @@ class StringFilterRejector(Validator):
             if self.match_func(regex)(field_value):
                 yield self.prefix + 'Matches: `{}`'.format(filter_name)
 
+
 class NewAccountRejector(Validator):
     """A suspicion level validator that rejects users that were recently
     created.
@@ -58,15 +63,19 @@ class NewAccountRejector(Validator):
 
     async def get_rejection_reasons(self, bot, member):
         if member.created_at > datetime.utcnow() - self.lookback:
-            yield "Account created less than {}".format(humanize.naturaltime(self.lookback))
+            lookback_naturalized = humanize.naturaltime(self.lookback)
+            yield f"Account created less than {lookback_naturalized}"
+
 
 class DeletedAccountRejector(Validator):
     """A suspicion level validator that rejects users that are deleted."""
 
     async def get_rejection_reasons(self, bot, member):
         if utils.is_deleted_user(member):
-            yield ("User has been deleted by Discord at their own consent or for"
-            " Trust and Safety reasons, or is faking account deletion.")
+            yield ("User has been deleted by Discord at their own consent or "
+                   "for Trust and Safety reasons, or is faking account "
+                   "deletion.")
+
 
 class NoAvatarRejector(Validator):
     """A suspicion level validator that rejects users without avatars."""
@@ -74,6 +83,7 @@ class NoAvatarRejector(Validator):
     async def get_rejection_reasons(self, bot, member):
         if member.avatar is None:
             yield "User has no avatar."
+
 
 class BannedUserRejector(Validator):
     """A malice level validator that rejects users that are banned on other
@@ -92,7 +102,7 @@ class BannedUserRejector(Validator):
             guild = bot.get_guild(ban.guild_id)
             assert self._is_valid_guild(guild)
             if ban.reason is not None and ban.reason not in reasons:
-                yield "Banned on another server. Reason: `{}`.".format(r)
+                yield f"Banned on another server. Reason: `{ban.reason}`."
                 reasons.add(ban.reason)
             banned = True
 
