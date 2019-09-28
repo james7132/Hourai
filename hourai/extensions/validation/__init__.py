@@ -197,7 +197,8 @@ class Validation(bot.BaseCog):
     async def on_member_ban(self, guild, user):
         try:
             ban_info = await guild.fetch_ban(user)
-            await self.ban_storage.save_ban(guild, ban_info)
+            await self.ban_storage.save_ban(guild.id, ban_info.user.id,
+                                            ban_info.reason)
         except discord.Forbidden:
             pass
 
@@ -425,11 +426,40 @@ class Validation(bot.BaseCog):
             tasks.append(self.verify_member(member, proxy))
         await asyncio.gather(*tasks)
 
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction, user):
+        msg = reaction.message
+        guild = msg.guild
+        if (reaction.me or reaction.custom_emoji or guild is None or
+            reaction.emoji not in (APPROVE_REACTION, KICK_REACTION, BAN_REACTION)
+            or len(msg.embeds) <= 0):
+            return
+        session = self.bot.create_storage_session()
+        proxy = proxies.GuildProxy(member.guild, session)
+        if proxy.logging_config.modlog_channel_id != msg.channel.id:
+            return
+        embed = reaction.message.embed[0]
+        try:
+            member = guild.get_member(int(embed.footer.text, 16))
+            if member is None:
+                return
+        except ValueError:
+            return
+        perms = user.guild_permissions
+        if reaction.emoji == APPROVE_REACTION and perms.manage_messages:
+            await self.verify_member(member, proxy)
+        elif reaction.emoji == KICK_REACTION and perms.kick_members:
+            await member.kick(reason=(f'Failed verification.'
+                                      f' Kicked by {user.name}.'))
+        elif reaction.emoji == BAN_REACTION and perms.ban_members:
+            await member.ban(reason=(f'Failed verification.'
+                                     f' Banned by {user.name}.'))
+
     async def verify_member(self, member, proxy):
         role_id = proxy.validation_config.validation_role_id
         if role_id is not None:
             role = member.guild.get_role(role_id)
-            if role is not None:
+            if role is not None and role not in member.roles:
                 await member.add_roles(role)
         self.bot.dispatch('on_verify', member)
 
