@@ -39,6 +39,7 @@ def make_whois_embed(ctx, user):
     )
 
     embed.set_thumbnail(url=str(user.avatar_url or user.default_avatar_url))
+    embed.set_footer(text=hex(user.id))
 
     _add_time_field(embed, 'Created At', user.created_at, now)
     try:
