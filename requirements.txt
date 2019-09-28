@@ -19,5 +19,11 @@ py-coders==1.1.4
 humanize==0.5.1
 Pint==0.9
 
+# For music bot features [Optional]
+wavelink==0.2.8
+
 # API Wrappers for feeds and external services [Optional]
 praw==6.3.1
+
+# Debugging tools [Optional]
+guppy3==3.0.7
