@@ -1,5 +1,10 @@
+/*.yml
+.dockerignore
+.gitignore
+.git/
 venv/
-proto/
 *.md
 Dockerfile
 *_test.py
+*.sqlite
+web/
