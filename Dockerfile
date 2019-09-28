@@ -1,16 +1,23 @@
-FROM python:3.7-alpine3.8 as base
+FROM python:3.7-alpine as base
 
 FROM base as builder
-RUN apk update && apk add --upgrade git protobuf gcc musl-dev sqlite libc6-compat
+RUN apk add --no-cache \
+  protobuf \
+  gcc \
+  make \
+  libffi-dev \
+  build-base \
+  && mkdir /app
 COPY requirements.txt /
 RUN pip install --prefix /install -r /requirements.txt
-WORKDIR /app
 COPY . /app
-RUN protoc $(find . -type f -regex ".*\.proto") --python_out=.
+RUN protoc $(find /app -type f -regex ".*\.proto") \
+  --proto_path=/app \
+  --python_out=/app
 
 FROM base
+WORKDIR /app
+RUN apk add --no-cache libstdc++
 COPY --from=builder /install /usr/local
 COPY --from=builder /app /app
-WORKDIR /app
-VOLUME /data
-CMD ["python", "-m", "hourai"]
+CMD ["python", "launcher.py", "run"]
