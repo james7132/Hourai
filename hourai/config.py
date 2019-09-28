@@ -83,7 +83,9 @@ def __make_configuration_template():
         "logging": {
             "default": "",
             "modules": ProtectedDict()
-        }
+        },
+
+        "private": ProtectedDict()
     }
 
 
