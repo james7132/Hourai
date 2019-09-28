@@ -2,10 +2,7 @@ import asyncio
 import discord
 import io
 import logging
-import traceback
-from .rejectors import *
-from .approvers import *
-from .raid import *
+from . import approvers, rejectors
 from .storage import BanStorage
 from discord.ext import tasks, commands
 from datetime import datetime, timedelta
@@ -30,112 +27,120 @@ MODLOG_REACTIONS = (APPROVE_REACTION, KICK_REACTION, BAN_REACTION)
 
 # TODO(james7132): Add per-server validation configuration.
 # TODO(james7132): Add filter for pornographic or violent avatars
-# Validators are applied in order from first to last. If a later validator has an
-# approval reason, it overrides all previous rejection reasons.
-VALIDATORS = (# -----------------------------------------------------------------
-              # Suspicion Level Validators
-              #     Validators here are mostly for suspicious characteristics.
-              #     These are designed with a high-recall, low precision
-              #     methdology. False positives from these are more likely.
-              #     These are low severity checks.
-              # -----------------------------------------------------------------
+# Validators are applied in order from first to last. If a later validator has
+# an approval reason, it overrides all previous rejection reasons.
+VALIDATORS = (
+    # ---------------------------------------------------------------
+    # Suspicion Level Validators
+    #     Validators here are mostly for suspicious characteristics.
+    #     These are designed with a high-recall, low precision
+    #     methdology. False positives from these are more likely.
+    #     These are low severity checks.
+    # -----------------------------------------------------------------
 
-              # New user accounts are commonly used for alts of banned users.
-              NewAccountRejector(lookback=timedelta(days=30)),
-              # Low effort user bots and alt accounts tend not to set an avatar.
-              NoAvatarRejector(),
-              # Deleted accounts shouldn't be able to join new servers. A user
-              # joining that is seemingly deleted is suspicious.
-              DeletedAccountRejector(),
+    # New user accounts are commonly used for alts of banned users.
+    rejectors.NewAccountRejector(lookback=timedelta(days=30)),
+    # Low effort user bots and alt accounts tend not to set an avatar.
+    rejectors.NoAvatarRejector(),
+    # Deleted accounts shouldn't be able to join new servers. A user
+    # joining that is seemingly deleted is suspicious.
+    rejectors.DeletedAccountRejector(),
 
-              # Filter likely user bots based on usernames.
-              StringFilterRejector(
-                  prefix='Likely user bot. ',
-                  filters=['discord\.gg', 'twitter\.com', 'twitch\.tv',
-                           'youtube\.com', 'youtu\.be',
-                           '@everyone', '@here', 'admin', 'mod']),
-              StringFilterRejector(
-                  prefix='Likely user bot. ',
-                  full_match=True,
-                  filters=['[0-9a-fA-F]+', # Full Hexadecimal name
-                            '\d+',         # Full Decimal name
-                          ]),
+    # Filter likely user bots based on usernames.
+    rejectors.StringFilterRejector(
+        prefix='Likely user bot. ',
+        filters=[r'discord\.gg', r'twitter\.com', r'twitch\.tv',
+                 r'youtube\.com', r'youtu\.be',
+                 '@everyone', '@here', 'admin', 'mod']),
+    rejectors.StringFilterRejector(
+        prefix='Likely user bot. ',
+        full_match=True,
+        filters=['[0-9a-fA-F]+',  # Full Hexadecimal name
+                 r'\d+',          # Full Decimal name
+                 ]),
 
-              # If a user has Nitro, they probably aren't an alt or user bot.
-              NitroApprover(),
+    # If a user has Nitro, they probably aren't an alt or user bot.
+    approvers.NitroApprover(),
 
-              # -----------------------------------------------------------------
-              # Questionable Level Validators
-              #     Validators here are mostly for red flags of unruly or
-              #     potentially troublesome.  These are designed with a
-              #     high-recall, high-precision methdology. False positives from
-              #     these are more likely to occur.
-              # -----------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # Questionable Level Validators
+    #     Validators here are mostly for red flags of unruly or
+    #     potentially troublesome.  These are designed with a
+    #     high-recall, high-precision methdology. False positives from
+    #     these are more likely to occur.
+    # -----------------------------------------------------------------
 
-              # Filter usernames and nicknames that match moderator users.
-              NameMatchRejector(prefix='Username matches moderator\'s. ',
-                                filter_func=utils.is_moderator),
-              NameMatchRejector(prefix='Username matches moderator\'s. ',
-                                filter_func=utils.is_moderator,
-                                member_selector=lambda m: m.nick),
+    # Filter usernames and nicknames that match moderator users.
+    rejectors.NameMatchRejector(
+        prefix='Username matches moderator\'s. ',
+        filter_func=utils.is_moderator),
+    rejectors.NameMatchRejector(
+        prefix='Username matches moderator\'s. ',
+        filter_func=utils.is_moderator,
+        member_selector=lambda m: m.nick),
 
-              # Filter usernames and nicknames that match bot users.
-              NameMatchRejector(prefix='Username matches bot\'s. ',
-                                filter_func=lambda m: m.bot),
-              NameMatchRejector(prefix='Username matches bot\'s. ',
-                                filter_func=lambda m: m.bot,
-                                member_selector=lambda m: m.nick),
+    # Filter usernames and nicknames that match bot users.
+    rejectors.NameMatchRejector(
+        prefix='Username matches bot\'s. ',
+        filter_func=lambda m: m.bot),
+    rejectors.NameMatchRejector(
+        prefix='Username matches bot\'s. ',
+        filter_func=lambda m: m.bot,
+        member_selector=lambda m: m.nick),
 
-              # Filter offensive usernames.
-              StringFilterRejector(
-                  prefix='Offensive username. ',
-                  filters=['nigger', 'nigga', 'faggot', 'cuck', 'retard']),
+    # Filter offensive usernames.
+    rejectors.StringFilterRejector(
+        prefix='Offensive username. ',
+        filters=['nigger', 'nigga', 'faggot', 'cuck', 'retard']),
 
-              # Filter sexually inapproriate usernames.
-              StringFilterRejector(
-                  prefix='Sexually inapproriate username. ',
-                  filters=['anal', 'cock', 'vore', 'scat', 'fuck', 'pussy',
-                           'penis', 'piss', 'shit', 'cum']),
+    # Filter sexually inapproriate usernames.
+    rejectors.StringFilterRejector(
+        prefix='Sexually inapproriate username. ',
+        filters=['anal', 'cock', 'vore', 'scat', 'fuck', 'pussy',
+                 'penis', 'piss', 'shit', 'cum']),
 
-              # -----------------------------------------------------------------
-              # Malicious Level Validators
-              #     Validators here are mostly for known offenders.
-              #     These are designed with a low-recall, high precision
-              #     methdology. False positives from these are far less likely to
-              #     occur.
-              # -----------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # Malicious Level Validators
+    #     Validators here are mostly for known offenders.
+    #     These are designed with a low-recall, high precision
+    #     methdology. False positives from these are far less likely to
+    #     occur.
+    # -----------------------------------------------------------------
 
-              # Make sure the user is not banned on other servers.
-              BannedUserRejector(min_guild_size=150),
+    # Make sure the user is not banned on other servers.
+    rejectors.BannedUserRejector(min_guild_size=150),
 
-              # Check the username against known banned users from the current
-              # server.
-              # BannedUserNameMatchRejector(min_guild_size=150)
+    # Check the username against known banned users from the current
+    # server.
+    # BannedUserNameMatchRejector(min_guild_size=150)
 
-              # -----------------------------------------------------------------
-              # Raid Level Validators
-              #     Validators here operate on more tha just one user, and look
-              #     at the overall rate of users joining the server.
-              # ----------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # Raid Level Validators
+    #     Validators here operate on more tha just one user, and look
+    #     at the overall rate of users joining the server.
+    # ----------------------------------------------------------------
 
-              # TODO(james7132): Add the raid validators
+    # TODO(james7132): Add the raid validators
 
-              # -----------------------------------------------------------------
-              # Override Level Validators
-              #     Validators here are made to explictly override previous
-              #     validators. These are specifically targetted at a small
-              #     specific group of individiuals. False positives and negatives
-              #     at this level are not possible.
-              # -----------------------------------------------------------------
-              BotApprover(),
-              BotOwnerApprover(),
-              )
+    # -----------------------------------------------------------------
+    # Override Level Validators
+    #     Validators here are made to explictly override previous
+    #     validators. These are specifically targetted at a small
+    #     specific group of individiuals. False positives and negatives
+    #     at this level are not possible.
+    # -----------------------------------------------------------------
+    approvers.BotApprover(),
+    approvers.BotOwnerApprover(),
+)
 
-def _get_config(session, guild, model=models.GuildValidationConfig, default=None):
+
+def _get_config(session, guild, model=models.GuildValidationConfig,
+                default=None):
     config = session.query(model).get(guild.id)
     if config is None and default is not None:
         return default()
     return config
+
 
 async def _validate_member(bot, member):
     approval = True
@@ -153,10 +158,11 @@ async def _validate_member(bot, member):
                     continue
                 approval_reasons.append(reason)
                 approval = True
-        except:
+        except Exception:
             # TODO(james7132) Handle the error
             log.exception('Error while running validator:')
     return approval, approval_reasons, rejection_reasons
+
 
 def _chunk_iter(src, chunk_size):
     chunk = []
@@ -166,6 +172,7 @@ def _chunk_iter(src, chunk_size):
             yield chunk
             chunk = []
     yield chunk
+
 
 class Validation(bot.BaseCog):
 
@@ -185,9 +192,9 @@ class Validation(bot.BaseCog):
         for guild in self.bot.guilds:
             try:
                 await self.ban_storage.save_bans(guild)
-            except:
+            except Exception:
                 log.exception(
-                        f"Exception while reloading bans for guild {guild.id}:")
+                    f"Exception while reloading bans for guild {guild.id}:")
 
     @reload_bans.before_loop
     async def before_reload_bans(self):
@@ -216,11 +223,13 @@ class Validation(bot.BaseCog):
         session = self.bot.create_storage_session()
         guild_ids = [g.id for g in self.bot.guilds]
         configs = session.query(models.GuildValidationConfig) \
-                        .filter(models.GuildValidationConfig.guild_id.in_(guild_ids)) \
-                        .filter_by(is_propogated=True) \
-                        .all()
-        guilds = ((conf, self.bot.get_guild(conf.guild_id)) for conf in configs)
+            .filter(models.GuildValidationConfig.guild_id.in_(guild_ids)) \
+            .filter_by(is_propogated=True) \
+            .all()
+        guilds = ((conf, self.bot.get_guild(conf.guild_id))
+                  for conf in configs)
         check_time = datetime.utcnow() - PURGE_LOOKBACK
+
         def _is_kickable(member):
             # Does not kick
             #  * Bots
@@ -231,14 +240,17 @@ class Validation(bot.BaseCog):
                       member.joined_at is not None,
                       member.joined_at <= check_time)
             return all(checks)
+
         async def _kick_member(member):
             try:
                 await utils.send_dm(member, PURGE_DM.format(member.guild.name))
-            except:
+            except Exception:
                 pass
             await member.kick(reason='Unverified in sufficient time.')
-            log.info('Purged {} from {} for not being verified in time.'.format(
-                  utils.pretty_print(member), utils.pretty_print(member.guild)))
+            mem = utils.pretty_print(member)
+            gld = utils.pretty_print(member.guild)
+            log.info(
+                f'Purged {mem} from {gld} for not being verified in time.')
         tasks = list()
         for conf, guild in guilds:
             role = guild.get_role(conf.validation_role_id)
@@ -246,7 +258,8 @@ class Validation(bot.BaseCog):
                 continue
             if not guild.chunked:
                 await self.bot.request_offline_members(guild)
-            unvalidated_members = utils.all_without_roles(guild.members, (role,))
+            unvalidated_members = utils.all_without_roles(
+                guild.members, (role,))
             kickable_members = filter(_is_kickable, unvalidated_members)
             tasks.extend(_kick_member(member) for member in kickable_members)
         await asyncio.gather(*tasks)
@@ -258,7 +271,7 @@ class Validation(bot.BaseCog):
 
     @commands.command(name="setmodlog")
     @commands.guild_only()
-    async def setmodlog(self, ctx, channel: discord.TextChannel=None):
+    async def setmodlog(self, ctx, channel: discord.TextChannel = None):
         # TODO(jame7132): Update this so it's in a different cog.
         channel = channel or ctx.channel
         proxy = ctx.get_guild_proxy()
@@ -282,21 +295,26 @@ class Validation(bot.BaseCog):
         pass
 
     @validation.command(name="setup")
-    async def validation_setup(self, ctx, role: discord.Role, channel: discord.TextChannel):
-        config = _get_config(ctx.session, ctx.guild, default=models.GuildValidationConfig)
+    async def validation_setup(self, ctx, role: discord.Role,
+                               channel: discord.TextChannel):
+        config = _get_config(ctx.session, ctx.guild,
+                             default=models.GuildValidationConfig)
         config.guild_id = ctx.guild.id
         config.validation_role_id = role.id
         config.validation_channel_id = channel.id
         ctx.session.add(config)
         ctx.session.commit()
-        await ctx.send('Validation configuration complete! Please run `~validation propagate` then `~validation lockdown` to complete setup.')
+        await ctx.send('Validation configuration complete! Please run '
+                       '`~validation propagate` then `~validation lockdown` to'
+                       ' complete setup.')
 
     @validation.command(name="propagate")
     @commands.bot_has_permissions(manage_roles=True)
     async def validation_propagate(self, ctx):
         config = _get_config(ctx.session, ctx.guild)
         if config is None:
-            await ctx.send('No validation config was found. Please run `~valdiation setup`')
+            await ctx.send('No validation config was found. Please run '
+                           '`~valdiation setup`')
             return
         msg = await ctx.send('Propagating validation role...!')
         if not ctx.guild.chunked:
@@ -305,67 +323,75 @@ class Validation(bot.BaseCog):
         if role is None:
             await ctx.send("Verification role not found.")
             config.is_propogated = False
-            session.add(config)
-            session.commit()
+            ctx.session.add(config)
+            ctx.session.commit()
             return
         while True:
-            filtered_members = [m for m in guild.members if role not in m.roles]
+            filtered_members = [m for m in ctx.guild.members
+                                if role not in m.roles]
             member_count = len(filtered_members)
             total_processed = 0
+
             async def add_role(member, role):
                 if role in member.roles:
                     return
                 try:
-                    async_iter = _get_rejection_reasons(member)
-                    reasons = await utils.collect(async_iter)
-                    if len(reasons) < 0:
+                    approval, _, _ = await _validate_member(member)
+                    if approval:
                         await member.add_roles(role)
                 except discord.errors.Forbidden:
                     pass
             for chunk in _chunk_iter(ctx.guild.members, BATCH_SIZE):
                 await asyncio.gather(*[add_role(mem, role) for mem in chunk])
                 total_processed += len(chunk)
-                await msg.edit(content=f'Propagation Ongoing ({total_processed}/{member_count})...')
+                progress = f'{total_processed}/{member_count}'
+                await msg.edit(content=f'Propagation Ongoing ({progress})...')
             await msg.edit(content=f'Propagation conplete!')
 
-            members_with_role = [m for m in guild.members if role in m.roles]
+            members_with_role = [m for m in ctx.guild.members
+                                 if role in m.roles]
             if float(len(members_with_role)) / float(member_count) > 0.99:
                 config.is_propogated = True
-                session.add(config)
-                session.commit()
+                ctx.session.add(config)
+                ctx.session.commit()
                 return
 
-    @validation.command(name="lockdown")
-    @commands.bot_has_permissions(manage_channels=True)
-    async def validation_lockdown(self, ctx):
-        config = _get_validation_config(ctx.session, ctx.guild)
-        if config is None:
-            await ctx.send('No validation config was found. Please run `~valdiation setup`')
-            return
-        msg = await ctx.send('Locking down all channels!')
-        everyone_role = ctx.guild.default_role
-        validation_role = ctx.guild.get_role(config.validation_role_id)
+    # TODO(james7132): Fix this
+    # @validation.command(name="lockdown")
+    # @commands.bot_has_permissions(manage_channels=True)
+    # async def validation_lockdown(self, ctx):
+    # config = _get_validation_config(ctx.session, ctx.guild)
+    # if config is None:
+    # await ctx.send('No validation config was found. Please run
+    # `~valdiation setup`')
+    # return
+    # msg = await ctx.send('Locking down all channels!')
+    # everyone_role = ctx.guild.default_role
+    # validation_role = ctx.guild.get_role(config.validation_role_id)
 
-        def update_overwrites(channel, role, read=True):
-            overwrites = dict(channel.overwrites)
-            validation = overwrites.get(role) or discord.PermissionOverwrite()
-            validation.update(read_messages=read, connect=read)
-            return validation
+    # def update_overwrites(channel, role, read=True):
+    # overwrites = dict(channel.overwrites)
+    # validation = overwrites.get(role) or discord.PermissionOverwrite()
+    # validation.update(read_messages=read, connect=read)
+    # return validation
 
-        everyone_perms = everyone_role.permissions
-        everyone_perms.update(read_messages=False, connect=False)
+    # everyone_perms = everyone_role.permissions
+    # everyone_perms.update(read_messages=False, connect=False)
 
-        tasks = []
-        tasks += [ch.set_permissions(validation_role,
-                                     update_overwrites(ch, validation_role))
-                  for ch in ctx.guild.channels
-                  if ch.id != config.validation_channel_id]
-        tasks.append(validation_channel.set_permissions(role, update_overwrites(valdiation_channel, everyone_role, read=True)))
-        tasks.append(validation_channel.set_permissions(role, update_overwrites(valdiation_channel, validation_role, read=False)))
-        tasks.append(everyone_role.edit(permissions=everyone_perms))
+    # tasks = []
+    # tasks += [ch.set_permissions(validation_role,
+    # update_overwrites(ch, validation_role))
+    # for ch in ctx.guild.channels
+    # if ch.id != config.validation_channel_id]
+    # tasks.append(validation_channel.set_permissions(role,
+    # update_overwrites(valdiation_channel, everyone_role, read=True)))
+    # tasks.append(validation_channel.set_permissions(role,
+    # update_overwrites(valdiation_channel, validation_role, read=False)))
+    # tasks.append(everyone_role.edit(permissions=everyone_perms))
 
-        await asyncio.gather(*tasks)
-        await msg.edit(f'Lockdown complete! Make sure your mods can read the validation channel!')
+    # await asyncio.gather(*tasks)
+    # await msg.edit(f'Lockdown complete! Make sure your mods can read the
+    # validation channel!')
 
     @commands.group(name="pconfig", invoke_without_command=True)
     @commands.is_owner()
@@ -394,23 +420,23 @@ class Validation(bot.BaseCog):
     async def config_dump(self, ctx):
         # TODO(james7132): Make the operation atomic
         config = proto.GuildConfig()
+
         async def _get_field(cache, field):
             result = await cache.get(ctx.guild.id)
             if result is not None:
                 getattr(config, field).CopyFrom(result)
-        await asyncio.gather(*[
-            _get_field(c, f) for c, f in self.get_mapping(ctx.session.storage)
-        ])
+        mapping = self.get_mapping(ctx.session.storage)
+        await asyncio.gather(*[_get_field(c, f) for c, f in mapping])
         output = text_format.MessageToString(config, indent=2)
         bytes_io = io.BytesIO(output.encode('utf-8'))
         await ctx.send(file=discord.File(bytes_io))
 
     def get_mapping(self, storage):
         return (
-            (storage.logging_configs    , 'logging'),
-            (storage.validation_configs , 'validation'),
-            (storage.auto_configs       , 'auto'),
-            (storage.moderation_configs , 'moderation'),
+            (storage.logging_configs, 'logging'),
+            (storage.validation_configs, 'validation'),
+            (storage.auto_configs, 'auto'),
+            (storage.moderation_configs, 'moderation'),
         )
 
     @commands.Cog.listener()
@@ -419,9 +445,9 @@ class Validation(bot.BaseCog):
         proxy = proxies.GuildProxy(member.guild, session)
         if not proxy.validation_config.is_valid:
             return
-        approved, reasons_a, reasons_r = await _validate_member(self.bot, member)
+        approved, r_a, r_r = await _validate_member(self.bot, member)
         tasks = [self.send_verification_modlog(proxy, member, approved,
-                                               reasons_a, reasons_r)]
+                                               r_a, r_r)]
         if approved:
             tasks.append(self.verify_member(member, proxy))
         await asyncio.gather(*tasks)
@@ -431,11 +457,11 @@ class Validation(bot.BaseCog):
         msg = reaction.message
         guild = msg.guild
         if (reaction.me or reaction.custom_emoji or guild is None or
-            reaction.emoji not in (APPROVE_REACTION, KICK_REACTION, BAN_REACTION)
-            or len(msg.embeds) <= 0):
+                reaction.emoji not in MODLOG_REACTIONS or
+                len(msg.embeds) <= 0):
             return
         session = self.bot.create_storage_session()
-        proxy = proxies.GuildProxy(member.guild, session)
+        proxy = proxies.GuildProxy(user.guild, session)
         if proxy.logging_config.modlog_channel_id != msg.channel.id:
             return
         embed = reaction.message.embed[0]
@@ -480,8 +506,8 @@ class Validation(bot.BaseCog):
         ctx = await self.bot.get_automated_context(content='', author=member)
         async with ctx:
             whois_embed = embed.make_whois_embed(ctx, member)
-            modlog_msg= await proxy.send_modlog_message(content=message,
-                                                        embed=whois_embed)
+            modlog_msg = await proxy.send_modlog_message(content=message,
+                                                         embed=whois_embed)
             if modlog_msg is None:
                 return
             for reaction in MODLOG_REACTIONS:
@@ -490,6 +516,7 @@ class Validation(bot.BaseCog):
     async def report_bans(self, ban_info):
         session = self.bot.create_storage_session()
         guild_proxies = []
+        user = ban_info.user
         for guild in self.bot.guilds:
             member = guild.get_member(user.id)
             if member is not None:
@@ -497,14 +524,16 @@ class Validation(bot.BaseCog):
 
         contents = None
         if ban_info.reason is None:
-            contents = ("User {} ({}) has been banned from another server.".format(
-                user.mention, user.id))
+            contents = (f"User {user.mention} ({user.id}) has been banned "
+                        f"from another server.")
         else:
-            contents = ("User {} ({}) has been banned from another server for "
-                        "the following reason: `{}`").format(
-                            user.mention, user.id, ban_info.reason)
+            contents = (f"User {user.mention} ({user.id}) has been banned "
+                        f"from another server for the following reason: "
+                        f"`{ban_info.reason}`.")
 
         await asyncio.gather(*[proxy.send_modlog_message(contents)
                                for proxy in guild_proxies])
+
+
 def setup(bot):
     bot.add_cog(Validation(bot))

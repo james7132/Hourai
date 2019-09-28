@@ -1,19 +1,14 @@
 import discord
-import pint
-import random
 import typing
-from hourai import bot, utils
-from hourai.utils import format, embed
+from hourai import bot
+from hourai.utils import embed
 from discord.ext import commands
-
-CLIENT_ID = '208460637368614913'
 
 
 class Standard(bot.BaseCog):
 
     def __init__(self):
         super().__init__()
-        units = pint.UnitRegistry()
 
     # @commands.command()
     # async def echo(self, ctx, *, content: str):
@@ -23,31 +18,31 @@ class Standard(bot.BaseCog):
     # async def choose(self, ctx, *choices: str):
         # """ Randomly chooses between several different choices. """
         # try:
-            # choice = random.choice(choices)
-            # await ctx.send(f'I choose {format.simple_code(choice)}!')
+        # choice = random.choice(choices)
+        # await ctx.send(f'I choose {format.simple_code(choice)}!')
         # except IndexError:
-            # await ctx.send("There's nothing to choose from!")
+        # await ctx.send("There's nothing to choose from!")
 
     # @commands.command()
     # async def convert(self, ctx, src_unit, dst_unit):
         # """ Converts units. (i.e. 2.54cm in -> 1 inch) """
         # try:
-            # quantity = self.units.Quantity(src_unit).to(dst_unit).to_compact()
-            # await ctx.send(format.code(str(quantity)))
+        # quantity = self.units.Quantity(src_unit).to(dst_unit).to_compact()
+        # await ctx.send(format.code(str(quantity)))
         # except:
-            # src, dst = format.code(src_unit), format.code(dst_unit)
-            # await ctx.send(f'Failed to convert from {src} to {dst}')
+        # src, dst = format.code(src_unit), format.code(dst_unit)
+        # await ctx.send(f'Failed to convert from {src} to {dst}')
 
     # @commands.command()
     # async def avatar(self, ctx, *users: discord.User):
         # if len(users) <= 0:
-            # users = [ctx.author]
+        # users = [ctx.author]
         # await ctx.send(format.vertical_list(u.avatar_url for u in users))
 
     # @commands.command()
     # async def invite(self, ctx):
         # link = discord.utils.oauth_url(CLIENT_ID,
-                                       # permissions=discord.Permissions.all())
+        # permissions=discord.Permissions.all())
         # await ctx.send(f'Use this link to add me to your server: {link}')
 
     # @commands.command()
@@ -58,12 +53,14 @@ class Standard(bot.BaseCog):
         # "admin" or have the administrator permission.
         # """
         # if not ctx.guild.chunked:
-            # await ctx.bot.request_offline_members(ctx.guild)
+        # await ctx.bot.request_offline_members(ctx.guild)
         # await ctx.send(utils.mention_random_online_moderator(ctx.guild))
 
     @commands.command()
-    async def test_whois(self, ctx, user: typing.Union[discord.Member, discord.User]):
-        await ctx.send(embed=embed.make_whois_embed(ctx,user))
+    async def test_whois(self, ctx,
+                         user: typing.Union[discord.Member, discord.User]):
+        await ctx.send(embed=embed.make_whois_embed(ctx, user))
+
 
 def setup(bot):
     bot.add_cog(Standard())

@@ -1,11 +1,11 @@
 # A convert of JSON configs into more readily usable immutable Python objects
 # Mainly used for construction of config objects.
 #
-# Shamelessly copied and modified from https://gist.github.com/sherzberg/7661076
+# Shamelessly copied and modified from
+# https://gist.github.com/sherzberg/7661076
 
 import collections
-from collections.abc import  Mapping, MutableMapping, Sequence
-from itertools import zip_longest
+from collections.abc import Mapping, MutableMapping, Sequence
 
 
 def tupperware(mapping):
@@ -36,7 +36,8 @@ def tupperware(mapping):
         ...     ]
         ... })
         >>> t # doctest: +ELLIPSIS
-        Tupperware(baz=Tupperware(qux='quux'), tito=Tupperware(...), foo='bar', alist=[Tupperware(...), Tupperware(...)])
+        Tupperware(baz=Tupperware(qux='quux'), tito=Tupperware(...), foo='bar',
+                   alist=[Tupperware(...), Tupperware(...)])
         >>> t.tito # doctest: +ELLIPSIS
         Tupperware(frobnicator=[...], tata='tutu', totoro='tots')
         >>> t.tito.tata
@@ -103,15 +104,15 @@ def __conform(base, template, default, path):
             if key not in base:
                 base[key] = default
         return
-    elif isinstance(val, Sequence):
+    elif isinstance(base, Sequence):
         # Length does not need to match, but at least one
         assert isinstance(base, Sequence) and isinstance(template, Sequence)
-        target_template = next(iter(target), __END)
+        target_template = next(iter(template), __END)
         if target_template is __END:
             raise ValueError(f"No template for values in '{path}'.")
         idx = 0
         for val in base:
-            __conform(va , target_template, default, f'{path}.{str(idx)}')
+            __conform(val, target_template, default, f'{path}.{str(idx)}')
             idx = idx + 1
         return
     if type(base) != type(template) and base is not None:

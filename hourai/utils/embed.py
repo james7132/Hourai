@@ -5,16 +5,21 @@ from datetime import datetime
 from hourai.utils import format, consts
 from hourai.db import models
 
+
 def ellipsize(txt, keep_end=False):
     return format.ellipsize(txt, consts.DISCORD_MAX_EMBED_DESCRIPTION_SIZE,
                             keep_end=keep_end)
+
 
 def text_to_embed(txt, keep_end=False):
     embed = discord.Embed(description=ellipsize(txt, keep_end=keep_end))
     return embed
 
+
 def traceback_to_embed(keep_end=False):
-    return text_to_embed(format.multiline_code(traceback.format_exc()), keep_end=keep_end)
+    text = format.multiline_code(traceback.format_exc())
+    return text_to_embed(text, keep_end=keep_end)
+
 
 def make_whois_embed(ctx, user):
     now = datetime.utcnow()
@@ -63,6 +68,7 @@ def make_whois_embed(ctx, user):
 
     return embed
 
+
 def _add_time_field(embed, name, time, now):
     if time is None:
         embed.add_field(name=name, value='N/A')
@@ -71,6 +77,7 @@ def _add_time_field(embed, name, time, now):
     delta = humanize.naturaltime(now - time)
     embed.add_field(name=name, value=f'{time_string} ({delta})')
 
+
 def _to_username_line(username):
     date_string = username.timestamp.strftime("%b %d %Y")
     user_string = username.name
@@ -78,13 +85,16 @@ def _to_username_line(username):
         user_string = f'{username.name}#{username.discriminator:0>4d}'
     return f'{date_string} {user_string}'
 
+
 def _get_guild_count(ctx, user):
-    return [g.get_member(user.id) is not None for g in ctx.bot.guilds].count(True)
+    return sum(1 if g.get_member(user.id) is not None else 0
+               for g in ctx.bot.guilds)
+
 
 def _get_extra_usernames(ctx, user):
-    usernames =  ctx.session.query(models.Username) \
-                            .filter_by(user_id=user.id) \
-                            .order_by(models.Username.timestamp)
+    usernames = ctx.session.query(models.Username) \
+        .filter_by(user_id=user.id) \
+        .order_by(models.Username.timestamp)
     usernames = list(usernames)
     while len(usernames) > 0 and usernames[-1].name == user.name:
         usernames.pop()

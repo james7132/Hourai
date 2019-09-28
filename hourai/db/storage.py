@@ -2,40 +2,43 @@ import asyncio
 import aioredis
 import collections
 import enum
+import coders
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import create_engine, orm, pool
 from hourai import config
-from . import models
-from .caches import *
-from .proto import *
-from coders import *
+from . import models, caches, proto
 
 log = logging.getLogger(__name__)
+
 
 class StoragePrefix(enum.Enum):
     # Persistent Guild Level Data
     #   Generally stored in Redis as a hash with all submodels underneath it.
-    GUILD                       = 0
+    GUILD = 0
     # Bans are ephemeral and have expirations assigned to them.
-    BANS                        = 1
+    BANS = 1
+
 
 class GuildPrefix(enum.Enum):
     # 1:1s. Hash key is just the prefix. Size: 1 byte.
-    AUTO_CONFIG                 = 0
-    MOD_CONFIG                  = 1
-    LOGGING_CONFIG              = 2
-    VALIDATION_CONFIG           = 3
+    AUTO_CONFIG = 0
+    MOD_CONFIG = 1
+    LOGGING_CONFIG = 2
+    VALIDATION_CONFIG = 3
+
 
 CacheConfig = collections.namedtuple(
-        'CacheConfig', ('attr', 'prefix', 'subprefix', 'subcoder',
-                        'value_coder', 'timeout'),
-        defaults=(None,) * len(fields))
+    'CacheConfig', ('attr', 'prefix', 'subprefix', 'subcoder',
+                    'value_coder', 'timeout'),
+    defaults=(None,) * 6)
+
 
 def _prefixize(val):
     if val is not None and isinstance(val, int):
         return bytes([val])
     return val
+
 
 class Storage:
     """A generic interface for managing the remote storage services connected to
@@ -47,8 +50,8 @@ class Storage:
         self.session_class = None
         self.redis = None
         self.executor = ThreadPoolExecutor()
-        for config in Storage._get_cache_configs():
-            setattr(self, config.attr, None)
+        for conf in Storage._get_cache_configs():
+            setattr(self, conf.attr, None)
 
     async def init(self):
         await asyncio.gather(
@@ -65,26 +68,27 @@ class Storage:
         # TODO(james7132): Move off of depending on Redis as a backing store
         config.check_config_value(self.config, 'redis', type=str)
         await self._connect_to_redis()
-        redis_store = RedisStore(self.redis)
-        for config in Storage._get_cache_configs():
+        for conf in Storage._get_cache_configs():
             # Initialize Parameters
-            prefix = _prefixize(config.prefix.value)
-            key_coder = IntCoder().prefixed(prefix)
-            value_coder = config.value_coder().compressed()
+            prefix = _prefixize(conf.prefix.value)
+            key_coder = coders.IntCoder().prefixed(prefix)
+            value_coder = conf.value_coder().compressed()
 
-            timeout = config.timeout or 0
-            if config.subprefix is None:
-                store = RedisStore(self.redis, timeout=timeout)
+            timeout = conf.timeout or 0
+            if conf.subprefix is None:
+                store = caches.RedisStore(self.redis, timeout=timeout)
             else:
-                subprefix = _prefixize(config.subprefix)
-                subcoder = ConstCoder(subprefix)
-                if config.subcoder is not None:
-                    subcoder = config.subcoder.prefixed(subprefix)
+                subprefix = _prefixize(conf.subprefix)
+                subcoder = coders.ConstCoder(subprefix)
+                if conf.subcoder is not None:
+                    subcoder = conf.subcoder.prefixed(subprefix)
 
-                key_coder = TupleCoder([key_coder, subcoder])
-                store = RedisHashStore(self.redis, timeout=timeout)
+                key_coder = coders.TupleCoder([key_coder, subcoder])
+                store = caches.RedisHashStore(self.redis, timeout=timeout)
 
-            cache = Cache(store, key_coder=key_coder, value_coder=value_coder)
+            cache = caches.Cache(store,
+                                 key_coder=key_coder,
+                                 value_coder=value_coder)
             setattr(self, config.attr, cache)
 
     async def _connect_to_redis(self):
@@ -93,8 +97,8 @@ class Storage:
         while True:
             try:
                 self.redis = await aioredis.create_redis_pool(
-                        self.config.redis,
-                        loop=asyncio.get_event_loop())
+                    self.config.redis,
+                    loop=asyncio.get_event_loop())
                 break
             except aioredis.ReplyError:
                 if wait_time >= max_wait_time:
@@ -106,29 +110,32 @@ class Storage:
 
     @staticmethod
     def _get_cache_configs():
+
+        def protobuf(msg_type):
+            return lambda: coders.ProtobufCoder(msg_type)
         return (
             CacheConfig(attr='auto_configs',
                         prefix=StoragePrefix.GUILD,
                         subprefix=GuildPrefix.AUTO_CONFIG.value,
-                        value_coder=lambda: ProtobufCoder(AutoConfig)),
+                        value_coder=protobuf(proto.AutoConfig)),
             CacheConfig(attr='moderation_configs',
                         prefix=StoragePrefix.GUILD,
                         subprefix=GuildPrefix.MOD_CONFIG.value,
-                        value_coder=lambda: ProtobufCoder(ModerationConfig)),
+                        value_coder=protobuf(proto.ModerationConfig)),
             CacheConfig(attr='logging_configs',
                         prefix=StoragePrefix.GUILD,
                         subprefix=GuildPrefix.LOGGING_CONFIG.value,
-                        value_coder=lambda: ProtobufCoder(LoggingConfig)),
+                        value_coder=protobuf(proto.LoggingConfig)),
             CacheConfig(attr='validation_configs',
                         prefix=StoragePrefix.GUILD,
                         subprefix=GuildPrefix.VALIDATION_CONFIG.value,
-                        value_coder=lambda: ProtobufCoder(ValidationConfig)),
+                        value_coder=protobuf(proto.ValidationConfig)),
 
             CacheConfig(attr='bans',
                         prefix=StoragePrefix.BANS,
                         subprefix=b'',
-                        subcoder=IntCoder(),
-                        value_coder=lambda: StringCoder(),
+                        subcoder=coders.IntCoder(),
+                        value_coder=coders.StringCoder,
                         timeout=300),
         )
 
@@ -136,17 +143,17 @@ class Storage:
         return StorageSession(self)
 
     async def close(self):
-        redis.close()
+        self.redis.close()
 
     def ensure_created(self, engine=None):
         engine = engine or self._create_sql_engine()
         models.Base.metadata.create_all(engine)
 
     def _create_sql_engine(self):
-        config.check_config_value(self.config, 'database', type=str)
-        return create_engine(self.config.database,
-                             poolclass=pool.SingletonThreadPool,
-                             connect_args={'check_same_thread': False})
+        return create_engine(
+            config.check_config_value(self.config, 'database', type=str),
+            poolclass=pool.SingletonThreadPool,
+            connect_args={'check_same_thread': False})
 
 
 class StorageSession:

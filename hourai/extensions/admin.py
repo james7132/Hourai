@@ -2,18 +2,13 @@ import asyncio
 import discord
 import re
 import typing
-import typing
 from datetime import datetime, timedelta
-from discord import Member, Role
 from discord.ext import commands
-from discord.ext.commands.cooldowns import BucketType
-from hourai import bot, db, utils
-from hourai.db import models
+from hourai import bot, utils
 
-DAYS = 24 * 60 * 60
-
-MAX_PRUNE_LOOKBACK = timedeta(days=14)
+MAX_PRUNE_LOOKBACK = timedelta(days=14)
 DELETE_WAIT_DURATION = 60
+
 
 async def batch_do(members, func):
     async def _do(member):
@@ -31,9 +26,9 @@ async def batch_do(members, func):
 
 class Admin(bot.BaseCog):
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # General Admin Commands
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     async def _admin_action(self, ctx, members, func):
         results = await batch_do(members, func)
@@ -59,7 +54,7 @@ class Admin(bot.BaseCog):
         """
         def _to_user(member):
             if isinstance(member, int):
-                return FakeUser(id=member)
+                return utils.FakeSnowfake(id=member)
             return member
         members = (_to_user(mem) for mem in members)
         await self._admin_action(ctx, members, lambda m: m.ban())
@@ -89,7 +84,7 @@ class Admin(bot.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def mute(self, ctx, *members: discord.Member):
+    async def unmute(self, ctx, *members: discord.Member):
         """Unmutes all specified users."""
         await self._admin_action(ctx, members, lambda m: m.edit(mute=False))
 
@@ -113,9 +108,9 @@ class Admin(bot.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(move_members=True)
     @commands.bot_has_permissions(move_members=True)
-    async def undeafen(self, ctx,
-                       src: discord.VoiceChannel,
-                       dst: discord.VoiceChannel):
+    async def move(self, ctx,
+                   src: discord.VoiceChannel,
+                   dst: discord.VoiceChannel):
         """Moves all members in one voice channel to another."""
         await self._admin_action(ctx, src.members,
                                  lambda m: m.edit(voice_channel=dst))
@@ -128,9 +123,9 @@ class Admin(bot.BaseCog):
         """Nicknames all specified users."""
         await self._admin_action(ctx, members, lambda m: m.edit(nick=name))
 
-    #---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Role Commands
-    #---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     @commands.group(name="role")
     async def role(self, ctx):
@@ -141,7 +136,8 @@ class Admin(bot.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_add(self, ctx, role: discord.Role, *members: discord.Member):
+    async def role_add(self, ctx, role: discord.Role,
+                       *members: discord.Member):
         """Adds a role to member."""
         await self._admin_action(ctx, members, lambda m: m.add_roles(role))
 
@@ -168,30 +164,31 @@ class Admin(bot.BaseCog):
         """Adds a self-serve role to the caller."""
         # TODO(james7132): Implement this
         if True:
-            await ctx.send(f'`{role.name}` is not set up for self-serve.'
+            await ctx.send(f'`{role.name}` is not set up for self-serve.',
                            delete_after=DELETE_WAIT_DURATION)
             return
-        if not role in ctx.author.roles:
+        if role not in ctx.author.roles:
             await ctx.author.add_roles(role)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="drop")
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_drop(self, ctx, role: discord.Role, *members: discord.Member):
+    async def role_drop(self, ctx, role: discord.Role,
+                        *members: discord.Member):
         """Removes a self role from the caller."""
         # TODO(james7132): Implement this
         if True:
-            await ctx.send(f'`{role.name}` is not set up for self-serve.'
+            await ctx.send(f'`{role.name}` is not set up for self-serve.',
                            delete_after=DELETE_WAIT_DURATION)
             return
-        if not role in ctx.author.roles:
+        if role not in ctx.author.roles:
             await ctx.author.add_roles(role)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
-    #---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Temp Commands
-    #---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     @commands.group(name="temp")
     async def temp(self, ctx):
@@ -237,7 +234,7 @@ class Admin(bot.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role_all(self, ctx, duration, role: discord.Role,
+    async def temp_role_add(self, ctx, duration, role: discord.Role,
                             *members: discord.Member):
         await self.role_add(ctx, role, *members)
         # TODO(james7132): Implement this
@@ -247,16 +244,15 @@ class Admin(bot.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role_all(self, ctx, duration, role: discord.Role,
-                            *members: discord.Member):
+    async def temp_role_remove(self, ctx, duration, role: discord.Role,
+                               *members: discord.Member):
         await self.role_remove(ctx, role, *members)
         # TODO(james7132): Implement this
         raise NotImplementedError
 
-
-    #---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Prune Commands
-    #---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     async def _prune_messages(self, ctx, count, filter_func=None):
         async def _batcher():
@@ -264,7 +260,7 @@ class Admin(bot.BaseCog):
             max_lookback = datetime.utcnow() - MAX_PRUNE_LOOKBACK
             async for msg in ctx.history(limit=count):
                 if ((msg.created_at >= max_lookback) and
-                   (filter_func is None or filter_func(msg))):
+                        (filter_func is None or filter_func(msg))):
                     batch.append(msg)
                 if len(batch) >= 100:
                     yield list(batch)
@@ -283,7 +279,7 @@ class Admin(bot.BaseCog):
     @commands.group(name="prune")
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_message=True)
-    async def prune(self, ctx, count: int=100):
+    async def prune(self, ctx, count: int = 100):
         """Deletes the most recent messages in the current channel.
         Up to [count] messages will be deleted. By default this is 100.
         Messages over 14 days old will not be deleted.
@@ -300,7 +296,7 @@ class Admin(bot.BaseCog):
         """
         members = set(members)
         count = await self._prune_messages(ctx, 100,
-                lambda m: m.author in members)
+                                           lambda m: m.author in members)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
@@ -310,19 +306,21 @@ class Admin(bot.BaseCog):
         attachment.  Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
         """
-        count = await self._prune_messages(ctx, 100,
-                lambda m: len(m.attachments) + len(m.embeds) > 0)
+
+        def msg_filter(m):
+            return len(m.attachments) + len(m.embeds) > 0
+        count = await self._prune_messages(ctx, 100, msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
     @prune.command(name="bot")
-    async def prune_embed(self, ctx, *members: discord.Member):
+    async def prune_bot(self, ctx, *members: discord.Member):
         """Deletes all messages in the last 100 messages from a bot.
         Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
         """
         count = await self._prune_messages(ctx, 100,
-                lambda m: m.author.bot)
+                                           lambda m: m.author.bot)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
@@ -335,34 +333,38 @@ class Admin(bot.BaseCog):
         Messages over 14 days old will not be deleted.
         """
         count = await self._prune_messages(ctx, 100,
-                lambda m: m.author == ctx.author)
+                                           lambda m: m.author == ctx.author)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
     @prune.command(name="mention")
-    async def prune_mine(self, ctx):
+    async def prune_mention(self, ctx):
         """Deletes all messages in the last 100 messages that mention another
         user or role.
 
         Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
         """
-        count = await self._prune_messages(ctx, 100,
-                lambda m: len(m.mentions) + len(m.role_mentions) > 0)
+
+        def msg_filter(m):
+            return len(m.mentions) + len(m.role_mentions) > 0
+        count = await self._prune_messages(ctx, 100, msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
-    @prune.command(name="mention")
-    async def prune_mine(self, ctx, regex: str):
-        """Deletes all messages in the last 100 messages that mention another
-        user or role.
+    @prune.command(name="regex")
+    async def prune_match(self, ctx, regex: str):
+        """Deletes all messages in the last 100 messages that match a certain
+        pattern in the content.
 
         Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
         """
         regex = re.compile(regex)
-        count = await self._prune_messages(ctx, 100,
-                lambda m: regex.search(m.clean_content))
+
+        def msg_filter(m):
+            return regex.search(m.clean_content)
+        count = await self._prune_messages(ctx, 100, msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 

@@ -3,8 +3,9 @@ import copy
 import discord
 import re
 from discord.ext import commands
-from hourai import bot, utils, config
+from hourai import bot
 from hourai.db import proto
+
 
 def meets_filter(val, filter_settings, default=False):
     if val is None:
@@ -17,14 +18,17 @@ def meets_filter(val, filter_settings, default=False):
                           for pack in filter_settings.whitelist)
     return not meets_blacklist or meets_whitelist
 
+
 def get_field(proto, field):
     return getattr(proto, field) if proto.HasField(field) else None
+
 
 def is_valid_message_event(message, channel, evt):
     in_channel = channel is None or channel == message.channel
     is_filter_ok = meets_filter(message.clean_content,
                                 get_field(evt, 'content_filter'))
     return in_channel and is_filter_ok
+
 
 class Auto(bot.BaseCog):
 
@@ -72,7 +76,7 @@ class Auto(bot.BaseCog):
         async for channel, evt in self.get_events(msg.guild, 'on_message'):
             assert isinstance(evt, proto.MessageEvent)
             if ((evt.Type | event_type) == 0 or
-                not is_valid_message_event(msg, channel, evt)):
+               not is_valid_message_event(msg, channel, evt)):
                 continue
             actions = [copy.deepcopy(action) for action in evt.action]
             # TODO(james7132): Parameterize actions here
@@ -103,6 +107,7 @@ class Auto(bot.BaseCog):
         if guild is None:
             return None
         return await self.bot.storage.auto_configs.get(guild.id)
+
 
 def setup(bot):
     bot.add_cog(Auto(bot))

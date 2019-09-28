@@ -5,10 +5,14 @@ import inspect
 import random
 import re
 import time
+import collections
 from hourai import config
 
 MODERATOR_PREFIX = 'mod'
-DELETED_USER_REGEX = re.compile('Deleted User\s+[0-9a-fA-F]+')
+DELETED_USER_REGEX = re.compile(r'Deleted User\s+[0-9a-fA-F]+')
+
+
+FakeSnowflake = collections.namedtuple('FakeSnowflake', ('id',))
 
 
 async def broadcast(channels, *args, **kwargs):
@@ -24,9 +28,8 @@ async def success(ctx, suffix=None):
     success = config.get_config_value(config.get_config(), 'success_response',
                                       default=':thumbsup:')
     if suffix:
-        await ctx.send(f'{config.SUCCESS_RESPONSE}: {suffix}')
-    else:
-        await ctx.send(config.SUCCESS_RESPONSE)
+        success += f": {suffix}"
+    await ctx.send(success)
 
 
 def pretty_print(resource):
@@ -54,6 +57,21 @@ async def collect(async_iter):
 
 def log_time(func):
     """ Logs the time to run a function to std out. """
+    if inspect.iscoroutinefunction(func):
+        @functools.wraps(func)
+        async def async_time_logger(*args, **kwargs):
+            real_time = time.time()
+            cpu_time = time.process_time()
+            try:
+                await func(*args, **kwargs)
+            finally:
+                # TODO(james7132): Log this using logging
+                real_time = time.time() - real_time
+                cpu_time = time.process_time() - cpu_time
+                print('{} called. real: {} s, cpu: {} s.'.format(
+                      func.__qualname__, real_time, cpu_time))
+        return async_time_logger
+
     @functools.wraps(func)
     def time_logger(*args, **kwargs):
         real_time = time.time()
@@ -66,20 +84,7 @@ def log_time(func):
             cpu_time = time.process_time() - cpu_time
             print('{} called. real: {} s, cpu: {} s.'.format(
                   func.__qualname__, real_time, cpu_time))
-
-    @functools.wraps(func)
-    async def async_time_logger(*args, **kwargs):
-        real_time = time.time()
-        cpu_time = time.process_time()
-        try:
-            await func(*args, **kwargs)
-        finally:
-            # TODO(james7132): Log this using logging
-            real_time = time.time() - real_time
-            cpu_time = time.process_time() - cpu_time
-            print('{} called. real: {} s, cpu: {} s.'.format(
-                  func.__qualname__, real_time, cpu_time))
-    return async_time_logger if inspect.iscoroutinefunction(func) else time_logger
+    return time_logger
 
 
 async def send_dm(user, *args, **kwargs):
@@ -106,7 +111,8 @@ def is_moderator(member):
 
 def is_moderator_role(role):
     """ Checks if a role is a moderator role. """
-    return role.permissions.administrator or role.name.lower().startswith(MODERATOR_PREFIX)
+    return (role.permissions.administrator or
+            role.name.lower().startswith(MODERATOR_PREFIX))
 
 
 def is_online(member):
@@ -114,34 +120,44 @@ def is_online(member):
 
 
 def all_with_roles(members, roles):
-    """ Filters a list of members to those with roles. Returns a generator of members """
+    """Filters a list of members to those with roles. Returns a generator of
+    discord.Member objects.
+    """
     role_set = set(roles)
     return filter(lambda m: any_in(role_set, m.roles), members)
 
 
 def all_without_roles(members, roles):
-    """ Filters a list of members to those without roles. Returns a generator of members """
+    """Filters a list of members to those without roles. Returns a generator of
+    discord.Member objects.
+    """
     role_set = set(roles)
     return filter(lambda m: not any_in(role_set, m.roles), members)
 
 
 def find_moderator_roles(guild):
-    """ Finds all of the moderator roles on a server. Returns an generator of roles """
+    """Finds all of the moderator roles on a server. Returns an generator of
+    roles.
+    """
     return filter(lambda r: is_moderator_role(r), guild.roles)
 
 
 def find_moderators(guild):
-    """ Finds all of the moderators on a server. Returns a generator of members. """
+    """Finds all of the moderators on a server. Returns a generator of members.
+    """
     return all_with_roles(guild.members, find_moderator_roles(guild))
 
 
 def find_bots(guild):
-    """ Finds all of the bots on a server. Returns a generator of members. """
+    """Finds all of the bots on a server. Returns a generator of members.
+    """
     return filter(lambda m: m.bot, guild.members)
 
 
 def find_online_moderators(guild):
-    """ Finds all of the online moderators on a server. Returns a generator of members. """
+    """Finds all of the online moderators on a server. Returns a generator of
+    members.
+    """
     return filter(is_online, find_moderators(guild))
 
 
@@ -154,7 +170,7 @@ def mention_random_online_mod(guild):
     if len(moderators) > 0:
         return random.choice(moderators).mention
     else:
-        return f'{ctx.guild.owner.mention}, no mods are online!'
+        return f'{guild.owner.mention}, no mods are online!'
 
 
 def is_nitro_booster(bot, member):
@@ -166,5 +182,4 @@ def is_nitro_booster(bot, member):
 
 def has_nitro(bot, member):
     """Checks if the user has Nitro, may have false negatives."""
-    return member.is_avatar_animated() or \
-           __is_nitro_booster(bot, member)
+    return member.is_avatar_animated() or is_nitro_booster(bot, member)

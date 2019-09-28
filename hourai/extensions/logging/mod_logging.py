@@ -3,10 +3,12 @@ from discord.ext import commands
 from datetime import datetime
 from hourai import bot
 from hourai.db import proxies
-from hourai.utils import format
+from hourai.utils import format, success
+
 
 class ModLogging(bot.BaseCog):
-    """ Cog for logging Discord and bot events to a servers' modlog channels. """
+    """ Cog for logging Discord and bot events to a servers' modlog channels.
+    """
 
     def __init__(self, bot):
         super().__init__()
@@ -35,9 +37,11 @@ class ModLogging(bot.BaseCog):
             await proxy.send_modlog_message(content=content, embed=embed)
             return
         content = 'Message by {} deleted in {}.'.format(
-                   msg.author.mention, msg.channel.mention)
+            msg.author.mention, msg.channel.mention)
+        author = msg.author
         embed.description = msg.content
-        embed.set_author(name='{}#{} ({})'.format(msg.author.name, msg.author.discriminator, msg.author.id),
+        embed.set_author(name=(f'{author.name}#{author.discriminator} '
+                               f'{author.id})'),
                          icon_url=msg.author.avatar_url)
         if len(msg.attachments) > 0:
             attachments = (attach.url for attach in msg.attachments)
@@ -62,8 +66,9 @@ class ModLogging(bot.BaseCog):
     @log.command(name='deleted')
     async def log_deleted(self, ctx):
         proxy = ctx.get_guild_proxy()
-        proxy.logging_config.log_deleted_messages = not proxy.logging_config.log_deleted_messages
+        conf = proxy.logging_config
+        conf.log_deleted_messages = not conf.log_deleted_messages
         proxy.save()
         ctx.session.commit()
-        await ctx.send(':thumbsup: Logging of deleted messages has been ' + ('enabled.' if
-                        proxy.logging_config.log_deleted_messages else 'disabled.'))
+        change = ('enabled' if conf.log_deleted_messages else 'disabled.')
+        await success(f'Logging of deleted messages has been {change}')

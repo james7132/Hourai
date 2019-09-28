@@ -11,7 +11,8 @@ class NitroApprover(Validator):
     false negatives.
 
     Uses the following attributes only Nitro users have access to:
-     - Nitro Boosting: only works on servers shared between the bot and the user.
+     - Nitro Boosting: only works on servers shared between the bot and the
+       user.
      - Animated Avatars
      - Third-Party Emotes (not implemented)
     """
@@ -20,12 +21,14 @@ class NitroApprover(Validator):
         if utils.has_nitro(bot, member):
             yield 'User has Nitro. Probably not a user bot.'
 
+
 class BotApprover(Validator):
     """A override level validator that approves other bots."""
 
     async def get_approval_reasons(self, bot, member):
         if member.bot:
             yield 'User is an OAuth2 bot that can only be manually added.'
+
 
 class BotOwnerApprover(Validator):
     """An override level validator that approves the owner of the bot or part of
