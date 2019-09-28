@@ -1,25 +1,17 @@
+# Guild Specific Code
+
 import asyncio
 import re
+from hourai.util import invite
 from discord.ext import commands
 from hourai.bot import GuildSpecificCog
 
-_BIG_SERVER_SIZE = 250
-_DISCORD_INVITE_REGEX = re.compile('discord.gg/([a-zA-Z0-9]+)')
-
 class GuildSpecific_TheGap(GuildSpecificCog):
+    """ Guild specific code for The Gap, a server list server for Touhou related
+    communities.
+    """
 
-    async def _is_server_big(self, invites):
-        async def _is_big_invite(inv):
-            if inv is None:
-                return False
-            try:
-                invite = await self.bot.fetch_invite(inv)
-                return invite.approximate_member_count >= _BIG_SERVER_SIZE
-            except:
-                logging.exception("Failed to check big server.")
-                return False
-        return any(await asyncio.gather(*[_is_big_invite(inv)
-                                          for inv in invites]))
+    BIG_SERVER_SIZE = 250
 
     @commands.Cog.listener()
     async def on_message(self, msg):
@@ -27,10 +19,16 @@ class GuildSpecific_TheGap(GuildSpecificCog):
         category = msg.channel.category
         if category is None or 'server' not in category.name.lower():
             return
-        matches = _DISCORD_INVITE_REGEX.findall(msg.content)
+        on_error = lambda _, _, _: logging.exception('Failed to get invite:')
+        invites = await invites.get_all_discord_invites(
+                ctx.bot, msg.content, on_error=on_error)
+        invites = [inv for inv in invites if inv is not None]
         delete = len(matches) <= 0
-        if not delete and 'big' in msg.channel.name:
-            delete |= not (await self._is_server_big(matches))
+        # If posted in #big-servers make sure it
+        if 'big' in msg.channel.name:
+            delete = delete or any(
+                inv.approximate_member_count >= self.BIG_SERVER_SIZE
+                for inv in invites)
         if delete:
             await msg.delete()
 
