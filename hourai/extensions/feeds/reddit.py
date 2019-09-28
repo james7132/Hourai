@@ -5,7 +5,6 @@ import logging
 from prawcore import exceptions
 from .types import FeedScanResult, Broadcast, Scanner
 from datetime import datetime, timezone
-from hourai import config
 from hourai.utils import format
 
 log = logging.getLogger(__name__)
@@ -18,20 +17,12 @@ class RedditScanner(Scanner):
         super().__init__(cog, 'REDDIT')
 
     def get_reddit_client(self):
+        bot = self.cog.bot
+        bot.check_config_value('reddit')
         client = getattr(thread_locals, 'reddit_client', None)
         if client is None:
             log.info("Starting reddit client!")
-            reddit_args = {
-                'client_id': config.REDDIT_CLIENT_ID,
-                'client_secret': config.REDDIT_CLIENT_SECRET,
-                'user_agent': config.REDDIT_USER_AGENT,
-            }
-            if config.REDDIT_USERNAME and config.REDDIT_PASSWORD:
-                reddit_args.update({
-                    'username': config.REDDIT_USERNAME,
-                    'password': config.REDDIT_PASSWORD
-                })
-            client = praw.Reddit(**reddit_args)
+            client = praw.Reddit(**bot.config.reddit._as_dict())
             thread_locals.reddit_client = client
         return client
 

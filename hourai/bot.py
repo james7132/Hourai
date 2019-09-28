@@ -6,9 +6,9 @@ import pkgutil
 import traceback
 from functools import wraps
 from discord.ext import commands
-from hourai import config
-from hourai.db import proxies
-from hourai.utils.replacement import StringReplacer
+from . import config
+from .db import proxies
+from .utils.replacement import StringReplacer
 
 MAX_CONTEXT_DEPTH = 255
 
@@ -22,6 +22,10 @@ _FAKE_MESSAGE_ATTRS = (
     'content', 'channel', 'guild', 'author', '_state'
 )
 
+class CogLoadError(Exception):
+    pass
+
+
 class FakeMessage:
 
     def __init__(self, **kwargs):
@@ -31,16 +35,6 @@ class FakeMessage:
                 setattr(self, attr, getattr(msg, attr, None))
             else:
                 setattr(self, attr, kwargs.pop(attr, None))
-
-
-def action_command(func):
-    @wraps(func)
-    async def command(*args, **kwargs):
-        async for action in func(*args, **kwargs):
-            result = await action.execute(ctx.bot)
-            # TODO(james7132): do something with this
-        # TODO(james7132): add response here
-    return command
 
 
 def _get_guild_id(arg):
@@ -58,24 +52,18 @@ class BaseCog(commands.Cog):
     pass
 
 class PrivateCog(commands.Cog(command_attrs={"hidden": True})):
-    """
-    A cog that does not show any of it's commands in the help command.
-    """
-
-    def __init__(self):
-        log.info("Cog {} loaded.".format(self.__class__.__name__))
+    """A cog that does not show any of it's commands in the help command."""
+    pass
 
 class GuildSpecificCog(BaseCog):
-    """
-    A cog that operates only on specific servers, provided as guild IDs at
+    """A cog that operates only on specific servers, provided as guild IDs at
     initialiation.
     """
 
     def __init__(self, bot, *, guilds=set()):
         super().__init__()
         self.bot = bot
-        self.__allowed_guilds = set(g if isinstance(g, int) else g.id
-                                    for g in guilds)
+        self.__allowed_guilds = set(guilds)
 
         for name, method in self.get_listeners():
             method_name = method.__name__
@@ -174,10 +162,13 @@ class DefaultCommandInterpreter(CommandInterpreter):
 class Hourai(commands.AutoShardedBot):
 
     def __init__(self, *args, **kwargs):
+        try:
+            self.config = kwargs['config']
+        except KeyError:
+            raise ValueError(
+                    '"config" must be specified when initialzing Hourai.')
         self.logger = log
-        self.storage = kwargs.pop('storage', None)
-        if self.storage is None:
-            self.storage = Storage()
+        self.storage = kwargs.get('storage') or Storage(self.config)
         super().__init__(*args, **kwargs)
 
     def create_storage_session(self):
@@ -272,3 +263,6 @@ class Hourai(commands.AutoShardedBot):
 
     def get_all_matching_members(self, user):
        return (m for m in self.get_all_members() if m.id == user.id)
+
+   def check_config_value(self, path):
+       config.check_config_value(self.config, path)

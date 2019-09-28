@@ -5,20 +5,11 @@ services:
     container_name: "hourai"
     command: python launcher.py run
     restart: unless-stopped
-    environment:
-      # Bot Configuration
-      - BOT_TOKEN=""
-      # Database Configuration
-      - DB_CONNECTION=sqlite://
-      - REDIS_CONNECTION=redis://hourai_redis_dev
-      # Reddit Feed Configuration
-      - REDDIT_CLIENT_ID=""
-      - REDDIT_CLIENT_SECRET=""
-      - REDDIT_USER_AGENT=""
-      - REDDIT_USERNAME=""
-      - REDDIT_PASSWORD=""
-      - REDDIT_BASE_URL=https://reddit.com
-      - REDDIT_FETCH_LIMIT=20
+    enviroment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=prod
+    volumes:
+      - ./config/hourai.jsonnet:/opt/hourai.jsonnet
     depends_on:
       - main_database
       - redis_cache
@@ -40,6 +31,10 @@ services:
     volumes:
       - redis-data:/data
     mem_limit: 100m
+  lavalink:
+    image: "fredboat/lavalink:master"
+    volumes:
+      - ./config/lavalink.yml:/opt/lavalink/application.yml
 volumes:
   db-data:
   redis-data:

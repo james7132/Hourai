@@ -19,6 +19,8 @@ async def broadcast(channels, *args, **kwargs):
     return await asyncio.gather(*tasks)
 
 async def success(ctx, suffix=None):
+    success = config.get_config_value(config.get_config(), 'success_response',
+                                      default=':thumbsup:')
     if suffix:
         await ctx.send(f'{config.SUCCESS_RESPONSE}: {suffix}')
     else:

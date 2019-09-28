@@ -1,40 +1,99 @@
 import os
 import logging
+import _jsonnet
+import json
+from hourai.utils.tupperware import tupperware, conform, ProtectedDict
 
-# Logging Config
 
-logging.basicConfig(level=logging.INFO)
-for mod in ('prawcore', 'aioredis'):
-    logging.getLogger(mod).setLevel(logging.INFO)
+__DEFAULT_TYPE = object()
+__CONFIG = None
 
-BOT_TOKEN = ''
 
-COMMAND_PREFIX = '~'
-SUCCESS_RESPONSE = ':thumbsup:'
+def load_config(file_path, env):
+    config = _jsonnet.evaluate_from_file(filename)
+    config = json.loads(config)
+    config = config[env]
+    conform(config, __make_configuration_template())
+    __CONFIG = tupperware(config)
+    _configure_logging()
+    return __CONFIG
 
-# Storage Configuration
-DB_CONNECTION = 'sqlite://'
-REDIS_CONNECTION = "redis://"
 
-# Reddit Feed Configuration
-REDDIT_USER_AGENT = "linux:discord.hourai.reddit:v2.0 (by /u/james7132)"
-REDDIT_CLIENT_ID = ""
-REDDIT_CLIENT_SECRET = ""
-REDDIT_USERNAME = ""
-REDDIT_PASSWORD = ""
-REDDIT_BASE_URL = 'https://reddit.com'
+def get_config():
+    if __CONIFG is None:
+        raise ConfigNotLoaded
+    return __CONFIG
 
-REDDIT_FETCH_LIMIT = 20
 
-FEED_FETCH_PARALLELISM = 10
+def get_config_value(config, path, *, type=__DEFAULT, default=__DEFAULT):
+    value = config
+    has_value = False
+    try:
+        for attr in path.split('.'):
+            value = getattr(value, attr)
+    except AttributeError:
+        pass
+    matches_type =
+    if not has_value:
+        if default != __DEFAULT:
+            return default
+        raise MissingConfigError(path)
+    if type is not __DEFAULT_TYPE and not isinstance(value, type):
+        raise TypeError(f'Config value at "{path}" is not of type "{type}".')
+    return value
 
-# Import all enviroment variables in as module variables
-globals().update(os.environ)
 
-__PARSED_ATTRS = {
-    int: ['REDDIT_FETCH_LIMIT', 'FEED_FETCH_PARALLELISM']
-}
+def __configure_logging(conf):
+    default_level = get_config_value(conf, 'logging.default', default=None)
+    if default_level is not None:
+        logging.basicConfig(level=getattr(logging, default_level))
 
-for parsed_type, attrs in __PARSED_ATTRS.items():
-    for attr in attrs:
-        vars()[attr] = parsed_type(vars()[attr])
+    modules = get_config_value(conf, 'logging.modules', default=None)
+    if modules is not None:
+        for mod, level in modules._asdict().items():
+            logging.getLogger(mod).setLevel(getattr(logging, level))
+
+
+def __make_configuration_template():
+    return {
+        "bot_token": "",
+        "command_prefix": "",
+
+        "database": "",
+        "redis": "",
+
+        "lavalink": {
+            "nodes": [{
+                "identifier": "",
+                "host": "",
+                "port": 0,
+                "rest_uri": "",
+                "region": "",
+                "password": ""
+            }]
+        },
+
+        "reddit": {
+            "user_agent": "",
+            "client_id": "",
+            "client_secret": "",
+            "username": "",
+            "password": "",
+        },
+
+        # Logging can be arbitrary
+        "logging": {
+            "default": "",
+            "modules": ProtectedDict()
+        }
+    }
+
+
+class ConfigNotLoaded(Exception):
+    pass
+
+
+class MissingConfigError(Exception):
+
+    def __init__(self, path):
+        super().__init__(f'Missing config value under path "{path}"')
