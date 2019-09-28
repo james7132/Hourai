@@ -1,14 +1,6 @@
 from .common import Validator
+from hourai import utils
 
-def _is_nitro_booster(bot, member):
-    """Checks if the user is boosting any server the bot is on."""
-    return any(m.id == member.id
-               for g in bot.guilds
-               for m in g.premium_subscribers)
-
-def _has_nitro(bot, member):
-    return member.is_avatar_animated() or \
-           _is_nitro_booster(bot, member)
 
 class NitroApprover(Validator):
     """A suspicion level validator that approves users that have Nitro.
@@ -25,7 +17,7 @@ class NitroApprover(Validator):
     """
 
     async def get_approval_reasons(self, bot, member):
-        if _has_nitro(bot, member):
+        if utils.has_nitro(bot, member):
             yield 'User has Nitro. Probably not a user bot.'
 
 class BotApprover(Validator):
