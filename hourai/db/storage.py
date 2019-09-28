@@ -4,8 +4,8 @@ import collections
 import enum
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from hourai import config
 from sqlalchemy import create_engine, orm, pool
+from hourai import config
 from . import models
 from .caches import *
 from .proto import *
@@ -27,9 +27,10 @@ class GuildPrefix(enum.Enum):
     LOGGING_CONFIG              = 2
     VALIDATION_CONFIG           = 3
 
-fields = ('attr', 'prefix', 'subprefix', 'subcoder', 'value_coder', 'timeout')
-CacheConfig = collections.namedtuple('CacheConfig', fields,
-                                     defaults=(None,) * len(fields))
+CacheConfig = collections.namedtuple(
+        'CacheConfig', ('attr', 'prefix', 'subprefix', 'subcoder',
+                        'value_coder', 'timeout'),
+        defaults=(None,) * len(fields))
 
 def _prefixize(val):
     if val is not None and isinstance(val, int):
@@ -62,6 +63,7 @@ class Storage:
 
     async def _init_redis(self):
         # TODO(james7132): Move off of depending on Redis as a backing store
+        config.check_config_value(self.config, 'redis', type=str)
         await self._connect_to_redis()
         redis_store = RedisStore(self.redis)
         for config in Storage._get_cache_configs():
@@ -91,7 +93,7 @@ class Storage:
         while True:
             try:
                 self.redis = await aioredis.create_redis_pool(
-                        self.config.REDIS_CONNECTION,
+                        self.config.redis,
                         loop=asyncio.get_event_loop())
                 break
             except aioredis.ReplyError:
@@ -141,7 +143,8 @@ class Storage:
         models.Base.metadata.create_all(engine)
 
     def _create_sql_engine(self):
-        return create_engine(self.config.DB_CONNECTION,
+        config.check_config_value(self.config, 'database', type=str)
+        return create_engine(self.config.database,
                              poolclass=pool.SingletonThreadPool,
                              connect_args={'check_same_thread': False})
 
