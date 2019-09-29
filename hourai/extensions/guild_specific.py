@@ -1,7 +1,7 @@
 # Guild Specific Code
 
 import logging
-from hourai.util import invite
+from hourai.utils import invite
 from discord.ext import commands
 from hourai.bot import GuildSpecificCog
 

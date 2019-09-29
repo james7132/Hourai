@@ -37,17 +37,6 @@ class FakeMessage:
                 setattr(self, attr, kwargs.pop(attr, None))
 
 
-def __get_guild_id(arg):
-    if isinstance(arg, discord.Guild):
-        return arg.id
-    for test in GUILD_TESTS:
-        try:
-            return __get_guild_id(test(arg))
-        except Exception:
-            pass
-    return None
-
-
 class BaseCog(commands.Cog):
     pass
 
@@ -78,16 +67,27 @@ class GuildSpecificCog(BaseCog):
         @wraps(func)
         async def _check_guilds(*args, **kwargs):
             for arg in args:
-                guild_id = __get_guild_id(arg)
+                guild_id = GuildSpecificCog.__get_guild_id(arg)
                 if guild_id is not None and guild_id in self.__allowed_guilds:
                     await func(*args, **kwargs)
                     return
             for kwarg in kwargs.items():
-                guild_id = __get_guild_id(kwarg)
+                guild_id = GuildSpecificCog.__get_guild_id(kwarg)
                 if guild_id is not None and guild_id in self.__allowed_guilds:
                     await func(*args, **kwargs)
                     return
         return _check_guilds
+
+    @staticmethod
+    def __get_guild_id(arg):
+        if isinstance(arg, discord.Guild):
+            return arg.id
+        for test in GUILD_TESTS:
+            try:
+                return GuildSpecificCog.__get_guild_id(test(arg))
+            except Exception:
+                pass
+        return None
 
 
 class HouraiContext(commands.Context):
@@ -176,6 +176,7 @@ class Hourai(commands.AutoShardedBot):
         except KeyError:
             raise ValueError(
                     '"config" must be specified when initialzing Hourai.')
+        kwargs.setdefault('command_prefix', self.config.command_prefix)
         self.logger = log
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
@@ -227,12 +228,6 @@ class Hourai(commands.AutoShardedBot):
     def add_cog(self, cog):
         super().add_cog(cog)
         log.info("Cog {} loaded.".format(cog.__class__.__name__))
-
-    async def on_guild_available(self, guild):
-        self.logger.info(f'Guild available: {guild.name}')
-
-    async def on_guild_unavailable(self, guild):
-        self.logger.info(f'Guild unavailable: {guild.name}')
 
     async def on_error(self, event, *args, **kwargs):
         error = f'Exception in event {event} (args={args}, kwargs={kwargs}):'

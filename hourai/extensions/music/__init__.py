@@ -1,3 +1,5 @@
+import ipaddress
+import socket
 import asyncio
 import logging
 from discord.ext import commands
@@ -14,11 +16,10 @@ log = logging.getLogger(__name__)
 class Music(GuildSpecificCog):
 
     def __init__(self, bot, guilds):
-        super().__init__(bot, guild=guilds)
+        super().__init__(bot, guilds=guilds)
 
-        self.config = config.get_config().get('music')
-        if self.config is None:
-            raise CogLoadError("Config option 'music' not found.")
+        self.bot = bot
+        self.config = None
 
         if not hasattr(bot, 'wavelink'):
             self.bot.wavelink = wavelink.Client(self.bot)
@@ -28,12 +29,25 @@ class Music(GuildSpecificCog):
     async def start_nodes(self):
         await self.bot.wait_until_ready()
 
-        async def initialize_node(node_cfg):
-            # Initiate our nodes. For now only using one
-            node = await self.bot.wavelink.initiate_node(**node_cfg._asdict())
-            node.set_hook(self.on_wavelink_event)
+        self.config = self.bot.get_config_value('music')
+        if self.config is None:
+            self.bot.remove_cog(self)
+            raise CogLoadError("Config option 'music' not found.")
 
-        nodes = self.bot.get_config_value('lavalink.nodes', default=(),
+        async def initialize_node(node_cfg):
+            # Wavelink currently throws errors when provided with non IP hosts.
+            # Workaround: convert host to an IP.
+            args = node_cfg._asdict()
+            try:
+                ipaddress.ip_address(node_cfg.host)
+            except ValueError:
+                args['host'] = socket.gethostbyname(node_cfg.host)
+
+            # Initiate our nodes. For now only using one
+            node = await self.bot.wavelink.initiate_node(**args)
+            node.set_hook(self.on_lavalink_event)
+
+        nodes = self.bot.get_config_value('music.nodes', default=(),
                                           type=tuple)
         await asyncio.gather(*[initialize_node(node_cfg)
                                for node_cfg in nodes])
@@ -44,6 +58,8 @@ class Music(GuildSpecificCog):
             event.player.next_event.set()
         elif isinstance(event, wavelink.TrackException):
             log.error(event.error)
+        else:
+            log.info(event)
 
     @staticmethod
     def get_player(ctx):

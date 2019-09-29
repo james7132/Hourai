@@ -90,11 +90,11 @@ def conform(val, template, default=None):
 
 
 def __conform(base, template, default, path):
-    if isinstance(base, ProtectedDict):
+    if isinstance(template, ProtectedDict):
         return
     elif isinstance(base, MutableMapping):
         assert isinstance(base, Mapping) and isinstance(template, Mapping)
-        for key in base:
+        for key in list(base.keys()):
             if key not in template:
                 del base[key]
             else:
@@ -104,7 +104,7 @@ def __conform(base, template, default, path):
             if key not in base:
                 base[key] = default
         return
-    elif isinstance(base, Sequence):
+    elif isinstance(base, Sequence) and not isinstance(base, str):
         # Length does not need to match, but at least one
         assert isinstance(base, Sequence) and isinstance(template, Sequence)
         target_template = next(iter(template), __END)
@@ -126,4 +126,5 @@ class ProtectedDict(collections.UserDict):
     `tupperware` eats all dicts you give it, recursively; but what if you
     actually want a dictionary in there? This will stop it. Just do
     ProtectedDict({...}) or ProtectedDict(kwarg=foo).
+
     """

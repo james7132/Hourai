@@ -9,7 +9,7 @@ __CONFIG = None
 
 
 def load_config(file_path, env):
-    config = _jsonnet.evaluate_from_file(file_path)
+    config = _jsonnet.evaluate_file(file_path)
     config = json.loads(config)
     config = config[env]
     conform(config, __make_configuration_template())
@@ -30,12 +30,13 @@ def get_config_value(config, path, *, type=__DEFAULT, default=__DEFAULT):
     try:
         for attr in path.split('.'):
             value = getattr(value, attr)
+        has_value = True
     except AttributeError:
         pass
     if not has_value:
         if default != __DEFAULT:
             return default
-        raise MissingConfigError(path)
+        raise MissingConfigError(path, config)
     if type is not __DEFAULT and not isinstance(value, type):
         raise TypeError(f'Config value at "{path}" is not of type "{type}".')
     return value
@@ -60,7 +61,7 @@ def __make_configuration_template():
         "database": "",
         "redis": "",
 
-        "lavalink": {
+        "music": {
             "nodes": [{
                 "identifier": "",
                 "host": "",
@@ -95,5 +96,6 @@ class ConfigNotLoaded(Exception):
 
 class MissingConfigError(Exception):
 
-    def __init__(self, path):
-        super().__init__(f'Missing config value under path "{path}"')
+    def __init__(self, path, config):
+        super().__init__(f'Missing config value under path "{path}". Full '
+                         f'config: {str(config)}')

@@ -3,13 +3,6 @@ import logging
 import hourai.config
 from hourai import config, extensions, bot
 from hourai.bot import Hourai
-from hourai.db import Storage
-
-
-def create_db_engine(connection_string):
-    return create_engine(connection_string,
-                         poolclass=pool.SingletonThreadPool,
-                         connect_args={'check_same_thread': False})
 
 
 @click.group()
@@ -20,34 +13,21 @@ def create_db_engine(connection_string):
               envvar="HOURAI_ENV", type=click.STRING)
 @click.pass_context
 def main(ctx, config_path, env):
+    ctx.obj = {}
     ctx.obj['config'] = hourai.config.load_config(config_path, env)
-    logging.info(f"Loaded config from {config_path}. (Enviroment: {env}")
-    import json
-    print(json.dumps(ctx.obj['config']))
+    logging.debug(str(ctx.obj['config']))
+    logging.info(f"Loaded config from {config_path}. (Environment: {env})")
 
 
 @main.command()
 @click.pass_context
 def run(ctx):
     conf = ctx.obj['config']
-    bot = Hourai(config=conf, command_prefix=config.COMMAND_PREFIX)
-    bot.load_all_extensions(extensions)
+    hourai_bot = Hourai(config=conf)
+    hourai_bot.load_all_extensions(extensions)
     # TODO(james7132): Remove this when possible
-    bot.remove_command('help')
-    bot.run(config.BOT_TOKEN, bot=True, reconnect=True)
-
-
-@main.group()
-@click.pass_context
-def db(ctx):
-    pass
-
-
-@db.command()
-@click.pass_context
-def create(ctx):
-    engine = create_db_engine('sqlite:///hourai.sqlite')
-    models.Base.metadata.create_all(engine)
+    hourai_bot.remove_command('help')
+    hourai_bot.run(conf.bot_token, bot=True, reconnect=True)
 
 
 if __name__ == '__main__':
