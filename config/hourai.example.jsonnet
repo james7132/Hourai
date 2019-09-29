@@ -5,11 +5,11 @@ local env = {
   database: "sqlite//"
   redis: "redis://redis"
 
-  lavalink: {
+  music: {
     nodes: [ {
         identifier: "MAIN"
         host: "lavalink"
-        port: 80
+        port: 8090,
         rest_uri: "http://lavalink:2333"
         region: "us_central"
         password: null
@@ -32,6 +32,7 @@ local env = {
     modules: {
       prawcore: "INFO"
       aioredis: "INFO"
+      wavelink: "INFO",
     }
   }
 }

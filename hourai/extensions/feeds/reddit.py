@@ -1,8 +1,7 @@
 import discord
 import praw
-import threading
 import logging
-from urlib.parse import urljoin
+from urllib.parse import urljoin
 from prawcore import exceptions
 from .types import FeedScanResult, Broadcast, Scanner
 from datetime import datetime, timezone
@@ -10,31 +9,22 @@ from hourai.utils import format
 
 log = logging.getLogger(__name__)
 
-thread_locals = threading.local()
-
 
 class RedditScanner(Scanner):
 
     def __init__(self, cog):
+        log.info("Starting reddit client!")
+        conf = cog.bot.get_config_value('reddit')
+        self.client = praw.Reddit(**conf._asdict())
         super().__init__(cog, 'REDDIT')
 
     def get_config_value(self, *args, **kwargs):
-        return self.cog.bot.get_config_value(*args, **kwargs)
-
-    def get_reddit_client(self):
-        # Ensure that a reddit configuration has been supplied
-        client = getattr(thread_locals, 'reddit_client', None)
-        if client is None:
-            log.info("Starting reddit client!")
-            conf = self.get_config_value('reddit')
-            client = praw.Reddit(**conf._asdict())
-            thread_locals.reddit_client = client
-        return client
+        return self.bot.get_config_value(*args, **kwargs)
 
     def get_result(self, feed):
         try:
             last_updated = feed.last_updated
-            subreddit = self.get_reddit_client().subreddit(feed.source)
+            subreddit = self.client.subreddit(feed.source)
             posts, feed.last_updated = self.make_posts(subreddit.new(),
                                                        feed.last_updated)
 
@@ -52,7 +42,7 @@ class RedditScanner(Scanner):
             if submission.created_utc <= last_updated_unix:
                 break
             sub_name = submission.subreddit.name
-            log.info(f'New Reddit Post in {sub_name}: {submission.title}')
+            log.info(f'New reddit post post in {sub_name}: {submission.name}')
             posts.append(Broadcast(
                 content=f'Post in /r/{submission.subreddit.display_name}:',
                 embed=self.submission_to_embed(submission)))

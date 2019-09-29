@@ -60,44 +60,57 @@ class Storage:
         )
 
     async def _init_sql_database(self):
-        engine = self._create_sql_engine()
-        self.session_class = orm.sessionmaker(bind=engine)
-        self.ensure_created()
+        try:
+            log.info('Initializing connection to SQL database...')
+            engine = self._create_sql_engine()
+            self.session_class = orm.sessionmaker(bind=engine)
+            self.ensure_created()
+            log.info('SQL database connection established.')
+        except:
+            log.exception('Error when initializing SQL database:')
+            raise
+
 
     async def _init_redis(self):
-        # TODO(james7132): Move off of depending on Redis as a backing store
-        config.check_config_value(self.config, 'redis', type=str)
-        await self._connect_to_redis()
-        for conf in Storage._get_cache_configs():
-            # Initialize Parameters
-            prefix = _prefixize(conf.prefix.value)
-            key_coder = coders.IntCoder().prefixed(prefix)
-            value_coder = conf.value_coder().compressed()
+        try:
+            # TODO(james7132): Move off of depending on Redis as a backing store
+            log.info('Initializing connection to Redis...')
+            redis_conf = config.get_config_value(self.config, 'redis', type=str)
+            await self._connect_to_redis(redis_conf)
+            for conf in Storage._get_cache_configs():
+                # Initialize Parameters
+                prefix = _prefixize(conf.prefix.value)
+                key_coder = coders.IntCoder().prefixed(prefix)
+                value_coder = conf.value_coder().compressed()
 
-            timeout = conf.timeout or 0
-            if conf.subprefix is None:
-                store = caches.RedisStore(self.redis, timeout=timeout)
-            else:
-                subprefix = _prefixize(conf.subprefix)
-                subcoder = coders.ConstCoder(subprefix)
-                if conf.subcoder is not None:
-                    subcoder = conf.subcoder.prefixed(subprefix)
+                timeout = conf.timeout or 0
+                if conf.subprefix is None:
+                    store = caches.RedisStore(self.redis, timeout=timeout)
+                else:
+                    subprefix = _prefixize(conf.subprefix)
+                    subcoder = coders.ConstCoder(subprefix)
+                    if conf.subcoder is not None:
+                        subcoder = conf.subcoder.prefixed(subprefix)
 
-                key_coder = coders.TupleCoder([key_coder, subcoder])
-                store = caches.RedisHashStore(self.redis, timeout=timeout)
+                    key_coder = coders.TupleCoder([key_coder, subcoder])
+                    store = caches.RedisHashStore(self.redis, timeout=timeout)
 
-            cache = caches.Cache(store,
-                                 key_coder=key_coder,
-                                 value_coder=value_coder)
-            setattr(self, config.attr, cache)
+                cache = caches.Cache(store,
+                                     key_coder=key_coder,
+                                     value_coder=value_coder)
+                setattr(self, conf.attr, cache)
+            log.info('Redis connection established.')
+        except:
+            log.exception('Error when initializing Redis:')
+            raise
 
-    async def _connect_to_redis(self):
+    async def _connect_to_redis(self, redis_conf):
         wait_time = 1.0
         max_wait_time = 60
         while True:
             try:
                 self.redis = await aioredis.create_redis_pool(
-                    self.config.redis,
+                    redis_conf,
                     loop=asyncio.get_event_loop())
                 break
             except aioredis.ReplyError:
@@ -151,7 +164,7 @@ class Storage:
 
     def _create_sql_engine(self):
         return create_engine(
-            config.check_config_value(self.config, 'database', type=str),
+            config.get_config_value(self.config, 'database', type=str),
             poolclass=pool.SingletonThreadPool,
             connect_args={'check_same_thread': False})
 

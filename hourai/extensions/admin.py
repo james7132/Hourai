@@ -27,7 +27,7 @@ async def batch_do(members, func):
 class Admin(bot.BaseCog):
 
     # --------------------------------------------------------------------------
-    # General Admin Commands
+    # General Admin commands
     # --------------------------------------------------------------------------
 
     async def _admin_action(self, ctx, members, func):
@@ -36,7 +36,7 @@ class Admin(bot.BaseCog):
                        + utils.format.vertical_list(results.values()),
                        delete_after=DELETE_WAIT_DURATION)
 
-    @commands.Command(name="kick")
+    @commands.command(name="kick")
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
@@ -44,7 +44,7 @@ class Admin(bot.BaseCog):
         """Kicks all specified users."""
         await self._admin_action(ctx, members, lambda m: m.kick())
 
-    @commands.Command(name="ban")
+    @commands.command(name="ban")
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -59,7 +59,7 @@ class Admin(bot.BaseCog):
         members = (_to_user(mem) for mem in members)
         await self._admin_action(ctx, members, lambda m: m.ban())
 
-    @commands.Command(name="softban")
+    @commands.command(name="softban")
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -72,7 +72,7 @@ class Admin(bot.BaseCog):
             await member.guild.unban(member)
         await self._admin_action(ctx, members, _softban)
 
-    @commands.Command(name="mute")
+    @commands.command(name="mute")
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
@@ -80,7 +80,7 @@ class Admin(bot.BaseCog):
         """Mutes all specified users."""
         await self._admin_action(ctx, members, lambda m: m.edit(mute=True))
 
-    @commands.Command(name="unmute")
+    @commands.command(name="unmute")
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
@@ -88,7 +88,7 @@ class Admin(bot.BaseCog):
         """Unmutes all specified users."""
         await self._admin_action(ctx, members, lambda m: m.edit(mute=False))
 
-    @commands.Command(name="deafen")
+    @commands.command(name="deafen")
     @commands.guild_only()
     @commands.has_permissions(deafen_members=True)
     @commands.bot_has_permissions(deafen_members=True)
@@ -96,7 +96,7 @@ class Admin(bot.BaseCog):
         """Deafen all specified users."""
         await self._admin_action(ctx, members, lambda m: m.edit(deafen=True))
 
-    @commands.Command(name="undeafen")
+    @commands.command(name="undeafen")
     @commands.guild_only()
     @commands.has_permissions(deafen_members=True)
     @commands.bot_has_permissions(deafen_members=True)
@@ -104,7 +104,7 @@ class Admin(bot.BaseCog):
         """Deafen all specified users."""
         await self._admin_action(ctx, members, lambda m: m.edit(deafen=False))
 
-    @commands.Command(name="move")
+    @commands.command(name="move")
     @commands.guild_only()
     @commands.has_permissions(move_members=True)
     @commands.bot_has_permissions(move_members=True)
@@ -115,16 +115,16 @@ class Admin(bot.BaseCog):
         await self._admin_action(ctx, src.members,
                                  lambda m: m.edit(voice_channel=dst))
 
-    @commands.Command(name="nickname")
+    @commands.command(name="nickname")
     @commands.guild_only()
     @commands.has_permissions(move_members=True)
     @commands.bot_has_permissions(move_members=True)
-    async def nickname(self, ctx, name: str, *members: discord.Members):
+    async def nickname(self, ctx, name: str, *members: discord.Member):
         """Nicknames all specified users."""
         await self._admin_action(ctx, members, lambda m: m.edit(nick=name))
 
     # -------------------------------------------------------------------------
-    # Role Commands
+    # Role commands
     # -------------------------------------------------------------------------
 
     @commands.group(name="role")
@@ -187,7 +187,7 @@ class Admin(bot.BaseCog):
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     # -------------------------------------------------------------------------
-    # Temp Commands
+    # Temp commands
     # -------------------------------------------------------------------------
 
     @commands.group(name="temp")
@@ -251,7 +251,7 @@ class Admin(bot.BaseCog):
         raise NotImplementedError
 
     # -------------------------------------------------------------------------
-    # Prune Commands
+    # Prune commands
     # -------------------------------------------------------------------------
 
     async def _prune_messages(self, ctx, count, filter_func=None):
