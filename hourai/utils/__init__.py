@@ -12,9 +12,6 @@ MODERATOR_PREFIX = 'mod'
 DELETED_USER_REGEX = re.compile(r'Deleted User\s+[0-9a-fA-F]+')
 
 
-FakeSnowflake = collections.namedtuple('FakeSnowflake', ('id',))
-
-
 async def broadcast(channels, *args, **kwargs):
     """
     Broadcasts a message to multiple channels at once.

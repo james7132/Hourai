@@ -1,148 +1,19 @@
 import asyncio
-import discord
 import logging
 import pkgutil
 import traceback
-from functools import wraps
 from discord.ext import commands
 from . import config
-from .db import proxies, storage
-from .utils.replacement import StringReplacer
-
-MAX_CONTEXT_DEPTH = 255
-
-GUILD_TESTS = (lambda arg: arg.guild,
-               lambda arg: arg.channel.guild,
-               lambda arg: arg.message.channel.guild)
+from .db import storage
+from .utils.fake import FakeMessage
+from .cogs import PrivateCog
+from .context import HouraiContext
 
 log = logging.getLogger(__name__)
-
-_FAKE_MESSAGE_ATTRS = (
-    'content', 'channel', 'guild', 'author', '_state'
-)
 
 
 class CogLoadError(Exception):
     pass
-
-
-class FakeMessage:
-
-    def __init__(self, **kwargs):
-        msg = kwargs.pop('message', None)
-        for attr in _FAKE_MESSAGE_ATTRS:
-            if msg is not None and attr not in kwargs:
-                setattr(self, attr, getattr(msg, attr, None))
-            else:
-                setattr(self, attr, kwargs.pop(attr, None))
-
-
-class BaseCog(commands.Cog):
-    pass
-
-
-class PrivateCog(commands.Cog(command_attrs={"hidden": True})):
-    """A cog that does not show any of it's commands in the help command."""
-    pass
-
-
-class GuildSpecificCog(BaseCog):
-    """A cog that operates only on specific servers, provided as guild IDs at
-    initialiation.
-    """
-
-    def __init__(self, bot, *, guilds=set()):
-        super().__init__()
-        self.bot = bot
-        self.__allowed_guilds = set(guilds)
-
-        for name, method in self.get_listeners():
-            method_name = method.__name__
-            setattr(self, method_name, self.__check_guilds(method))
-
-    def cog_check(self, ctx):
-        return ctx.guild is not None and ctx.guild.id in self.__allowed_guilds
-
-    def __check_guilds(self, func):
-        @wraps(func)
-        async def _check_guilds(*args, **kwargs):
-            for arg in args:
-                guild_id = GuildSpecificCog.__get_guild_id(arg)
-                if guild_id is not None and guild_id in self.__allowed_guilds:
-                    await func(*args, **kwargs)
-                    return
-            for kwarg in kwargs.items():
-                guild_id = GuildSpecificCog.__get_guild_id(kwarg)
-                if guild_id is not None and guild_id in self.__allowed_guilds:
-                    await func(*args, **kwargs)
-                    return
-        return _check_guilds
-
-    @staticmethod
-    def __get_guild_id(arg):
-        if isinstance(arg, discord.Guild):
-            return arg.id
-        for test in GUILD_TESTS:
-            try:
-                return GuildSpecificCog.__get_guild_id(test(arg))
-            except Exception:
-                pass
-        return None
-
-
-class HouraiContext(commands.Context):
-
-    REPLACER = StringReplacer({
-        '$author': lambda ctx: ctx.author.display_name,
-        '$author_id': lambda ctx: ctx.author.id,
-        '$author_mention': lambda ctx: ctx.author.mention,
-        '$channel': lambda ctx: ctx.channel.name,
-        '$channel_id': lambda ctx: ctx.channel.id,
-        '$channel_mention': lambda ctx: ctx.channel.mention,
-        '$server': lambda ctx: ctx.guild.name,
-        '$server_id': lambda ctx: ctx.guild.id,
-    })
-
-    def __init__(self, **attrs):
-        self.parent = attrs.pop('parent', None)
-        self.depth = attrs.pop('depth', 1)
-        super().__init__(**attrs)
-        self.session = self.bot.create_storage_session()
-
-    async def __aenter__(self):
-        self.session.__enter__()
-        return self
-
-    async def __aexit__(self, exc_type, exc, traceback):
-        self.session.__exit__(exc_type, exc, traceback)
-
-    def substitute_content(self, repeats=20):
-        return self.REPLACER.substitute(self.content, context=self,
-                                        repeats=repeats)
-
-    @property
-    def is_automated(self):
-        return isinstance(self.message, FakeMessage)
-
-    @property
-    def logger(self):
-        return self.bot.logger
-
-    def get_guild_proxy(self, guild=None):
-        return proxies.GuildProxy(guild or self.guild, self.session)
-
-    def get_automated_context(self, msg=None):
-        if self.depth > MAX_CONTEXT_DEPTH:
-            raise RecursionError
-        return self.bot.get_automated_context(message=msg or self.message,
-                                              parent=self,
-                                              depth=self.depth + 1)
-
-    def get_ancestors(self):
-        current_context = self.parent
-        while current_context is not None:
-            yield current_context
-            current_context = current_context.parent
 
 
 class CommandInterpreter:

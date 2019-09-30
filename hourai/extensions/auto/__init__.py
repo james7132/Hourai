@@ -3,7 +3,7 @@ import copy
 import discord
 import re
 from discord.ext import commands
-from hourai import bot
+from hourai.cogs import BaseCog
 from hourai.db import proto
 
 
@@ -30,7 +30,7 @@ def is_valid_message_event(message, channel, evt):
     return in_channel and is_filter_ok
 
 
-class Auto(bot.BaseCog):
+class Auto(BaseCog):
 
     def __init__(self, bot):
         super().__init__()

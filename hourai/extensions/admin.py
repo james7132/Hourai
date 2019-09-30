@@ -4,7 +4,8 @@ import re
 import typing
 from datetime import datetime, timedelta
 from discord.ext import commands
-from hourai import bot, utils
+from hourai import utils
+from hourai.cogs import BaseCog
 
 MAX_PRUNE_LOOKBACK = timedelta(days=14)
 DELETE_WAIT_DURATION = 60
@@ -24,7 +25,7 @@ async def batch_do(members, func):
     return dict(zip(members, results))
 
 
-class Admin(bot.BaseCog):
+class Admin(BaseCog):
 
     # --------------------------------------------------------------------------
     # General Admin commands

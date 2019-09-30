@@ -6,7 +6,8 @@ from . import approvers, rejectors
 from .storage import BanStorage
 from discord.ext import tasks, commands
 from datetime import datetime, timedelta
-from hourai import bot, utils
+from hourai import utils
+from hourai.cogs import BaseCog
 from hourai.db import models, proxies, proto
 from hourai.utils import format, embed
 from google.protobuf import text_format
@@ -174,7 +175,7 @@ def _chunk_iter(src, chunk_size):
     yield chunk
 
 
-class Validation(bot.BaseCog):
+class Validation(BaseCog):
 
     def __init__(self, bot):
         super().__init__()

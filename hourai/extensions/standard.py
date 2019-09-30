@@ -1,11 +1,11 @@
 import discord
 import typing
-from hourai import bot
+from hourai.cogs import BaseCog
 from hourai.utils import embed
 from discord.ext import commands
 
 
-class Standard(bot.BaseCog):
+class Standard(BaseCog):
 
     def __init__(self):
         super().__init__()

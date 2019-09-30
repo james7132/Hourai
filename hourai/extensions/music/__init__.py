@@ -3,13 +3,13 @@ import ipaddress
 import logging
 import math
 import socket
+import wavelink
 from .player import HouraiMusicPlayer
 from .utils import time_format
 from discord.ext import commands
-from hourai.bot import GuildSpecificCog, CogLoadError
+from hourai.bot import CogLoadError
+from hourai.cogs import GuildSpecificCog
 from hourai.utils import format
-from urllib.parse import urlparse
-import wavelink
 
 
 log = logging.getLogger('hourai.music')
@@ -272,20 +272,6 @@ class Music(GuildSpecificCog):
 
     @commands.command()
     @commands.guild_only()
-    async def removeall(self, ctx):
-        player = self.get_player(ctx.guild)
-        if not player.is_connected:
-            await ctx.send('There is currently no music playing.')
-            return
-        count = player.clear_user(ctx.author)
-        if count == 0:
-            msg = "You don't have any music in the queue!"
-        else:
-            msg = f"Removed your {count} tracks from the queue."
-        await ctx.send(msg)
-
-    @commands.command()
-    @commands.guild_only()
     async def forceskip(self, ctx):
         player = self.get_player(ctx.guild)
         if not player.is_connected:
@@ -296,7 +282,7 @@ class Music(GuildSpecificCog):
         requestor = ctx.guild.get_member(player.current_requestor)
         assert requestor is not None
 
-        player.play_next()
+        player.play_next(skip=True)
         await ctx.send(f':notes: Skipped **{track.title}** (requested by '
                        f'**{requestor.name}**)')
 
