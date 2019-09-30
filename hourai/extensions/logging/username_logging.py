@@ -1,13 +1,15 @@
 import asyncio
-from discord.ext import commands
+import logging
 from datetime import datetime
-from hourai import bot
+from discord.ext import commands
+from hourai.cogs import BaseCog
 from hourai.db import models
+from sqlalchemy.exc import OperationalError
 
 MAX_STORED_USERNAMES = 20
 
 
-class UsernameLogging(bot.BaseCog):
+class UsernameLogging(BaseCog):
     """ Cog for logging username changes. """
 
     def __init__(self, bot):
@@ -57,24 +59,37 @@ class UsernameLogging(bot.BaseCog):
         ])
 
     async def log_username_change(self, user):
-        with self.bot.create_storage_session() as session:
-            usernames = session.query(models.Username) \
-                               .filter_by(user_id=user.id) \
-                               .order_by(models.Username.timestamp)
-            usernames = list(usernames)
-            if len(usernames) > 0 and usernames[0].name == user.name:
-                return
-            username = models.Username(user_id=user.id,
-                                       timestamp=datetime.utcnow(),
-                                       name=user.name,
-                                       discriminator=user.discriminator)
-            usernames.append(username)
-            session.add(username)
-            self.merge_usernames(usernames, session)
-            if len(usernames) > MAX_STORED_USERNAMES:
-                for name in usernames[:-MAX_STORED_USERNAMES]:
-                    session.delete(name)
-            session.commit()
+        timestamp = datetime.utcnow()
+
+        def create_username():
+            return models.Username(user_id=user.id, name=user.name,
+                                   timestamp=timestamp,
+                                   discriminator=user.discriminator)
+        logged = False
+        backoff = 1
+        while not logged:
+            try:
+                with self.bot.create_storage_session() as session:
+                    usernames = session.query(models.Username) \
+                                       .filter_by(user_id=user.id) \
+                                       .order_by(models.Username.timestamp)
+                    usernames = list(usernames)
+                    if len(usernames) > 0 and usernames[0].name == user.name:
+                        return
+                    username = create_username()
+                    usernames.append(username)
+                    session.add(username)
+                    self.merge_usernames(usernames, session)
+                    if len(usernames) > MAX_STORED_USERNAMES:
+                        for name in usernames[:-MAX_STORED_USERNAMES]:
+                            session.delete(name)
+                    session.commit()
+                logged = True
+            except OperationalError:
+                msg = f'OperationalError: Retrying in {backoff} seconds.'
+                logging.error(msg)
+                await asyncio.sleep(backoff)
+                backoff *= 2
 
     def merge_usernames(self, usernames, session):
         before = None

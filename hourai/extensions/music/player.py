@@ -73,6 +73,7 @@ class HouraiMusicPlayer(wavelink.Player):
 
                 await self.play(song)
 
+                self.next_event.clear()
                 # Wait for TrackEnd event to set our event...
                 await self.next_event.wait()
 
@@ -92,7 +93,8 @@ class HouraiMusicPlayer(wavelink.Player):
 
     async def hook(self, event):
         if isinstance(event, wavelink.TrackEnd):
-            self.play_next()
+            if event.reason in ('FINISHED', 'LOAD_FAILED'):
+                self.play_next()
         elif isinstance(event, wavelink.TrackException):
             log.error(event.error)
 
@@ -129,7 +131,7 @@ class HouraiMusicPlayer(wavelink.Player):
     def is_playing(self):
         return self.is_connected and self.current is not None
 
-    def play_next(self):
+    def play_next(self, skip=False):
         """Plays the next song. If a song is currently playing, it will be
         skipped.
         """
@@ -157,7 +159,7 @@ class HouraiMusicPlayer(wavelink.Player):
         """
         self.skip_votes.add(user.id)
         if self.current_requestor == user or len(self.skip_votes) > threshold:
-            self.play_next()
+            self.play_next(skip=True)
             return True
         return False
 

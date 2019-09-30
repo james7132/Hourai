@@ -3,7 +3,8 @@ import hourai.utils as utils
 import inspect
 import re
 import traceback
-from hourai import bot, extensions
+from hourai import extensions
+from hourai.cogs import BaseCog
 from hourai.db import models
 from discord.ext import commands
 
@@ -12,7 +13,7 @@ def regex_multi_attr_match(context, regex, attrs):
     return any(regex.search(func(context)) for func in attrs)
 
 
-class Owner(bot.BaseCog):
+class Owner(BaseCog):
 
     GUILD_CRITERIA = (
         lambda g: g.name,

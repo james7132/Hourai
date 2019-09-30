@@ -1,12 +1,12 @@
 import discord
 from discord.ext import commands
 from datetime import datetime
-from hourai import bot
+from hourai.cogs import BaseCog
 from hourai.db import proxies
 from hourai.utils import format, success
 
 
-class ModLogging(bot.BaseCog):
+class ModLogging(BaseCog):
     """ Cog for logging Discord and bot events to a servers' modlog channels.
     """
 

@@ -3,7 +3,7 @@
 import logging
 from hourai.utils import invite
 from discord.ext import commands
-from hourai.bot import GuildSpecificCog
+from hourai.cogs import GuildSpecificCog
 
 
 class GuildSpecific_TheGap(GuildSpecificCog):
