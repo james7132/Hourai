@@ -66,16 +66,17 @@ class Storage:
             self.session_class = orm.sessionmaker(bind=engine)
             self.ensure_created()
             log.info('SQL database connection established.')
-        except:
+        except Exception:
             log.exception('Error when initializing SQL database:')
             raise
 
-
     async def _init_redis(self):
         try:
-            # TODO(james7132): Move off of depending on Redis as a backing store
+            # TODO(james7132): Move off of depending on Redis as a backing
+            #                  store
             log.info('Initializing connection to Redis...')
-            redis_conf = config.get_config_value(self.config, 'redis', type=str)
+            redis_conf = config.get_config_value(self.config, 'redis',
+                                                 type=str)
             await self._connect_to_redis(redis_conf)
             for conf in Storage._get_cache_configs():
                 # Initialize Parameters
@@ -100,7 +101,7 @@ class Storage:
                                      value_coder=value_coder)
                 setattr(self, conf.attr, cache)
             log.info('Redis connection established.')
-        except:
+        except Exception:
             log.exception('Error when initializing Redis:')
             raise
 

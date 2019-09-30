@@ -1,6 +1,9 @@
+import asyncio
+import logging
+import discord
 import humanize
 import traceback
-import discord
+import collections
 from datetime import datetime
 from hourai.utils import format, consts
 from hourai.db import models
@@ -99,3 +102,91 @@ def _get_extra_usernames(ctx, user):
     while len(usernames) > 0 and usernames[-1].name == user.name:
         usernames.pop()
     return usernames
+
+
+class MessageUI:
+
+    UPDATE_FREQUENCY = 5.0          # Every 5 seconds
+
+    def __init__(self, client):
+        self.client = client
+        self.message = None
+        self.reactions = collections.OrderedDict()
+        self.stop_event = asyncio.Event()
+
+    async def create_content(self):
+        return None
+
+    async def create_embed(self):
+        return None
+
+    async def on_update(self):
+        pass
+
+    def add_button(self, reaction, handler):
+        self.reactions[reaction] = handler
+        return self
+
+    async def run(self, channel):
+        self.message = await channel.send(
+                content=await self.create_content(),
+                embed=await self.create_embed())
+        for reaction in self.reactions.keys():
+            await self.message.add_reaction(reaction)
+        return self.client.loop.create_task(self._background_loop())
+
+    async def _background_loop(self):
+        while not self.stop_event.is_set():
+            try:
+                await self._handle_reactions()
+                await self.on_update()
+                content = await self.create_content()
+                embed = await self.create_embed()
+                if self._has_changed(content, embed):
+                    await self.message.edit(content=content, embed=embed)
+            except Exception:
+                logging.exception('Error while updating message UI:')
+
+    def _has_changed(self, content, embed):
+        if self.message.content != content:
+            return True
+        if (embed is not None) != (len(self.message.embeds) <= 0):
+            return True
+        if embed is not None and len(self.message.embeds) > 0:
+            if embed.to_dict() != self.message.embeds[0].to_dict():
+                return True
+        return False
+
+    async def _handle_reactions(self):
+        def match_message(react, _):
+            return react.message == self.message
+        try:
+            react, member = await self.client.wait_for(
+                'reaction_add', check=match_message,
+                timeout=self.UPDATE_FREQUENCY)
+            logging.info(f"{str(react.emoji)}, {member}, "
+                         f"{react.emoji in self.self.reactions}")
+            try:
+                # Remove the reaction if possible.
+                await react.message.remove_reaction(react.emoji, member)
+            except discord.Forbidden:
+                pass
+            handler = self.reactions.get(react.emoji)
+            if handler is not None:
+                handler()
+        except asyncio.TimeoutError:
+            pass
+
+    async def stop(self, delete=False):
+        try:
+            self.stop_event.set()
+            if delete:
+                await self.delete()
+            elif self.message is not None:
+                await self.message.clear_reactions()
+        except discord.Forbidden:
+            pass
+
+    async def delete(self):
+        if self.message is not None:
+            await self.message.delete()

@@ -1,16 +1,22 @@
-import ipaddress
-import socket
 import asyncio
+import ipaddress
 import logging
+import math
+import socket
+from .player import HouraiMusicPlayer
+from .utils import time_format
 from discord.ext import commands
-from hourai import config
-from hourai.utils import format
 from hourai.bot import GuildSpecificCog, CogLoadError
-from .player import Player
+from hourai.utils import format
+from urllib.parse import urlparse
 import wavelink
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('hourai.music')
+
+
+def clamp(val, min_val, max_val):
+    return max(min(val, max_val), min_val)
 
 
 class Music(GuildSpecificCog):
@@ -44,73 +50,113 @@ class Music(GuildSpecificCog):
                 args['host'] = socket.gethostbyname(node_cfg.host)
 
             # Initiate our nodes. For now only using one
-            node = await self.bot.wavelink.initiate_node(**args)
-            node.set_hook(self.on_lavalink_event)
+            await self.bot.wavelink.initiate_node(**args)
 
         nodes = self.bot.get_config_value('music.nodes', default=(),
                                           type=tuple)
         await asyncio.gather(*[initialize_node(node_cfg)
                                for node_cfg in nodes])
 
-    def on_lavalink_event(self, event):
-        """Our event hook. Dispatched when an event occurs on our Node."""
-        if isinstance(event, wavelink.TrackEnd):
-            event.player.next_event.set()
-        elif isinstance(event, wavelink.TrackException):
-            log.error(event.error)
-        else:
-            log.info(event)
-
-    @staticmethod
-    def get_player(ctx):
-        return ctx.bot.wavelink.get_player(ctx.guild.id, player=Player)
+    def get_player(self, guild):
+        return self.bot.wavelink.get_player(guild.id, cls=HouraiMusicPlayer)
 
     @staticmethod
     async def connect_player(ctx, player):
         channel = Music.get_voice_channel(ctx.guild)
+        msg = None
         if channel is None:
-            await ctx.send('No suitable channel for playing music found.')
-            return False
-        if ctx.author not in channel.members:
-            await ctx.send(f'You must be in `{channel.name}` to play music.')
-            return False
-        await player.connect(channel.id)
-        return True
+            msg = 'No suitable channel for playing music found.'
+        elif ctx.author not in channel.members:
+            msg = f'You must be in `{channel.name}` to play music.'
+        await (ctx.send(msg) if msg is not None else
+               player.connect(channel.id))
+        return msg is None
 
     @staticmethod
-    def get_voice_channel(guild):
+    def get_voice_channel(guild, member=None):
         channels = filter(lambda ch: ch.permissions_for(guild.me).connect,
-                          guild.voice_channesls)
+                          guild.voice_channels)
+        if member is not None:
+            channels = filter(lambda ch: member in ch.members, channels)
         return next(channels, None)
 
     @commands.command()
+    @commands.is_owner()
     @commands.guild_only()
-    async def play(self, ctx, target: str = ''):
-        player = Music.get_player(ctx)
-        if not target:
+    async def connect_(self, ctx):
+        player = self.get_player(ctx.guild)
+        channel = Music.get_voice_channel(ctx.guild, ctx.author)
+        if channel is None:
+            await ctx.send('No suitable channel for playing music found.')
+            return False
+        await player.connect(channel.id)
+
+    @commands.command()
+    @commands.is_owner()
+    @commands.guild_only()
+    async def disconnect_(self, ctx):
+        player = self.get_player(ctx.guild)
+        if not player.is_connected:
+            await player.disconnect()
+
+    @staticmethod
+    def is_empty_response(load_response):
+        if load_response is None:
+            return True
+        if isinstance(load_response, list) and len(load_response) <= 0:
+            return True
+        if (isinstance(load_response, wavelink.TrackPlaylist) and
+           len(load_response.tracks) <= 0):
+            return True
+        return False
+
+    @commands.command()
+    @commands.guild_only()
+    async def play(self, ctx, *, query: str = ''):
+        player = self.get_player(ctx.guild)
+        if not query:
             await self._play_paused(ctx, player)
             return
 
-        msg = await ctx.send('**Loading...**')
-        tracks = await ctx.bot.wavelink.get_tracks(f'ytsearch:{target}')
-        if not tracks:
-            await msg.edit(
-                f'Could not find any songs that meet the query: **{target}**')
+        if (player.voice_channel is not None and
+           ctx.author not in player.voice_channel.members):
+            channel_name = player.voice_channel.name
+            await ctx.send(
+                content=f'You must be in `{channel_name}` to play music.')
             return
+
+        msg = await ctx.send(r'**\*\*Loading...\*\***')
+        for attempt in (query, f'ytsearch:{query}', f'scsearch:{query}'):
+            result = await ctx.bot.wavelink.get_tracks(attempt)
+            if not Music.is_empty_response(result):
+                break
+        if Music.is_empty_response(result):
+            await msg.edit(content=f':bulb: No results found for `{query}`.')
 
         if not player.is_connected:
             if (not await Music.connect_player(ctx, player)):
                 return
 
-        if ctx.author not in player.channel.members:
-            channel_name = player.channel.name
-            await msg.edit(f'You must be in `{channel_name}` to play music.')
-            return
-
-        await asyncio.gather(
-            player.play(tracks[0]),
-            msg.edit(f'Added **{str(tracks[0])}** to the queue.')
-        )
+        if isinstance(result, list):
+            assert len(result) > 0
+            track = result[0]
+            await player.enqueue(ctx.author, track)
+            await msg.edit(content=f':notes: Added `{track.title}` '
+                                   f'({time_format(track.duration)}) to the '
+                                   f'queue.')
+        elif isinstance(result, wavelink.TrackPlaylist):
+            assert len(result.tracks) > 0
+            # Add all tracks to the queue
+            total_duration = 0
+            for track in result.tracks:
+                await player.enqueue(ctx.author, track)
+                total_duration += track.duration
+            count = len(result.tracks)
+            total_duration = time_format(total_duration)
+            await msg.edit(content=f':notes: Added **{count}** tracks'
+                                   f'({total_duration}) to the queue.')
+        else:
+            await msg.edit(':x: Something went wrong!')
 
     async def _play_paused(self, ctx, player):
         if not player.is_connected or not player.is_paused:
@@ -122,7 +168,7 @@ class Music(GuildSpecificCog):
     @commands.command()
     @commands.guild_only()
     async def pause(self, ctx):
-        player = Music.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
@@ -132,16 +178,18 @@ class Music(GuildSpecificCog):
     @commands.command()
     @commands.guild_only()
     async def stop(self, ctx):
-        player = Music.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
-        player.stop()
+        await player.stop()
+        await ctx.send(':notes: The player has stopped and the queue has been '
+                       'cleared.')
 
     @commands.command()
     @commands.guild_only()
     async def remove(self, ctx, target: int):
-        player = Music.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
@@ -150,7 +198,7 @@ class Music(GuildSpecificCog):
     @commands.command()
     @commands.guild_only()
     async def removeall(self, ctx):
-        player = Music.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
@@ -163,65 +211,133 @@ class Music(GuildSpecificCog):
     @commands.command()
     @commands.guild_only()
     async def queue(self, ctx):
-        player = Music.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
-        raise NotImplementedError
+        await player.create_queue_message(ctx.channel)
+
+    @commands.command()
+    @commands.guild_only()
+    async def nowplaying(self, ctx):
+        player = self.get_player(ctx.guild)
+        if not player.is_connected:
+            await ctx.send('There is currently no music playing.')
+            return
+        await player.create_now_playing_message(ctx.channel)
 
     @commands.command()
     @commands.guild_only()
     async def skip(self, ctx):
-        player = Music.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
-        if ctx.author.id in self.skip_votes:
+        if ctx.author.id in player.skip_votes:
             await ctx.send("You've already voted to skip this song!")
             return
 
-        assert player.currently_playing is not None
+        assert player.current is not None
 
-        skipped = player.currently_playing.requestor == ctx.author
+        track = player.current
+        requestor = player.current_requestor
+        assert requestor is not None
 
-        if not skipped:
-            votes = self.skip_votes[ctx.guild.id]
-            votes.add(ctx.author.id)
-            required_users = int(len(player.voice_client.members) * 0.5)
-            skipped = len(votes) >= required_users
+        channel_count = len(player.voice_channel_members)
+        vote_count = len(player.skip_votes) + 1
 
+        required_votes = math.ceil(channel_count * 0.5)
+        skipped = player.vote_to_skip(ctx.author, required_votes)
+
+        response = (f':notes: You voted to skip the song. `{vote_count} votes,'
+                    f' {required_votes}/{channel_count} needed.`')
         if skipped:
-            player.skip()
-            del self.skip_votes[ctx.guild.id]
+            response += (f'\n:notes: Skipped **{track.title}** (requested by '
+                         f'**{requestor.name}**)')
+        await ctx.send(response)
+
+    @commands.command()
+    @commands.guild_only()
+    async def shuffle(self, ctx):
+        player = self.get_player(ctx.guild)
+        if not player.is_connected:
+            await ctx.send('There is currently no music playing.')
+            return
+        count = player.shuffle_user(ctx.author)
+        if count == 0:
+            msg = "You don't have any music in the queue!"
+        else:
+            msg = f":notes: Shuffled your {count} tracks in the queue!"
+        await ctx.send(msg)
+
+    @commands.command()
+    @commands.guild_only()
+    async def removeall(self, ctx):
+        player = self.get_player(ctx.guild)
+        if not player.is_connected:
+            await ctx.send('There is currently no music playing.')
+            return
+        count = player.clear_user(ctx.author)
+        if count == 0:
+            msg = "You don't have any music in the queue!"
+        else:
+            msg = f"Removed your {count} tracks from the queue."
+        await ctx.send(msg)
 
     @commands.command()
     @commands.guild_only()
     async def forceskip(self, ctx):
-        player = self.guild_players.get(ctx.guild.id)
+        player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
-        player.skip()
-        del self.skip_votes[ctx.guild.id]
+
+        track = player.current
+        requestor = ctx.guild.get_member(player.current_requestor)
+        assert requestor is not None
+
+        player.play_next()
+        await ctx.send(f':notes: Skipped **{track.title}** (requested by '
+                       f'**{requestor.name}**)')
+
+    @commands.command()
+    @commands.guild_only()
+    async def volume(self, ctx, volume: int = None):
+        player = self.get_player(ctx.guild)
+        if not player.is_connected:
+            await ctx.send('There is currently no music playing.')
+            return
+
+        old_volume = player.volume
+        if volume is None:
+            await ctx.send(f':sound: Current volume is `{old_volume}`')
+            return
+        volume = clamp(volume, 0, 150)
+        await player.set_volume(volume)
+
+        await ctx.send(f':sound: Volume changed from `{old_volume}` to '
+                       f'`{volume}`')
 
     @commands.Cog.listener()
     async def on_voice_state_change(self, member, before, after):
         guild = member.guild
-        player = self.guild_players.get(guild.id)
-        voice_client = guild.voice_client
-        if player is None or voice_client is None:
+        player = self.get_player(guild)
+        if not player.is_connected or member == guild.me:
             return
 
-        # Kill the player when nobody else is in voice
-        if voice_client is not None:
-            members = list(player.voice_client.members)
-            if len(members) <= 0 or members == [voice_client.guild.me]:
-                player.stop()
+        # Kill the player when nobody else is in any voice channel in the guild
+        def is_empty(voice_channel):
+            members = set(voice_channel.members)
+            members.remove(guild.me)
+            return len(members) <= 0
+        if all(is_empty(vc) for vc in guild.voice_channels):
+            await player.stop()
 
         # Remove skip votes from those who leave
-        if (voice_client.channel == before.channel and
-           voice_client.channel != after.channel):
-            self.skip_votes.remove(member.id)
+        channel = player.channel
+        if (channel is not None and
+           channel == before.channel and channel != after.channel):
+            player.clear_vote(member)
 
 
 def setup(bot):
