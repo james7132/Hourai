@@ -6,6 +6,7 @@
 
 import collections
 from collections.abc import Mapping, MutableMapping, Sequence
+from .iterable import first
 
 
 def tupperware(mapping):
@@ -107,7 +108,7 @@ def __conform(base, template, default, path):
     elif isinstance(base, Sequence) and not isinstance(base, str):
         # Length does not need to match, but at least one
         assert isinstance(base, Sequence) and isinstance(template, Sequence)
-        target_template = next(iter(template), __END)
+        target_template = first(template, default=__END)
         if target_template is __END:
             raise ValueError(f"No template for values in '{path}'.")
         idx = 0

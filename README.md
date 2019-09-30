@@ -31,8 +31,8 @@ Informative / Fun Features
 
  * Feeds - pulls near-realtime feeds from a variety of sources, including Reddit,
    RSS, Danbooru, etc.
- * Music Bot - play music from YouTube, SoundCloud, and other public services.
-   (Not yet implemented)
+ * Music Bot - play music from YouTube, SoundCloud, Bandcamp, and other public
+   services.  (Mostly implemented)
 
 ---
 

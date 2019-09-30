@@ -7,13 +7,13 @@ from .types import FeedScanResult, Broadcast, Scanner
 from datetime import datetime, timezone
 from hourai.utils import format
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('hourai.reddit')
 
 
 class RedditScanner(Scanner):
 
     def __init__(self, cog):
-        log.info("Starting reddit client!")
+        log.debug("Starting reddit client.")
         conf = cog.bot.get_config_value('reddit')
         self.client = praw.Reddit(**conf._asdict())
         super().__init__(cog, 'REDDIT')
@@ -42,7 +42,7 @@ class RedditScanner(Scanner):
             if submission.created_utc <= last_updated_unix:
                 break
             sub_name = submission.subreddit.name
-            log.info(f'New reddit post post in {sub_name}: {submission.name}')
+            log.debug(f'New reddit post in {sub_name}: {submission.name}')
             posts.append(Broadcast(
                 content=f'Post in /r/{submission.subreddit.display_name}:',
                 embed=self.submission_to_embed(submission)))

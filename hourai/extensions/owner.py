@@ -1,7 +1,8 @@
-import re
-import hourai.utils as utils
-import traceback
 import copy
+import hourai.utils as utils
+import inspect
+import re
+import traceback
 from hourai import bot, extensions
 from hourai.db import models
 from discord.ext import commands
@@ -79,6 +80,29 @@ class Owner(bot.BaseCog):
         for i in range(times):
             await new_ctx.reinvoke()
 
+    @commands.command()
+    async def eval(self, ctx, *, expr: str):
+        global_vars = {**globals(), **{
+            'bot': ctx.bot,
+            'msg': ctx.message,
+            'channel': ctx.channel,
+            'guild': ctx.guild,
+            'guilds': ctx.bot.guilds,
+            'users': ctx.bot.users,
+            'dms': ctx.bot.private_channels,
+            'members': ctx.bot.get_all_members(),
+            'channels': ctx.bot.get_all_channels(),
+        }}
+        try:
+            result = eval(expr, {}, global_vars)
+            if inspect.isawaitable(result):
+                result = await result
+            await ctx.send(f"Eval results for `{expr}`:\n```{str(result)}```")
+        except Exception:
+            await ctx.send(f"Error when running eval of `{expr}`:\n"
+                           f"```{str(traceback.format_exc())}```")
+
 
 def setup(bot):
+
     bot.add_cog(Owner())

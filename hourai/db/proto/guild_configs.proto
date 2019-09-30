@@ -10,6 +10,7 @@ message GuildConfig {
   optional ValidationConfig validation = 2;
   optional AutoConfig auto = 3;
   optional ModerationConfig moderation = 4;
+  optional MusicConfig music = 5;
 }
 
 // ------------------------------------------------------------------------------
@@ -32,6 +33,23 @@ message LoggingConfig {
 
 message ModerationConfig {
   optional EscalationLadder escalation_ladder = 1;
+}
+
+// ------------------------------------------------------------------------------
+// Music Configs
+// ------------------------------------------------------------------------------
+
+message MusicConfig {
+  // If set, music can be played, otherwise, it's disabled on the server.
+  optional bool enabled = 1;
+  // Optional: If set, people who can DJ the bot need to have this role.
+  // Otherwise, moderators by default have the permission.
+  repeated uint64 dj_role_id = 2;
+  // Optional: If set, the music bot wil only join that voice channel.
+  // Otherwise, the bot will join the first caller's current voice channel.
+  optional uint64 voice_channel_id = 3;
+  // Optional: If set, music commands will only work in the specified channels.
+  repeated uint64 text_channel_id = 4;
 }
 
 // ------------------------------------------------------------------------------

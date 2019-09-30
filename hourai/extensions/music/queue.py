@@ -1,11 +1,13 @@
 import asyncio
 import collections
 import random
+from hourai.utils.iterable import first
 
 
 class MusicQueue(asyncio.Queue):
 
     def __init__(self):
+        super().__init__()
         self._queue = collections.OrderedDict()
 
     def _put(self, item):
@@ -14,20 +16,24 @@ class MusicQueue(asyncio.Queue):
     def _get(self):
         found = False
         while not found and len(self._queue) > 0:
-            key, latest_queue = self._queue.popitem(last=False)
+            key, latest_queue = first(self._queue.items())
+            if len(latest_queue) <= 1:
+                # Any queue empty at the end of this pop needs to be removed
+                self._queue.popitem(last=False)
+            else:
+                self._queue.move_to_end(key)
             found = len(latest_queue) > 0
         if not found:
             return None
         item = latest_queue.pop(0)
-        if len(latest_queue) > 0:
-            self._queue[key] = latest_queue
-        return item
+        return key, item
 
     def shuffle(self, key):
         """ Shuffles the items for a given key. """
         queue = self._queue.get(key)
         if queue is not None:
             random.shuffle(queue)
+        return len(queue)
 
     def clear(self):
         """ Clears all elements in the queue. """
@@ -44,13 +50,13 @@ class MusicQueue(asyncio.Queue):
         return 0
 
     def __iter__(self):
-        iters = [iter(value) for value in self._queue.values()]
+        iters = [(key, iter(value)) for key, value in self._queue.items()]
         progressed = True
         while progressed:
             progressed = False
-            for iterator in iters:
+            for key, iterator in iters:
                 try:
-                    yield next(iterator)
+                    yield (key, next(iterator))
                     progressed = True
                 except StopIteration:
                     pass
