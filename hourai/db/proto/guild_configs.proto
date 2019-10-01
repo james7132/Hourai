@@ -11,6 +11,7 @@ message GuildConfig {
   optional AutoConfig auto = 3;
   optional ModerationConfig moderation = 4;
   optional MusicConfig music = 5;
+  optional AnnouncementConfig announce = 6;
 }
 
 // ------------------------------------------------------------------------------
@@ -50,6 +51,25 @@ message MusicConfig {
   optional uint64 voice_channel_id = 3;
   // Optional: If set, music commands will only work in the specified channels.
   repeated uint64 text_channel_id = 4;
+}
+
+// ------------------------------------------------------------------------------
+// Music Configs
+// ------------------------------------------------------------------------------
+
+message AnnouncementConfig {
+  optional AnnouncementTypeConfig joins = 1;
+  optional AnnouncementTypeConfig leaves = 2;
+  optional AnnouncementTypeConfig bans = 3;
+  optional AnnouncementTypeConfig streams = 3;
+}
+
+message AnnouncementTypeConfig {
+  // Required. The channels to output the announcements to.
+  repeated uint64 channel_ids = 1;
+  // Optional: Custom messages used. If none are provided, the default message
+  // will be used.
+  repeated string messages = 2;
 }
 
 // ------------------------------------------------------------------------------
