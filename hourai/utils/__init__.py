@@ -107,7 +107,7 @@ def is_deleted_user(user):
 
 def is_moderator(member):
     """ Checks if a user is a moderator. """
-    if member is None:
+    if member is None or not hasattr(member, 'roles'):
         return False
     return any(is_moderator_role(r) for r in member.roles)
 

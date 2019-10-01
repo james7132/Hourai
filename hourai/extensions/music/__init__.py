@@ -1,4 +1,5 @@
 import asyncio
+import discord
 import ipaddress
 import logging
 import math
@@ -46,7 +47,7 @@ async def is_dj(ctx, member=None):
     dj_roles = await get_dj_roles(ctx)
     if len(dj_roles) <= 0:
         return is_moderator(member)
-    member_roles = set(member_roles)
+    member_roles = set(member.roles)
     return len(dj_roles.intersection(member_roles)) > 0
 
 
@@ -62,7 +63,7 @@ async def get_voice_channel(ctx):
     music_config = await get_music_config(ctx)
     channel = None
     if music_config.HasField('voice_channel_id'):
-        channel = ctx.guild.get_channel(music_config.music_channel_id)
+        channel = ctx.guild.get_channel(music_config.voice_channel_id)
         if isinstance(channel, discord.VoiceChannel):
             channel = None
     return channel or get_default_channel(ctx.guild, ctx.author)

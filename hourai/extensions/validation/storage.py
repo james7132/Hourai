@@ -46,7 +46,7 @@ class BanStorage:
         await self.storage.bans.set_all(mapping)
 
     async def save_ban(self, guild_id, user_id, reason):
-        await self.storage.bans.set((guild_id, user_id), reason)
+        await self.storage.bans.set((guild_id, user_id), reason or '')
 
     async def get_bans(self, user_id, guild_ids):
         """Gets the ban information for a given user for a set of guilds.
