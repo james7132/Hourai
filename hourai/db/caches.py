@@ -172,3 +172,28 @@ class Cache(BackingStore):
             await self.clear(key)
             await utils.maybe_coroutine(func, *args, **kwargs)
         return clear_message
+
+
+class AggregateProtoCache:
+
+    def __init__(self, msg_type, mappings):
+        self.msg_type = msg_type
+        self._mappings = mappings
+
+    async def get(self, key):
+        proto_val = self.msg_type()
+
+        async def _get_field(attr, cache):
+            result = await cache.get(key)
+            if result is not None:
+                getattr(proto_val, attr).CopyFrom(result)
+        await asyncio.gather(*[_get_field(a, c) for a, c in self._mappings])
+        return proto_val
+
+    async def set(self, key, value):
+        assert isinstance(value, self.msg_type)
+        tasks = []
+        for attr, cache in self._mappings:
+            if value.HasField(attr):
+                tasks.append(cache.set(key, getattr(value, attr)))
+        await asyncio.gather(*tasks)

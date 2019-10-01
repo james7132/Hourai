@@ -132,12 +132,7 @@ class Owner(BaseCog):
         text_format.Merge(await ctx.message.attachments[0].read(), config)
 
         guild_id = guild_id or ctx.guild.id
-
-        tasks = []
-        for cache, field in self.get_mapping(ctx.session.storage):
-            if config.HasField(field):
-                tasks.append(cache.set(guild_id, getattr(config, field)))
-        await asyncio.gather(*tasks)
+        await ctx.bot.storage.guild_configs.set(guild_id, config)
         await ctx.send('Config successfully uploaded.')
 
     @config.command(name="dump")
@@ -147,24 +142,10 @@ class Owner(BaseCog):
 
         guild_id = guild_id or ctx.guild.id
 
-        async def _get_field(cache, field):
-            result = await cache.get(guild_id)
-            if result is not None:
-                getattr(config, field).CopyFrom(result)
-        mapping = self.get_mapping(ctx.session.storage)
-        await asyncio.gather(*[_get_field(c, f) for c, f in mapping])
+        config = await ctx.bot.storage.guild_configs.get(guild_id)
         output = text_format.MessageToString(config, indent=2)
         output = await hastebin.post(ctx.bot.http_session, output)
         await ctx.send(output)
-
-    def get_mapping(self, storage):
-        return (
-            (storage.logging_configs, 'logging'),
-            (storage.validation_configs, 'validation'),
-            (storage.auto_configs, 'auto'),
-            (storage.moderation_configs, 'moderation'),
-            (storage.music_configs, 'music'),
-        )
 
 
 def setup(bot):

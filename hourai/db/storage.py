@@ -105,6 +105,14 @@ class Storage:
         except Exception:
             log.exception('Error when initializing Redis:')
             raise
+        self.guild_configs = caches.AggregateProtoCache(
+                proto.GuildConfig, (
+                    ('logging', self.logging_configs),
+                    ('validation', self.validation_configs),
+                    ('auto', self.auto_configs),
+                    ('moderation', self.moderation_configs),
+                    ('music', self.music_configs),
+                ))
 
     async def _connect_to_redis(self, redis_conf):
         wait_time = 1.0
