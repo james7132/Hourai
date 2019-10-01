@@ -196,7 +196,7 @@ class Music(BaseCog):
             return
 
         msg = await ctx.send(r'**\*\*Loading...\*\***')
-        for attempt in (query, f'ytsearch:{query}', f'scsearch:{query}'):
+        for attempt in (f'ytsearch:{query}', query, f'scsearch:{query}'):
             result = await ctx.bot.wavelink.get_tracks(attempt)
             if not Music.is_empty_response(result):
                 break
