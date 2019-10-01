@@ -25,7 +25,7 @@ async def get_voice_channel(guild):
     music_config = await get_music_config(ctx)
     channel = None
     if music_config.HasField('voice_channel_id'):
-        channel = ctx.guild.get_channel(music_config.music_channel_id)
+        channel = ctx.guild.get_channel(music_config.voice_channel_id)
         if isinstance(channel, discord.VoiceChannel):
             channel = None
     return channel or get_default_channel(ctx.guild)
