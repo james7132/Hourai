@@ -3,6 +3,7 @@ from discord.ext import tasks
 from hourai.cogs import BaseCog
 from hourai.db import models
 from sqlalchemy.orm import joinedload
+from .announce import Announce
 from .reddit import RedditScanner
 
 
@@ -77,3 +78,4 @@ class Feeds(BaseCog):
 
 def setup(bot):
     bot.add_cog(Feeds(bot))
+    bot.add_cog(Announce(bot))

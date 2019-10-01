@@ -27,6 +27,7 @@ class GuildPrefix(enum.Enum):
     LOGGING_CONFIG = 2
     VALIDATION_CONFIG = 3
     MUSIC_CONFIG = 4
+    ANNOUNCE_CONFIG = 5
 
 
 CacheConfig = collections.namedtuple(
@@ -112,6 +113,7 @@ class Storage:
                     ('auto', self.auto_configs),
                     ('moderation', self.moderation_configs),
                     ('music', self.music_configs),
+                    ('announce', self.announce_configs),
                 ))
 
     async def _connect_to_redis(self, redis_conf):
@@ -157,6 +159,10 @@ class Storage:
                         prefix=StoragePrefix.GUILD,
                         subprefix=GuildPrefix.MUSIC_CONFIG.value,
                         value_coder=protobuf(proto.MusicConfig)),
+            CacheConfig(attr='announce_configs',
+                        prefix=StoragePrefix.GUILD,
+                        subprefix=GuildPrefix.ANNOUNCE_CONFIG.value,
+                        value_coder=protobuf(proto.AnnouncementConfig)),
 
             CacheConfig(attr='bans',
                         prefix=StoragePrefix.BANS,
