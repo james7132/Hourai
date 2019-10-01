@@ -1,3 +1,4 @@
+import aiohttp
 import asyncio
 import logging
 import pkgutil
@@ -51,13 +52,19 @@ class Hourai(commands.AutoShardedBot):
         self.logger = log
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
+        self.http_session = aiohttp.ClientSession(loop=self.loop)
 
     def create_storage_session(self):
         return self.storage.create_session()
 
     async def start(self, *args, **kwargs):
         await self.storage.init()
+        await self.http_session.__aenter__()
         await super().start(*args, **kwargs)
+
+    async def close(self):
+        await self.http_session.__aexit__()
+        await super().close()
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')

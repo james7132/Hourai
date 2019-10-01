@@ -9,8 +9,7 @@ from datetime import datetime, timedelta
 from hourai import utils
 from hourai.cogs import BaseCog
 from hourai.db import models, proxies, proto
-from hourai.utils import format, embed
-from google.protobuf import text_format
+from hourai.utils import format, embed, checks
 
 log = logging.getLogger(__name__)
 
@@ -271,6 +270,7 @@ class Validation(BaseCog):
         await self.bot.wait_until_ready()
 
     @commands.command(name="setmodlog")
+    @checks.is_moderator()
     @commands.guild_only()
     async def setmodlog(self, ctx, channel: discord.TextChannel = None):
         # TODO(jame7132): Update this so it's in a different cog.
@@ -291,6 +291,7 @@ class Validation(BaseCog):
         await ctx.send(format.vertical_list(bans))
 
     @commands.group(invoke_without_command=True)
+    @checks.is_moderator()
     @commands.guild_only()
     async def validation(self, ctx):
         pass
@@ -393,52 +394,6 @@ class Validation(BaseCog):
     # await asyncio.gather(*tasks)
     # await msg.edit(f'Lockdown complete! Make sure your mods can read the
     # validation channel!')
-
-    @commands.group(name="pconfig", invoke_without_command=True)
-    @commands.is_owner()
-    @commands.guild_only()
-    async def config(self, ctx):
-        pass
-
-    @config.command(name="upload")
-    async def config_upload(self, ctx):
-        if len(ctx.message.attachments) <= 0:
-            await ctx.send('Must provide a config file!')
-            return
-        config = proto.GuildConfig()
-        text_format.Merge(await ctx.message.attachments[0].read(), config)
-
-        guild_id = ctx.guild.id
-
-        tasks = []
-        for cache, field in self.get_mapping(ctx.session.storage):
-            if config.HasField(field):
-                tasks.append(cache.set(guild_id, getattr(config, field)))
-        await asyncio.gather(*tasks)
-        await ctx.send('Config successfully uploaded.')
-
-    @config.command(name="dump")
-    async def config_dump(self, ctx):
-        # TODO(james7132): Make the operation atomic
-        config = proto.GuildConfig()
-
-        async def _get_field(cache, field):
-            result = await cache.get(ctx.guild.id)
-            if result is not None:
-                getattr(config, field).CopyFrom(result)
-        mapping = self.get_mapping(ctx.session.storage)
-        await asyncio.gather(*[_get_field(c, f) for c, f in mapping])
-        output = text_format.MessageToString(config, indent=2)
-        bytes_io = io.BytesIO(output.encode('utf-8'))
-        await ctx.send(file=discord.File(bytes_io))
-
-    def get_mapping(self, storage):
-        return (
-            (storage.logging_configs, 'logging'),
-            (storage.validation_configs, 'validation'),
-            (storage.auto_configs, 'auto'),
-            (storage.moderation_configs, 'moderation'),
-        )
 
     @commands.Cog.listener()
     async def on_member_join(self, member):

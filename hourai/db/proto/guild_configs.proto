@@ -40,8 +40,8 @@ message ModerationConfig {
 // ------------------------------------------------------------------------------
 
 message MusicConfig {
-  // If set, music can be played, otherwise, it's disabled on the server.
-  optional bool enabled = 1;
+  // The volume the music bot operates at.
+  optional uint32 volume = 1 [default = 100];
   // Optional: If set, people who can DJ the bot need to have this role.
   // Otherwise, moderators by default have the permission.
   repeated uint64 dj_role_id = 2;
