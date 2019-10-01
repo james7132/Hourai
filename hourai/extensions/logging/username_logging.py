@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 from datetime import datetime
 from discord.ext import commands
 from hourai.cogs import BaseCog
@@ -21,42 +22,42 @@ class UsernameLogging(BaseCog):
         if before.name == after.name:
             return
         assert before.id == after.id
-        await self.log_username_change(after)
+        self.bot.loop.create_task(self.log_username_change(after))
 
     @commands.Cog.listener()
     async def on_message(self, msg):
-        await self.log_username_change(msg.author)
+        self.bot.loop.create_task(self.log_username_change(msg.author))
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        await self.log_username_change(member)
+        self.bot.loop.create_task(self.log_username_change(member))
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        await self.log_username_change(member)
+        self.bot.loop.create_task(self.log_username_change(member))
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        await self.log_username_change(user)
+        self.bot.loop.create_task(self.log_username_change(user))
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
-        await self.log_username_change(user)
+        self.bot.loop.create_task(self.log_username_change(user))
 
     @commands.Cog.listener()
     async def on_group_join(self, group, user):
-        await self.log_username_change(user)
+        self.bot.loop.create_task(self.log_username_change(user))
 
     @commands.Cog.listener()
     async def on_group_remove(self, group, user):
-        await self.log_username_change(user)
+        self.bot.loop.create_task(self.log_username_change(user))
 
     async def log_all_member_changes(self, guild):
         if not guild.chunked:
             await guild.request_offline_members(guild)
-        await asyncio.gather(*[
-            self.log_username_change(member) for member in guild.members
-        ])
+
+        for member in guild.members:
+            self.bot.loop.create_task(self.log_username_change(member))
 
     async def log_username_change(self, user):
         timestamp = datetime.utcnow()
@@ -88,8 +89,11 @@ class UsernameLogging(BaseCog):
             except OperationalError:
                 msg = f'OperationalError: Retrying in {backoff} seconds.'
                 logging.error(msg)
-                await asyncio.sleep(backoff)
+                delta = (random.random() - 0.5) / 5
+                await asyncio.sleep(backoff * (1 + delta))
                 backoff *= 2
+                if backoff >= 10:
+                    raise
 
     def merge_usernames(self, usernames, session):
         before = None

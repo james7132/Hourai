@@ -15,9 +15,9 @@ log = logging.getLogger(__name__)
 class StoragePrefix(enum.Enum):
     # Persistent Guild Level Data
     #   Generally stored in Redis as a hash with all submodels underneath it.
-    GUILD = 0
+    GUILD = 1
     # Bans are ephemeral and have expirations assigned to them.
-    BANS = 1
+    BANS = 2
 
 
 class GuildPrefix(enum.Enum):
@@ -26,6 +26,7 @@ class GuildPrefix(enum.Enum):
     MOD_CONFIG = 1
     LOGGING_CONFIG = 2
     VALIDATION_CONFIG = 3
+    MUSIC_CONFIG = 4
 
 
 CacheConfig = collections.namedtuple(
@@ -144,6 +145,10 @@ class Storage:
                         prefix=StoragePrefix.GUILD,
                         subprefix=GuildPrefix.VALIDATION_CONFIG.value,
                         value_coder=protobuf(proto.ValidationConfig)),
+            CacheConfig(attr='music_configs',
+                        prefix=StoragePrefix.GUILD,
+                        subprefix=GuildPrefix.MUSIC_CONFIG.value,
+                        value_coder=protobuf(proto.MusicConfig)),
 
             CacheConfig(attr='bans',
                         prefix=StoragePrefix.BANS,

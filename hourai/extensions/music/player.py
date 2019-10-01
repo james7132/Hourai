@@ -6,6 +6,7 @@ import math
 from .queue import MusicQueue
 from . import utils
 from hourai.utils import embed
+from hourai.db import proto
 
 log = logging.getLogger('hourai.music.player')
 
@@ -14,10 +15,20 @@ PROGRESS_BAR_WIDTH = 12
 TRACKS_PER_PAGE = 10
 
 
-def _get_voice_channel(guild):
+def get_default_channel(guild):
     channels = filter(lambda ch: ch.permissions_for(guild.me).connect,
-                      guild.voice_channesls)
+                      guild.voice_channels)
     return next(channels, None)
+
+
+async def get_voice_channel(guild):
+    music_config = await get_music_config(ctx)
+    channel = None
+    if music_config.HasField('voice_channel_id'):
+        channel = ctx.guild.get_channel(music_config.music_channel_id)
+        if isinstance(channel, discord.VoiceChannel):
+            channel = None
+    return channel or get_default_channel(ctx.guild)
 
 
 class HouraiMusicPlayer(wavelink.Player):
@@ -28,7 +39,6 @@ class HouraiMusicPlayer(wavelink.Player):
         self.next_event = asyncio.Event()
         self.queue = MusicQueue()
 
-        self.volume = 40
         self.current = None
         self._requestor_id = None
 
@@ -42,13 +52,22 @@ class HouraiMusicPlayer(wavelink.Player):
 
         bot.loop.create_task(self.__player_loop())
 
+    async def get_music_config(self):
+        config = await self.bot.storage.music_configs.get(self.guild_id)
+        return config or proto.MusicConfig()
+
+    async def set_music_config(self, music_config):
+        await self.bot.storage.music_configs.set(self.guild_id,
+                                                 music_config)
+
+    async def __init_player_loop(self):
+        await self.set_preq('Flat')
+        config = await self.get_music_config()
+        await self.set_volume(config.volume)
+
     async def __player_loop(self):
         await self.bot.wait_until_ready()
-
-        await self.set_preq('Flat')
-        # We can do any pre loop prep here...
-        await self.set_volume(self.volume)
-
+        await self.__init_player_loop()
         while True:
             try:
                 self.next_event.clear()
@@ -63,7 +82,7 @@ class HouraiMusicPlayer(wavelink.Player):
                     continue
 
                 if not self.is_connected:
-                    channel = _get_voice_channel(self.guild)
+                    channel = await get_voice_channel(self.guild)
                     if channel is None:
                         continue
                     await self.connect(channel.id)
@@ -175,6 +194,12 @@ class HouraiMusicPlayer(wavelink.Player):
             await self.queue_msg.stop()
         if self.np_msg is not None:
             await self.queue_msg.stop()
+
+    async def set_volume(self, volume):
+        await super().set_volume(volume)
+        music_config = (await self.get_music_config()) or proto.MusicConfig()
+        music_config.volume = volume
+        await self.set_music_config(music_config)
 
     async def create_queue_message(self, channel):
         return await self.__run_ui('queue_msg', MusicQueueUI, channel)

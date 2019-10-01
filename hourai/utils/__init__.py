@@ -86,6 +86,8 @@ def log_time(func):
 
 async def send_dm(user, *args, **kwargs):
     """ Shorthand to send a user a DM. """
+    if user is None:
+        return
     dm_channel = user.dm_channel or await user.create_dm()
     await dm_channel.send(*args, **kwargs)
 
@@ -98,22 +100,28 @@ def is_deleted_user(user):
     """ Checks if a user is deleted or not by Discord. Works on discord.User
     and discord.Member.
     """
+    if user is None:
+        return None
     return user.avatar is None and DELETED_USER_REGEX.match(user.name)
 
 
 def is_moderator(member):
     """ Checks if a user is a moderator. """
+    if member is None:
+        return False
     return any(is_moderator_role(r) for r in member.roles)
 
 
 def is_moderator_role(role):
     """ Checks if a role is a moderator role. """
+    if role is None:
+        return False
     return (role.permissions.administrator or
             role.name.lower().startswith(MODERATOR_PREFIX))
 
 
 def is_online(member):
-    return member.status == discord.Status.online
+    return member is not None and member.status == discord.Status.online
 
 
 def all_with_roles(members, roles):
@@ -172,6 +180,8 @@ def mention_random_online_mod(guild):
 
 def is_nitro_booster(bot, member):
     """Checks if the user is boosting any server the bot is on."""
+    if member is None:
+        return False
     return any(m.id == member.id
                for g in bot.guilds
                for m in g.premium_subscribers)
@@ -179,4 +189,6 @@ def is_nitro_booster(bot, member):
 
 def has_nitro(bot, member):
     """Checks if the user has Nitro, may have false negatives."""
+    if member is None:
+        return False
     return member.is_avatar_animated() or is_nitro_booster(bot, member)

@@ -3,7 +3,7 @@ from discord.ext import commands
 from datetime import datetime
 from hourai.cogs import BaseCog
 from hourai.db import proxies
-from hourai.utils import format, success
+from hourai.utils import format, success, checks
 
 
 class ModLogging(BaseCog):
@@ -60,6 +60,7 @@ class ModLogging(BaseCog):
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
+    @checks.is_moderator()
     async def log(self, ctx):
         pass
 

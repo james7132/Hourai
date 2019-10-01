@@ -13,7 +13,7 @@ Click==7.0
 SQLAlchemy==1.3.4
 aioredis==1.2.0
 protobuf==3.9.1
-py-coders==1.1.4
+py-coders==1.1.5
 
 # Utility requirements [Required]
 humanize==0.5.1

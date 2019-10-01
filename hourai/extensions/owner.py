@@ -1,12 +1,17 @@
+import asyncio
 import copy
 import hourai.utils as utils
 import inspect
 import re
 import traceback
+import typing
+from discord.ext import commands
+from google.protobuf import text_format
+from guppy import hpy
 from hourai import extensions
 from hourai.cogs import BaseCog
-from hourai.db import models
-from discord.ext import commands
+from hourai.db import models, proto
+from hourai.utils import hastebin
 
 
 def regex_multi_attr_match(context, regex, attrs):
@@ -103,7 +108,64 @@ class Owner(BaseCog):
             await ctx.send(f"Error when running eval of `{expr}`:\n"
                            f"```{str(traceback.format_exc())}```")
 
+    @commands.command()
+    async def heap(self, ctx):
+        heap = hpy().heap()
+        output = str(heap)
+        if len(output) > 1992:
+            output = await utils.hastebin.post(ctx.bot.http_session, output)
+        else:
+            output = f"```\n{output}\n```"
+        await ctx.send(output)
+
+    @commands.group(name="pconfig", invoke_without_command=True)
+    @commands.guild_only()
+    async def config(self, ctx):
+        pass
+
+    @config.command(name="upload")
+    async def config_upload(self, ctx, guild_id: typing.Optional[int] = None):
+        if len(ctx.message.attachments) <= 0:
+            await ctx.send('Must provide a config file!')
+            return
+        config = proto.GuildConfig()
+        text_format.Merge(await ctx.message.attachments[0].read(), config)
+
+        guild_id = guild_id or ctx.guild.id
+
+        tasks = []
+        for cache, field in self.get_mapping(ctx.session.storage):
+            if config.HasField(field):
+                tasks.append(cache.set(guild_id, getattr(config, field)))
+        await asyncio.gather(*tasks)
+        await ctx.send('Config successfully uploaded.')
+
+    @config.command(name="dump")
+    async def config_dump(self, ctx, guild_id: typing.Optional[int] = None):
+        # TODO(james7132): Make the operation atomic
+        config = proto.GuildConfig()
+
+        guild_id = guild_id or ctx.guild.id
+
+        async def _get_field(cache, field):
+            result = await cache.get(guild_id)
+            if result is not None:
+                getattr(config, field).CopyFrom(result)
+        mapping = self.get_mapping(ctx.session.storage)
+        await asyncio.gather(*[_get_field(c, f) for c, f in mapping])
+        output = text_format.MessageToString(config, indent=2)
+        output = await hastebin.post(ctx.bot.http_session, output)
+        await ctx.send(output)
+
+    def get_mapping(self, storage):
+        return (
+            (storage.logging_configs, 'logging'),
+            (storage.validation_configs, 'validation'),
+            (storage.auto_configs, 'auto'),
+            (storage.moderation_configs, 'moderation'),
+            (storage.music_configs, 'music'),
+        )
+
 
 def setup(bot):
-
     bot.add_cog(Owner())
