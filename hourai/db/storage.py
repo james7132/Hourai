@@ -12,7 +12,16 @@ from . import models, caches, proto
 log = logging.getLogger(__name__)
 
 
+CacheConfig = collections.namedtuple(
+    'CacheConfig', ('attr', 'prefix', 'subprefix', 'subcoder',
+                    'value_coder', 'timeout'),
+    defaults=(None,) * 6)
+
+def protobuf(msg_type):
+    return lambda: coders.ProtobufCoder(msg_type)
+
 class StoragePrefix(enum.Enum):
+    """ Top level prefixes in the root keyspace of Redis. """
     # Persistent Guild Level Data
     #   Generally stored in Redis as a hash with all submodels underneath it.
     GUILD = 1
@@ -21,19 +30,29 @@ class StoragePrefix(enum.Enum):
 
 
 class GuildPrefix(enum.Enum):
+    """ Guild config prefixes. Used as prefixes or full keys in the hash
+    underneath the guild key. All use the StoragePrefix.GUILD as a prefix to the
+    top level key.
+    """
     # 1:1s. Hash key is just the prefix. Size: 1 byte.
-    AUTO_CONFIG = 0
-    MOD_CONFIG = 1
-    LOGGING_CONFIG = 2
-    VALIDATION_CONFIG = 3
-    MUSIC_CONFIG = 4
-    ANNOUNCE_CONFIG = 5
-
-
-CacheConfig = collections.namedtuple(
-    'CacheConfig', ('attr', 'prefix', 'subprefix', 'subcoder',
-                    'value_coder', 'timeout'),
-    defaults=(None,) * 6)
+    AUTO_CONFIG = CacheConfig(
+            subprefix=0,
+            value_coder=protobuf(proto.AutoConfig))
+    MODERATION_CONFIG = CacheConfig(
+            subprefix=1,
+            value_coder=protobuf(proto.ModerationConfig))
+    LOGGING_CONFIG = CacheConfig(
+            subprefix=2,
+            value_coder=protobuf(proto.LoggingConfig))
+    VALIDATION_CONFIG = CacheConfig(
+            subprefix=3,
+            value_coder=protobuf(proto.ValidationConfig))
+    MUSIC_CONFIG = CacheConfig(
+            subprefix=4,
+            value_coder=protobuf(proto.MusicConfig))
+    ANNOUNCE_CONFIG = CacheConfig(
+            subprefix=5,
+            value_coder=protobuf(proto.AnnouncementConfig))
 
 
 def _prefixize(val):
@@ -102,19 +121,21 @@ class Storage:
                                      key_coder=key_coder,
                                      value_coder=value_coder)
                 setattr(self, conf.attr, cache)
+
+        mapping = []
+        for conf in Storage._get_cache_configs():
+            if conf.attr != StoragePrefix.GUILD:
+                continue
+            attr = conf.attr
+            if '_configs' in attr:
+                attr = attr.replace('_configs')
+            mapping.append((attr, getattr(self, conf.attr)))
+        self.guild_configs = caches.AggregateProtoCache(proto.GuildConfig,
+                                                        mapping)
             log.info('Redis connection established.')
         except Exception:
             log.exception('Error when initializing Redis:')
             raise
-        self.guild_configs = caches.AggregateProtoCache(
-                proto.GuildConfig, (
-                    ('logging', self.logging_configs),
-                    ('validation', self.validation_configs),
-                    ('auto', self.auto_configs),
-                    ('moderation', self.moderation_configs),
-                    ('music', self.music_configs),
-                    ('announce', self.announce_configs),
-                ))
 
     async def _connect_to_redis(self, redis_conf):
         wait_time = 1.0
@@ -135,42 +156,18 @@ class Storage:
 
     @staticmethod
     def _get_cache_configs():
-
-        def protobuf(msg_type):
-            return lambda: coders.ProtobufCoder(msg_type)
-        return (
-            CacheConfig(attr='auto_configs',
-                        prefix=StoragePrefix.GUILD,
-                        subprefix=GuildPrefix.AUTO_CONFIG.value,
-                        value_coder=protobuf(proto.AutoConfig)),
-            CacheConfig(attr='moderation_configs',
-                        prefix=StoragePrefix.GUILD,
-                        subprefix=GuildPrefix.MOD_CONFIG.value,
-                        value_coder=protobuf(proto.ModerationConfig)),
-            CacheConfig(attr='logging_configs',
-                        prefix=StoragePrefix.GUILD,
-                        subprefix=GuildPrefix.LOGGING_CONFIG.value,
-                        value_coder=protobuf(proto.LoggingConfig)),
-            CacheConfig(attr='validation_configs',
-                        prefix=StoragePrefix.GUILD,
-                        subprefix=GuildPrefix.VALIDATION_CONFIG.value,
-                        value_coder=protobuf(proto.ValidationConfig)),
-            CacheConfig(attr='music_configs',
-                        prefix=StoragePrefix.GUILD,
-                        subprefix=GuildPrefix.MUSIC_CONFIG.value,
-                        value_coder=protobuf(proto.MusicConfig)),
-            CacheConfig(attr='announce_configs',
-                        prefix=StoragePrefix.GUILD,
-                        subprefix=GuildPrefix.ANNOUNCE_CONFIG.value,
-                        value_coder=protobuf(proto.AnnouncementConfig)),
-
-            CacheConfig(attr='bans',
-                        prefix=StoragePrefix.BANS,
-                        subprefix=b'',
-                        subcoder=coders.IntCoder(),
-                        value_coder=coders.StringCoder,
-                        timeout=300),
-        )
+        configs = list(GuildPrefix)
+        configs = [conf.value.replace(attr=conf.name.lower() + 's',
+                                      prefix=StoragePrefix.GUILD)
+                   for conf in guild_configs]
+        configs.append(
+                CacheConfig(attr='bans',
+                            prefix=StoragePrefix.BANS,
+                            subprefix=b'',
+                            subcoder=coders.IntCoder(),
+                            value_coder=coders.StringCoder,
+                            timeout=300))
+        return guild_configs + [
 
     def create_session(self):
         return StorageSession(self)
@@ -222,5 +219,4 @@ class StorageSession:
                 return getattr(subitem, attr)
             except AttributeError:
                 pass
-
         raise AttributeError
