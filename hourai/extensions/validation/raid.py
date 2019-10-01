@@ -2,9 +2,7 @@ from .common import Validator
 
 
 class RaidValidator(Validator):
-    """A malice level validator that rejects all users if the guild has been put
-    into lockdown.
-    """
+    """A malice level validator that rejects users without avatars."""
 
     async def get_rejection_reasons(self, bot, member):
         if member.avatar is None:
