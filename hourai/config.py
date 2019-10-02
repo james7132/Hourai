@@ -9,12 +9,13 @@ __CONFIG = None
 
 
 def load_config(file_path, env):
-    config = _jsonnet.evaluate_file(file_path)
-    config = json.loads(config)
+    conf = _jsonnet.evaluate_file(file_path)
+    config = json.loads(conf)
     config = config[env]
     conform(config, __make_configuration_template())
     __CONFIG = tupperware(config)
     __configure_logging(__CONFIG)
+    logging.debug(json.dumps(json.loads(conf)[env], indent=2))
     return __CONFIG
 
 

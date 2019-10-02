@@ -51,6 +51,9 @@ class Scanner(ABC):
         while not self.stopped():
             with self.bot.create_storage_session() as session:
                 for feed in self.get_feeds(session):
+                    channels = list(feed.get_channels(self.bot))
+                    if len(channels) <= 0:
+                        continue
                     # log.info(f'Scanning: {feed.type.name}, {feed.source}..')
                     try:
                         result = self.get_result(feed)
@@ -89,4 +92,5 @@ class Scanner(ABC):
         self.fetcher_thread.join()
 
     def stopped(self):
+
         return self._stop_event.is_set()

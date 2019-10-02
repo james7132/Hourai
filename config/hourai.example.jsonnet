@@ -1,58 +1,59 @@
-local env = {
-  bot_token: error "Must override bot token."
-  command_prefix: "~"
+local env(suffix) = {
+  bot_token: error "Must override bot_token.",
+  command_prefix: "~",
 
-  database: "sqlite//"
-  redis: "redis://redis"
+  database: "sqlite:////data/hourai.sqlite",
+  redis: "redis://redis-" + suffix,
 
   music: {
     nodes: [{
-        identifier: "MAIN"
-        host: "lavalink"
-        port: 8090,
-        rest_uri: "http://lavalink:2333"
-        region: "us_central"
-        password: null
-    }]
-  }
+      identifier: "MAIN",
+      host: "lavalink-" + suffix,
+      port: 2333,
+      rest_uri: "http://lavalink-" + suffix + ":2333",
+      region: "us_central",
+      password: null,
+    }],
+  },
 
   reddit: {
-    client_id: ""
-    client_secret: ""
-    username: ""
-    password: ""
+    client_id: "",
+    client_secret: "",
+    username: "",
+    password: "",
 
-    user_agent: linux:discord.hourai.reddit:v2.0 (by /u/james7132)
-    base_url: https://reddit.com
-    fetch_limit: 20
-  }
+    user_agent: "linux:discord.hourai.reddit:v2.0 (by /u/james7132)",
+    base_url: "https://reddit.com",
+    fetch_limit: "20",
+  },
 
   logging: {
-    default: "INFO"
+    default: "INFO",
     modules: {
-      prawcore: "INFO"
-      aioredis: "INFO"
+      prawcore: "INFO",
+      aioredis: "INFO",
       wavelink: "INFO",
-    }
+    },
   }
-}
+};
 
 {
   // Denote different configurations for different enviroments here.
-  prod = env {
-    bot_token: ""
-  }
-  dev = env {
-    bot_token: ""
-
-    database: "sqlite:////data/hourai.dev.sqlite",
+  prod: env("prod") {
+    // Hourai:
+    bot_token: "",
+  },
+  dev: env("dev") {
+    // Shanghai:
+    bot_token: "",
 
     logging: {
       default: "DEBUG",
       modules: {
-        prawcore: "DEBUG",
+        prawcore: "INFO",
         aioredis: "DEBUG",
         wavelink: "DEBUG",
+        discord: "INFO"
       },
     }
   }
