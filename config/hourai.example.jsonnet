@@ -1,12 +1,12 @@
 local env = {
-  bot_token: ""
+  bot_token: error "Must override bot token."
   command_prefix: "~"
 
   database: "sqlite//"
   redis: "redis://redis"
 
   music: {
-    nodes: [ {
+    nodes: [{
         identifier: "MAIN"
         host: "lavalink"
         port: 8090,
@@ -39,6 +39,21 @@ local env = {
 
 {
   // Denote different configurations for different enviroments here.
-  prod = env {}
-  dev = env {}
+  prod = env {
+    bot_token: ""
+  }
+  dev = env {
+    bot_token: ""
+
+    database: "sqlite:////data/hourai.dev.sqlite",
+
+    logging: {
+      default: "DEBUG",
+      modules: {
+        prawcore: "DEBUG",
+        aioredis: "DEBUG",
+        wavelink: "DEBUG",
+      },
+    }
+  }
 }
