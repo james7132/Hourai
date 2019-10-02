@@ -50,6 +50,24 @@ class Announce(cogs.BaseCog):
         await self.__make_announcement(member.guild, announce_config.leaves,
                                        choices)
 
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        announce_config = self.get_announce_config(member.guild)
+        if not announce_config.HasField('voice'):
+            return
+        assert not (before.channel is None and after.channel is None)
+        if before.channel == after.channel:
+            return
+        elif before.channel is None:
+            choices = [f'**{member.display_name}** joined **{before.name}**.']
+        elif after.channel is None:
+            choices = [f'**{member.display_name}** left **{after.name}**.']
+        else:
+            choices = [f'**{member.display_name}** moved to **{after.name}**'
+                       f' from **{before.name**.']
+        await self.__make_announcement(member.guild, announce_config.voice,
+                                       choices)
+
     async def __make_announcement(self, guild, config, choices):
         assert len(choices) > 0
         channels = [guild.get_channel(ch_id) for ch_id in config.channel_ids]
