@@ -122,16 +122,16 @@ class Storage:
                                      value_coder=value_coder)
                 setattr(self, conf.attr, cache)
 
-        mapping = []
-        for conf in Storage._get_cache_configs():
-            if conf.attr != StoragePrefix.GUILD:
-                continue
-            attr = conf.attr
-            if '_configs' in attr:
-                attr = attr.replace('_configs')
-            mapping.append((attr, getattr(self, conf.attr)))
-        self.guild_configs = caches.AggregateProtoCache(proto.GuildConfig,
-                                                        mapping)
+            mapping = []
+            for conf in Storage._get_cache_configs():
+                if conf.attr != StoragePrefix.GUILD:
+                    continue
+                attr = conf.attr
+                if '_configs' in attr:
+                    attr = attr.replace('_configs')
+                mapping.append((attr, getattr(self, conf.attr)))
+            self.guild_configs = caches.AggregateProtoCache(proto.GuildConfig,
+                                                            mapping)
             log.info('Redis connection established.')
         except Exception:
             log.exception('Error when initializing Redis:')
@@ -157,9 +157,9 @@ class Storage:
     @staticmethod
     def _get_cache_configs():
         configs = list(GuildPrefix)
-        configs = [conf.value.replace(attr=conf.name.lower() + 's',
+        configs = [conf.value._replace(attr=conf.name.lower() + 's',
                                       prefix=StoragePrefix.GUILD)
-                   for conf in guild_configs]
+                   for conf in configs]
         configs.append(
                 CacheConfig(attr='bans',
                             prefix=StoragePrefix.BANS,
@@ -167,7 +167,7 @@ class Storage:
                             subcoder=coders.IntCoder(),
                             value_coder=coders.StringCoder,
                             timeout=300))
-        return guild_configs + [
+        return configs
 
     def create_session(self):
         return StorageSession(self)

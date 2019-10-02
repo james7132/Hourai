@@ -12,11 +12,11 @@ class Announce(cogs.BaseCog):
 
     async def get_announce_config(self, guild):
         config = await self.bot.storage.announce_configs.get(guild.id)
-        return config or proto.AnnoucementConfig()
+        return config or proto.AnnouncementConfig()
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        announce_config = self.get_announce_config(member.guild)
+        announce_config = await self.get_announce_config(member.guild)
         if not announce_config.HasField('joins'):
             return
         if len(announce_config.joins.messages) > 0:
@@ -28,7 +28,7 @@ class Announce(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        announce_config = self.get_announce_config(member.guild)
+        announce_config = await self.get_announce_config(member.guild)
         if not announce_config.HasField('leaves'):
             return
         if len(announce_config.leaves.messages) > 0:
@@ -40,19 +40,19 @@ class Announce(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_ban(self, member):
-        announce_config = self.get_announce_config(member.guild)
+        announce_config = await self.get_announce_config(member.guild)
         if not announce_config.HasField('bans'):
             return
         if len(announce_config.bans.messages) > 0:
             choices = list(announce_config.bans.messages)
         else:
-            choices = [f'**{member.mention** has been banned.']
+            choices = [f'**{member.mention}** has been banned.']
         await self.__make_announcement(member.guild, announce_config.leaves,
                                        choices)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        announce_config = self.get_announce_config(member.guild)
+        announce_config = await self.get_announce_config(member.guild)
         if not announce_config.HasField('voice'):
             return
         assert not (before.channel is None and after.channel is None)
@@ -64,7 +64,7 @@ class Announce(cogs.BaseCog):
             choices = [f'**{member.display_name}** left **{after.name}**.']
         else:
             choices = [f'**{member.display_name}** moved to **{after.name}**'
-                       f' from **{before.name**.']
+                       f' from **{before.name}**.']
         await self.__make_announcement(member.guild, announce_config.voice,
                                        choices)
 

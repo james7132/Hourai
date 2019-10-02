@@ -70,6 +70,10 @@ without the `.example.` in the name (i.e. `hourai.example.jsonnet ->
 hourai.jsonnet`). This also needs to be done with the
 `docker-compose.example.yml` in the root of the repository.
 
+When launching the bot via Docker Compose, you can change the environment the bot
+executes in via the `HOURAI_ENV` enviroment variable. It will be used to select
+the enviroment config seen in the JSONNET config.
+
 ### Building the Bot
 While written in Python, the bot needs to be built into a container to run in
 the standard enviroment. Building the bot can be done with the following
