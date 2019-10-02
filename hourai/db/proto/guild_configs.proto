@@ -61,7 +61,8 @@ message AnnouncementConfig {
   optional AnnouncementTypeConfig joins = 1;
   optional AnnouncementTypeConfig leaves = 2;
   optional AnnouncementTypeConfig bans = 3;
-  optional AnnouncementTypeConfig streams = 3;
+  optional AnnouncementTypeConfig streams = 4;
+  optional AnnouncementTypeConfig voice = 5;
 }
 
 message AnnouncementTypeConfig {
