@@ -34,6 +34,10 @@ Informative / Fun Features
  * Music Bot - play music from YouTube, SoundCloud, Bandcamp, and other public
    services.  (Mostly implemented)
 
+Misc Features
+
+ * Self Serve Roles: Allow server users to get their own roles via bot command.
+
 ---
 
 ## Development/Self-Hosting
@@ -144,4 +148,5 @@ data types and how long Hourai retains them after their deletion from Discord.
 If you would like for any of the above data to be cleared from Hourai's database,
 please contact `james7132#1567` (User ID: 151215593553395721) on Discord to have
 the data deleted. Be aware that this data collection cannot be disabled, even
+
 upon request of deleting stored data.
