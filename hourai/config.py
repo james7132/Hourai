@@ -62,6 +62,8 @@ def __make_configuration_template():
         "database": "",
         "redis": "",
 
+        "disabled_extensions": [""],
+
         "music": {
             "nodes": [{
                 "identifier": "",

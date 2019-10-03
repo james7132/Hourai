@@ -137,10 +137,13 @@ class Hourai(commands.AutoShardedBot):
             self.logger.exception(f'Failed to load extension: {module}')
 
     def load_all_extensions(self, base_module):
+        disabled_extensions = self.get_config_value('disabled_extensions',
+                                                    type=tuple, default=())
         modules = pkgutil.iter_modules(base_module.__path__,
                                        base_module.__name__ + '.')
         for module in modules:
-            self.load_extension(module.name)
+            if module.name not in disabled_extensions:
+                self.load_extension(module.name)
 
     def spin_wait_until_ready(self):
         while not self.is_ready():

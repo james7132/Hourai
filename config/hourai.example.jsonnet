@@ -34,7 +34,9 @@ local env(suffix) = {
       aioredis: "INFO",
       wavelink: "INFO",
     },
-  }
+  },
+
+  "disabled_extensions": []
 };
 
 {
@@ -56,5 +58,9 @@ local env(suffix) = {
         discord: "INFO"
       },
     }
+
+    disabled_extensions: [
+      'hourai.extensions.feeds'
+    ]
   }
 }
