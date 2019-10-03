@@ -5,6 +5,7 @@ from hourai import cogs
 from hourai.db import proto
 from discord.ext import commands
 
+
 class Announce(cogs.BaseCog):
 
     def __init__(self, bot):
@@ -39,7 +40,7 @@ class Announce(cogs.BaseCog):
                                        choices)
 
     @commands.Cog.listener()
-    async def on_member_ban(self, member):
+    async def on_member_ban(self, member, guild):
         announce_config = await self.get_announce_config(member.guild)
         if not announce_config.HasField('bans'):
             return
@@ -78,3 +79,7 @@ class Announce(cogs.BaseCog):
             content = random.choice(config.messages)
             tasks.append(channel.send(content))
         await asyncio.gather(*tasks)
+
+
+def setup(bot):
+    bot.add_cog(Announce(bot))
