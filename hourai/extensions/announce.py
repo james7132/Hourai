@@ -60,12 +60,12 @@ class Announce(cogs.BaseCog):
         if before.channel == after.channel:
             return
         elif before.channel is None:
-            choices = [f'**{member.display_name}** joined **{before.name}**.']
+            choices = [f'**{member.display_name}** joined **{after.channel.name}**.']
         elif after.channel is None:
-            choices = [f'**{member.display_name}** left **{after.name}**.']
+            choices = [f'**{member.display_name}** left **{before.channel.name}**.']
         else:
-            choices = [f'**{member.display_name}** moved to **{after.name}**'
-                       f' from **{before.name}**.']
+            choices = [f'**{member.display_name}** moved to **{after.channel.name}**'
+                       f' from **{before.channel.name}**.']
         await self.__make_announcement(member.guild, announce_config.voice,
                                        choices)
 
@@ -76,7 +76,7 @@ class Announce(cogs.BaseCog):
                     if isinstance(ch, discord.TextChannel)]
         tasks = []
         for channel in channels:
-            content = random.choice(config.messages)
+            content = random.choice(choices)
             tasks.append(channel.send(content))
         await asyncio.gather(*tasks)
 

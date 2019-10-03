@@ -27,3 +27,5 @@ praw==6.3.1
 
 # Debugging tools [Optional]
 guppy3==3.0.7
+
+PyYAML==5.1.2

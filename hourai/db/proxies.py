@@ -1,73 +1,59 @@
 import discord
-from hourai.db import models
+from hourai.db import proto
 
 
-class NotFoundError(Exception):
-    pass
+class GuildProxy:
 
-
-class GuildProxy():
-
-    def __init__(self, guild: discord.Guild, session):
+    def __init__(self, bot, guild):
+        self.bot = bot
         self.guild = guild
-        self.session = session
 
         self._logging_config = None
         self._validation_config = None
 
-    def save(self):
-        """
-        Adds all associated database models to the associated session.
-        Does not commit the results.
-        """
-        guild_models = (self._logging_config, self._validation_config)
-        for model in guild_models:
-            if model is not None:
-                self.session.add(model)
-
     @property
-    def logging_config(self):
+    def storage(self):
+        return self.bot.storage
+
+    async def get_logging_config(self):
         if self._logging_config is None:
-            self._logging_config = self._get_or_create_model(
-                models.LoggingConfig)
+            self._logging_config = await self.storage.logging_configs.get(
+                    self.guild.id)
         return self._logging_config
 
-    @logging_config.setter
-    def set_logging_config(self, cfg):
-        assert isinstance(cfg, models.LoggingConfig)
-        assert cfg.guild_id == self.guild.id
+    async def set_logging_config(self, cfg):
+        await self.storage.logging_configs.set(self.guild.id, cfg)
         self._logging_config = cfg
 
-    @property
-    def validation_config(self):
+    async def get_validation_config(self):
         if self._validation_config is None:
-            self._validation_config = self._get_or_create_model(
-                models.GuildValidationConfig)
+            self._validation_config = await self.storage.validation_configs.get(
+                    self.guild.id)
         return self._validation_config
 
-    @validation_config.setter
-    def set_validation_config(self, cfg):
-        assert isinstance(cfg, models.GuildValidationConfig)
-        assert cfg.guild_id == self.guild.id
+    async def set_validation_config(self, cfg):
+        await self.storage.validation_configs.set(self.guild.id, cfg)
         self._validation_config = cfg
 
-    def get_modlog_channel(self):
-        channel_id = self.logging_config.modlog_channel_id
-        if channel_id is None:
+    async def get_modlog_channel(self):
+        config = await self.get_logging_config()
+        if config is None or not config.HasField('modlog_channel_id'):
             return None
-        channel = self.guild.get_channel(channel_id)
-        if channel is None:
-            raise NotFoundError('Modlog channel not found!')
-        return channel
+        return self.guild.get_channel(config.modlog_channel_id)
 
-    def set_modlog_channel(self, channel):
+    async def set_modlog_channel(self, channel):
         """
         Sets the modlog channel to a certain channel. If channel is none, it
         clears it from the config.
         """
         assert channel is None or channel.guild == self.guild
-        channel_id = None if channel is None else channel.id
-        self.logging_config.modlog_channel_id = channel_id
+        config = await self.get_logging_config()
+        config = config or proto.LoggingConfig()
+        if channel is None:
+            config.ClearField('modlog_channel_id')
+        else:
+            config.modlog_channel_id = channel.id
+        await self.set_logging_config(config)
 
     async def send_modlog_message(self, *args, **kwargs):
         """
@@ -75,7 +61,7 @@ class GuildProxy():
         fails, a DM to the server owner is sent.
         """
         try:
-            modlog = self.get_modlog_channel()
+            modlog = await self.get_modlog_channel()
             if modlog is not None:
                 return await modlog.send(*args, **kwargs)
         except discord.Forbidden:
@@ -85,15 +71,3 @@ class GuildProxy():
             content = content.format(self.guild.name)
             await self.guild.owner.send(content)
             return None
-
-    def _get_model(self, model):
-        return self.session.query(model).get(self.guild.id)
-
-    def _create_model(self, model, **kwargs):
-        kwargs['guild_id'] = self.guild.id
-        created_model = model(**kwargs)
-        self.session.add(created_model)
-        return created_model
-
-    def _get_or_create_model(self, model, **kwargs):
-        return self._get_model(model) or self._create_model(model, **kwargs)
