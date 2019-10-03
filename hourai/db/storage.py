@@ -53,6 +53,9 @@ class GuildPrefix(enum.Enum):
     ANNOUNCE_CONFIG = CacheConfig(
             subprefix=5,
             value_coder=protobuf(proto.AnnouncementConfig))
+    ROLE_CONFIG = CacheConfig(
+            subprefix=6,
+            value_coder=protobuf(proto.RoleConfig))
 
 
 def _prefixize(val):
@@ -124,11 +127,11 @@ class Storage:
 
             mapping = []
             for conf in Storage._get_cache_configs():
-                if conf.attr != StoragePrefix.GUILD:
+                if conf.prefix != StoragePrefix.GUILD:
                     continue
                 attr = conf.attr
                 if '_configs' in attr:
-                    attr = attr.replace('_configs')
+                    attr = attr.replace('_configs', '')
                 mapping.append((attr, getattr(self, conf.attr)))
             self.guild_configs = caches.AggregateProtoCache(proto.GuildConfig,
                                                             mapping)
