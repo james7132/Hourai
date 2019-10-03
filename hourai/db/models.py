@@ -70,48 +70,6 @@ class Username(Base):
 Index("idx_username_user_id", Username.user_id)
 
 
-class Guild(Base):
-    __tablename__ = 'guilds'
-
-    id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    logging = Column(Protobuf(guild_configs_pb2.LoggingConfig),
-                     nullable=True)
-    validation = Column(Protobuf(guild_configs_pb2.ValidationConfig),
-                        nullable=True)
-    auto = Column(Protobuf(auto_config_pb2.AutoConfig),
-                  nullable=True)
-    moderation = Column(Protobuf(guild_configs_pb2.ModerationConfig),
-                        nullable=True)
-
-
-class LoggingConfig(Base):
-    __tablename__ = 'guild_logging_configs'
-
-    guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    modlog_channel_id = Column(types.BigInteger)
-    log_deleted_messages = Column(types.Boolean, nullable=False)
-    log_edited_messages = Column(types.Boolean, nullable=False)
-
-    @property
-    def is_valid(self):
-        components = (self.validation_role_id, self.validation_channel_id)
-        return all(x is not None for x in components)
-
-
-class GuildValidationConfig(Base):
-    __tablename__ = 'guild_validation_configs'
-
-    guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    validation_role_id = Column(types.BigInteger, nullable=False)
-    validation_channel_id = Column(types.BigInteger, nullable=False)
-    is_propogated = Column(types.Boolean, nullable=False, default=False)
-
-    @property
-    def is_valid(self):
-        components = (self.validation_role_id, self.validation_channel_id)
-        return all(x is not None for x in components)
-
-
 class Alias(Base):
     __tablename__ = 'aliases'
 

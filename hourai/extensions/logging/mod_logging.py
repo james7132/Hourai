@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from datetime import datetime
 from hourai.cogs import BaseCog
-from hourai.db import proxies
+from hourai.db import proxies, proto
 from hourai.utils import format, success, checks
 
 
@@ -14,18 +14,14 @@ class ModLogging(BaseCog):
         super().__init__()
         self.bot = bot
 
-    def _get_guild_proxy(self, guild_id):
-        if guild_id is None:
-            return None
-        guild = self.bot.get_guild(guild_id)
-        if guild is None:
-            return None
-        return proxies.GuildProxy(guild, self.bot.create_storage_session())
-
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload):
-        proxy = self._get_guild_proxy(payload.guild_id)
-        if proxy is None or not proxy.logging_config.log_deleted_messages:
+        guild = self.bot.get_guild(payload.guild_id or 0)
+        if guild is None:
+            return
+        proxy = proxies.GuildProxy(self.bot, guild)
+        logging_config = await proxy.get_logging_config()
+        if logging_config is None or not logging_config.log_deleted_messages:
             return
         content = 'Message deleted in <#{}>.'.format(payload.channel_id)
         embed = discord.Embed(
@@ -51,8 +47,12 @@ class ModLogging(BaseCog):
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
-        proxy = self._get_guild_proxy(payload.guild_id)
-        if proxy is None or not proxy.logging_config.log_deleted_messages:
+        guild = self.bot.get_guild(payload.guild_id or 0)
+        if guild is None:
+            return
+        proxy = proxies.GuildProxy(self.bot, guild)
+        logging_config = await proxy.get_logging_config()
+        if logging_config is None or not logging_config.log_deleted_messages:
             return
         content = '{} messages bulk deleted in <#{}>.'.format(
             len(payload.message_ids), payload.channel_id)
@@ -66,10 +66,10 @@ class ModLogging(BaseCog):
 
     @log.command(name='deleted')
     async def log_deleted(self, ctx):
-        proxy = ctx.get_guild_proxy()
-        conf = proxy.logging_config
+        proxy = proxies.GuildProxy(ctx.bot, ctx.guild)
+        conf = await proxy.get_logging_config()
+        conf = conf or proto.LoggingConfig()
         conf.log_deleted_messages = not conf.log_deleted_messages
-        proxy.save()
-        ctx.session.commit()
+        await proxy.set_logging_config(conf)
         change = ('enabled' if conf.log_deleted_messages else 'disabled.')
         await success(f'Logging of deleted messages has been {change}')

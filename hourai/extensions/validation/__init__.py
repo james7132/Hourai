@@ -1,6 +1,5 @@
 import asyncio
 import discord
-import io
 import logging
 from . import approvers, rejectors
 from .storage import BanStorage
@@ -8,7 +7,7 @@ from discord.ext import tasks, commands
 from datetime import datetime, timedelta
 from hourai import utils
 from hourai.cogs import BaseCog
-from hourai.db import models, proxies, proto
+from hourai.db import proxies, proto
 from hourai.utils import format, embed, checks
 
 log = logging.getLogger(__name__)
@@ -134,14 +133,6 @@ VALIDATORS = (
 )
 
 
-def _get_config(session, guild, model=models.GuildValidationConfig,
-                default=None):
-    config = session.query(model).get(guild.id)
-    if config is None and default is not None:
-        return default()
-    return config
-
-
 async def _validate_member(bot, member):
     approval = True
     approval_reasons = []
@@ -220,17 +211,9 @@ class Validation(BaseCog):
 
     @tasks.loop(seconds=5.0)
     async def purge_unverified(self):
-        session = self.bot.create_storage_session()
-        guild_ids = [g.id for g in self.bot.guilds]
-        configs = session.query(models.GuildValidationConfig) \
-            .filter(models.GuildValidationConfig.guild_id.in_(guild_ids)) \
-            .filter_by(is_propogated=True) \
-            .all()
-        guilds = ((conf, self.bot.get_guild(conf.guild_id))
-                  for conf in configs)
-        check_time = datetime.utcnow() - PURGE_LOOKBACK
+        check_time = datetime.utcnow()
 
-        def _is_kickable(member):
+        def _is_kickable(member, lookback_time):
             # Does not kick
             #  * Bots
             #  * Nitro Boosters
@@ -238,7 +221,7 @@ class Validation(BaseCog):
             #  * Unverified users who have joined less than 6 hours ago.
             checks = (not member.bot,
                       member.joined_at is not None,
-                      member.joined_at <= check_time)
+                      member.joined_at <= lookback_time)
             return all(checks)
 
         async def _kick_member(member):
@@ -251,19 +234,33 @@ class Validation(BaseCog):
             gld = utils.pretty_print(member.guild)
             log.info(
                 f'Purged {mem} from {gld} for not being verified in time.')
-        tasks = list()
-        for conf, guild in guilds:
-            role = guild.get_role(conf.validation_role_id)
+
+        async def _purge_guild(proxy):
+            guild = proxy.guild
+            validation_config = await proxy.get_validation_config()
+            if (validation_config is None or
+                not validation_config.enabled or
+                not validation_config.HasField(
+                    'kick_unvalidated_users_after')):
+                return
+            lookback = timedelta(
+                    seconds=validation_config.kick_unvalidated_users_after)
+            lookback = check_time - lookback
+            role = guild.get_role(validation_config.role_id)
             if role is None or not guild.me.guild_permissions.kick_members:
-                continue
+                return
             if not guild.chunked:
                 await self.bot.request_offline_members(guild)
             unvalidated_members = utils.all_without_roles(
                 guild.members, (role,))
-            kickable_members = filter(_is_kickable, unvalidated_members)
-            tasks.extend(_kick_member(member) for member in kickable_members)
-        await asyncio.gather(*tasks)
-        session.close()
+            kickable_members = filter(lambda m: _is_kickable(m, lookback),
+                                      unvalidated_members)
+            tasks = [_kick_member(member) for member in kickable_members]
+            await asyncio.gather(*tasks)
+
+        guild_proxies = [proxies.GuildProxy(self.bot, guild)
+                         for guild in self.bot.guilds]
+        await asyncio.gather(*[_purge_guild(proxy) for proxy in guild_proxies])
 
     @purge_unverified.before_loop
     async def before_purge_unverified(self):
@@ -275,9 +272,8 @@ class Validation(BaseCog):
     async def setmodlog(self, ctx, channel: discord.TextChannel = None):
         # TODO(jame7132): Update this so it's in a different cog.
         channel = channel or ctx.channel
-        proxy = ctx.get_guild_proxy()
+        proxy = proxctx.get_guild_proxy()
         proxy.set_modlog_channel(channel)
-        proxy.save()
         ctx.session.commit()
         await ctx.send(":thumbsup: Set {}'s modlog to {}.".format(
             ctx.guild.name, channel.mention))
@@ -297,15 +293,12 @@ class Validation(BaseCog):
         pass
 
     @validation.command(name="setup")
-    async def validation_setup(self, ctx, role: discord.Role,
-                               channel: discord.TextChannel):
-        config = _get_config(ctx.session, ctx.guild,
-                             default=models.GuildValidationConfig)
-        config.guild_id = ctx.guild.id
+    async def validation_setup(self, ctx, role: discord.Role):
+        config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
+        config = config or proto.ValidationConfig()
+        config.enabled = True
         config.validation_role_id = role.id
-        config.validation_channel_id = channel.id
-        ctx.session.add(config)
-        ctx.session.commit()
+        await ctx.bot.storage.validation_configs.set(ctx.guild.id, config)
         await ctx.send('Validation configuration complete! Please run '
                        '`~validation propagate` then `~validation lockdown` to'
                        ' complete setup.')
@@ -313,7 +306,7 @@ class Validation(BaseCog):
     @validation.command(name="propagate")
     @commands.bot_has_permissions(manage_roles=True)
     async def validation_propagate(self, ctx):
-        config = _get_config(ctx.session, ctx.guild)
+        config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
         if config is None:
             await ctx.send('No validation config was found. Please run '
                            '`~valdiation setup`')
@@ -324,9 +317,8 @@ class Validation(BaseCog):
         role = ctx.guild.get_role(config.validation_role_id)
         if role is None:
             await ctx.send("Verification role not found.")
-            config.is_propogated = False
-            ctx.session.add(config)
-            ctx.session.commit()
+            config.ClearField('kick_unvalidated_users_after')
+            await ctx.bot.storage.validation_configs.get(ctx.guild.id, config)
             return
         while True:
             filtered_members = [m for m in ctx.guild.members
@@ -338,7 +330,7 @@ class Validation(BaseCog):
                 if role in member.roles:
                     return
                 try:
-                    approval, _, _ = await _validate_member(member)
+                    approval, _, _ = await _validate_member(self.bot, member)
                     if approval:
                         await member.add_roles(role)
                 except discord.errors.Forbidden:
@@ -353,9 +345,10 @@ class Validation(BaseCog):
             members_with_role = [m for m in ctx.guild.members
                                  if role in m.roles]
             if float(len(members_with_role)) / float(member_count) > 0.99:
-                config.is_propogated = True
-                ctx.session.add(config)
-                ctx.session.commit()
+                lookback = int(PURGE_LOOKBACK.total_seconds())
+                config.kick_unvalidated_users_after = lookback
+                await ctx.bot.storage.validation_configs.get(
+                        ctx.guild.id, config)
                 return
 
     # TODO(james7132): Fix this
@@ -397,15 +390,14 @@ class Validation(BaseCog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        session = self.bot.create_storage_session()
-        proxy = proxies.GuildProxy(member.guild, session)
-        if not proxy.validation_config.is_valid:
+        proxy = proxies.GuildProxy(self.bot, member.guild)
+        config = await proxy.get_validation_config()
+        if config is None or not config.enabled:
             return
         approved, r_a, r_r = await _validate_member(self.bot, member)
-        tasks = [self.send_verification_modlog(proxy, member, approved,
-                                               r_a, r_r)]
+        tasks = [self.send_verification_modlog(member, approved, r_a, r_r)]
         if approved:
-            tasks.append(self.verify_member(member, proxy))
+            tasks.append(self.verify_member(member, proxy=proxy))
         await asyncio.gather(*tasks)
 
     @commands.Cog.listener()
@@ -416,9 +408,9 @@ class Validation(BaseCog):
                 reaction.emoji not in MODLOG_REACTIONS or
                 len(msg.embeds) <= 0):
             return
-        session = self.bot.create_storage_session()
-        proxy = proxies.GuildProxy(user.guild, session)
-        if proxy.logging_config.modlog_channel_id != msg.channel.id:
+        proxy = proxies.GuildProxy(self.bot, guild)
+        logging_config = await proxy.get_logging_config()
+        if logging_config.modlog_channel_id != msg.channel.id:
             return
         embed = reaction.message.embed[0]
         try:
@@ -437,16 +429,19 @@ class Validation(BaseCog):
             await member.ban(reason=(f'Failed verification.'
                                      f' Banned by {user.name}.'))
 
-    async def verify_member(self, member, proxy):
-        role_id = proxy.validation_config.validation_role_id
-        if role_id is not None:
-            role = member.guild.get_role(role_id)
+    async def verify_member(self, member, proxy=None):
+        proxy = proxy or proxies.GuildProxy(self.bot, member.guild)
+        assert member.guild == proxy.guild
+        validation_config = await proxy.get_validation_config()
+        if validation_config.HasField('role_id'):
+            role = member.guild.get_role(validation_config.role_id)
             if role is not None and role not in member.roles:
                 await member.add_roles(role)
         self.bot.dispatch('on_verify', member)
 
-    async def send_verification_modlog(self, proxy, member,
-                                       approved, reasons_a, reasons_r):
+    async def send_verification_modlog(self, member, approved, reasons_a,
+                                       reasons_r):
+        proxy = proxies.GuildProxy(self.bot, member.guild)
         if approved:
             message = f"Verified user: {member.mention} ({member.id})."
         else:
@@ -470,13 +465,10 @@ class Validation(BaseCog):
                 await modlog_msg.add_reaction(reaction)
 
     async def report_bans(self, ban_info):
-        session = self.bot.create_storage_session()
-        guild_proxies = []
         user = ban_info.user
-        for guild in self.bot.guilds:
-            member = guild.get_member(user.id)
-            if member is not None:
-                guild_proxies.append(proxies.GuildProxy(guild, session))
+        guild_proxies = [proxies.GuildProxy(self.bot, guild)
+                         for guild in self.bot.guilds
+                         if guild.get_member(user.id) is not None]
 
         contents = None
         if ban_info.reason is None:

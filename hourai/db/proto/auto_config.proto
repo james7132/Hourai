@@ -3,7 +3,7 @@ syntax = "proto2";
 package hourai.db.proto;
 
 import "hourai/db/proto/action.proto";
-import "hourai/db/proto/.proto";
+import "hourai/db/proto/util.proto";
 
 message AutoConfig {
   optional EventGroup guild_events = 1;
