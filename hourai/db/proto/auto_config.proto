@@ -3,6 +3,7 @@ syntax = "proto2";
 package hourai.db.proto;
 
 import "hourai/db/proto/action.proto";
+import "hourai/db/proto/.proto";
 
 message AutoConfig {
   optional EventGroup guild_events = 1;
@@ -34,9 +35,4 @@ message MessageEvent {
 message UserChangeEvent {
   repeated Action action = 1;
   optional FilterSettings username_filter = 2;
-}
-
-message FilterSettings {
-  repeated string blacklist = 1;
-  repeated string whitelist = 2;
 }

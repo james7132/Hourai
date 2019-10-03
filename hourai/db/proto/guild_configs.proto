@@ -4,6 +4,7 @@ package hourai.db.proto;
 
 import "hourai/db/proto/auto_config.proto";
 import "hourai/db/proto/escalation.proto";
+import "hourai/db/proto/util.proto";
 
 message GuildConfig {
   optional LoggingConfig logging = 1;
@@ -12,6 +13,7 @@ message GuildConfig {
   optional ModerationConfig moderation = 4;
   optional MusicConfig music = 5;
   optional AnnouncementConfig announce = 6;
+  optional RoleConfig role = 7;
 }
 
 // ------------------------------------------------------------------------------
@@ -45,12 +47,12 @@ message MusicConfig {
   optional uint32 volume = 1 [default = 100];
   // Optional: If set, people who can DJ the bot need to have this role.
   // Otherwise, moderators by default have the permission.
-  repeated uint64 dj_role_id = 2;
+  repeated uint64 dj_role_id = 2 [packed = true];
   // Optional: If set, the music bot wil only join that voice channel.
   // Otherwise, the bot will join the first caller's current voice channel.
   optional uint64 voice_channel_id = 3;
   // Optional: If set, music commands will only work in the specified channels.
-  repeated uint64 text_channel_id = 4;
+  repeated uint64 text_channel_id = 4 [packed = true];
 }
 
 // ------------------------------------------------------------------------------
@@ -67,7 +69,7 @@ message AnnouncementConfig {
 
 message AnnouncementTypeConfig {
   // Required. The channels to output the announcements to.
-  repeated uint64 channel_ids = 1;
+  repeated uint64 channel_ids = 1 [packed = true];
   // Optional: Custom messages used. If none are provided, the default message
   // will be used.
   repeated string messages = 2;
@@ -108,12 +110,11 @@ message AvatarValidationConfig {
 message UsernameValidationConfig {
   // Optional: The blacklist applies first. If any matches, the user is rejected,
   // unless the any entry in the whitelist applies. Both are lists of regexes.
-  repeated string username_blacklist = 1;
-  repeated string username_whitelist = 2;
+  optional FilterSettings username_filter = 1;
 
-  optional bool reject_sexual_usernames = 3 [default = true];
-  optional bool reject_offensive_usernames = 4 [default = true];
-  optional bool reject_likely_user_bots = 5 [default = true];
+  optional bool reject_sexual_usernames = 2 [default = true];
+  optional bool reject_offensive_usernames = 3 [default = true];
+  optional bool reject_likely_user_bots = 4 [default = true];
 }
 
 message CrossGuildValidationConfig {
@@ -125,4 +126,12 @@ message CrossGuildValidationConfig {
   // TODO(james7132): Update this when the Discord Hotline integration is
   // available.
   // optional bool reject_hotline_reported_users = 3 [default = true];
+}
+
+// ------------------------------------------------------------------------------
+// Role Configs
+// ------------------------------------------------------------------------------
+message RoleConfig {
+  // Optional: The IDs of the roles that normal users can request whenever.
+  repeated uint64 self_serve_role_ids = 1 [packed = true];
 }
