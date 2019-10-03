@@ -35,7 +35,7 @@ class Announce(cogs.BaseCog):
         if len(announce_config.leaves.messages) > 0:
             choices = list(announce_config.leaves.messages)
         else:
-            choices = [f'**{member.mention}** has left the server.']
+            choices = [f'**{member.name}** has left the server.']
         await self.__make_announcement(member.guild, announce_config.leaves,
                                        choices)
 
@@ -47,7 +47,7 @@ class Announce(cogs.BaseCog):
         if len(announce_config.bans.messages) > 0:
             choices = list(announce_config.bans.messages)
         else:
-            choices = [f'**{member.mention}** has been banned.']
+            choices = [f'**{member.name}** has been banned.']
         await self.__make_announcement(member.guild, announce_config.leaves,
                                        choices)
 
