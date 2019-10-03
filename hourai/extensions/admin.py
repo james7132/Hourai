@@ -5,6 +5,7 @@ import typing
 from datetime import datetime, timedelta
 from discord.ext import commands
 from hourai import utils
+from hourai.db import proto
 from hourai.cogs import BaseCog
 
 MAX_PRUNE_LOOKBACK = timedelta(days=14)
@@ -153,38 +154,101 @@ class Admin(BaseCog):
 
     @role.command(name="allow")
     @commands.guild_only()
+    @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_allow(self, ctx, role: discord.Role):
-        """Allows a role to be self served."""
-        raise NotImplementedError
+    async def role_allow(self, ctx, *, roles: discord.Role):
+        """Allows one or more role to be self served."""
+
+        async def _check_highest_role(member):
+            highest_role = max(member.roles)
+            for role in roles:
+                if role > highest_role:
+                    msg = (f'Cannot allow self serve of "{role.name}". Role is'
+                           f' higher than {member.mention}\'s highest role.')
+                    await ctx.send(msg, delete_after=DELETE_WAIT_DURATION)
+                    return True
+            return False
+
+        if ((await _check_highest_role(ctx.guild.me)) or
+           (await _check_highest_role(ctx.author))):
+            return
+
+        role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
+        role_config = role_config or proto.RoleConfig()
+        role_ids = set(role_config.self_serve_role_ids)
+        for role in roles:
+            if role.id not in role_ids:
+                role_config.role_ids.add(role.id)
+        await ctx.bot.storage.set(ctx.guild.id, role_config)
+        await ctx.send(f':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+
+    @role.command(name="forbid")
+    @commands.guild_only()
+    @commands.has_permissions(manage_roles=True)
+    @commands.bot_has_permissions(manage_roles=True)
+    async def role_forbid(self, ctx, *, roles: discord.Role):
+        """Disallows one or more role to be self served."""
+
+        async def _check_highest_role(member):
+            highest_role = max(member.roles)
+            for role in roles:
+                if role > highest_role:
+                    msg = (f'Cannot disallow self serve of "{role.name}". Role'
+                           f' is higher than {member.mention}\'s highest '
+                           f'role.')
+                    await ctx.send(msg, delete_after=DELETE_WAIT_DURATION)
+                    return True
+            return False
+
+        if ((await _check_highest_role(ctx.guild.me)) or
+           (await _check_highest_role(ctx.author))):
+            return
+
+        role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
+        role_config = role_config or proto.RoleConfig()
+        role_ids = set(role_config.self_serve_role_ids)
+        for role in roles:
+            if role.id in role_ids:
+                role_config.role_ids.remove(role.id)
+        await ctx.bot.storage.set(ctx.guild.id, role_config)
+        await ctx.send(f':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="get")
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_get(self, ctx, role: discord.Role):
+    async def role_get(self, ctx, *, roles: discord.Role):
         """Adds a self-serve role to the caller."""
-        # TODO(james7132): Implement this
-        if True:
-            await ctx.send(f'`{role.name}` is not set up for self-serve.',
-                           delete_after=DELETE_WAIT_DURATION)
-            return
-        if role not in ctx.author.roles:
-            await ctx.author.add_roles(role)
+        role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
+        role_config = role_config or proto.RoleConfig()
+        role_ids = set(role_config.self_serve_role_ids)
+        # Ensure the roles can be safely added.
+        roles = [r for r in roles if r < max(ctx.guild.me.roles)]
+        for role in roles:
+            if role.id not in role_ids:
+                await ctx.send(f'`{role.name}` is not set up for self-serve.',
+                               delete_after=DELETE_WAIT_DURATION)
+                return
+        reason = 'Self serve role(s) requested by user.'
+        await ctx.author.add_roles(*roles, reasons=reason)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="drop")
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_drop(self, ctx, role: discord.Role,
-                        *members: discord.Member):
+    async def role_drop(self, ctx, *, roles: discord.Role):
         """Removes a self role from the caller."""
-        # TODO(james7132): Implement this
-        if True:
-            await ctx.send(f'`{role.name}` is not set up for self-serve.',
-                           delete_after=DELETE_WAIT_DURATION)
-            return
-        if role not in ctx.author.roles:
-            await ctx.author.add_roles(role)
+        role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
+        role_config = role_config or proto.RoleConfig()
+        role_ids = set(role_config.self_serve_role_ids)
+        # Ensure the roles can be safely removed.
+        roles = [r for r in roles if r < max(ctx.guild.me.roles)]
+        for role in roles:
+            if role.id not in role_ids:
+                await ctx.send(f'`{role.name}` is not set up for self-serve.',
+                               delete_after=DELETE_WAIT_DURATION)
+                return
+        reason = 'Self serve role(s) requested to be removed by user.'
+        await ctx.author.remove_roles(*roles, reasons=reason)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     # -------------------------------------------------------------------------
