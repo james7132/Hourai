@@ -1,11 +1,12 @@
 import collections
 import copy
+import discord
 import hourai.utils as utils
 import inspect
 import re
+import texttable
 import traceback
 import typing
-import texttable
 from discord.ext import commands
 from google.protobuf import text_format
 from guppy import hpy

@@ -178,6 +178,11 @@ class Admin(BaseCog):
         """A group of roles for managing roles."""
         pass
 
+    @role.command(name="list")
+    async def role_list(self, ctx):
+        """Lists all of the roles on the server."""
+        await ctx.send(format.code_list(r.name for r in ctx.guild.roles))
+
     @role.command(name="add")
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
@@ -513,14 +518,13 @@ class Admin(BaseCog):
         Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
         """
-
         def msg_filter(m):
             return len(m.mentions) + len(m.role_mentions) > 0
         count = await self._prune_messages(ctx, 100, msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
-    @prune.command(name="regex")
+    @prune.command(name="match")
     async def prune_match(self, ctx, regex: str):
         """Deletes all messages in the last 100 messages that match a certain
         pattern in the content.
