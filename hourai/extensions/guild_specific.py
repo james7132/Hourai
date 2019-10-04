@@ -26,9 +26,9 @@ class GuildSpecific_TheGap(GuildSpecificCog):
             self.bot, msg.content, on_error=on_error)
         invites = [inv for inv in invites if inv is not None]
         delete = len(invites) <= 0
-        # If posted in #big-servers make sure it
+        # If posted in #big-servers make sure it actually is big
         if 'big' in msg.channel.name:
-            delete = delete or any(
+            delete = delete or not any(
                 inv.approximate_member_count >= self.BIG_SERVER_SIZE
                 for inv in invites)
         if delete:
