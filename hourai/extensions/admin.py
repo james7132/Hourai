@@ -2,14 +2,18 @@ import asyncio
 import discord
 import re
 import typing
+import pytimeparse
+import logging
 from datetime import datetime, timedelta
-from discord.ext import commands
+from discord.ext import commands, tasks
 from hourai import utils
-from hourai.db import proto
+from hourai.db import proto, models
 from hourai.cogs import BaseCog
 
 MAX_PRUNE_LOOKBACK = timedelta(days=14)
 DELETE_WAIT_DURATION = 60
+
+log = logging.getLogger(__name__)
 
 
 async def batch_do(members, func):
@@ -26,7 +30,47 @@ async def batch_do(members, func):
     return dict(zip(members, results))
 
 
+def human_timedelta(time_str):
+    seconds = pytimeparse.parse(time_str)
+    if seconds is None or not isinstance(seconds, int):
+        raise ValueError
+    return timedelta(seconds=seconds)
+
+
+def create_action(member):
+    return proto.Action(user_id=member.id, guild_id=member.guild.id)
+
+
 class Admin(BaseCog):
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.apply_pending_actions.start()
+
+    def cog_unload(self):
+        self.apply_pending_actions.cancel()
+
+    @tasks.loop(seconds=1)
+    async def apply_pending_actions(self):
+        try:
+            session = self.bot.create_storage_session()
+            with session:
+                now = datetime.utcnow()
+                query = session.query(models.PendingAction) \
+                           .filter(models.PendingAction.timestamp < now) \
+                           .order_by(models.PendingAction.timestamp) \
+                           .all()
+                for pending_action in query:
+                    await self.bot.action_executor.execute_action(
+                            pending_action.data)
+                    session.delete(pending_action)
+                    session.commit()
+        except Exception:
+            log.exception('Error in running pending action:')
+
+    @apply_pending_actions.before_loop
+    async def before_apply_pending_actions(self):
+        await self.bot.wait_until_ready()
 
     # --------------------------------------------------------------------------
     # General Admin commands
@@ -140,8 +184,18 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(manage_roles=True)
     async def role_add(self, ctx, role: discord.Role,
                        *members: discord.Member):
-        """Adds a role to member."""
-        await self._admin_action(ctx, members, lambda m: m.add_roles(role))
+        """Adds a role to server members."""
+        def make_action(member):
+            action = create_action(member)
+            action.change_role.type = proto.ChangeRole.ADD
+            action.change_role.role_ids.append(role.id)
+            action.reason = (f'Role added by {ctx.author.name}.\n' +
+                             ctx.message.jump_url)
+            return action
+        await ctx.bot.action_executor.execute_actions(
+                make_action(m) for m in members)
+        # TODO(james7132): Have this reflect the results of the actions
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="remove")
     @commands.guild_only()
@@ -149,8 +203,19 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(manage_roles=True)
     async def role_remove(self, ctx, role: discord.Role,
                           *members: discord.Member):
-        """Removes a role to member."""
-        await self._admin_action(ctx, members, lambda m: m.remove_roles(role))
+        """Removes a role from server members."""
+        def make_action(member):
+            action = create_action(member)
+            action.change_role.type = proto.ChangeRole.REMOVE
+            action.change_role.role_ids.append(role.id)
+            action.duration = int(duration.total_seconds())
+            action.reason = (f'Role removed by {ctx.author.name}.\n' +
+                             ctx.message.jump_url)
+            return action
+        await ctx.bot.action_executor.execute_actions(
+                make_action(m) for m in members)
+        # TODO(james7132): Have this reflect the results of the actions
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="allow")
     @commands.guild_only()
@@ -263,57 +328,95 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def temp_ban(self, ctx, duration, *members: discord.Member):
-        await self.ban(ctx, *members)
-        # TODO(james7132): Implement this
-        raise NotImplementedError
+    async def temp_ban(self, ctx, duration: human_timedelta,
+                       *members: discord.Member):
+        def make_action(member):
+            action = create_action(member)
+            action.ban.type = proto.BanMember.BAN
+            action.duration = int(duration.total_seconds())
+            action.reason = (f'Temp Ban by {ctx.author.name}.\n' +
+                             ctx.message.jump_url)
+            return action
+        await ctx.bot.action_executor.execute_actions(
+                make_action(m) for m in members)
+        # TODO(james7132): Have this reflect the results of the actions
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @temp.group(name="mute")
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def temp_mute(self, ctx, duration, *members: discord.Member):
-        await self.mute(ctx, *members)
-        # TODO(james7132): Implement this
-        raise NotImplementedError
+    async def temp_mute(self, ctx, duration: human_timedelta,
+                        *members: discord.Member):
+        def make_action(member):
+            action = create_action(member)
+            action.mute.type = proto.MuteMember.MUTE
+            action.duration = int(duration.total_seconds())
+            action.reason = (f'Temp mute by {ctx.author.name}.\n' +
+                             ctx.message.jump_url)
+            return action
+        await ctx.bot.action_executor.execute_actions(
+                make_action(m) for m in members)
 
     @temp.group(name="deafen")
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def temp_deafen(self, ctx, duration, *members: discord.Member):
-        await self.mute(ctx, *members)
-        # TODO(james7132): Implement this
-        raise NotImplementedError
+    async def temp_deafen(self, ctx, duration: human_timedelta,
+                          *members: discord.Member):
+        def make_action(member):
+            action = create_action(member)
+            action.deafen.type = proto.DeafenMember.DEAFEN
+            action.duration = int(duration.total_seconds())
+            action.reason = (f'Temp deafen by {ctx.author.name}.\n' +
+                             ctx.message.jump_url)
+            return action
+        await ctx.bot.action_executor.execute_actions(
+                make_action(m) for m in members)
+        # TODO(james7132): Have this reflect the results of the actions
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @temp.group(name="role")
-    @commands.guild_only()
-    @commands.has_permissions(manage_roles=True)
-    @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role(self, ctx, duration, *members: discord.Member):
-        await self.ban(ctx, *members)
-        # TODO(james7132): Implement this
-        raise NotImplementedError
+    async def temp_role(self, ctx):
+        pass
 
     @temp_role.command(name="add")
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role_add(self, ctx, duration, role: discord.Role,
-                            *members: discord.Member):
-        await self.role_add(ctx, role, *members)
-        # TODO(james7132): Implement this
-        raise NotImplementedError
+    async def temp_role_add(self, ctx, duration: human_timedelta,
+                            role: discord.Role, *members: discord.Member):
+        def make_action(member):
+            action = create_action(member)
+            action.change_role.type = proto.ChangeRole.ADD
+            action.change_role.role_ids.append(role.id)
+            action.duration = int(duration.total_seconds())
+            action.reason = (f'Temp role by {ctx.author.name}.\n' +
+                             ctx.message.jump_url)
+            return action
+        await ctx.bot.action_executor.execute_actions(
+                make_action(m) for m in members)
+        # TODO(james7132): Have this reflect the results of the actions
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @temp_role.command(name="role")
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role_remove(self, ctx, duration, role: discord.Role,
-                               *members: discord.Member):
-        await self.role_remove(ctx, role, *members)
-        # TODO(james7132): Implement this
-        raise NotImplementedError
+    async def temp_role_remove(self, ctx, duration: human_timedelta,
+                               role: discord.Role, *members: discord.Member):
+        def make_action(member):
+            action = create_action(member)
+            action.change_role.type = proto.ChangeRole.REMOVE
+            action.change_role.role_ids.append(role.id)
+            action.duration = int(duration.total_seconds())
+            action.reason = (f'Temp role by {ctx.author.name}.\n' +
+                             ctx.message.jump_url)
+            return action
+        await ctx.bot.action_executor.execute_actions(
+                make_action(m) for m in members)
+        # TODO(james7132): Have this reflect the results of the actions
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     # -------------------------------------------------------------------------
     # Prune commands
@@ -435,4 +538,4 @@ class Admin(BaseCog):
 
 
 def setup(bot):
-    bot.add_cog(Admin())
+    bot.add_cog(Admin(bot))

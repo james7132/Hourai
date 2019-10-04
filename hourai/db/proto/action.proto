@@ -4,6 +4,7 @@ package hourai.db.proto;
 
 message Action {
   optional uint64 user_id   = 1;
+  optional uint64 guild_id = 11;
   optional string reason    = 2;
   // Optional: duration, in seconds, after which the action is undone.
   optional uint64 duration  = 3;
@@ -11,6 +12,8 @@ message Action {
     KickMember kick = 4;
     BanMember ban = 5;
     EscalateMember escalate = 6;
+    MuteMember mute = 12;
+    DeafenMember deafen = 13;
     ChangeRole change_role = 7;
     DirectMessage direct_message = 8;
     SendMessage send_message = 9;
@@ -22,9 +25,15 @@ message KickMember {
 }
 
 message BanMember {
+  enum Type {
+    BAN     = 1;
+    UNBAN   = 2;
+    SOFTBAN = 3;
+  }
   // Optional: if set to true, the user will immediately be unbanned following
   // the ban.
-  optional bool softban = 1;
+  optional Type type = 2 [default = BAN];
+  reserved 1;
 }
 
 message ChangeRole {
@@ -37,6 +46,24 @@ message ChangeRole {
   optional Type type = 1;
   // Required: the roles used by the action.
   repeated uint64 role_ids = 2;
+}
+
+message MuteMember {
+  enum Type {
+    MUTE    = 1;
+    UNMUTE  = 2;
+    TOGGLE  = 3;
+  }
+  optional Type type = 1;
+}
+
+message DeafenMember {
+  enum Type {
+    DEAFEN   = 1;
+    UNDEAFEN = 2;
+    TOGGLE   = 3;
+  }
+  optional Type type = 1;
 }
 
 message EscalateMember {

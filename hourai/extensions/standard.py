@@ -115,10 +115,6 @@ class Standard(BaseCog):
                                                   discord.User]):
         await ctx.send(embed=embed.make_whois_embed(ctx, user))
 
-    @commands.command()
-    async def test_help(self, ctx):
-        await ctx.send_help()
-
 
 def setup(bot):
     bot.add_cog(Standard())

@@ -19,6 +19,7 @@ py-coders==1.1.5
 humanize==0.5.1
 Pint==0.9
 texttable==1.6.2
+pytimeparse==1.1.8
 
 # For music bot features [Optional]
 wavelink==0.2.8

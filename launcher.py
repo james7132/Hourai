@@ -25,8 +25,6 @@ def run(ctx):
     conf = ctx.obj['config']
     hourai_bot = Hourai(config=conf)
     hourai_bot.load_all_extensions(extensions)
-    # TODO(james7132): Remove this when possible
-    hourai_bot.remove_command('help')
     hourai_bot.run(conf.bot_token, bot=True, reconnect=True)
 
 
