@@ -435,5 +435,4 @@ class Admin(BaseCog):
 
 
 def setup(bot):
-    pass
-    # bot.add_cog(Admin())
+    bot.add_cog(Admin())
