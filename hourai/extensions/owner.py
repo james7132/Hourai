@@ -1,17 +1,11 @@
+import collections
 import copy
 import hourai.utils as utils
 import inspect
 import re
 import traceback
 import typing
-import sqlite3
-import logging
-import yaml
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
-from google.protobuf.message import DecodeError
+import texttable
 from discord.ext import commands
 from google.protobuf import text_format
 from guppy import hpy
@@ -19,9 +13,6 @@ from hourai import extensions
 from hourai.cogs import BaseCog
 from hourai.db import models, proto
 from hourai.utils import hastebin, format
-
-
-log = logging.getLogger(__name__)
 
 
 def regex_multi_attr_match(context, regex, attrs):
@@ -163,130 +154,49 @@ class Owner(BaseCog):
         await ctx.send(format.vertical_list(ids))
 
     @commands.command()
-    async def migrate(self, ctx, old_sql: str):
-        for config in ctx.session.query(models.LoggingConfig).all():
-            guild_id = config.guild_id
-            try:
-                config_proto = await ctx.bot.storage.logging_configs.get(guild_id)
-            except DecodeError:
-                config_proto = None
-            config_proto = config_proto or proto.LoggingConfig()
-            for attr in ('modlog_channel_id', 'log_deleted_messages'):
-                setattr(config_proto, attr, getattr(config, attr))
-            await ctx.bot.storage.logging_configs.set(
-                    config.guild_id, config_proto)
-        await ctx.send('Migrated Logging Configs')
+    async def leave(self, ctx, *, guild_ids: int):
+        for id in guild_ids:
+            guild = ctx.bot.get_guild(id)
+            if guild is None:
+                continue
+            await guild.leave()
 
-        for config in ctx.session.query(models.GuildValidationConfig).all():
-            guild_id = config.guild_id
-            try:
-                config_proto = await ctx.bot.storage.validation_configs.get(guild_id)
-            except DecodeError:
-                config_proto = None
-            config_proto = config_proto or proto.ValidationConfig()
-            config_proto.enabled = True
-            config_proto.role_id = config.validation_role_id
-            if config.is_propogated:
-                config_proto.kick_unvalidated_users_after = 21600
-            await ctx.bot.storage.validation_configs.set(
-                    config.guild_id, config_proto)
-        await ctx.send('Migrated Validation Configs')
+    @commands.command()
+    async def stats(self, ctx):
+        output = []
+        latencies = dict(ctx.bot.latencies)
+        columns = ('Shard', 'Guilds', 'Members', 'Channels', 'Roles', 'Latency')
+        shard_stats = {shard_id: Owner.get_shard_stats(ctx, shard_id)
+                       for shard_id in latencies.keys()}
+        table = texttable.Texttable()
+        table.set_deco(texttable.Texttable.HEADER | texttable.Texttable.VLINES)
+        table.set_cols_align(["r"] * len(columns))
+        table.set_cols_valign(["t"] * len(columns))
+        table.set_cols_valign(["t"] + ["i"] * (len(columns) - 1))
+        table.header(columns)
+        for shard_id, stats in sorted(shard_stats.items()):
+            stats['Latency'] = latencies.get(shard_id) or 'N/A'
+            table.add_row([shard_id] + [stats[key] for key in columns[1:]])
+        output.append(table.draw())
+        output.append('')
+        output.append(f'discord.py: {discord.__version__}')
+        await ctx.send(format.multiline_code(format.vertical_list(output)))
 
-        conn = sqlite3.connect(old_sql)
-        c = conn.cursor()
-        announce_configs = {}
-        log.debug('Migrating Announce Channels')
-        for row in c.execute('select * from channels;'):
-            id, ban, guild_id, join, leave, stream, voice = row
-            if guild_id is None:
+    @staticmethod
+    def get_shard_stats(ctx, shard_id):
+        counters = collections.Counter()
+        counters['Shard'] = shard_id
+        for guild in ctx.bot.guilds:
+            if guild.shard_id != shard_id:
                 continue
-            is_needed = False
-            for attr in ('ban', 'join', 'leave', 'stream', 'voice'):
-                val = locals()[attr] != 0
-                locals()[attr] = val
-                is_needed = is_needed or val
-            if not is_needed:
-                continue
-            config_proto = announce_configs.setdefault(guild_id,
-                    proto.AnnouncementConfig())
-            if ban:
-                config_proto.bans.channel_ids.append(id)
-                config_proto.bans.channel_ids.sort()
-            if join:
-                config_proto.joins.channel_ids.append(id)
-                config_proto.joins.channel_ids.sort()
-            if leave:
-                config_proto.leaves.channel_ids.append(id)
-                config_proto.leaves.channel_ids.sort()
-            if stream:
-                config_proto.streams.channel_ids.append(id)
-                config_proto.streams.channel_ids.sort()
-            if voice:
-                config_proto.voice.channel_ids.append(id)
-                config_proto.voice.channel_ids.sort()
-            log.debug(f'Migrated Channel: {id}, {guild_id}')
-        for id, config_proto in announce_configs.items():
-            await ctx.bot.storage.announce_configs.set(id, config_proto)
-        await ctx.send('Migrated Announce Configs')
-
-        role_configs = {}
-        log.debug('Migrating Self Serve Roles')
-        for row in c.execute('select * from roles;'):
-            id, guild_id, self_serve = row
-            if guild_id is None:
-                continue
-            is_needed = False
-            for attr in ('self_serve',):
-                val = locals()[attr] != 0
-                locals()[attr] = val
-                is_needed = is_needed or val
-            if not is_needed:
-                continue
-            config_proto = role_configs.setdefault(guild_id, proto.RoleConfig())
-            if self_serve:
-                config_proto.self_serve_role_ids.append(id)
-                config_proto.self_serve_role_ids.sort()
-            log.debug(f'Migrated Role: {id}, {guild_id}')
-        for id, config_proto in role_configs.items():
-            await ctx.bot.storage.role_configs.set(id, config_proto)
-        await ctx.send('Migrated Role Configs')
-
-        log.debug('Migrating Aliases')
-        for row in c.execute('select * from commands;'):
-            guild_id, name, response = row
-            if guild_id is None:
-                continue
-            model = ctx.session.query(models.Alias).filter_by(
-                    guild_id=guild_id,
-                    name=name).first()
-            if model is None:
-                model = models.Alias(guild_id=guild_id, name=name)
-            model.content = "echo " + response
-            ctx.session.add(model)
-            log.debug(f'Migrated Alias: {guild_id}, {name}')
-        for row in c.execute('select * from custom_config;'):
-            guild_id, custom_config = row
-            if guild_id is None:
-                continue
-            try:
-                yaml_blob = yaml.load(custom_config)
-                if 'aliases' not in yaml_blob:
-                    continue
-                for name, response in yaml_blob['aliases'].items():
-                    model = ctx.session.query(models.Alias).filter_by(
-                            guild_id=guild_id,
-                            name=name).first()
-                    if model is None:
-                        model = models.Alias(guild_id=guild_id, name=name)
-                    model.content = response
-                    ctx.session.add(model)
-                log.debug(f'Migrated Alias: {guild_id}, {name}')
-            except Exception:
-                log.exception('Error while loading YAML document:')
-        ctx.session.commit()
-        await ctx.send('Migrated Aliases')
+            counters['Guilds'] += 1
+            counters['Members'] += guild.member_count
+            counters['Roles'] += len(guild.roles)
+            counters['Channels'] += len(guild.channels)
+            if any(guild.me in vc.members for vc in guild.voice_channels):
+                counters['Music'] += 1
+        return counters
 
 
 def setup(bot):
-
     bot.add_cog(Owner())
