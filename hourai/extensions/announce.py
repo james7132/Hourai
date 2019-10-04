@@ -40,16 +40,15 @@ class Announce(cogs.BaseCog):
                                        choices)
 
     @commands.Cog.listener()
-    async def on_member_ban(self, member, guild):
-        announce_config = await self.get_announce_config(member.guild)
+    async def on_member_ban(self, guild, user):
+        announce_config = await self.get_announce_config(guild)
         if not announce_config.HasField('bans'):
             return
         if len(announce_config.bans.messages) > 0:
             choices = list(announce_config.bans.messages)
         else:
-            choices = [f'**{member.name}** has been banned.']
-        await self.__make_announcement(member.guild, announce_config.leaves,
-                                       choices)
+            choices = [f'**{user.name}** has been banned.']
+        await self.__make_announcement(guild, announce_config.leaves, choices)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):

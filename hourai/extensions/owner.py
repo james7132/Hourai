@@ -18,7 +18,7 @@ from guppy import hpy
 from hourai import extensions
 from hourai.cogs import BaseCog
 from hourai.db import models, proto
-from hourai.utils import hastebin
+from hourai.utils import hastebin, format
 
 
 log = logging.getLogger(__name__)
@@ -156,6 +156,11 @@ class Owner(BaseCog):
         output = text_format.MessageToString(config, indent=2)
         output = await hastebin.post(ctx.bot.http_session, output)
         await ctx.send(output)
+
+    @commands.command()
+    async def extractids(self, ctx, *, input_str: str):
+        ids = re.findall(r'\d+', input_str)
+        await ctx.send(format.vertical_list(ids))
 
     @commands.command()
     async def migrate(self, ctx, old_sql: str):
