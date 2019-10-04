@@ -3,6 +3,7 @@ import asyncio
 import logging
 import pkgutil
 import traceback
+import collections
 from discord.ext import commands
 from . import config, actions
 from .db import storage
@@ -54,6 +55,11 @@ class Hourai(commands.AutoShardedBot):
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_executor = actions.ActionExecutor(self)
+
+        # Counters
+        self.guild_counters = collections.defaultdict(collections.Counter)
+        self.channel_counters = collections.defaultdict(collections.Counter)
+        self.user_counters = collections.defaultdict(collections.Counter)
 
     def create_storage_session(self):
         return self.storage.create_session()

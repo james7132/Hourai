@@ -398,6 +398,8 @@ class Validation(BaseCog):
         tasks = [self.send_verification_modlog(member, approved, r_a, r_r)]
         if approved:
             tasks.append(self.verify_member(member, proxy=proxy))
+        else:
+            self.bot.dispatch('verify_reject', member)
         await asyncio.gather(*tasks)
 
     @commands.Cog.listener()
@@ -437,7 +439,7 @@ class Validation(BaseCog):
             role = member.guild.get_role(validation_config.role_id)
             if role is not None and role not in member.roles:
                 await member.add_roles(role)
-        self.bot.dispatch('on_verify', member)
+        self.bot.dispatch('verify_accept', member)
 
     async def send_verification_modlog(self, member, approved, reasons_a,
                                        reasons_r):
