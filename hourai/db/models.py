@@ -1,6 +1,5 @@
 import enum
-from .proto import auto_config_pb2
-from .proto import guild_configs_pb2
+from . import proto
 from datetime import datetime, timezone
 from sqlalchemy import types
 from sqlalchemy import Column, UniqueConstraint
@@ -31,17 +30,30 @@ class UnixTimestamp(types.TypeDecorator):
 
 
 class Protobuf(types.TypeDecorator):
-    impl = types.JSON
+    impl = types.LargeBinary
 
     def __init__(self, message_type):
         self.message_type = message_type
         types.TypeDecorator.__init__(self)
 
     def process_bind_param(self, value, dialect):
-        return int(value.replace(tzinfo=timezone.utc).timestamp() * 1000)
+        assert isinstance(value, self.message_type), (
+            f'{type(value)} cannot be assigned to a column of type '
+            f'{self.message_type}')
+        return value.SerializeToString()
 
     def process_result_value(self, value, dialect):
-        return datetime.utcfromtimestamp(value / 1000)
+        msg = self.message_type()
+        msg.ParseFromString(value)
+        return msg
+
+
+class PendingAction(Base):
+    __tablename__ = 'pending_actions'
+
+    id = Column(types.Integer, primary_key=True)
+    timestamp = Column(UnixTimestamp, nullable=False)
+    data = Column(Protobuf(proto.Action), nullable=False)
 
 
 class Username(Base):

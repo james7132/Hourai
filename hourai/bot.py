@@ -4,7 +4,7 @@ import logging
 import pkgutil
 import traceback
 from discord.ext import commands
-from . import config
+from . import config, actions
 from .db import storage
 from .utils.fake import FakeMessage
 from .cogs import PrivateCog
@@ -53,6 +53,7 @@ class Hourai(commands.AutoShardedBot):
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
+        self.action_executor = actions.ActionExecutor(self)
 
     def create_storage_session(self):
         return self.storage.create_session()
@@ -122,6 +123,7 @@ class Hourai(commands.AutoShardedBot):
                                                error.__traceback__)
             trace_str = '\n'.join(trace)
             log.error(f'In {ctx.command.qualified_name}:\n{trace_str}\n')
+        log.debug(error)
         if err_msg is not None:
             await ctx.send(err_msg)
 
