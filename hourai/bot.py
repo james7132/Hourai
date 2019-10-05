@@ -1,9 +1,10 @@
 import aiohttp
 import asyncio
+import collections
+import itertools
 import logging
 import pkgutil
 import traceback
-import collections
 from discord.ext import commands
 from . import config, actions
 from .db import storage
@@ -44,13 +45,14 @@ class DefaultCommandInterpreter(CommandInterpreter):
 class Hourai(commands.AutoShardedBot):
 
     def __init__(self, *args, **kwargs):
+        self.logger = log
         try:
             self.config = kwargs['config']
         except KeyError:
             raise ValueError(
                     '"config" must be specified when initialzing Hourai.')
         kwargs.setdefault('command_prefix', self.config.command_prefix)
-        self.logger = log
+        kwargs.setdefault('help_command', HouraiHelpCommand())
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
@@ -162,3 +164,37 @@ class Hourai(commands.AutoShardedBot):
 
     def get_config_value(self, *args, **kwargs):
         return config.get_config_value(self.config, *args, **kwargs)
+
+
+class HouraiHelpCommand(commands.DefaultHelpCommand):
+
+    async def send_bot_help(self, mapping):
+        ctx = self.context
+        bot = ctx.bot
+
+        if bot.description:
+            # <description> portion
+            self.paginator.add_line(bot.description, empty=True)
+
+        self.paginator.add_line('')
+        self.paginator.add_line('Available modules:')
+
+        no_category = '\u200b{0.no_category}:'.format(self)
+
+        def get_category(command, *, no_category=no_category):
+            cog = command.cog
+            return cog.qualified_name + ':' if cog is not None else no_category
+        filtered = await self.filter_commands(bot.commands, sort=True,
+                                              key=get_category)
+        to_iterate = itertools.groupby(filtered, key=get_category)
+
+        for category, _ in to_iterate:
+            self.paginator.add_line(' ' * 3 + category)
+
+        command_name = self.clean_prefix + self.invoked_with
+        note = (f"Type {command_name} module for more info on a module.\nYou"
+                f" can also type {command_name} category for more info on a "
+                f"category.")
+        self.paginator.add_line()
+        self.paginator.add_line(note)
+        await self.send_pages()
