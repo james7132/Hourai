@@ -412,7 +412,8 @@ class Validation(BaseCog):
             return
         proxy = proxies.GuildProxy(self.bot, guild)
         logging_config = await proxy.get_logging_config()
-        if logging_config.modlog_channel_id != msg.channel.id:
+        if (logging_config is None or
+                logging_config.modlog_channel_id != msg.channel.id):
             return
         embed = reaction.message.embed[0]
         try:

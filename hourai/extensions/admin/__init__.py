@@ -381,7 +381,7 @@ class Admin(BaseCog):
     @role.command(name="get")
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_get(self, ctx, *, roles: discord.Role):
+    async def role_get(self, ctx, *roles: discord.Role):
         """Adds self-serve roles to the caller.
 
         Examples:
