@@ -1,5 +1,17 @@
 # Hourai
 
+<p align="center">
+    <a href="https://opensource.org/licenses/mit-license.php">
+        <img src="https://img.shields.io/badge/license-MIT%20License-blue.svg" alt="MIT License">
+    </a>
+    <a href="https://discord.gg/N3jNXXg">
+        <img src="https://discordapp.com/api/guilds/208460178863947776/widget.png" alt="Join the Hourai Discord Server">
+    </a>
+    <a href="https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=2146959359">
+        <img src="https://img.shields.io/badge/discord-add--to--server-738bd7.svg" alt="Add Hourai to your server!">
+    </a>
+</p>
+
 Hourai is a Discord Bot focused on safety, security, administration, and
 automation. Written in Python 3.7+. Hourai is a bot built to help ease moderation
 of communities of any size, offering features that work with servers of 10 users
