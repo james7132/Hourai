@@ -136,6 +136,9 @@ class Hourai(commands.AutoShardedBot):
             trace_str = '\n'.join(trace)
             log.error(f'In {ctx.command.qualified_name}:\n{trace_str}\n')
             self.loop.create_task(self.send_owner_error(error))
+            err_msg = ('An unexpected error has occured and has been reported.'
+                       '\nIf this happens consistently, please consider filing'
+                       'a bug:\n<https://github.com/james7132/Hourai/issues>')
         log.debug(error)
         if err_msg:
             await ctx.send(err_msg)
