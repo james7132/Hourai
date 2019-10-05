@@ -57,12 +57,12 @@ class Admin(BaseCog):
             with session:
                 now = datetime.utcnow()
                 query = session.query(models.PendingAction) \
-                           .filter(models.PendingAction.timestamp < now) \
-                           .order_by(models.PendingAction.timestamp) \
-                           .all()
+                    .filter(models.PendingAction.timestamp < now) \
+                    .order_by(models.PendingAction.timestamp) \
+                    .all()
                 for pending_action in query:
                     await self.bot.action_executor.execute_action(
-                            pending_action.data)
+                        pending_action.data)
                     session.delete(pending_action)
                     session.commit()
         except Exception:
@@ -198,7 +198,7 @@ class Admin(BaseCog):
                              ctx.message.jump_url)
             return action
         await ctx.bot.action_executor.execute_actions(
-                make_action(m) for m in members)
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -218,7 +218,7 @@ class Admin(BaseCog):
                              ctx.message.jump_url)
             return action
         await ctx.bot.action_executor.execute_actions(
-                make_action(m) for m in members)
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -240,7 +240,7 @@ class Admin(BaseCog):
             return False
 
         if ((await _check_highest_role(ctx.guild.me)) or
-           (await _check_highest_role(ctx.author))):
+                (await _check_highest_role(ctx.author))):
             return
 
         role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
@@ -271,7 +271,7 @@ class Admin(BaseCog):
             return False
 
         if ((await _check_highest_role(ctx.guild.me)) or
-           (await _check_highest_role(ctx.author))):
+                (await _check_highest_role(ctx.author))):
             return
 
         role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
@@ -343,7 +343,7 @@ class Admin(BaseCog):
                              ctx.message.jump_url)
             return action
         await ctx.bot.action_executor.execute_actions(
-                make_action(m) for m in members)
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -361,7 +361,7 @@ class Admin(BaseCog):
                              ctx.message.jump_url)
             return action
         await ctx.bot.action_executor.execute_actions(
-                make_action(m) for m in members)
+            make_action(m) for m in members)
 
     @temp.group(name="deafen")
     @commands.guild_only()
@@ -377,7 +377,7 @@ class Admin(BaseCog):
                              ctx.message.jump_url)
             return action
         await ctx.bot.action_executor.execute_actions(
-                make_action(m) for m in members)
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -400,7 +400,7 @@ class Admin(BaseCog):
                              ctx.message.jump_url)
             return action
         await ctx.bot.action_executor.execute_actions(
-                make_action(m) for m in members)
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -419,7 +419,7 @@ class Admin(BaseCog):
                              ctx.message.jump_url)
             return action
         await ctx.bot.action_executor.execute_actions(
-                make_action(m) for m in members)
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -427,116 +427,150 @@ class Admin(BaseCog):
     # Prune commands
     # -------------------------------------------------------------------------
 
-    async def _prune_messages(self, ctx, count, filter_func=None):
+    async def _prune(self, ctx, count=100, predicate=None):
+        predicate = predicate or (lambda m: True)
+        max_lookback = datetime.utcnow() - MAX_PRUNE_LOOKBACK
+
+        def _msg_filter(msg):
+            return msg != ctx.message and predicate(msg)
+
         async def _batcher():
             batch = []
-            max_lookback = datetime.utcnow() - MAX_PRUNE_LOOKBACK
-            async for msg in ctx.history(limit=count):
-                if ((msg.created_at >= max_lookback) and
-                        (filter_func is None or filter_func(msg))):
-                    batch.append(msg)
+            seen = 0
+            async for msg in ctx.history():
+                seen += 1
+                if seen > count or msg.created_at < max_lookback:
+                    break
+                if msg == ctx.message or not predicate(msg):
+                    continue
+                batch.append(msg)
                 if len(batch) >= 100:
                     yield list(batch)
                     batch.clear()
             if len(batch) > 0:
                 yield list(batch)
 
-        tasks = []
-        count = 0
+        seen_messages = 0
         async for batch in _batcher():
-            tasks.append(ctx.channel.delete_messages(batch))
-            count += len(batch)
-        await asyncio.gather(*tasks)
-        return count
+            assert len(batch) > 0
+            await ctx.channel.delete_messages(batch)
+            seen_messages += len(batch)
+        return seen_messages
 
-    @commands.group(name="prune")
+    @commands.group(name="prune", invoke_without_command=True)
     @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_message=True)
+    @commands.bot_has_permissions(manage_messages=True)
     async def prune(self, ctx, count: int = 100):
-        """Deletes the most recent messages in the current channel.
+        """Prunes messages in the current channel.
+
         Up to [count] messages will be deleted. By default this is 100.
         Messages over 14 days old will not be deleted.
+        Requires: Manage Messages (User and Bot)
         """
-        count = await self._prune_messages(ctx, count)
+        count = await self._prune(ctx, count=count)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
     @prune.command(name="user")
+    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
     async def prune_user(self, ctx, *members: discord.Member):
-        """Deletes all messages in the last 100 messages that belong to the
-        specified users.  Up to 100 messages will be deleted.
+        """Prunes messages in the current channel that belong to specific users.
+
+        Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
+        Requires: Manage Messages (User and Bot)
         """
         members = set(members)
-        count = await self._prune_messages(ctx, 100,
-                                           lambda m: m.author in members)
+
+        def msg_filter(m):
+            return m.author in members
+        count = await self._prune(ctx, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
     @prune.command(name="embed")
-    async def prune_embed(self, ctx, *members: discord.Member):
-        """Deletes all messages in the last 100 messages that have an embed or
-        attachment.  Up to 100 messages will be deleted.
+    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
+    async def prune_embed(self, ctx, count: int = 100):
+        """Prunes messages in the current channel that have an embed.
+
+        Up to [count] messages will be deleted. Defaults to 100.
         Messages over 14 days old will not be deleted.
+        Requires: Manage Messages (User and Bot)
         """
 
         def msg_filter(m):
             return len(m.attachments) + len(m.embeds) > 0
-        count = await self._prune_messages(ctx, 100, msg_filter)
+        count = await self._prune(ctx, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
     @prune.command(name="bot")
-    async def prune_bot(self, ctx, *members: discord.Member):
-        """Deletes all messages in the last 100 messages from a bot.
-        Up to 100 messages will be deleted.
+    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
+    async def prune_bot(self, ctx, count: int = 100):
+        """Prunes messages in the current channel sent by bots.
+
+        Up to [count] messages will be deleted. Defaults to 100.
         Messages over 14 days old will not be deleted.
+        Requires: Manage Messages (User and Bot)
         """
-        count = await self._prune_messages(ctx, 100,
-                                           lambda m: m.author.bot)
+        def msg_filter(m):
+            return m.author.bot
+        count = await self._prune(ctx, count=count, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
     @prune.command(name="mine")
-    async def prune_mine(self, ctx):
-        """Deletes all messages in the last 100 messages written by the command
-        caller.
+    @commands.bot_has_permissions(manage_messages=True)
+    async def prune_mine(self, ctx, count: int = 100):
+        """Prunes messages in the current channel from the caller.
 
-        Up to 100 messages will be deleted.
+        Up to [count] messages will be deleted. Defaults to 100.
         Messages over 14 days old will not be deleted.
+        Requires: Manage Messages (Bot)
         """
-        count = await self._prune_messages(ctx, 100,
-                                           lambda m: m.author == ctx.author)
+        def msg_filter(m):
+            return m.author == ctx.author
+        count = await self._prune(ctx, count=count, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
     @prune.command(name="mention")
-    async def prune_mention(self, ctx):
-        """Deletes all messages in the last 100 messages that mention another
-        user or role.
+    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
+    async def prune_mention(self, ctx, count: int = 100):
+        """Prunes messages in the current channel that mentions anyone.
 
-        Up to 100 messages will be deleted.
+        Up to [count] messages will be deleted. Defaults to 100.
         Messages over 14 days old will not be deleted.
+        Requires: Manage Messages (User and Bot)
         """
         def msg_filter(m):
-            return len(m.mentions) + len(m.role_mentions) > 0
-        count = await self._prune_messages(ctx, 100, msg_filter)
+            return len(m.mentions) + len(m.role_mentions) > 0 or \
+                    m.mention_everyone
+        count = await self._prune(ctx, count=count, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
     @prune.command(name="match")
+    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
     async def prune_match(self, ctx, regex: str):
-        """Deletes all messages in the last 100 messages that match a certain
-        pattern in the content.
+        """Prunes messages in the current channel that matches a pattern.
+
+        Example: ~prune match hi matches "hi", "high", "hiiiii".
 
         Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
+        Requires: Manage Messages (User and Bot)
         """
         regex = re.compile(regex)
 
         def msg_filter(m):
             return regex.search(m.clean_content)
-        count = await self._prune_messages(ctx, 100, msg_filter)
+        count = await self._prune(ctx, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
