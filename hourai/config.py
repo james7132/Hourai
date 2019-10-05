@@ -1,6 +1,7 @@
-import logging
 import _jsonnet
 import json
+import logging
+import time
 from hourai.utils.tupperware import tupperware, conform, ProtectedDict
 
 
@@ -45,13 +46,22 @@ def get_config_value(config, path, *, type=__DEFAULT, default=__DEFAULT):
 
 def __configure_logging(conf):
     default_level = get_config_value(conf, 'logging.default', default=None)
-    if default_level is not None:
-        logging.basicConfig(level=getattr(logging, default_level))
+    default_level = logging.getLevelName(default_level or 'WARNING')
+    logging.basicConfig(
+            level=default_level,
+            format='%(asctime)s:%(levelname)s:%(module)s:%(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S')
 
     modules = get_config_value(conf, 'logging.modules', default=None)
     if modules is not None:
         for mod, level in modules._asdict().items():
-            logging.getLogger(mod).setLevel(getattr(logging, level))
+            level = logging.getLevelName(level)
+            logging.getLogger(mod).setLevel(level)
+
+    # Log with UTC time
+    for handler in logging.root.handlers:
+        if handler.formatter is not None:
+            handler.formatter.converter = time.gmtime
 
 
 def __make_configuration_template():
