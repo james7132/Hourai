@@ -105,7 +105,11 @@ class Owner(BaseCog):
             result = eval(expr, {}, global_vars)
             if inspect.isawaitable(result):
                 result = await result
-            await ctx.send(f"Eval results for `{expr}`:\n```{str(result)}```")
+            result = str(result)
+            if len(result) > 2000:
+                result = await utils.hastebin.post(ctx.bot.http_session,
+                                                   result)
+            await ctx.send(f"Eval results for `{expr}`:\n```{result}```")
         except Exception:
             await ctx.send(f"Error when running eval of `{expr}`:\n"
                            f"```{str(traceback.format_exc())}```")
@@ -120,7 +124,7 @@ class Owner(BaseCog):
             output = f"```\n{output}\n```"
         await ctx.send(output)
 
-    @commands.group(name="pconfig", invoke_without_command=True)
+    @commands.group(name="config", invoke_without_command=True)
     @commands.guild_only()
     async def config(self, ctx):
         pass
