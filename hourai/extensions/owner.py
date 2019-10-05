@@ -39,10 +39,12 @@ class Owner(BaseCog):
 
     @commands.group()
     async def search(self, ctx, regex):
+        """Group for searching Discord models."""
         pass
 
     @search.command(name="server")
     async def search_guild(self, ctx, regex):
+        """Searches the servers the bot is on for matches."""
         regex = re.compile(regex)
         guilds = (f'{g.id}: {g.name}' for g in ctx.bot.guilds
                   if regex_multi_attr_match(regex, g, self.GUILD_CRITERIA))
@@ -50,6 +52,7 @@ class Owner(BaseCog):
 
     @search.command(name="user")
     async def search_user(self, ctx, regex):
+        """Searches the users the bot can see for matches"""
         regex = re.compile(regex)
         usernames = ctx.session.query(models.Usernames).all()
         # Deduplicate entries
@@ -90,6 +93,7 @@ class Owner(BaseCog):
 
     @commands.command()
     async def eval(self, ctx, *, expr: str):
+        """Evaluates a Python snippet and returns it."""
         global_vars = {**globals(), **{
             'bot': ctx.bot,
             'msg': ctx.message,
@@ -116,6 +120,7 @@ class Owner(BaseCog):
 
     @commands.command()
     async def heap(self, ctx):
+        """Provides a dump of heap memory diagnositics."""
         heap = hpy().heap()
         output = str(heap)
         if len(output) > 1992:
@@ -127,10 +132,12 @@ class Owner(BaseCog):
     @commands.group(name="config", invoke_without_command=True)
     @commands.guild_only()
     async def config(self, ctx):
+        """Commands for managing custom guild configs."""
         pass
 
     @config.command(name="upload")
     async def config_upload(self, ctx, guild_id: typing.Optional[int] = None):
+        """Uploads a config for a guild."""
         if len(ctx.message.attachments) <= 0:
             await ctx.send('Must provide a config file!')
             return
@@ -143,6 +150,7 @@ class Owner(BaseCog):
 
     @config.command(name="dump")
     async def config_dump(self, ctx, guild_id: typing.Optional[int] = None):
+        """Dumps the config for a given server in Protobuf Text Format."""
         # TODO(james7132): Make the operation atomic
         config = proto.GuildConfig()
 
@@ -155,6 +163,7 @@ class Owner(BaseCog):
 
     @commands.command()
     async def extractids(self, ctx, *, input_str: str):
+        """Extracts all IDs from a provided string."""
         ids = re.findall(r'\d+', input_str)
         await ctx.send(format.vertical_list(ids))
 
@@ -168,9 +177,11 @@ class Owner(BaseCog):
 
     @commands.command()
     async def stats(self, ctx):
+        """Provides statistics for each shard of the bot."""
         output = []
         latencies = dict(ctx.bot.latencies)
-        columns = ('Shard', 'Guilds', 'Members', 'Channels', 'Roles', 'Latency')
+        columns = ('Shard', 'Guilds', 'Members', 'Channels', 'Roles',
+                   'Music', 'Latency')
         shard_stats = {shard_id: Owner.get_shard_stats(ctx, shard_id)
                        for shard_id in latencies.keys()}
         table = texttable.Texttable()
