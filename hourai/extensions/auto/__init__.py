@@ -30,6 +30,26 @@ def is_valid_message_event(message, channel, evt):
     return in_channel and is_filter_ok
 
 
+def add_channel_id(channel, evt):
+    assert channel is not None
+    for action in evt.action:
+        action_type = action.WhichOneof('details')
+        if action_type is None:
+            continue
+        try:
+            getattr(action, action_type).channel_id = channel.id
+        except AttributeError:
+            pass
+
+
+def parameterize_actions(actions, user, guild, channel):
+    for action in actions:
+        action.guild_id = guild.id
+        action.user_id = user.id
+        if channel is not None:
+            add_channel_id(channel, action)
+
+
 class Auto(BaseCog):
 
     def __init__(self, bot):
@@ -57,40 +77,43 @@ class Auto(BaseCog):
         await self.user_event(guild, user, 'on_ban')
 
     async def user_event(self, guild, user, event_type):
+        if user.bot:
+            return
         tasks = []
         async for channel, evt in self.get_events(guild, event_type):
             assert isinstance(evt, proto.UserChangeEvent)
             if not meets_filter(user.name, get_field(evt, 'username_filter')):
                 continue
             actions = [copy.deepcopy(action) for action in evt.action]
-            # TODO(james7132): Parameterize actions here
+            parameterize_actions(actions, user, guild, channel)
             tasks.append(self.execute_actions(actions))
         if len(tasks) > 0:
             await asyncio.gather(*tasks)
 
     async def message_event(self, msg, event_type):
-        if msg.guild is None or msg.author == self.bot.user:
+        if msg.guild is None or msg.author == self.bot.user or msg.author.bot:
             return
         tasks = []
         delete = False
         async for channel, evt in self.get_events(msg.guild, 'on_message'):
             assert isinstance(evt, proto.MessageEvent)
-            if ((evt.Type | event_type) == 0 or
+            if ((evt.type | event_type) == 0 or
                not is_valid_message_event(msg, channel, evt)):
                 continue
-            actions = [copy.deepcopy(action) for action in evt.action]
-            # TODO(james7132): Parameterize actions here
-            tasks.append(self.execute_actions(actions))
             delete = delete or evt.delete_message
+            actions = [copy.deepcopy(action) for action in evt.action]
+            parameterize_actions(actions, msg.author, msg.guild, channel)
+            tasks.append(self.execute_actions(actions))
         if len(tasks) > 0:
             await asyncio.gather(*tasks)
         if delete:
             await msg.delete()
 
     async def execute_actions(self, actions):
-        raise NotImplementedError
+        for action in actions:
+            await self.bot.actions.execute(action)
 
-    async def get_events(self, guild,  event_type):
+    async def get_events(self, guild, event_type):
         config = await self.get_auto_config(guild)
         if config is None:
             return

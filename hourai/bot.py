@@ -56,7 +56,7 @@ class Hourai(commands.AutoShardedBot):
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
-        self.action_executor = actions.ActionExecutor(self)
+        self.actions = actions.ActionManager(self)
 
         # Counters
         self.guild_counters = collections.defaultdict(collections.Counter)

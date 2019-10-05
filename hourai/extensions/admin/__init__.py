@@ -55,14 +55,9 @@ class Admin(BaseCog):
         try:
             session = self.bot.create_storage_session()
             with session:
-                now = datetime.utcnow()
-                query = session.query(models.PendingAction) \
-                    .filter(models.PendingAction.timestamp < now) \
-                    .order_by(models.PendingAction.timestamp) \
-                    .all()
+                query = self.bot.query_pending_actions(session)
                 for pending_action in query:
-                    await self.bot.action_executor.execute_action(
-                        pending_action.data)
+                    await self.bot.actions.execute(pending_action.data)
                     session.delete(pending_action)
                     session.commit()
         except Exception:
@@ -267,8 +262,7 @@ class Admin(BaseCog):
             action.reason = (f'Role added by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.action_executor.execute_actions(
-            make_action(m) for m in members)
+        await ctx.bot.actions.execute_all(make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -294,8 +288,7 @@ class Admin(BaseCog):
             action.reason = (f'Role removed by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.action_executor.execute_actions(
-            make_action(m) for m in members)
+        await ctx.bot.actions.execute_all(make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -464,8 +457,7 @@ class Admin(BaseCog):
             action.reason = (f'Temp Ban by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.action_executor.execute_actions(
-            make_action(m) for m in members)
+        await ctx.bot.actions.execute_all(make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -490,8 +482,8 @@ class Admin(BaseCog):
             action.reason = (f'Temp mute by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.action_executor.execute_actions(
-            make_action(m) for m in members)
+        await ctx.bot.actions.execute_all(make_action(m) for m in members)
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @temp.group(name="deafen")
     @commands.guild_only()
@@ -514,8 +506,7 @@ class Admin(BaseCog):
             action.reason = (f'Temp deafen by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.action_executor.execute_actions(
-            make_action(m) for m in members)
+        await ctx.bot.actions.execute_all(make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -546,8 +537,7 @@ class Admin(BaseCog):
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.action_executor.execute_actions(
-            make_action(m) for m in members)
+        await ctx.bot.actions.execute_all(make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -573,8 +563,7 @@ class Admin(BaseCog):
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.action_executor.execute_actions(
-            make_action(m) for m in members)
+        await ctx.bot.actions.execute_all(make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 

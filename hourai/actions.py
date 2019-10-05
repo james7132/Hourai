@@ -10,6 +10,48 @@ def _get_reason(action):
     return None
 
 
+class ActionManager:
+
+    def __init__(self, bot):
+        self.executor = ActionExecutor(bot)
+        self.scheduler = ActionScheduler(bot)
+        self._handlers = (self.executor, self.scheduler)
+
+    def __getattr__(self, attr):
+        for handler in self._handlers:
+            try:
+                return getattr(handler, attr)
+            except AttributeError:
+                pass
+        raise AttributeError
+
+
+class ActionScheduler:
+    """Schedules pending actions into the future."""
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    def schedule(self, timestamp, *actions):
+        """Schedules an action to be done in the future."""
+        session = self.bot.create_storage_session()
+        with session:
+            for action in actions:
+                session.add(models.PendingAction(timestamp=timestamp,
+                                                 data=action))
+            session.commit()
+
+    def query_pending_actions(self, session):
+        """Queries a SQLAlchemy session for of the currently unexecuted pending
+        actions.
+        """
+        now = datetime.utcnow()
+        return session.query(models.PendingAction) \
+            .filter(models.PendingAction.timestamp < now) \
+            .order_by(models.PendingAction.timestamp) \
+            .all()
+
+
 class ActionExecutor:
 
     def __init__(self, bot):
@@ -22,10 +64,11 @@ class ActionExecutor:
             'change_role': self.__apply_change_role,
         }
 
-    async def execute_actions(self, actions):
-        return await asyncio.gather(*[self.execute_action(a) for a in actions])
+    async def execute_all(self, actions):
+        """Executes multiple actions in parallel."""
+        return await asyncio.gather(*[self.execute(a) for a in actions])
 
-    async def execute_action(self, action):
+    async def execute(self, action):
         action_type = action.WhichOneof('details')
         handler = self._handlers.get(action_type)
         if handler is not None:
@@ -33,15 +76,11 @@ class ActionExecutor:
                 await handler(action)
                 if not action.HasField('duration'):
                     return
+                # Schedule an undo
                 duration = timedelta(seconds=action.duration)
-                timestamp = datetime.utcnow() + duration
-                inverted = ActionExecutor.__invert_action(action)
-
-                session = self.bot.create_storage_session()
-                with session:
-                    session.add(models.PendingAction(timestamp=timestamp,
-                                                    data=inverted))
-                    session.commit()
+                self.bot.actions.schedule(
+                    datetime.utcnow() + duration,
+                    ActionExecutor.__invert_action(action))
             except Exception:
                 self.bot.logger.exception('Error while executing action:')
         else:
