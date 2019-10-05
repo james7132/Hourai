@@ -87,7 +87,14 @@ class Admin(BaseCog):
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
     async def kick(self, ctx, *members: discord.Member):
-        """Kicks all specified users."""
+        """Kicks all specified users.
+
+        Examples:
+          ~kick @bob
+          ~kick @bob Alice#1234 208460178863947776
+
+        Requires Kick Members (User and Bot)
+        """
         await self._admin_action(ctx, members, lambda m: m.kick())
 
     @commands.command(name="ban")
@@ -96,14 +103,24 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(ban_members=True)
     async def ban(self, ctx, *members: typing.Union[discord.Member, int]):
         """Bans all specified users from the server.
+
         Can be used with user IDs to ban users outside the server.
+
+        Examples:
+          ~ban @bob
+          ~ban @bob Alice#1234 208460178863947776
+
+        Requires Ban Members (User and Bot)
         """
         def _to_user(member):
             if isinstance(member, int):
                 return utils.FakeSnowfake(id=member)
             return member
+
+        def ban_member(m):
+            return ctx.guild.ban(m, delete_message_days=0)
         members = (_to_user(mem) for mem in members)
-        await self._admin_action(ctx, members, lambda m: m.ban())
+        await self._admin_action(ctx, members, ban_member)
 
     @commands.command(name="softban")
     @commands.guild_only()
@@ -111,10 +128,17 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(ban_members=True)
     async def softban(self, ctx, *members: discord.Member):
         """Bans then unbans all specified users from the server.
-        Deletes the last 30 days of messages from the softbanned users.
+
+        Deletes the last 7 days of messages from the softbanned users.
+
+        Examples:
+          ~softban @bob
+          ~softban @bob Alice#1234 208460178863947776
+
+        Requires Kick Members (User), Ban Members (Bot)
         """
         async def _softban(member):
-            await member.ban()
+            await member.ban(delete_message_days=7)
             await member.guild.unban(member)
         await self._admin_action(ctx, members, _softban)
 
@@ -123,7 +147,14 @@ class Admin(BaseCog):
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
     async def mute(self, ctx, *members: discord.Member):
-        """Mutes all specified users."""
+        """Server mutes all specified users.
+
+        Examples:
+          ~mute @bob
+          ~mute @bob Alice#1234 208460178863947776
+
+        Requires Mute Members (User and Bot)
+        """
         await self._admin_action(ctx, members, lambda m: m.edit(mute=True))
 
     @commands.command(name="unmute")
@@ -131,7 +162,14 @@ class Admin(BaseCog):
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
     async def unmute(self, ctx, *members: discord.Member):
-        """Unmutes all specified users."""
+        """Server unmutes all specified users.
+
+        Examples:
+          ~unmute @bob
+          ~unmute @bob Alice#1234 208460178863947776
+
+        Requires Mute Members (User and Bot)
+        """
         await self._admin_action(ctx, members, lambda m: m.edit(mute=False))
 
     @commands.command(name="deafen")
@@ -139,7 +177,14 @@ class Admin(BaseCog):
     @commands.has_permissions(deafen_members=True)
     @commands.bot_has_permissions(deafen_members=True)
     async def deafen(self, ctx, *members: discord.Member):
-        """Deafen all specified users."""
+        """Deafens all specified users.
+
+        Examples:
+          ~deafen @bob
+          ~deafen @bob Alice#1234 208460178863947776
+
+        Requires Deafen Members (User and Bot)
+        """
         await self._admin_action(ctx, members, lambda m: m.edit(deafen=True))
 
     @commands.command(name="undeafen")
@@ -147,7 +192,14 @@ class Admin(BaseCog):
     @commands.has_permissions(deafen_members=True)
     @commands.bot_has_permissions(deafen_members=True)
     async def undeafen(self, ctx, *members: discord.Member):
-        """Deafen all specified users."""
+        """Server undeafens all specified users.
+
+        Examples:
+          ~undeafen @bob
+          ~undeafen @bob Alice#1234 208460178863947776
+
+        Requires Deafen Members (User and Bot)
+        """
         await self._admin_action(ctx, members, lambda m: m.edit(deafen=False))
 
     @commands.command(name="move")
@@ -157,16 +209,26 @@ class Admin(BaseCog):
     async def move(self, ctx,
                    src: discord.VoiceChannel,
                    dst: discord.VoiceChannel):
-        """Moves all members in one voice channel to another."""
+        """Moves all members in one voice channel to another.
+
+        Examples:
+          ~move General AFK
+          ~move "General 1" "General 2"
+
+        Requires Move Members (User and Bot)
+        """
         await self._admin_action(ctx, src.members,
                                  lambda m: m.edit(voice_channel=dst))
 
     @commands.command(name="nickname")
     @commands.guild_only()
-    @commands.has_permissions(move_members=True)
-    @commands.bot_has_permissions(move_members=True)
+    @commands.has_permissions(manage_nicknames=True)
+    @commands.bot_has_permissions(manage_nicknames=True)
     async def nickname(self, ctx, name: str, *members: discord.Member):
-        """Nicknames all specified users."""
+        """Nicknames all specified users.
+
+        Requires Manage Nicknames (User and Bot)
+        """
         await self._admin_action(ctx, members, lambda m: m.edit(nick=name))
 
     # -------------------------------------------------------------------------
@@ -175,7 +237,7 @@ class Admin(BaseCog):
 
     @commands.group(name="role")
     async def role(self, ctx):
-        """A group of roles for managing roles."""
+        """A group of commands for managing roles."""
         pass
 
     @role.command(name="list")
@@ -189,7 +251,15 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(manage_roles=True)
     async def role_add(self, ctx, role: discord.Role,
                        *members: discord.Member):
-        """Adds a role to server members."""
+        """Adds a role to server members.
+
+        Examples:
+          ~role add Moderator @bob
+          ~role add Silenced @bob Alice#1234 208460178863947776
+
+        To temporarily add a role to a user, see ~help temp role add.
+        Requires Manage Roles (User and Bot)
+        """
         def make_action(member):
             action = create_action(member)
             action.change_role.type = proto.ChangeRole.ADD
@@ -208,12 +278,19 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(manage_roles=True)
     async def role_remove(self, ctx, role: discord.Role,
                           *members: discord.Member):
-        """Removes a role from server members."""
+        """Removes a role to server members.
+
+        Examples:
+          ~role remove Moderator @bob
+          ~role remove Silenced @bob Alice#1234 208460178863947776
+
+        To temporarily remove a role to a user, see ~help temp role remove.
+        Requires Manage Roles (User and Bot)
+        """
         def make_action(member):
             action = create_action(member)
             action.change_role.type = proto.ChangeRole.REMOVE
             action.change_role.role_ids.append(role.id)
-            action.duration = int(duration.total_seconds())
             action.reason = (f'Role removed by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
@@ -227,7 +304,16 @@ class Admin(BaseCog):
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def role_allow(self, ctx, *, roles: discord.Role):
-        """Allows one or more role to be self served."""
+        """Allows one or more role to be self served.
+
+        Examples:
+          ~role allow DotA
+          ~role allow Gamer "League of Legends"
+
+        Running this command allows normal users to use ~role get and
+        ~role drop.
+        Requires Manage Roles (User and Bot)
+        """
 
         async def _check_highest_role(member):
             highest_role = max(member.roles)
@@ -257,7 +343,16 @@ class Admin(BaseCog):
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def role_forbid(self, ctx, *, roles: discord.Role):
-        """Disallows one or more role to be self served."""
+        """Disallows one or more role to be self served.
+
+        Examples:
+          ~role forbid DotA
+          ~role forbid Gamer "League of Legends"
+
+        Running this command disallows normal users to use ~role get and
+        ~role drop.
+        Requires Manage Roles (User and Bot)
+        """
 
         async def _check_highest_role(member):
             highest_role = max(member.roles)
@@ -287,7 +382,16 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
     async def role_get(self, ctx, *, roles: discord.Role):
-        """Adds a self-serve role to the caller."""
+        """Adds self-serve roles to the caller.
+
+        Examples:
+          ~role get DotA
+          ~role get Gamer "League of Legends"
+
+        Roles must be allowed via ~role allow before they can be used with this
+        command. See ~help role allow for more information.
+        Requires Manage Roles (Bot)
+        """
         role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
         role_config = role_config or proto.RoleConfig()
         role_ids = set(role_config.self_serve_role_ids)
@@ -306,7 +410,16 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
     async def role_drop(self, ctx, *, roles: discord.Role):
-        """Removes a self role from the caller."""
+        """Removes self-serve roles to the caller.
+
+        Examples:
+          ~role drop DotA
+          ~role drop Gamer "League of Legends"
+
+        Roles must be allowed via ~role allow before they can be used with this
+        command. See ~help role allow for more information.
+        Requires Manage Roles (Bot)
+        """
         role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
         role_config = role_config or proto.RoleConfig()
         role_ids = set(role_config.self_serve_role_ids)
@@ -327,6 +440,7 @@ class Admin(BaseCog):
 
     @commands.group(name="temp")
     async def temp(self, ctx):
+        """Group of commands for running temporary changes."""
         pass
 
     @temp.group(name="ban")
@@ -335,6 +449,14 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(ban_members=True)
     async def temp_ban(self, ctx, duration: human_timedelta,
                        *members: discord.Member):
+        """Temporarily bans all specified users from the server.
+
+        Examples:
+          ~temp ban 1d @bob
+          ~temp ban 30m @bob Alice#1234 208460178863947776
+
+        Requires Ban Members (User and Bot)
+        """
         def make_action(member):
             action = create_action(member)
             action.ban.type = proto.BanMember.BAN
@@ -353,6 +475,14 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(mute_members=True)
     async def temp_mute(self, ctx, duration: human_timedelta,
                         *members: discord.Member):
+        """Temporarily server mutes all specified users.
+
+        Examples:
+          ~temp mute 1d @bob
+          ~temp mute 30m @bob Alice#1234 208460178863947776
+
+        Requires Mute Members (User and Bot)
+        """
         def make_action(member):
             action = create_action(member)
             action.mute.type = proto.MuteMember.MUTE
@@ -369,6 +499,14 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(mute_members=True)
     async def temp_deafen(self, ctx, duration: human_timedelta,
                           *members: discord.Member):
+        """Temporarily server deafen all specified users.
+
+        Examples:
+          ~temp deafen 1d @bob
+          ~temp deafen 30m @bob Alice#1234 208460178863947776
+
+        Requires Deafen  Members (User and Bot)
+        """
         def make_action(member):
             action = create_action(member)
             action.deafen.type = proto.DeafenMember.DEAFEN
@@ -383,6 +521,7 @@ class Admin(BaseCog):
 
     @temp.group(name="role")
     async def temp_role(self, ctx):
+        """Group of commands for temporarily altering roles."""
         pass
 
     @temp_role.command(name="add")
@@ -391,6 +530,14 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(manage_roles=True)
     async def temp_role_add(self, ctx, duration: human_timedelta,
                             role: discord.Role, *members: discord.Member):
+        """Temporarily add a role to all specified users.
+
+        Examples:
+          ~temp role add 1d Moderator @bob
+          ~temp role add 30m Silenced @bob Alice#1234 208460178863947776
+
+        Requires Manage Roles (User and Bot)
+        """
         def make_action(member):
             action = create_action(member)
             action.change_role.type = proto.ChangeRole.ADD
@@ -410,6 +557,14 @@ class Admin(BaseCog):
     @commands.bot_has_permissions(manage_roles=True)
     async def temp_role_remove(self, ctx, duration: human_timedelta,
                                role: discord.Role, *members: discord.Member):
+        """Temporarily removes a role to all specified users.
+
+        Examples:
+          ~temp role remove 1d Moderator @bob
+          ~temp role remove 30m Silenced @bob Alice#1234 208460178863947776
+
+        Requires Manage Roles (User and Bot)
+        """
         def make_action(member):
             action = create_action(member)
             action.change_role.type = proto.ChangeRole.REMOVE
