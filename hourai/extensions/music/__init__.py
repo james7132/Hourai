@@ -181,8 +181,21 @@ class Music(BaseCog):
             return True
         return False
 
-    @commands.command(name='play', aliases=['np'])
+    @commands.command(name='play')
     async def play(self, ctx, *, query: str = ''):
+        """Adds a song to the queue.
+
+        Caller must be in a valid voice channel.
+        If the music player is paused, calling it without arguments will
+        unpause the player.
+
+        Examples:
+          ~play
+          ~play despacito
+          ~play https://www.youtube.com/watch?v=kJQP7kiw5Fk
+          ~play https://www.youtube.com/playlist?list=PLNCRTSKrIMvuoD5D1FIR5kJ1jhwVVU5Ka
+          ~play https://soundcloud.com/kungfu-cthulhu/gabenhardstyle
+        """
         player = self.get_player(ctx.guild)
         if not query:
             await self._play_paused(ctx, player)
@@ -196,7 +209,7 @@ class Music(BaseCog):
             return
 
         msg = await ctx.send(r'**\*\*Loading...\*\***')
-        for attempt in (f'ytsearch:{query}', query, f'scsearch:{query}'):
+        for attempt in (query, f'ytsearch:{query}', f'scsearch:{query}'):
             result = await ctx.bot.wavelink.get_tracks(attempt)
             if not Music.is_empty_response(result):
                 break
@@ -241,6 +254,11 @@ class Music(BaseCog):
     @commands.command()
     @commands.check(is_dj)
     async def pause(self, ctx):
+        """Pauses the current track in the music player.
+
+        Caller must be a DJ (defaults to moderator roles), and must be in the
+        same voice channel as the bot.
+        """
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
@@ -250,6 +268,11 @@ class Music(BaseCog):
 
     @commands.command()
     async def stop(self, ctx):
+        """Clears the queue and stops the bot.
+
+        Caller must be a DJ (defaults to moderator roles), and must be in the
+        same voice channel as the bot.
+        """
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
@@ -260,6 +283,12 @@ class Music(BaseCog):
 
     @commands.command()
     async def remove(self, ctx, target: int):
+        """Removes a item from the queue by it's place in it.
+
+        Caller must either be a DJ (defaults to moderator roles) or be the user
+        who requested the track. Must also be in the same voice channel as the
+        bot.
+        """
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
@@ -268,6 +297,10 @@ class Music(BaseCog):
 
     @commands.command()
     async def removeall(self, ctx):
+        """Removes all of the caller's songs from the queue.
+
+        Must be in the same voice channel as the bot.
+        """
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
@@ -280,14 +313,16 @@ class Music(BaseCog):
 
     @commands.command()
     async def queue(self, ctx):
+        """Shows what is in the queue and who requested each track."""
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
         await player.create_queue_message(ctx.channel)
 
-    @commands.command()
+    @commands.command(aliases=['np'])
     async def nowplaying(self, ctx):
+        """Shows what's currently playing in the music player."""
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
@@ -296,6 +331,13 @@ class Music(BaseCog):
 
     @commands.command()
     async def skip(self, ctx):
+        """Votes to skip the current song in the player.
+
+        Skips the song if the votes exceed 50% of the users in voice chat.
+        If the requestor skips, it automatically skips the current song.
+
+        Must be in the same voice channel as the bot.
+        """
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
@@ -325,6 +367,10 @@ class Music(BaseCog):
 
     @commands.command()
     async def shuffle(self, ctx):
+        """Shuffles the songs the caller has queued.
+
+        Must be in the same voice channel as the bot.
+        """
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
@@ -339,6 +385,11 @@ class Music(BaseCog):
     @commands.command()
     @commands.check(is_dj)
     async def forceskip(self, ctx):
+        """Forcibly skips the current song in the music player.
+
+        Caller must be a DJ (defaults to moderator roles), and must be in the
+        same voice channel as the bot.
+        """
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
@@ -354,6 +405,15 @@ class Music(BaseCog):
 
     @commands.command()
     async def volume(self, ctx, volume: typing.Optional[int] = None):
+        """Checks or sets the music volume in the bot. Range: 0-150.
+
+        Example:
+          ~volume
+          ~volume 40
+
+        Caller must be a DJ (defaults to moderator roles), and must be in the
+        same voice channel as the bot.
+        """
         player = self.get_player(ctx.guild)
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
