@@ -5,11 +5,11 @@ import itertools
 import logging
 import pkgutil
 import traceback
+import sys
 from discord.ext import commands
 from . import config, actions
 from .db import storage
-from .utils.fake import FakeMessage
-from .cogs import PrivateCog
+from .utils import fake, format
 from .context import HouraiContext
 
 log = logging.getLogger(__name__)
@@ -84,12 +84,12 @@ class Hourai(commands.AutoShardedBot):
         await self.process_commands(message)
 
     async def get_prefix(self, message):
-        if isinstance(message, FakeMessage):
+        if isinstance(message, fake.FakeMessage):
             return ''
         return await super().get_prefix(message)
 
     def get_context(self, msg, *args, **kwargs):
-        if isinstance(msg, FakeMessage):
+        if isinstance(msg, fake.FakeMessage):
             msg._state = self._connection
         return super().get_context(msg, cls=HouraiContext, **kwargs)
 
@@ -98,7 +98,7 @@ class Hourai(commands.AutoShardedBot):
         Creates a fake context for automated uses. Mainly used to automatically
         run commands in response to configured triggers.
         """
-        return self.get_context(FakeMessage(**kwargs))
+        return self.get_context(fake.FakeMessage(**kwargs))
 
     async def process_commands(self, msg):
         if msg.author.bot:
@@ -111,6 +111,7 @@ class Hourai(commands.AutoShardedBot):
 
         async with ctx:
             await self.invoke(ctx)
+        log.debug(f'Command successfully executed: {msg}')
 
     def add_cog(self, cog):
         super().add_cog(cog)
@@ -119,21 +120,32 @@ class Hourai(commands.AutoShardedBot):
     async def on_error(self, event, *args, **kwargs):
         error = f'Exception in event {event} (args={args}, kwargs={kwargs}):'
         self.logger.exception(error)
+        _, error, _ = sys.exc_info()
+        self.loop.create_task(self.send_owner_error(error))
 
     async def on_command_error(self, ctx, error):
         err_msg = None
-        if isinstance(error, commands.NoPrivateMessage):
-            err_msg = 'This command cannot be used in private messages.'
-        elif isinstance(error, commands.DisabledCommand):
-            err_msg = 'Sorry. This command is disabled and cannot be used.'
+        if isinstance(error, commands.CheckFailure):
+            err_msg = str(error)
+        elif isinstance(error, commands.UserInputError):
+            err_msg = (str(error) + '\n') or ''
+            err_msg += f"Try `~help {ctx.command} for a reference."
         elif isinstance(error, commands.CommandInvokeError):
             trace = traceback.format_exception(type(error), error,
                                                error.__traceback__)
             trace_str = '\n'.join(trace)
             log.error(f'In {ctx.command.qualified_name}:\n{trace_str}\n')
+            self.loop.create_task(self.send_owner_error(error))
         log.debug(error)
-        if err_msg is not None:
+        if err_msg:
             await ctx.send(err_msg)
+
+    async def send_owner_error(self, error):
+        owner = (await self.application_info()).owner
+        trace = traceback.format_exception(type(error), error,
+                                           error.__traceback__)
+        trace_str = format.multiline_code('\n'.join(trace))
+        await owner.send(trace_str)
 
     async def execute_actions(self, actions):
         tasks = (action.execute(self) for action in actions)
