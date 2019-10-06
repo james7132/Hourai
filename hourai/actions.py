@@ -64,7 +64,7 @@ class ActionExecutor:
     async def execute(self, action):
         action_type = action.WhichOneof('details')
         try:
-            handler = getattr(self, "_" + action_type)
+            handler = getattr(self, "_apply_" + action_type)
         except AttributeError:
             raise ValueError(f'Action type not supported: {action_type}')
         try:
