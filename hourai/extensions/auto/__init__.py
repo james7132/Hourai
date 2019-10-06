@@ -7,20 +7,24 @@ from hourai.cogs import BaseCog
 from hourai.db import proto
 
 
-def meets_filter(val, filter_settings, default=False):
+def meets_filter(val, filter_settings, default=True):
     if val is None:
-        return default
+        return False
     if filter_settings is None:
-        return True
+        return default
     meets_blacklist = any(re.search(pack, val)
                           for pack in filter_settings.blacklist)
     meets_whitelist = any(re.search(pack, val)
                           for pack in filter_settings.whitelist)
-    return not meets_blacklist or meets_whitelist
+    if len(filter_settings.blacklist) > 0:
+        return not meets_blacklist or meets_whitelist
+    elif len(filter_settings.whitelist) > 0:
+        return meets_whitelist
+    return True
 
 
-def get_field(proto, field):
-    return getattr(proto, field) if proto.HasField(field) else None
+def get_field(proto, field, default=None):
+    return getattr(proto, field) if proto.HasField(field) else default
 
 
 def is_valid_message_event(message, channel, evt):
@@ -30,16 +34,15 @@ def is_valid_message_event(message, channel, evt):
     return in_channel and is_filter_ok
 
 
-def add_channel_id(channel, evt):
+def add_channel_id(channel, action):
     assert channel is not None
-    for action in evt.action:
-        action_type = action.WhichOneof('details')
-        if action_type is None:
-            continue
-        try:
-            getattr(action, action_type).channel_id = channel.id
-        except AttributeError:
-            pass
+    action_type = action.WhichOneof('details')
+    if action_type is None:
+        return
+    try:
+        getattr(action, action_type).channel_id = channel.id
+    except AttributeError:
+        pass
 
 
 def parameterize_actions(actions, user, guild, channel):
@@ -98,7 +101,7 @@ class Auto(BaseCog):
         async for channel, evt in self.get_events(msg.guild, 'on_message'):
             assert isinstance(evt, proto.MessageEvent)
             if ((evt.type | event_type) == 0 or
-               not is_valid_message_event(msg, channel, evt)):
+                    not is_valid_message_event(msg, channel, evt)):
                 continue
             delete = delete or evt.delete_message
             actions = [copy.deepcopy(action) for action in evt.action]
