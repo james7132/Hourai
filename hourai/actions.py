@@ -56,13 +56,6 @@ class ActionExecutor:
 
     def __init__(self, bot):
         self.bot = bot
-        self._handlers = {
-            'kick': self.__apply_kick,
-            'ban': self.__apply_ban,
-            'mute': self.__apply_mute,
-            'deafen': self.__apply_deafen,
-            'change_role': self.__apply_change_role,
-        }
 
     async def execute_all(self, actions):
         """Executes multiple actions in parallel."""
@@ -70,21 +63,21 @@ class ActionExecutor:
 
     async def execute(self, action):
         action_type = action.WhichOneof('details')
-        handler = self._handlers.get(action_type)
-        if handler is not None:
-            try:
-                await handler(action)
-                if not action.HasField('duration'):
-                    return
-                # Schedule an undo
-                duration = timedelta(seconds=action.duration)
-                self.bot.actions.schedule(
-                    datetime.utcnow() + duration,
-                    ActionExecutor.__invert_action(action))
-            except Exception:
-                self.bot.logger.exception('Error while executing action:')
-        else:
+        try:
+            handler = getattr(self, "_" + action_type)
+        except AttributeError:
             raise ValueError(f'Action type not supported: {action_type}')
+        try:
+            await handler(action)
+            if not action.HasField('duration'):
+                return
+            # Schedule an undo
+            duration = timedelta(seconds=action.duration)
+            self.bot.actions.schedule(
+                datetime.utcnow() + duration,
+                ActionExecutor.__invert_action(action))
+        except Exception:
+            self.bot.logger.exception('Error while executing action:')
 
     @staticmethod
     def __invert_action(action):
@@ -94,13 +87,13 @@ class ActionExecutor:
         inverted.ClearField('duration')
         return inverted
 
-    async def __apply_kick(self, action):
+    async def _apply_kick(self, action):
         assert action.WhichOneof('details') == 'kick'
         member = self.__get_member(action)
         if member is not None:
             await member.kick(reason=_get_reason(action))
 
-    async def __apply_ban(self, action):
+    async def _apply_ban(self, action):
         assert action.WhichOneof('details') == 'ban'
         guild = self.__get_guild(action)
         if guild is None:
@@ -112,7 +105,7 @@ class ActionExecutor:
         if action.ban.type != proto.BanMember.BAN:
             await guild.unban(user, reason=_get_reason(action))
 
-    async def __apply_mute(self, action):
+    async def _apply_mute(self, action):
         assert action.WhichOneof('details') == 'mute'
         member = self.__get_member(action)
         if member is not None:
@@ -124,7 +117,7 @@ class ActionExecutor:
             }[action.mute.type]
             await member.edit(mute=mute, reason=_get_reason(action))
 
-    async def __apply_deafen(self, action):
+    async def _apply_deafen(self, action):
         assert action.WhichOneof('details') == 'deafen'
         member = self.__get_member(action)
         if member is not None:
@@ -136,7 +129,7 @@ class ActionExecutor:
             }[action.deafen.type]
             await member.edit(deafen=deafen, reason=_get_reason(action))
 
-    async def __apply_change_role(self, action):
+    async def _apply_change_role(self, action):
         assert action.WhichOneof('details') == 'change_role'
         member = self.__get_member(action)
         if member is None:
@@ -155,6 +148,25 @@ class ActionExecutor:
                 member.add_roles(*add_roles, reason=_get_reason(action)),
                 member.remove(*rm_roles, reason=_get_reason(action))
             )
+
+    async def _apply_command(self, action):
+        assert action.WhichOneof('details') == 'command'
+        channel = self.bot.get_channel(action.command.channel_id)
+        try:
+            guild = channel.guild
+        except AttributeError:
+            guild = self.bot.get_guild(action.guild_id)
+        if action.HasField('user_id'):
+            user = (guild.get_member(action.user_id)
+                    if guild is not None else
+                    self.bot.get_user(action.user_id))
+        else:
+            user = (guild.me if guild is not None else self.bot.user)
+        ctx = await self.bot.get_automated_context(
+                content=action.command.command, author=user,
+                channel=channel, guild=guild)
+        async with ctx:
+            await self.bot.invoke(ctx)
 
     def __get_guild(self, action):
         assert action.HasField('guild_id')
