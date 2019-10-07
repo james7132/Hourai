@@ -11,24 +11,32 @@ class NameMatchRejector(Validator):
     other users already on the server.
     """
 
-    def __init__(self, *, prefix, filter_func, subfield=None,
-                 member_selector=None):
+    def __init__(self, *, prefix, filter_func,
+                 min_match_length=None, subfield=None, member_selector=None):
         self.filter = filter_func
         self.prefix = prefix
         self.subfield = subfield or (lambda m: m.name)
         self.member_selector = member_selector or (lambda m: m.name)
+        self.min_match_length = min_match_length
 
     async def get_rejection_reasons(self, bot, member):
         member_names = {}
         for guild_member in filter(self.filter, member.guild.members):
             name = self.member_selector(guild_member) or ''
             member_names.update({
-                p: generalize_filter(p) for p in split_camel_case(name)
+                p: generalize_filter(p) for p in self._split_name(name)
             })
         field_value = self.subfield(member)
         for filter_name, regex in member_names.items():
             if re.search(regex, field_value):
                 yield self.prefix + 'Matches: `{}`'.format(filter_name)
+
+    def _split_name(self, name):
+        split_name = split_camel_case(name)
+        if self.min_match_length is not None:
+            split_name = (n for n in split_name
+                          if len(n) >= self.min_match_length)
+        return split_name
 
 
 class StringFilterRejector(Validator):

@@ -72,20 +72,24 @@ VALIDATORS = (
     # Filter usernames and nicknames that match moderator users.
     rejectors.NameMatchRejector(
         prefix='Username matches moderator\'s. ',
-        filter_func=utils.is_moderator),
+        filter_func=utils.is_moderator,
+        min_match_length=4),
     rejectors.NameMatchRejector(
         prefix='Username matches moderator\'s. ',
         filter_func=utils.is_moderator,
-        member_selector=lambda m: m.nick),
+        member_selector=lambda m: m.nick,
+        min_match_length=4),
 
     # Filter usernames and nicknames that match bot users.
     rejectors.NameMatchRejector(
         prefix='Username matches bot\'s. ',
-        filter_func=lambda m: m.bot),
+        filter_func=lambda m: m.bot,
+        min_match_length=4),
     rejectors.NameMatchRejector(
         prefix='Username matches bot\'s. ',
         filter_func=lambda m: m.bot,
-        member_selector=lambda m: m.nick),
+        member_selector=lambda m: m.nick,
+        min_match_length=4),
 
     # Filter offensive usernames.
     rejectors.StringFilterRejector(
