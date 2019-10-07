@@ -97,7 +97,8 @@ def _get_guild_count(ctx, user):
 def _get_extra_usernames(ctx, user):
     usernames = ctx.session.query(models.Username) \
         .filter_by(user_id=user.id) \
-        .order_by(models.Username.timestamp)
+        .order_by(models.Username.timestamp) \
+        .limit(20)
     usernames = list(usernames)
     while len(usernames) > 0 and usernames[-1].name == user.name:
         usernames.pop()
