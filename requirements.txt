@@ -4,6 +4,7 @@
 # Core packages [Required]
 discord.py==1.2.3
 aiohttp==3.5.4
+uvloop==0.13.0
 
 # Configuration management [Required]
 jsonnet==0.14.0
