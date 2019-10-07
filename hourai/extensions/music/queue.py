@@ -16,7 +16,7 @@ class MusicQueue(asyncio.Queue):
       Output: (a, 1), (b, 1), (c, 1), (a, 2), (b, 2), (a, 3)
     """
 
-    def __init(self, maxsize):
+    def _init(self, maxsize):
         self._queue = collections.OrderedDict()
 
     def _put(self, item):
@@ -58,9 +58,9 @@ class MusicQueue(asyncio.Queue):
         if idx < 0 or idx >= len(self):
             raise IndexError
         for key, queue_idx, queue in self.__iter_self():
-            idx -= 1
             if idx == 0:
                 return (key, queue.pop(queue_idx))
+            idx -= 1
         raise IndexError
 
     def remove_all(self, key):
@@ -81,9 +81,9 @@ class MusicQueue(asyncio.Queue):
         if idx < 0 or idx >= len(self):
             raise IndexError
         for key, queue_idx, queue in self.__iter_self():
-            idx -= 1
             if idx == 0:
                 return (key, queue[queue_idx])
+            idx -= 1
         # This shouldn't happen with the initial check
         raise IndexError
 
@@ -94,12 +94,12 @@ class MusicQueue(asyncio.Queue):
     def __iter_self(self):
         indexes = collections.deque((key, 0) for key in self._queue.keys())
         while len(indexes) > 0:
-            key, queue_idx = indexes.popleft()
+            key, idx  = indexes.popleft()
             queue = self._queue[key]
             if idx >= len(queue):
                 continue
-            yield (key, queue_idx, queue)
-            indexes.append((key, queue_idx + 1))
+            yield (key, idx, queue)
+            indexes.append((key, idx + 1))
 
     def __len__(self):
         if len(self._queue) <= 0:
