@@ -1,21 +1,8 @@
 import enum
 from hourai import cogs
+from hourai.bot import CounterKeys
 from discord.ext import commands
 
-
-class CounterKeys(enum.Enum):
-    MESSAGES_RECIEVED   = 0x100             # noqa: E221
-    MESSAGES_DELETED    = 0x101             # noqa: E221
-    MESSAGES_EDITED     = 0x102             # noqa: E221
-    MEMBERS_JOINED      = 0x200             # noqa: E221
-    MEMBERS_LEFT        = 0x201             # noqa: E221
-    MEMBERS_BANNED      = 0x202             # noqa: E221
-    MEMBERS_UNBANNED    = 0x203             # noqa: E221
-    MEMBERS_VERIFIED    = 0x204             # noqa: E221
-    MEMBERS_REJECTED    = 0x205             # noqa: E221
-
-    def __repr__(self):
-        return self.name
 
 
 class Counters(cogs.BaseCog):
