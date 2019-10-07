@@ -6,7 +6,7 @@ import math
 import socket
 import typing
 import wavelink
-from .player import HouraiMusicPlayer
+from .player import HouraiMusicPlayer, Unauthorized
 from .utils import time_format
 from discord.ext import commands
 from hourai.bot import CogLoadError
@@ -293,7 +293,13 @@ class Music(BaseCog):
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
-        player.queue.remove(ctx.author.id, target)
+        try:
+            _, track = player.remove_entry(ctx.author, target - 1)
+            await ctx.send(f"Removed **{track.title}** from the queue.")
+        except Unauthorized:
+            await ctx.send(f"You didn't request that track!")
+        except IndexError:
+            await ctx.send(f"There is no track at place: {target}")
 
     @commands.command()
     async def removeall(self, ctx):

@@ -31,6 +31,10 @@ async def get_voice_channel(guild):
     return channel or get_default_channel(ctx.guild)
 
 
+class Unauthorized(Exception):
+    pass
+
+
 class HouraiMusicPlayer(wavelink.Player):
 
     def __init__(self, bot, guild_id: int, node: wavelink.Node):
@@ -133,7 +137,7 @@ class HouraiMusicPlayer(wavelink.Player):
     @property
     def voice_channel_members(self):
         channel = self.voice_channel
-        return set() if channel is None else channel.members
+        return () if channel is None else channel.members
 
     @property
     def entries(self):
@@ -161,6 +165,20 @@ class HouraiMusicPlayer(wavelink.Player):
     def enqueue(self, user, track):
         """Adds a single track to the queue from a given user."""
         return self.queue.put((user.id, track))
+
+    def remove_entry(self, user, idx):
+        """Removes a track from the player queue.
+
+        If the provided user is not the one who requested the track. Raises
+        Unauthorized.
+        If the index is invalid, raises IndexError
+        """
+        user_id, track = self.queue.get(idx)
+        if user.id != user_id:
+            raise Unauthorized
+        res = self.queue.remove(idx)
+        assert res == (user_id, track)
+        return res
 
     def clear_user(self, user):
         """Removes all of the user's enqueued tracks from the queue"""
