@@ -173,7 +173,7 @@ class HouraiMusicPlayer(wavelink.Player):
         Unauthorized.
         If the index is invalid, raises IndexError
         """
-        user_id, track = self.queue.get(idx)
+        user_id, track = self.queue[idx]
         if user.id != user_id:
             raise Unauthorized
         res = self.queue.remove(idx)
