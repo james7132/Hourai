@@ -66,6 +66,16 @@ class Hourai(commands.AutoShardedBot):
     def create_storage_session(self):
         return self.storage.create_session()
 
+    def run(self, *args, **kwargs):
+        try:
+            import uvloop
+            uvloop.install()
+            log.info('uvloop found and installed.')
+        except ImportError:
+            log.warn('uvloop not found, may not be running at peak '
+                     'performance.')
+        super().run(*args, **kwargs)
+
     async def start(self, *args, **kwargs):
         await self.storage.init()
         await self.http_session.__aenter__()
