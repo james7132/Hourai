@@ -11,6 +11,7 @@ from discord.ext import commands
 from google.protobuf import text_format
 from guppy import hpy
 from hourai import extensions
+from hourai.bot import CounterKeys
 from hourai.cogs import BaseCog
 from hourai.db import models, proto
 from hourai.utils import hastebin, format
@@ -181,7 +182,7 @@ class Owner(BaseCog):
         output = []
         latencies = dict(ctx.bot.latencies)
         columns = ('Shard', 'Guilds', 'Members', 'Channels', 'Roles',
-                   'Music', 'Latency')
+                   'Music', 'Messages', 'Latency')
         shard_stats = {shard_id: Owner.get_shard_stats(ctx, shard_id)
                        for shard_id in latencies.keys()}
         table = texttable.Texttable()
@@ -193,6 +194,7 @@ class Owner(BaseCog):
         for shard_id, stats in sorted(shard_stats.items()):
             stats['Latency'] = latencies.get(shard_id) or 'N/A'
             table.add_row([shard_id] + [stats[key] for key in columns[1:]])
+
         output.append(table.draw())
         output.append('')
         output.append(f'discord.py: {discord.__version__}')
@@ -205,10 +207,12 @@ class Owner(BaseCog):
         for guild in ctx.bot.guilds:
             if guild.shard_id != shard_id:
                 continue
+            guild_counts = ctx.bot.guild_counters[guild.id]
             counters['Guilds'] += 1
             counters['Members'] += guild.member_count
             counters['Roles'] += len(guild.roles)
             counters['Channels'] += len(guild.channels)
+            counters['Messages'] += guild_counts[CounterKeys.MESSAGES_RECIEVED]
             if any(guild.me in vc.members for vc in guild.voice_channels):
                 counters['Music'] += 1
         return counters
