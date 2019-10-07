@@ -18,8 +18,8 @@ def _list(name, seperator, transform=None):
     return func
 
 
-bold = _surround('bold', '*')
-italic = _surround('italic', '**')
+bold = _surround('bold', '**')
+italic = _surround('italic', '*')
 underline = _surround('underline', '__')
 strikethrough = _surround('strikethrough', '~~')
 quote = _surround('quote', '"')
