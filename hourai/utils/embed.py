@@ -99,10 +99,7 @@ def _get_extra_usernames(ctx, user):
         .filter_by(user_id=user.id) \
         .order_by(models.Username.timestamp) \
         .limit(20)
-    usernames = list(usernames)
-    while len(usernames) > 0 and usernames[-1].name == user.name:
-        usernames.pop()
-    return usernames
+    return [n for n in usernames if n.name != user.name]
 
 
 class MessageUI:

@@ -64,6 +64,13 @@ class Username(Base):
     name = Column(types.String(255), nullable=False)
     discriminator = Column(types.Integer)
 
+    def __str__(self):
+        if self.discriminator is not None:
+            name = f"{self.name}#{self.discriminator}"
+        else:
+            name = self.name
+        return f"Username({self.user_id}, {self.timestamp}, {name})"
+
     def to_fullname(self):
         return (self.name
                 if self.discriminator is None
@@ -134,4 +141,5 @@ class Feed(Base):
 
     def get_channels(self, bot):
         """ Returns a generator for all channels in the feed. """
+
         return (ch.get_resource(bot) for ch in self.channels)
