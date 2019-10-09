@@ -396,7 +396,7 @@ class Admin(BaseCog):
                                delete_after=DELETE_WAIT_DURATION)
                 return
         reason = 'Self serve role(s) requested by user.'
-        await ctx.author.add_roles(*roles, reasons=reason)
+        await ctx.author.add_roles(*roles, reason=reason)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="drop")
@@ -424,7 +424,7 @@ class Admin(BaseCog):
                                delete_after=DELETE_WAIT_DURATION)
                 return
         reason = 'Self serve role(s) requested to be removed by user.'
-        await ctx.author.remove_roles(*roles, reasons=reason)
+        await ctx.author.remove_roles(*roles, reason=reason)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     # -------------------------------------------------------------------------
