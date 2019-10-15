@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta
 from discord.ext import commands, tasks
 from hourai import utils
+from hourai.utils import fake
 from hourai.db import proto, models
 from hourai.cogs import BaseCog
 
@@ -25,7 +26,8 @@ async def batch_do(members, func):
             result = "Bot has insufficient permissions."
         except Exception as e:
             result = str(e)
-        return f"{member.name}: {result}"
+        identifier = member.name if hasattr(member, 'name') else member.id
+        return f"{identifier}: {result}"
     results = await asyncio.gather(*[_do(member) for member in members])
     return dict(zip(members, results))
 
@@ -109,7 +111,7 @@ class Admin(BaseCog):
         """
         def _to_user(member):
             if isinstance(member, int):
-                return utils.FakeSnowfake(id=member)
+                return fake.FakeSnowflake(id=member)
             return member
 
         def ban_member(m):
