@@ -117,4 +117,6 @@ class Standard(BaseCog):
 
 
 def setup(bot):
-    bot.add_cog(Standard())
+    standard = Standard()
+    bot.add_cog(standard)
+    bot.help_command.cog = standard
