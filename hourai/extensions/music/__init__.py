@@ -239,7 +239,7 @@ class Music(BaseCog):
             await msg.edit(content=f':notes: Added **{count}** tracks'
                                    f'({total_duration}) to the queue.')
         else:
-            await msg.edit(':x: Something went wrong!')
+            await msg.edit(content=':x: Something went wrong!')
 
     async def _play_paused(self, ctx, player):
         if not player.is_connected or not player.is_paused:
