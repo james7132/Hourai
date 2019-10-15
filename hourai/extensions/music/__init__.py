@@ -358,7 +358,8 @@ class Music(BaseCog):
         requestor = player.current_requestor
         assert requestor is not None
 
-        channel_count = len(player.voice_channel_members)
+        channel_count = len([m for m in player.voice_channel_members
+                             if m != ctx.guild.me])
         vote_count = len(player.skip_votes) + 1
 
         required_votes = math.ceil(channel_count * 0.5)
