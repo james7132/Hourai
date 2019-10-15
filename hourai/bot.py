@@ -68,7 +68,7 @@ class Hourai(commands.AutoShardedBot):
             raise ValueError(
                     '"config" must be specified when initialzing Hourai.')
         kwargs.setdefault('command_prefix', self.config.command_prefix)
-        kwargs.setdefault('help_command', HouraiHelpCommand())
+        # kwargs.setdefault('help_command', HouraiHelpCommand())
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
