@@ -66,9 +66,9 @@ class Counters(cogs.BaseCog):
         self.bot.guild_counters[guild.id][key] += 1
 
     @commands.Cog.listener()
-    async def on_member_unban(self, member):
+    async def on_member_unban(self, guild, user):
         key = CounterKeys.MEMBERS_UNBANNED
-        self.bot.guild_counters[member.guild.id][key] += 1
+        self.bot.guild_counters[guild.id][key] += 1
 
     @commands.Cog.listener()
     async def on_verify_accept(self, member):
