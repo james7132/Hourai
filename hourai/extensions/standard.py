@@ -44,7 +44,7 @@ class Standard(BaseCog):
                         yield (activity_str, member)
         def member_list(members):
             return format.comma_list(m[1].display_name for m in members)
-        member_activities = sorted(activities())
+        member_activities = sorted(activities(), key=lambda x: x[0])
         lines = [f'**{k}**: {member_list(v)}'
                  for k, v in itertools.groupby(member_activities,
                  lambda x: x[0])]
