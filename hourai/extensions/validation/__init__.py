@@ -468,8 +468,11 @@ class Validation(BaseCog):
                                                          embed=whois_embed)
             if modlog_msg is None:
                 return
-            for reaction in MODLOG_REACTIONS:
-                await modlog_msg.add_reaction(reaction)
+            try:
+                for reaction in MODLOG_REACTIONS:
+                    await modlog_msg.add_reaction(reaction)
+            except discord.errors.Forbidden:
+                pass
 
     async def report_bans(self, ban_info):
         user = ban_info.user
