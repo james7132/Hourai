@@ -48,7 +48,7 @@ class Announce(cogs.BaseCog):
             choices = list(announce_config.bans.messages)
         else:
             choices = [f'**{user.name}** has been banned.']
-        await self.__make_announcement(guild, announce_config.leaves, choices)
+        await self.__make_announcement(guild, announce_config.bans, choices)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
