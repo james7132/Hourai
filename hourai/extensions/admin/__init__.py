@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timedelta
 from discord.ext import commands, tasks
 from hourai import utils
-from hourai.utils import fake
+from hourai.utils import fake, format
 from hourai.db import proto, models
 from hourai.cogs import BaseCog
 
