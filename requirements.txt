@@ -2,7 +2,7 @@
 # [Optional] = Can run without it. Features will be disabled.
 
 # Core packages [Required]
-discord.py==1.2.3
+discord.py==1.2.5
 aiohttp==3.5.4
 uvloop==0.13.0
 
