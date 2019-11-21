@@ -15,6 +15,47 @@ class Announce(cogs.BaseCog):
         config = await self.bot.storage.announce_configs.get(guild.id)
         return config or proto.AnnouncementConfig()
 
+    async def set_announce_config(self, guild, config):
+        await self.bot.storage.announce_configs.set(guild.id, config)
+
+    @commands.group(invoke_without_command=True)
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    @commands.bot_has_permissions(send_messages=True)
+    async def announce(self, ctx):
+        pass
+
+    @announce.command(name='join')
+    async def announce_join(self, ctx):
+        announce_config = await self.get_announce_config(ctx.guild)
+        result = self.__toggle_channel(ctx, announce_config.joins);
+        await self.set_announce_config(ctx.guild, announce_config)
+        suffix = 'enabled' if result else 'disabled'
+        await ctx.send(f":thumbsup: Join messages {suffix}")
+
+    @announce.command(name='leave')
+    async def announce_leave(self, ctx):
+        announce_config = await self.get_announce_config(ctx.guild)
+        result = self.__toggle_channel(ctx, announce_config.leaves);
+        await self.set_announce_config(ctx.guild, announce_config)
+        suffix = 'enabled' if result else 'disabled'
+        await ctx.send(f":thumbsup: Leave messages {suffix}")
+
+    @announce.command(name='ban')
+    async def announce_ban(self, ctx):
+        announce_config = await self.get_announce_config(ctx.guild)
+        result = self.__toggle_channel(ctx, announce_config.bans);
+        await self.set_announce_config(ctx.guild, announce_config)
+        suffix = 'enabled' if result else 'disabled'
+        await ctx.send(f":thumbsup: Ban messages {suffix}")
+
+    async def __toggle_channel(self, ctx, config):
+        if ctx.channel.id in config.channel_ids:
+            config.channel_ids.remove(ctx.channel.id)
+            return False
+        config.channel_ids.append(ctx.channel.id)
+        return True
+
     @commands.Cog.listener()
     async def on_member_join(self, member):
         announce_config = await self.get_announce_config(member.guild)

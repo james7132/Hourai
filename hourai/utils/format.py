@@ -50,7 +50,7 @@ def ellipsize(val: str, max_length=2000, keep_end=False):
     return val[:max_length - 3] + '...'
 
 
-comma_list = _list('code_list', ', ')
+comma_list = _list('comma_list', ', ')
 code_list = _list('code_list', ', ', transform=code)
 vertical_list = _list('vertical_list', '\n')
 

@@ -3,10 +3,33 @@ import itertools
 import random
 import re
 import typing
+import collections
+import logging
+from datetime import datetime
 from hourai import utils
 from hourai.cogs import BaseCog
 from hourai.utils import embed, format
 from discord.ext import commands
+
+DICE_REGEX = re.compile(r"(\d+)d(\d+)(.?)(\d*)")
+FDICE_REGEX = re.compile(r"(\d+)df(.?)(\d*)")
+Dice = collections.namedtuple("Dice", "count min max modifier mod_type")
+
+
+def die(val):
+    dice_match = DICE_REGEX.match(val)
+    fdice_match = FDICE_REGEX.match(val)
+    match = dice_match or fdice_match
+    if not match:
+        raise Exception("Input does not match a dice description.")
+    min_val = -2 if match == fdice_match else 0
+    max_val = 2 if match == fdice_match else int(match.group(2))
+    try:
+        modifier = int(match.group(4))
+    except:
+        modifier = 0
+    return Dice(count=int(match.group(1)), min=min_val, max=max_val,
+                modifier=modifier, mod_type=match.group(3))
 
 
 class Standard(BaseCog):
@@ -17,6 +40,46 @@ class Standard(BaseCog):
     @commands.command()
     async def echo(self, ctx, *, content: str):
         await ctx.send(content)
+
+    @commands.command()
+    async def roll(self, ctx, *dice: die):
+        """ Rolls some dice
+
+        Example usages:
+            ~roll 3d6
+            ~roll 3d6 2d8
+            ~roll 3d6+5
+            ~roll 3d6-5
+            ~roll 3d6*5
+            ~roll 3d6/5
+            ~roll 3d6^5
+        """
+        total_count = sum(d.count for d in dice)
+        if total_count > 150:
+            await ctx.send('Cannot roll more than 150 dice at once')
+            return
+        rolls = []
+        total = 0
+        for die in dice:
+            dice_rolls = list(random.randint(die.min, die.max)
+                              for x in range(die.count))
+            rolls.extend(dice_rolls)
+            sub_total = sum(dice_rolls)
+            logging.info(die.mod_type)
+            sub_total = {
+                "+": lambda x: x + die.modifier,
+                "-": lambda x: x - die.modifier,
+                "/": lambda x: x / die.modifier,
+                "*": lambda x: x * die.modifier,
+                "x": lambda x: x * die.modifier,
+                "^": lambda x: x ** die.modifier,
+            }.get(die.mod_type, lambda x: x)(sub_total)
+            total += sub_total
+        rolls.sort()
+        resp = [f"Rolled a total of `{total}` from {len(rolls)} rolls:"]
+        resp.append(format.multiline_code(
+                    format.comma_list(str(r) for r in rolls)))
+        await ctx.send('\n'.join(resp))
 
     @commands.command()
     async def choose(self, ctx, *choices: str):
@@ -58,22 +121,23 @@ class Standard(BaseCog):
     async def serverinfo(self, ctx):
         guild = ctx.guild
         owner = guild.owner
-        embed = discord.Embed(title=f'{guild.name} ({guild.id})',
+        msg_embed = discord.Embed(title=f'{guild.name} ({guild.id})',
                               description=guild.description)
-        embed.set_thumbnail(url=guild.icon_url)
-        embed.add_field(name='Owner',
+        msg_embed.set_thumbnail(url=guild.icon_url)
+        msg_embed.add_field(name='Owner',
                         value=f'{owner.name}#{owner.discriminator}')
-        embed.add_field(name='Members', value=str(guild.member_count))
-        embed.add_field(name='Created On', value=str(guild.member_count))
-        embed.add_field(name='Region', value=str(guild.region))
+        msg_embed.add_field(name='Members', value=str(guild.member_count))
+        embed._add_time_field(msg_embed, 'Created On', guild.created_at,
+                              datetime.utcnow())
+        msg_embed.add_field(name='Region', value=str(guild.region))
         if guild.premium_subscription_count:
             value = (f'{guild.premium_subscription_count} '
                      f'(Tier {guild.premium_tier})')
-            embed.add_field(name='Boosters', value=value)
+            msg_embed.add_field(name='Boosters', value=value)
         if guild.features:
-            embed.add_field(name='Features',
+            msg_embed.add_field(name='Features',
                             value=format.code_list(guild.features))
-        await ctx.send(embed=embed)
+        await ctx.send(embed=msg_embed)
 
     # @commands.command()
     # async def convert(self, ctx, src_unit, dst_unit):

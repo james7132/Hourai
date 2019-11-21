@@ -10,6 +10,7 @@ __CONFIG = None
 
 
 def load_config(file_path, env):
+    global __CONFIG
     conf = _jsonnet.evaluate_file(file_path)
     config = json.loads(conf)
     config = config[env]

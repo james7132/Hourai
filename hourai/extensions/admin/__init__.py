@@ -298,7 +298,7 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_allow(self, ctx, *, roles: discord.Role):
+    async def role_allow(self, ctx, *roles: discord.Role):
         """Allows one or more role to be self served.
 
         Examples:
@@ -324,20 +324,21 @@ class Admin(BaseCog):
                 (await _check_highest_role(ctx.author))):
             return
 
-        role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
+        storage = ctx.bot.storage.role_configs
+        role_config = await storage.get(ctx.guild.id)
         role_config = role_config or proto.RoleConfig()
         role_ids = set(role_config.self_serve_role_ids)
         for role in roles:
             if role.id not in role_ids:
-                role_config.role_ids.add(role.id)
-        await ctx.bot.storage.set(ctx.guild.id, role_config)
+                role_config.self_serve_role_ids.append(role.id)
+        await storage.set(ctx.guild.id, role_config)
         await ctx.send(f':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="forbid")
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_forbid(self, ctx, *, roles: discord.Role):
+    async def role_forbid(self, ctx, *roles: discord.Role):
         """Disallows one or more role to be self served.
 
         Examples:
@@ -364,13 +365,14 @@ class Admin(BaseCog):
                 (await _check_highest_role(ctx.author))):
             return
 
-        role_config = await ctx.bot.storage.role_configs.get(ctx.guild.id)
+        storage = ctx.bot.storage.role_configs
+        role_config = await storage.get(ctx.guild.id)
         role_config = role_config or proto.RoleConfig()
         role_ids = set(role_config.self_serve_role_ids)
         for role in roles:
             if role.id in role_ids:
-                role_config.role_ids.remove(role.id)
-        await ctx.bot.storage.set(ctx.guild.id, role_config)
+                role_config.self_serve_role_ids.remove(role.id)
+        await storage.set(ctx.guild.id, role_config)
         await ctx.send(f':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="get")
@@ -404,7 +406,7 @@ class Admin(BaseCog):
     @role.command(name="drop")
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
-    async def role_drop(self, ctx, *, roles: discord.Role):
+    async def role_drop(self, ctx, *roles: discord.Role):
         """Removes self-serve roles to the caller.
 
         Examples:

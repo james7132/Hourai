@@ -242,7 +242,7 @@ class Music(BaseCog):
             await msg.edit(content=':x: Something went wrong!')
 
     async def _play_paused(self, ctx, player):
-        if not player.is_connected or not player.is_paused:
+        if not player.is_connected or not player.paused:
             await ctx.send('Something needs to be specified to play.')
             return
         if is_dj(ctx):
@@ -403,7 +403,7 @@ class Music(BaseCog):
             return
 
         track = player.current
-        requestor = ctx.guild.get_member(player.current_requestor)
+        requestor = player.current_requestor
         assert requestor is not None
 
         player.play_next(skip=True)
