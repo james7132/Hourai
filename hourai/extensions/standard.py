@@ -31,7 +31,6 @@ def die(val):
     return Dice(count=int(match.group(1)), min=min_val, max=max_val,
                 modifier=modifier, mod_type=match.group(3))
 
-
 class Standard(BaseCog):
 
     def __init__(self):
@@ -56,8 +55,12 @@ class Standard(BaseCog):
         """
         total_count = sum(d.count for d in dice)
         if total_count > 150:
-            await ctx.send('Cannot roll more than 150 dice at once')
+            await ctx.send('Cannot roll more than 150 dice at once.')
             return
+        if any(d.modifier < 0 or d.modifier > 99 for d in dice):
+            await ctx.send('Any modifier must be in the range of 0-99.')
+            return
+
         rolls = []
         total = 0
         for die in dice:
