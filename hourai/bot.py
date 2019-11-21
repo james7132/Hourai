@@ -44,18 +44,41 @@ class CommandInterpreter:
         raise NotImplementedError
 
 
-class AliasInterpreter(CommandInterpreter):
-    pass
+class CommandExcecutor(CommandInterpreter):
 
+    def __init__(self, interpreters):
+        self.interpreters = interpreters
 
-class CustomCommandInterpreter(CommandInterpreter):
-    pass
+    async def execute(self, ctx):
+        err = errors.CommandNotFound('Command "{ctx.invoked_with}" is not found')
+        for interpreter in self.interpreters:
+            try:
+                await interpreter.execute(ctx, self)
+                return
+            except errors.CommandNotFound:
+                pass
+            except Exception as e:
+                err = e
+                break
+        ctx.bot.dispatch('command_error', err)
 
 
 class DefaultCommandInterpreter(CommandInterpreter):
 
-    async def execute(self, ctx):
-        await self.bot.invoke(ctx)
+    async def execute(self, ctx, executor):
+        bot = ctx.bot
+        if ctx.command is not None:
+            bot.dispatch('command', ctx)
+            if await bot.can_run(ctx, call_once=True):
+                await ctx.command.invoke(ctx)
+            bot.dispatch('command_completion', ctx)
+        elif ctx.invoked_with:
+            raise errors.CommandNotFound('Command "{ctx.invoked_with}" is not found')
+
+
+class AliasInterpreter(CommandInterpreter):
+    pass
+
 
 
 class Hourai(commands.AutoShardedBot):

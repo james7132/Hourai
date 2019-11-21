@@ -211,7 +211,7 @@ class HouraiMusicPlayer(wavelink.Player):
         if self.queue_msg is not None:
             await self.queue_msg.stop()
         if self.np_msg is not None:
-            await self.queue_msg.stop()
+            await self.np_msg.stop()
 
     async def set_volume(self, volume):
         await super().set_volume(volume)

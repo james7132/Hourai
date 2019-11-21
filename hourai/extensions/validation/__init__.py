@@ -276,7 +276,7 @@ class Validation(BaseCog):
     async def setmodlog(self, ctx, channel: discord.TextChannel = None):
         # TODO(jame7132): Update this so it's in a different cog.
         channel = channel or ctx.channel
-        proxy = proxctx.get_guild_proxy()
+        proxy = ctx.get_guild_proxy()
         proxy.set_modlog_channel(channel)
         ctx.session.commit()
         await ctx.send(":thumbsup: Set {}'s modlog to {}.".format(
@@ -456,10 +456,10 @@ class Validation(BaseCog):
                        f"User {member.name} ({member.id}) requires manual "
                        f"verification.")
         if len(reasons_a) > 0:
-            message += ("\nApproved for the following reaasons: \n"
+            message += ("\nApproved for the following reasons: \n"
                         f"```\n{format.bullet_list(reasons_a)}\n```")
         if len(reasons_r) > 0:
-            message += ("\nRejected for the following reaasons: \n"
+            message += ("\nRejected for the following reasons: \n"
                         f"```\n{format.bullet_list(reasons_r)}\n```")
         ctx = await self.bot.get_automated_context(content='', author=member)
         async with ctx:
