@@ -3,7 +3,7 @@
 
 # Core packages [Required]
 discord.py==1.2.5
-aiohttp==3.5.4
+aiohttp==3.6.2
 uvloop==0.13.0
 
 # Configuration management [Required]
@@ -23,7 +23,7 @@ texttable==1.6.2
 pytimeparse==1.1.8
 
 # For music bot features [Optional]
-wavelink==0.2.8
+wavelink==0.3.4
 
 # API Wrappers for feeds and external services [Optional]
 praw==6.3.1
