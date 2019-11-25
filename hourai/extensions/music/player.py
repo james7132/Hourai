@@ -13,6 +13,7 @@ log = logging.getLogger('hourai.music.player')
 
 PROGRESS_BAR_WIDTH = 12
 TRACKS_PER_PAGE = 10
+POST_TRACK_WAIT = 5.0
 
 
 def get_default_channel(guild):
@@ -99,6 +100,10 @@ class HouraiMusicPlayer(wavelink.Player):
                 self.next_event.clear()
                 # Wait for TrackEnd event to set our event...
                 await self.next_event.wait()
+
+                # Wait for a few seconds before loading the next track due to the
+                # potential delay
+                await asyncio.sleep(POST_TRACK_WAIT)
 
                 # Clear votes...
                 self.skip_votes.clear()
