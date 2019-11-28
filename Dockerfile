@@ -18,6 +18,10 @@ RUN protoc $(find /app -type f -regex ".*\.proto") \
 FROM base
 WORKDIR /app
 RUN apk add --no-cache libstdc++
+# Run as non-root user
+RUN addgroup -g 969 -S hourai && \
+    adduser -u 969 -S hourai -G hourai
+USER hourai
 COPY --from=builder /install /usr/local
 COPY --from=builder /app /app
 CMD ["python", "launcher.py", "run"]
