@@ -22,7 +22,7 @@ def die(val):
     match = dice_match or fdice_match
     if not match:
         raise Exception("Input does not match a dice description.")
-    min_val = -2 if match == fdice_match else 0
+    min_val = -2 if match == fdice_match else 1 
     max_val = 2 if match == fdice_match else int(match.group(2))
     try:
         modifier = int(match.group(4))
