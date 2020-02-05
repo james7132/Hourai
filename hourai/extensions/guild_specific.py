@@ -5,6 +5,8 @@ from hourai.utils import invite
 from discord.ext import commands
 from hourai.cogs import GuildSpecificCog
 
+BANNED_GUILDS = {557153176286003221}
+
 
 class GuildSpecific_TheGap(GuildSpecificCog):
     """ Guild specific code for The Gap, a server list server for Touhou related
@@ -30,6 +32,8 @@ class GuildSpecific_TheGap(GuildSpecificCog):
         if 'big' in msg.channel.name:
             delete = delete or not any(
                 inv.approximate_member_count >= self.BIG_SERVER_SIZE
+                for inv in invites)
+        delete = delete or any(inv.guild.id in BANNED_GUILDS
                 for inv in invites)
         if delete:
             await msg.delete()
