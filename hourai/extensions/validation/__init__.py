@@ -175,11 +175,11 @@ class Validation(BaseCog):
         super().__init__()
         self.bot = bot
         self.ban_storage = BanStorage(bot, timeout=300)
-        self.purge_unverified.start()
+        # self.purge_unverified.start()
         self.reload_bans.start()
 
     def cog_unload(self):
-        self.purge_unverified.cancel()
+        # self.purge_unverified.cancel()
         self.reload_bans.cancel()
 
     @tasks.loop(seconds=150)
@@ -277,10 +277,10 @@ class Validation(BaseCog):
         # TODO(jame7132): Update this so it's in a different cog.
         channel = channel or ctx.channel
         proxy = ctx.get_guild_proxy()
-        proxy.set_modlog_channel(channel)
-        ctx.session.commit()
+        await proxy.set_modlog_channel(channel)
         await ctx.send(":thumbsup: Set {}'s modlog to {}.".format(
-            ctx.guild.name, channel.mention))
+            ctx.guild.name,
+            channel.mention if channel is not None else 'None'))
 
     @commands.command(name="getbans")
     @commands.is_owner()
@@ -297,28 +297,29 @@ class Validation(BaseCog):
         pass
 
     @validation.command(name="setup")
-    async def validation_setup(self, ctx, role: discord.Role):
+    async def validation_setup(self, ctx, role: discord.Role=None):
         config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
         config = config or proto.ValidationConfig()
         config.enabled = True
-        config.validation_role_id = role.id
+        if role is not None:
+            config.role_id = role.id
         await ctx.bot.storage.validation_configs.set(ctx.guild.id, config)
         await ctx.send('Validation configuration complete! Please run '
-                       '`~validation propagate` then `~validation lockdown` to'
+                       '`~validation propagate` to'
                        ' complete setup.')
 
     @validation.command(name="propagate")
     @commands.bot_has_permissions(manage_roles=True)
     async def validation_propagate(self, ctx):
         config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
-        if config is None:
+        if config is None or not config.HasField('role_id'):
             await ctx.send('No validation config was found. Please run '
                            '`~valdiation setup`')
             return
         msg = await ctx.send('Propagating validation role...!')
         if not ctx.guild.chunked:
             await ctx.bot.request_offline_members(ctx.guild)
-        role = ctx.guild.get_role(config.validation_role_id)
+        role = ctx.guild.get_role(config.role_id)
         if role is None:
             await ctx.send("Verification role not found.")
             config.ClearField('kick_unvalidated_users_after')
@@ -337,6 +338,9 @@ class Validation(BaseCog):
                     approval, _, _ = await _validate_member(self.bot, member)
                     if approval:
                         await member.add_roles(role)
+                except discord.errors.NotFound:
+                    # If members leave mid propogation, it 404s
+                    pass
                 except discord.errors.Forbidden:
                     pass
             for chunk in _chunk_iter(ctx.guild.members, BATCH_SIZE):
@@ -344,53 +348,17 @@ class Validation(BaseCog):
                 total_processed += len(chunk)
                 progress = f'{total_processed}/{member_count}'
                 await msg.edit(content=f'Propagation Ongoing ({progress})...')
-            await msg.edit(content=f'Propagation conplete!')
 
             members_with_role = [m for m in ctx.guild.members
                                  if role in m.roles]
-            if float(len(members_with_role)) / float(member_count) > 0.99:
+            if (member_count == 0 or
+                float(len(members_with_role)) / float(member_count) > 0.99):
                 lookback = int(PURGE_LOOKBACK.total_seconds())
                 config.kick_unvalidated_users_after = lookback
-                await ctx.bot.storage.validation_configs.get(
+                await ctx.bot.storage.validation_configs.set(
                         ctx.guild.id, config)
+                await msg.edit(content=f'Propagation conplete!')
                 return
-
-    # TODO(james7132): Fix this
-    # @validation.command(name="lockdown")
-    # @commands.bot_has_permissions(manage_channels=True)
-    # async def validation_lockdown(self, ctx):
-    # config = _get_validation_config(ctx.session, ctx.guild)
-    # if config is None:
-    # await ctx.send('No validation config was found. Please run
-    # `~valdiation setup`')
-    # return
-    # msg = await ctx.send('Locking down all channels!')
-    # everyone_role = ctx.guild.default_role
-    # validation_role = ctx.guild.get_role(config.validation_role_id)
-
-    # def update_overwrites(channel, role, read=True):
-    # overwrites = dict(channel.overwrites)
-    # validation = overwrites.get(role) or discord.PermissionOverwrite()
-    # validation.update(read_messages=read, connect=read)
-    # return validation
-
-    # everyone_perms = everyone_role.permissions
-    # everyone_perms.update(read_messages=False, connect=False)
-
-    # tasks = []
-    # tasks += [ch.set_permissions(validation_role,
-    # update_overwrites(ch, validation_role))
-    # for ch in ctx.guild.channels
-    # if ch.id != config.validation_channel_id]
-    # tasks.append(validation_channel.set_permissions(role,
-    # update_overwrites(valdiation_channel, everyone_role, read=True)))
-    # tasks.append(validation_channel.set_permissions(role,
-    # update_overwrites(valdiation_channel, validation_role, read=False)))
-    # tasks.append(everyone_role.edit(permissions=everyone_perms))
-
-    # await asyncio.gather(*tasks)
-    # await msg.edit(f'Lockdown complete! Make sure your mods can read the
-    # validation channel!')
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
