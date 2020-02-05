@@ -45,7 +45,7 @@ class HouraiContext(commands.Context):
         return self.bot.logger
 
     def get_guild_proxy(self, guild=None):
-        return proxies.GuildProxy(guild or self.guild, self.session)
+        return proxies.GuildProxy(self.bot, guild or self.guild)
 
     def get_automated_context(self, msg=None):
         if self.depth > MAX_CONTEXT_DEPTH:
