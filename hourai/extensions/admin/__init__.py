@@ -575,9 +575,12 @@ class Admin(BaseCog):
     # Prune commands
     # -------------------------------------------------------------------------
 
-    async def _prune(self, ctx, count=100, predicate=None):
+    async def _prune(self, ctx, count=100, timespan=None, predicate=None):
         predicate = predicate or (lambda m: True)
-        max_lookback = datetime.utcnow() - MAX_PRUNE_LOOKBACK
+        if timespan == None:
+            max_lookback = datetime.utcnow() - MAX_PRUNE_LOOKBACK
+        else:
+            max_lookback = datetime.utcnow() - timespan if timespan < MAX_PRUNE_LOOKBACK else MAX_PRUNE_LOOKBACK
 
         def _msg_filter(msg):
             return msg != ctx.message and predicate(msg)
@@ -587,7 +590,7 @@ class Admin(BaseCog):
             seen = 0
             async for msg in ctx.history():
                 seen += 1
-                if seen > count or msg.created_at < max_lookback:
+                if (seen > count and timespan == None) or msg.created_at < max_lookback:
                     break
                 if msg == ctx.message or not predicate(msg):
                     continue
@@ -608,14 +611,20 @@ class Admin(BaseCog):
     @commands.group(name="prune", invoke_without_command=True)
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def prune(self, ctx, count: int = 100):
+    async def prune(self, ctx, arg: typing.Union[int, human_timedelta] = 100):
         """Prunes messages in the current channel.
 
         Up to [count] messages will be deleted. By default this is 100.
+        You can alternatively specify a time, for example:
+          ~prune 5m
+          ~prune 3h
         Messages over 14 days old will not be deleted.
         Requires: Manage Messages (User and Bot)
         """
-        count = await self._prune(ctx, count=count)
+        if type(arg) is int:
+            count = await self._prune(ctx, count=arg)
+        else:
+            count = await self._prune(ctx, count=100, timespan=arg)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
