@@ -2,31 +2,31 @@
 # [Optional] = Can run without it. Features will be disabled.
 
 # Core packages [Required]
-discord.py==1.2.5
+discord.py==1.3.1
 aiohttp==3.6.2
-uvloop==0.13.0
+uvloop==0.14.0
 
 # Configuration management [Required]
 jsonnet==0.14.0
 Click==7.0
 
 # Data storage [Required]
-SQLAlchemy==1.3.4
-aioredis==1.2.0
-protobuf==3.9.1
+SQLAlchemy==1.3.13
+aioredis==1.3.1
+protobuf==3.11.2
 py-coders==1.1.5
 
 # Utility requirements [Required]
 humanize==0.5.1
-Pint==0.9
+Pint==0.10.1
 texttable==1.6.2
 pytimeparse==1.1.8
 
 # For music bot features [Optional]
-wavelink==0.3.4
+wavelink==0.3.5
 
 # API Wrappers for feeds and external services [Optional]
-praw==6.3.1
+praw==6.5.1
 
 # Debugging tools [Optional]
-guppy3==3.0.7
+guppy3==3.0.9
