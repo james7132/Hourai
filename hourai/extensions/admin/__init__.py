@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from discord.ext import commands, tasks
 from hourai import utils
 from hourai.utils import fake, format
-from hourai.db import proto, models
+from hourai.db import proto
 from hourai.cogs import BaseCog
 
 MAX_PRUNE_LOOKBACK = timedelta(days=14)
@@ -197,7 +197,8 @@ class Admin(BaseCog):
 
         Requires Deafen Members (User and Bot)
         """
-        await self._admin_action(ctx, members, lambda m: m.edit(deafen=False))
+        await self._admin_action(ctx, members,
+                                 lambda m: m.edit(deafen=False))
 
     @commands.command(name="move")
     @commands.guild_only()

@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 import collections
+import discord
 import enum
 import itertools
 import logging
@@ -50,12 +51,13 @@ class CommandExcecutor(CommandInterpreter):
         self.interpreters = interpreters
 
     async def execute(self, ctx):
-        err = errors.CommandNotFound('Command "{ctx.invoked_with}" is not found')
+        err = discord.errors.CommandNotFound(
+                'Command "{ctx.invoked_with}" is not found')
         for interpreter in self.interpreters:
             try:
                 await interpreter.execute(ctx, self)
                 return
-            except errors.CommandNotFound:
+            except discord.errors.CommandNotFound:
                 pass
             except Exception as e:
                 err = e
@@ -73,12 +75,12 @@ class DefaultCommandInterpreter(CommandInterpreter):
                 await ctx.command.invoke(ctx)
             bot.dispatch('command_completion', ctx)
         elif ctx.invoked_with:
-            raise errors.CommandNotFound('Command "{ctx.invoked_with}" is not found')
+            raise discord.errors.CommandNotFound(
+                    'Command "{ctx.invoked_with}" is not found')
 
 
 class AliasInterpreter(CommandInterpreter):
     pass
-
 
 
 class Hourai(commands.AutoShardedBot):

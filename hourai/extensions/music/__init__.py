@@ -403,7 +403,7 @@ class Music(BaseCog):
             return
 
         track = player.current
-        requestor = player.current_requestor
+        requestor = ctx.guild.get_member(player.current_requestor)
         assert requestor is not None
 
         player.play_next(skip=True)

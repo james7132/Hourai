@@ -4,15 +4,8 @@ import re
 class Validator():
     """Base class for all validators."""
 
-    async def get_approval_reasons(self, bot, member):
-        # Empty async generator
-        if False:
-            yield None
-
-    async def get_rejection_reasons(self, bot, member):
-        # Empty async generator
-        if False:
-            yield None
+    async def validate_member(self, ctx):
+        pass
 
 
 def split_camel_case(val):

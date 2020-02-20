@@ -1,3 +1,10 @@
+import logging
+from hourai import utils
+from hourai.utils import embed
+from hourai.db import proxies
+
+log = logging.getLogger('hourai.validation')
+
 
 class ValidationContext():
 
@@ -15,6 +22,14 @@ class ValidationContext():
         self.approval_reasons = []
         self.rejection_reasons = []
 
+    @property
+    def guild(self):
+        return self.member.guild
+
+    @property
+    def guild_proxy(self):
+        return proxies.GuildProxy(self.bot, self.member.guild)
+
     def usernames(self):
         names = set()
         if self.member.name is not None:
@@ -31,39 +46,11 @@ class ValidationContext():
         self.rejection_reasons.append(reason)
         self.approved = False
 
-    async def send_modlog_message(self):
-        proxy = proxies.GuildProxy(self.bot, self.member.guild)
-        if self.approved:
-            message = f"Verified user: {member.mention} ({member.id})."
-        else:
-            message = (f"{utils.mention_random_online_mod(member.guild)}. "
-                       f"User {member.name} ({member.id}) requires manual "
-                       f"verification.")
-        if len(self.approval_reasons) > 0:
-            message += ("\nApproved for the following reasons: \n"
-                        f"```\n{format.bullet_list(self.approval_reasons)}\n```")
-        if len(self.rejection_reasons) > 0:
-            message += ("\nRejected for the following reasons: \n"
-                        f"```\n{format.bullet_list(self.rejection_reasons)}\n```")
-        ctx = await self.bot.get_automated_context(content='', author=member)
-        async with ctx:
-            whois_embed = embed.make_whois_embed(ctx, member)
-            modlog_msg = await proxy.send_modlog_message(content=message,
-                                                         embed=whois_embed)
-            if modlog_msg is None:
-                return
-            try:
-                for reaction in MODLOG_REACTIONS:
-                    await modlog_msg.add_reaction(reaction)
-            except discord.errors.Forbidden:
-                pass
-
     async def apply_role(self):
-        if self.approved and self.role:
+        if self.approved and self.role and self.role not in self.member.roles:
             await self.member.add_roles(self.role)
 
     async def validate_member(self, validators):
-        assert validators is not None
         for validator in validators:
             try:
                 await validator.validate_member(self)
@@ -72,3 +59,26 @@ class ValidationContext():
                 log.exception('Error while running validator:')
         return self.approved
 
+    async def send_modlog_message(self):
+        member = self.member
+        if self.approved:
+            message = f"Verified user: {member.mention} ({member.id})."
+        else:
+            message = (f"{utils.mention_random_online_mod(member.guild)}. "
+                       f"User {member.name} ({member.id}) requires manual "
+                       f"verification.")
+
+        if len(self.approval_reasons) > 0:
+            message += ("\nApproved for the following reasons: \n"
+                        f"```\n{format.bullet_list(self.approval_reasons)}\n"
+                        f"```")
+        if len(self.rejection_reasons) > 0:
+            message += (f"\nRejected for the following reasons: \n"
+                        f"```\n{format.bullet_list(self.rejection_reasons)}\n"
+                        f"```")
+
+        ctx = await self.bot.get_automated_context(content='', author=member)
+        async with ctx:
+            whois_embed = embed.make_whois_embed(ctx, member)
+            return await self.guild_proxy.send_modlog_message(
+                    content=message, embed=whois_embed)

@@ -17,8 +17,10 @@ CacheConfig = collections.namedtuple(
                     'value_coder', 'timeout'),
     defaults=(None,) * 6)
 
+
 def protobuf(msg_type):
     return lambda: coders.ProtobufCoder(msg_type)
+
 
 class StoragePrefix(enum.Enum):
     """ Top level prefixes in the root keyspace of Redis. """
@@ -31,8 +33,8 @@ class StoragePrefix(enum.Enum):
 
 class GuildPrefix(enum.Enum):
     """ Guild config prefixes. Used as prefixes or full keys in the hash
-    underneath the guild key. All use the StoragePrefix.GUILD as a prefix to the
-    top level key.
+    underneath the guild key. All use the StoragePrefix.GUILD as a prefix to
+    the top level key.
     """
     # 1:1s. Hash key is just the prefix. Size: 1 byte.
     AUTO_CONFIG = CacheConfig(
@@ -161,7 +163,7 @@ class Storage:
     def _get_cache_configs():
         configs = list(GuildPrefix)
         configs = [conf.value._replace(attr=conf.name.lower() + 's',
-                                      prefix=StoragePrefix.GUILD)
+                                       prefix=StoragePrefix.GUILD)
                    for conf in configs]
         configs.append(
                 CacheConfig(attr='bans',
@@ -182,11 +184,12 @@ class Storage:
         engine = engine or self._create_sql_engine()
         models.Base.metadata.create_all(engine)
 
-    def _create_sql_engine(self):
-        return create_engine(
-            config.get_config_value(self.config, 'database', type=str),
-            poolclass=pool.SingletonThreadPool,
-            connect_args={'check_same_thread': False})
+    def _create_sql_engine(self, connection_str=None):
+        connection_str = connection_str or \
+            config.get_config_value(self.config, 'database', type=str)
+        return create_engine(connection_str,
+                             poolclass=pool.SingletonThreadPool,
+                             connect_args={'check_same_thread': False})
 
 
 class StorageSession:

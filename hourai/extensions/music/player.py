@@ -16,22 +16,6 @@ TRACKS_PER_PAGE = 10
 POST_TRACK_WAIT = 5.0
 
 
-def get_default_channel(guild):
-    channels = filter(lambda ch: ch.permissions_for(guild.me).connect,
-                      guild.voice_channels)
-    return next(channels, None)
-
-
-async def get_voice_channel(guild):
-    music_config = await get_music_config(ctx)
-    channel = None
-    if music_config.HasField('voice_channel_id'):
-        channel = ctx.guild.get_channel(music_config.voice_channel_id)
-        if isinstance(channel, discord.VoiceChannel):
-            channel = None
-    return channel or get_default_channel(ctx.guild)
-
-
 class Unauthorized(Exception):
     pass
 
@@ -65,6 +49,20 @@ class HouraiMusicPlayer(wavelink.Player):
         await self.bot.storage.music_configs.set(self.guild_id,
                                                  music_config)
 
+    def get_default_channel(self):
+        return discord.utils.find(
+                lambda ch: ch.permissions_for(self.guild.me).connect,
+                self.guild.voice_channels)
+
+    async def get_voice_channel(self):
+        music_config = await self.get_music_config()
+        channel = None
+        if music_config.HasField('voice_channel_id'):
+            channel = self.guild.get_channel(music_config.voice_channel_id)
+            if isinstance(channel, discord.VoiceChannel):
+                channel = None
+        return channel or self.get_default_channel()
+
     async def __init_player_loop(self):
         await self.set_preq('Flat')
         config = await self.get_music_config()
@@ -87,7 +85,7 @@ class HouraiMusicPlayer(wavelink.Player):
                     continue
 
                 if not self.is_connected:
-                    channel = await get_voice_channel(self.guild)
+                    channel = await self.get_voice_channel()
                     if channel is None:
                         continue
                     await self.connect(channel.id)
@@ -100,10 +98,6 @@ class HouraiMusicPlayer(wavelink.Player):
                 self.next_event.clear()
                 # Wait for TrackEnd event to set our event...
                 await self.next_event.wait()
-
-                # Wait for a few seconds before loading the next track due to the
-                # potential delay
-                await asyncio.sleep(POST_TRACK_WAIT)
 
                 # Clear votes...
                 self.skip_votes.clear()
@@ -123,7 +117,6 @@ class HouraiMusicPlayer(wavelink.Player):
         if isinstance(event, wavelink.TrackEnd):
             if event.reason in ('FINISHED', 'LOAD_FAILED'):
                 self.play_next()
-        elif isinstance(event, wavelink.TrackException):
             log.error(event.error)
 
     @property
@@ -328,7 +321,8 @@ class MusicQueueUI(MusicNowPlayingUI):
             elem.append(f'`{idx}.` `[{duration}]` **{track.title}** - '
                         f'<@{requestor_id}>')
             idx += 1
-        embed = discord.Embed(description='\n'.join(elem))
+        if page_count > 1:
+            embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
         if page_count > 1:
             embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
         self.iterations_left -= 1

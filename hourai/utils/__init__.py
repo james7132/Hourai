@@ -5,7 +5,6 @@ import inspect
 import random
 import re
 import time
-import collections
 from hourai import config
 
 MODERATOR_PREFIX = 'mod'
@@ -107,7 +106,7 @@ def is_deleted_user(user):
 
 def is_moderator(member):
     """ Checks if a user is a moderator. """
-    if member is None or not hasattr(member, 'roles'):
+    if member is None or not hasattr(member, 'roles') or member.bot:
         return False
     return any(is_moderator_role(r) for r in member.roles)
 
@@ -150,7 +149,8 @@ def find_moderator_roles(guild):
 def find_moderators(guild):
     """Finds all of the moderators on a server. Returns a generator of members.
     """
-    return all_with_roles(guild.members, find_moderator_roles(guild))
+    return filter(lambda m: m is not None and not m.bot,
+                  all_with_roles(guild.members, find_moderator_roles(guild)))
 
 
 def find_bots(guild):

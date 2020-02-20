@@ -27,8 +27,8 @@ class GuildProxy:
 
     async def get_validation_config(self):
         if self._validation_config is None:
-            self._validation_config = await self.storage.validation_configs.get(
-                    self.guild.id)
+            self._validation_config = (
+                await self.storage.validation_configs.get(self.guild.id))
         return self._validation_config
 
     async def set_validation_config(self, cfg):

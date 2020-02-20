@@ -1,8 +1,6 @@
-import enum
 from hourai import cogs
 from hourai.bot import CounterKeys
 from discord.ext import commands
-
 
 
 class Counters(cogs.BaseCog):

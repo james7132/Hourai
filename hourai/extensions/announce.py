@@ -28,7 +28,7 @@ class Announce(cogs.BaseCog):
     @announce.command(name='join')
     async def announce_join(self, ctx):
         announce_config = await self.get_announce_config(ctx.guild)
-        result = self.__toggle_channel(ctx, announce_config.joins);
+        result = self.__toggle_channel(ctx, announce_config.joins)
         await self.set_announce_config(ctx.guild, announce_config)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Join messages {suffix}")
@@ -36,7 +36,7 @@ class Announce(cogs.BaseCog):
     @announce.command(name='leave')
     async def announce_leave(self, ctx):
         announce_config = await self.get_announce_config(ctx.guild)
-        result = self.__toggle_channel(ctx, announce_config.leaves);
+        result = self.__toggle_channel(ctx, announce_config.leaves)
         await self.set_announce_config(ctx.guild, announce_config)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Leave messages {suffix}")
@@ -44,7 +44,7 @@ class Announce(cogs.BaseCog):
     @announce.command(name='ban')
     async def announce_ban(self, ctx):
         announce_config = await self.get_announce_config(ctx.guild)
-        result = self.__toggle_channel(ctx, announce_config.bans);
+        result = self.__toggle_channel(ctx, announce_config.bans)
         await self.set_announce_config(ctx.guild, announce_config)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Ban messages {suffix}")
@@ -118,7 +118,10 @@ class Announce(cogs.BaseCog):
         for channel in channels:
             content = random.choice(choices)
             tasks.append(channel.send(content))
-        await asyncio.gather(*tasks)
+        try:
+            await asyncio.gather(*tasks)
+        except discord.errors.Forbidden:
+            pass
 
 
 def setup(bot):

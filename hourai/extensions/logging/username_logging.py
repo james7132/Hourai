@@ -1,13 +1,10 @@
 import asyncio
 import logging
 import random
-import collections
-import itertools
 from datetime import datetime
-from discord.ext import commands, tasks
+from discord.ext import commands
 from hourai.cogs import BaseCog
 from hourai.db.models import Username
-from sqlalchemy import func
 from sqlalchemy.exc import OperationalError
 
 MAX_STORED_USERNAMES = 20
@@ -62,8 +59,8 @@ class UsernameLogging(BaseCog):
     @commands.is_owner()
     async def refresh(self, ctx):
         async with ctx.typing():
-            await asyncio.gather(*[self.log_username_change(user)
-                for user in ctx.bot.users])
+            await asyncio.gather(
+                *[self.log_username_change(user) for user in ctx.bot.users])
         await ctx.send(':thumbsup:')
 
     async def log_username_change(self, user):

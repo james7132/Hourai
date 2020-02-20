@@ -7,9 +7,9 @@ from hourai.utils.iterable import first
 class MusicQueue(asyncio.Queue):
     """An asyncio.Queue implementation that forms a FIFO, round-robin queue
     based on the provided key. The input is expected to be a tuple of
-    (key, value). Backed by a collections.OrderedDict of lists, batch operations
-    over individual queues for each key are either O(1) or O(k) operations, where
-    k is the number of entries under that key.
+    (key, value). Backed by a collections.OrderedDict of lists, batch
+    operations over individual queues for each key are either O(1) or O(k)
+    operations, where k is the number of entries under that key.
 
     Example:
       Input: (a, 1), (a, 2), (b, 1), (c, 1), (a, 3), (b, 2)
@@ -94,7 +94,7 @@ class MusicQueue(asyncio.Queue):
     def __iter_self(self):
         indexes = collections.deque((key, 0) for key in self._queue.keys())
         while len(indexes) > 0:
-            key, idx  = indexes.popleft()
+            key, idx = indexes.popleft()
             queue = self._queue[key]
             if idx >= len(queue):
                 continue

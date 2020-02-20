@@ -3,12 +3,13 @@ import discord
 import logging
 from . import approvers, rejectors
 from .storage import BanStorage
+from .context import ValidationContext
 from discord.ext import tasks, commands
 from datetime import datetime, timedelta
 from hourai import utils
 from hourai.cogs import BaseCog
 from hourai.db import proxies, proto
-from hourai.utils import format, embed, checks
+from hourai.utils import format, checks
 
 log = logging.getLogger(__name__)
 
@@ -137,28 +138,6 @@ VALIDATORS = (
 )
 
 
-async def _validate_member(bot, member):
-    approval = True
-    approval_reasons = []
-    rejection_reasons = []
-    for validator in VALIDATORS:
-        try:
-            async for reason in validator.get_rejection_reasons(bot, member):
-                if reason is None:
-                    continue
-                rejection_reasons.append(reason)
-                approval = False
-            async for reason in validator.get_approval_reasons(bot, member):
-                if reason is None:
-                    continue
-                approval_reasons.append(reason)
-                approval = True
-        except Exception:
-            # TODO(james7132) Handle the error
-            log.exception('Error while running validator:')
-    return approval, approval_reasons, rejection_reasons
-
-
 def _chunk_iter(src, chunk_size):
     chunk = []
     for val in src:
@@ -182,7 +161,7 @@ class Validation(BaseCog):
         # self.purge_unverified.cancel()
         self.reload_bans.cancel()
 
-    @tasks.loop(seconds=150)
+    @tasks.loop(seconds=180)
     async def reload_bans(self):
         for guild in self.bot.guilds:
             try:
@@ -197,6 +176,8 @@ class Validation(BaseCog):
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
+        if not guild.me.guild_permissions.ban_members:
+            return
         try:
             ban_info = await guild.fetch_ban(user)
             await self.ban_storage.save_ban(guild.id, ban_info.user.id,
@@ -297,7 +278,7 @@ class Validation(BaseCog):
         pass
 
     @validation.command(name="setup")
-    async def validation_setup(self, ctx, role: discord.Role=None):
+    async def validation_setup(self, ctx, role: discord.Role = None):
         config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
         config = config or proto.ValidationConfig()
         config.enabled = True
@@ -323,7 +304,7 @@ class Validation(BaseCog):
         if role is None:
             await ctx.send("Verification role not found.")
             config.ClearField('kick_unvalidated_users_after')
-            await ctx.bot.storage.validation_configs.get(ctx.guild.id, config)
+            await ctx.bot.storage.validation_configs.set(ctx.guild.id, config)
             return
         while True:
             filtered_members = [m for m in ctx.guild.members
@@ -335,15 +316,15 @@ class Validation(BaseCog):
                 if role in member.roles:
                     return
                 try:
-                    approval, _, _ = await _validate_member(self.bot, member)
-                    if approval:
-                        await member.add_roles(role)
+                    validation_ctx = ValidationContext(ctx.bot, member, config)
+                    await validation_ctx.validate_member(VALIDATORS)
+                    await self.verify_member(validation_ctx)
                 except discord.errors.NotFound:
                     # If members leave mid propogation, it 404s
                     pass
                 except discord.errors.Forbidden:
                     pass
-            for chunk in _chunk_iter(ctx.guild.members, BATCH_SIZE):
+            for chunk in _chunk_iter(filtered_members, BATCH_SIZE):
                 await asyncio.gather(*[add_role(mem, role) for mem in chunk])
                 total_processed += len(chunk)
                 progress = f'{total_processed}/{member_count}'
@@ -352,7 +333,7 @@ class Validation(BaseCog):
             members_with_role = [m for m in ctx.guild.members
                                  if role in m.roles]
             if (member_count == 0 or
-                float(len(members_with_role)) / float(member_count) > 0.99):
+               float(len(members_with_role)) / float(member_count) > 0.99):
                 lookback = int(PURGE_LOOKBACK.total_seconds())
                 config.kick_unvalidated_users_after = lookback
                 await ctx.bot.storage.validation_configs.set(
@@ -366,13 +347,18 @@ class Validation(BaseCog):
         config = await proxy.get_validation_config()
         if config is None or not config.enabled:
             return
-        approved, r_a, r_r = await _validate_member(self.bot, member)
-        tasks = [self.send_verification_modlog(member, approved, r_a, r_r)]
-        if approved:
-            tasks.append(self.verify_member(member, proxy=proxy))
-        else:
-            self.bot.dispatch('verify_reject', member)
-        await asyncio.gather(*tasks)
+
+        ctx = ValidationContext(self.bot, member, config)
+        await ctx.validate_member(VALIDATORS)
+        await self.verify_member(ctx)
+
+        msg = await ctx.send_modlog_message()
+        if msg is None:
+            try:
+                for reaction in MODLOG_REACTIONS:
+                    await msg.add_reaction(reaction)
+            except discord.errors.Forbidden:
+                pass
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -396,7 +382,10 @@ class Validation(BaseCog):
             return
         perms = user.guild_permissions
         if reaction.emoji == APPROVE_REACTION and perms.manage_messages:
-            await self.verify_member(member, proxy)
+            config = await self.bot.storage.validation_configs.get(guild.id)
+            config = config or proto.ValidationConfig()
+            ctx = ValidationContext(self.bot, member, config)
+            await self.verify_member(ctx)
         elif reaction.emoji == KICK_REACTION and perms.kick_members:
             await member.kick(reason=(f'Failed verification.'
                                       f' Kicked by {user.name}.'))
@@ -404,43 +393,10 @@ class Validation(BaseCog):
             await member.ban(reason=(f'Failed verification.'
                                      f' Banned by {user.name}.'))
 
-    async def verify_member(self, member, proxy=None):
-        proxy = proxy or proxies.GuildProxy(self.bot, member.guild)
-        assert member.guild == proxy.guild
-        validation_config = await proxy.get_validation_config()
-        if validation_config.HasField('role_id'):
-            role = member.guild.get_role(validation_config.role_id)
-            if role is not None and role not in member.roles:
-                await member.add_roles(role)
-        self.bot.dispatch('verify_accept', member)
-
-    async def send_verification_modlog(self, member, approved, reasons_a,
-                                       reasons_r):
-        proxy = proxies.GuildProxy(self.bot, member.guild)
-        if approved:
-            message = f"Verified user: {member.mention} ({member.id})."
-        else:
-            message = (f"{utils.mention_random_online_mod(member.guild)}. "
-                       f"User {member.name} ({member.id}) requires manual "
-                       f"verification.")
-        if len(reasons_a) > 0:
-            message += ("\nApproved for the following reasons: \n"
-                        f"```\n{format.bullet_list(reasons_a)}\n```")
-        if len(reasons_r) > 0:
-            message += ("\nRejected for the following reasons: \n"
-                        f"```\n{format.bullet_list(reasons_r)}\n```")
-        ctx = await self.bot.get_automated_context(content='', author=member)
-        async with ctx:
-            whois_embed = embed.make_whois_embed(ctx, member)
-            modlog_msg = await proxy.send_modlog_message(content=message,
-                                                         embed=whois_embed)
-            if modlog_msg is None:
-                return
-            try:
-                for reaction in MODLOG_REACTIONS:
-                    await modlog_msg.add_reaction(reaction)
-            except discord.errors.Forbidden:
-                pass
+    async def verify_member(self, ctx):
+        await ctx.apply_role()
+        self.bot.dispatch('verify_' + ('accept' if ctx.approved else 'reject'),
+                          ctx.member)
 
     async def report_bans(self, ban_info):
         user = ban_info.user

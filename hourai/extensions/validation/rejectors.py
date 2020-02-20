@@ -19,17 +19,18 @@ class NameMatchRejector(Validator):
         self.member_selector = member_selector or (lambda m: m.name)
         self.min_match_length = min_match_length
 
-    async def get_rejection_reasons(self, bot, member):
+    async def validate_member(self, ctx):
         member_names = {}
-        for guild_member in filter(self.filter, member.guild.members):
+        for guild_member in filter(self.filter, ctx.guild.members):
             name = self.member_selector(guild_member) or ''
             member_names.update({
                 p: generalize_filter(p) for p in self._split_name(name)
             })
-        field_value = self.subfield(member)
+        field_value = self.subfield(ctx.member)
         for filter_name, regex in member_names.items():
             if re.search(regex, field_value):
-                yield self.prefix + 'Matches: `{}`'.format(filter_name)
+                ctx.add_rejection_reason(
+                    self.prefix + f'Matches: `{filter_name}`')
 
     def _split_name(self, name):
         split_name = split_camel_case(name)
@@ -54,11 +55,12 @@ class StringFilterRejector(Validator):
             self.match_func = lambda r: r.search
         print(self.filters)
 
-    async def get_rejection_reasons(self, bot, member):
-        field_value = self.subfield(member)
+    async def validate_member(self, ctx):
+        field_value = self.subfield(ctx.member)
         for filter_name, regex in self.filters:
             if self.match_func(regex)(field_value):
-                yield self.prefix + 'Matches: `{}`'.format(filter_name)
+                ctx.add_rejection_reason(
+                    self.prefix + f'Matches: `{filter_name}`')
 
 
 class NewAccountRejector(Validator):
@@ -69,28 +71,30 @@ class NewAccountRejector(Validator):
     def __init__(self, *, lookback):
         self.lookback = lookback
 
-    async def get_rejection_reasons(self, bot, member):
-        if member.created_at > datetime.utcnow() - self.lookback:
+    async def validate_member(self, ctx):
+        if ctx.member.created_at > datetime.utcnow() - self.lookback:
             lookback_naturalized = humanize.naturaltime(self.lookback)
-            yield f"Account created less than {lookback_naturalized}"
+            ctx.add_rejection_reason(
+                f"Account created less than {lookback_naturalized}")
 
 
 class DeletedAccountRejector(Validator):
     """A suspicion level validator that rejects users that are deleted."""
 
-    async def get_rejection_reasons(self, bot, member):
-        if utils.is_deleted_user(member):
-            yield ("User has been deleted by Discord at their own consent or "
-                   "for Trust and Safety reasons, or is faking account "
-                   "deletion.")
+    async def validate_member(self, ctx):
+        if utils.is_deleted_user(ctx.member):
+            ctx.add_rejection_reason(
+                "User has been deleted by Discord of their own accord or "
+                "for Trust and Safety reasons, or is faking account "
+                "deletion.")
 
 
 class NoAvatarRejector(Validator):
     """A suspicion level validator that rejects users without avatars."""
 
-    async def get_rejection_reasons(self, bot, member):
-        if member.avatar is None:
-            yield "User has no avatar."
+    async def validate_member(self, ctx):
+        if ctx.member.avatar is None:
+            ctx.add_rejection_reason("User has no avatar.")
 
 
 class BannedUserRejector(Validator):
@@ -101,21 +105,22 @@ class BannedUserRejector(Validator):
     def __init__(self, *, min_guild_size):
         self.min_guild_size = min_guild_size
 
-    async def get_rejection_reasons(self, bot, member):
+    async def validate_member(self, ctx):
         banned = False
         reasons = set()
-        guild_ids = [g.id for g in bot.guilds if self._is_valid_guild(g)]
-        bans = await BanStorage(bot).get_bans(member.id, guild_ids)
+        guild_ids = [g.id for g in ctx.bot.guilds if self._is_valid_guild(g)]
+        bans = await BanStorage(ctx.bot).get_bans(ctx.member.id, guild_ids)
         for ban in bans:
-            guild = bot.get_guild(ban.guild_id)
+            guild = ctx.bot.get_guild(ban.guild_id)
             assert self._is_valid_guild(guild)
             if ban.reason is not None and ban.reason not in reasons:
-                yield f"Banned on another server. Reason: `{ban.reason}`."
+                ctx.add_rejection_reason(
+                    f"Banned on another server. Reason: `{ban.reason}`.")
                 reasons.add(ban.reason)
             banned = True
 
         if len(reasons) == 0 and banned:
-            yield "Banned on another server."
+            ctx.add_rejection_reason("Banned on another server.")
 
     def _is_valid_guild(self, guild):
         return guild is not None and guild.member_count >= self.min_guild_size

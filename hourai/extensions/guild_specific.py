@@ -34,7 +34,7 @@ class GuildSpecific_TheGap(GuildSpecificCog):
                 inv.approximate_member_count >= self.BIG_SERVER_SIZE
                 for inv in invites)
         delete = delete or any(inv.guild.id in BANNED_GUILDS
-                for inv in invites)
+                               for inv in invites)
         if delete:
             await msg.delete()
 

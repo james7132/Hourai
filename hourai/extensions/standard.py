@@ -11,6 +11,7 @@ from hourai.cogs import BaseCog
 from hourai.utils import embed, format
 from discord.ext import commands
 
+
 DICE_REGEX = re.compile(r"(\d+)d(\d+)(.?)(\d*)")
 FDICE_REGEX = re.compile(r"(\d+)df(.?)(\d*)")
 Dice = collections.namedtuple("Dice", "count min max modifier mod_type")
@@ -26,10 +27,11 @@ def die(val):
     max_val = 2 if match == fdice_match else int(match.group(2))
     try:
         modifier = int(match.group(4))
-    except:
+    except Exception:
         modifier = 0
     return Dice(count=int(match.group(1)), min=min_val, max=max_val,
                 modifier=modifier, mod_type=match.group(3))
+
 
 class Standard(BaseCog):
 
@@ -108,12 +110,13 @@ class Standard(BaseCog):
                                     else str(activity))
                     if regex.search(activity_str):
                         yield (activity_str, member)
+
         def member_list(members):
             return format.comma_list(m[1].display_name for m in members)
         member_activities = sorted(activities(), key=lambda x: x[0])
         lines = [f'**{k}**: {member_list(v)}'
                  for k, v in itertools.groupby(member_activities,
-                 lambda x: x[0])]
+                                               lambda x: x[0])]
         if len(lines) <= 0:
             await ctx.send('Nobody found!')
         else:
@@ -125,10 +128,10 @@ class Standard(BaseCog):
         guild = ctx.guild
         owner = guild.owner
         msg_embed = discord.Embed(title=f'{guild.name} ({guild.id})',
-                              description=guild.description)
+                                  description=guild.description)
         msg_embed.set_thumbnail(url=guild.icon_url)
         msg_embed.add_field(name='Owner',
-                        value=f'{owner.name}#{owner.discriminator}')
+                            value=f'{owner.name}#{owner.discriminator}')
         msg_embed.add_field(name='Members', value=str(guild.member_count))
         embed._add_time_field(msg_embed, 'Created On', guild.created_at,
                               datetime.utcnow())
@@ -139,7 +142,7 @@ class Standard(BaseCog):
             msg_embed.add_field(name='Boosters', value=value)
         if guild.features:
             msg_embed.add_field(name='Features',
-                            value=format.code_list(guild.features))
+                                value=format.code_list(guild.features))
         await ctx.send(embed=msg_embed)
 
     # @commands.command()
