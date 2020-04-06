@@ -100,7 +100,7 @@ VALIDATORS = (
     # Filter sexually inapproriate usernames.
     rejectors.StringFilterRejector(
         prefix='Sexually inapproriate username. ',
-        filters=['anal', 'cock', 'vore', 'scat', 'fuck', 'pussy',
+        filters=['anal', 'cock', 'vore', 'scat', 'fuck', 'pussy', 'urethra',
                  'penis', 'piss', 'shit', 'cum']),
 
     # -----------------------------------------------------------------
@@ -115,8 +115,8 @@ VALIDATORS = (
     rejectors.BannedUserRejector(min_guild_size=150),
 
     # Check the username against known banned users from the current
-    # server.
-    # BannedUserNameMatchRejector(min_guild_size=150)
+    # server. Requires exact username match (case insensitive)
+    rejectors.BannedUsernameRejector(),
 
     # -----------------------------------------------------------------
     # Raid Level Validators
@@ -319,10 +319,8 @@ class Validation(BaseCog):
                     validation_ctx = ValidationContext(ctx.bot, member, config)
                     await validation_ctx.validate_member(VALIDATORS)
                     await self.verify_member(validation_ctx)
-                except discord.errors.NotFound:
+                except (discord.errors.Forbidden, discord.errors.NotFound):
                     # If members leave mid propogation, it 404s
-                    pass
-                except discord.errors.Forbidden:
                     pass
             for chunk in _chunk_iter(filtered_members, BATCH_SIZE):
                 await asyncio.gather(*[add_role(mem, role) for mem in chunk])
@@ -353,12 +351,11 @@ class Validation(BaseCog):
         await self.verify_member(ctx)
 
         msg = await ctx.send_modlog_message()
-        if msg is None:
-            try:
-                for reaction in MODLOG_REACTIONS:
-                    await msg.add_reaction(reaction)
-            except discord.errors.Forbidden:
-                pass
+        try:
+            for reaction in MODLOG_REACTIONS:
+                await msg.add_reaction(reaction)
+        except (AttributeError, discord.errors.Forbidden):
+            pass
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):

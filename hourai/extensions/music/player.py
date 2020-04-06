@@ -250,17 +250,17 @@ class MusicNowPlayingUI(MusicPlayerUI):
         return f':notes: **Now Playing in {channel.name}...**'
 
     async def create_embed(self):
-        embed = discord.Embed()
+        ui_embed = discord.Embed()
         track = self.player.current
         if track is None:
-            embed.title = 'No music playing'
+            ui_embed.title = 'No music playing'
             prefix = utils.STOP_EMOJI
             suffix = ''
             progress = 2.0  # At 200% progress, blank progress bar
             await self.stop()
         else:
-            embed.title = track.title
-            embed.url = track.uri
+            ui_embed.title = track.title
+            ui_embed.url = track.uri
             prefix = (utils.PAUSE_EMOJI if self.player.paused
                       else utils.PLAY_EMOJI)
             suffix = (f'`[{utils.time_format(self.player.position)}/'
@@ -272,11 +272,11 @@ class MusicNowPlayingUI(MusicPlayerUI):
             avatar_url = (requestor.avatar_url or
                           requestor.default_avatar_url)
             name = f'{requestor.name}#{requestor.discriminator}'
-            embed.set_author(name=name, icon_url=avatar_url)
+            ui_embed.set_author(name=name, icon_url=avatar_url)
 
         progress_bar = utils.progress_bar(progress, PROGRESS_BAR_WIDTH)
-        embed.description = prefix + progress_bar + suffix + ":speaker:"
-        return embed
+        ui_embed.description = prefix + progress_bar + suffix + ":speaker:"
+        return ui_embed
 
 
 class MusicQueueUI(MusicNowPlayingUI):
@@ -307,6 +307,7 @@ class MusicQueueUI(MusicNowPlayingUI):
                 f' | {len(self.player.queue)} entries | `{duration}`')
 
     async def create_embed(self):
+        ui_embed = discord.Embed()
         queue_length = len(self.player.queue)
         if queue_length <= 0:
             return await super().create_embed()
@@ -322,13 +323,13 @@ class MusicQueueUI(MusicNowPlayingUI):
                         f'<@{requestor_id}>')
             idx += 1
         if page_count > 1:
-            embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
+            ui_embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
         if page_count > 1:
-            embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
+            ui_embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
         self.iterations_left -= 1
         if self.iterations_left <= 0:
             await self.stop()
-        return embed
+        return ui_embed
 
     def get_queue_duration(self):
         return sum(t.duration for r, t in self.frozen_queue)

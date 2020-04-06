@@ -48,7 +48,7 @@ class StringFilterRejector(Validator):
     def __init__(self, *, prefix, filters, full_match=False, subfield=None):
         self.prefix = prefix or ''
         self.filters = [(f, re.compile(generalize_filter(f))) for f in filters]
-        self.subfield = subfield or (lambda m: m.name)
+        self.subfield = subfield or (lambda ctx: ctx.usernames)
         if full_match:
             self.match_func = lambda r: r.match
         else:
@@ -56,11 +56,11 @@ class StringFilterRejector(Validator):
         print(self.filters)
 
     async def validate_member(self, ctx):
-        field_value = self.subfield(ctx.member)
-        for filter_name, regex in self.filters:
-            if self.match_func(regex)(field_value):
-                ctx.add_rejection_reason(
-                    self.prefix + f'Matches: `{filter_name}`')
+        for field_value in self.subfield(ctx):
+            for filter_name, regex in self.filters:
+                if self.match_func(regex)(field_value):
+                    ctx.add_rejection_reason(
+                        self.prefix + f'Matches: `{filter_name}`')
 
 
 class NewAccountRejector(Validator):
@@ -124,3 +124,26 @@ class BannedUserRejector(Validator):
 
     def _is_valid_guild(self, guild):
         return guild is not None and guild.member_count >= self.min_guild_size
+
+
+class BannedUsernameRejector(Validator):
+    """A malice level validator that rejects users that have an exact name match
+    with a banned user of the server.
+    """
+
+    async def validate_member(self, ctx):
+        # TODO(james7132): Make this use the Ban cache to pull this information
+        bans = await ctx.guild.bans()
+        normalized_bans = {self._normalize(ban.user.name): ban.user.name
+                           for ban in bans}
+        for username in ctx.usernames:
+            name = self._normalize(username)
+            for normalized, original in normalized_bans.items():
+                if name != normalized:
+                    continue
+                ctx.add_rejection_reason(
+                    f"Exact username match with banned user: `{original}`.")
+                break
+
+    def _normalize(self, val):
+        return " ".join(val.casefold().split())

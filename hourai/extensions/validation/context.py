@@ -1,7 +1,7 @@
 import logging
 from hourai import utils
-from hourai.utils import embed
-from hourai.db import proxies
+from hourai.utils import embed, format
+from hourai.db import proxies, models
 
 log = logging.getLogger('hourai.validation')
 
@@ -15,12 +15,14 @@ class ValidationContext():
         self.member = member
         self.guild_config = guild_config
         self.role = None
-        if guild_config.validation_role_id:
-            self.role = member.guild.get_role(guild_config.validation_role_id)
+        if guild_config.role_id:
+            self.role = member.guild.get_role(guild_config.role_id)
 
         self.approved = True
         self.approval_reasons = []
         self.rejection_reasons = []
+
+        self._usernames = None
 
     @property
     def guild(self):
@@ -30,11 +32,18 @@ class ValidationContext():
     def guild_proxy(self):
         return proxies.GuildProxy(self.bot, self.member.guild)
 
+    @property
     def usernames(self):
-        names = set()
-        if self.member.name is not None:
-            names.add(self.member.name)
-        return names
+        if self._usernames is None:
+            names = set()
+            if self.member.name is not None:
+                names.add(self.member.name)
+            with self.bot.create_storage_session() as session:
+                names.update([x for x, in session.query(
+                    models.Username.name).filter_by(user_id=self.member.id)
+                                         .distinct()])
+            self._usernames = names
+        return self._usernames
 
     def add_approval_reason(self, reason):
         assert reason is not None
@@ -54,9 +63,10 @@ class ValidationContext():
         for validator in validators:
             try:
                 await validator.validate_member(self)
-            except Exception:
+            except Exception as error:
                 # TODO(james7132) Handle the error
                 log.exception('Error while running validator:')
+                await self.bot.send_owner_error(error)
         return self.approved
 
     async def send_modlog_message(self):

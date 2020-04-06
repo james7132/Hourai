@@ -182,9 +182,13 @@ class MessageUI:
                 await self.delete()
             elif self.message is not None:
                 await self.message.clear_reactions()
-        except discord.Forbidden:
+        except (discord.NotFound, discord.Forbidden):
             pass
 
     async def delete(self):
-        if self.message is not None:
-            await self.message.delete()
+        try:
+            self.stop_event.set()
+            if self.message is not None:
+                await self.message.delete()
+        except (discord.NotFound, discord.Forbidden):
+            pass
