@@ -322,8 +322,7 @@ class MusicQueueUI(MusicNowPlayingUI):
             elem.append(f'`{idx}.` `[{duration}]` **{track.title}** - '
                         f'<@{requestor_id}>')
             idx += 1
-        if page_count > 1:
-            ui_embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
+        ui_embed.description = '\n'.join(elem)
         if page_count > 1:
             ui_embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
         self.iterations_left -= 1
