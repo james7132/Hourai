@@ -101,7 +101,7 @@ VALIDATORS = (
     rejectors.StringFilterRejector(
         prefix='Sexually inapproriate username. ',
         filters=['anal', 'cock', 'vore', 'scat', 'fuck', 'pussy', 'urethra',
-                 'penis', 'piss', 'shit', 'cum']),
+                 'rape', 'penis', 'piss', 'shit', 'cum']),
 
     # -----------------------------------------------------------------
     # Malicious Level Validators

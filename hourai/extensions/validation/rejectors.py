@@ -132,6 +132,8 @@ class BannedUsernameRejector(Validator):
     """
 
     async def validate_member(self, ctx):
+        if not ctx.guild.me.guild_permissions.ban_members:
+            return
         # TODO(james7132): Make this use the Ban cache to pull this information
         bans = await ctx.guild.bans()
         normalized_bans = {self._normalize(ban.user.name): ban.user.name
