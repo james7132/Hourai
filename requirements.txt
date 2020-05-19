@@ -23,7 +23,7 @@ texttable==1.6.2
 pytimeparse==1.1.8
 
 # For music bot features [Optional]
-wavelink==0.3.5
+wavelink==0.8.0
 
 # API Wrappers for feeds and external services [Optional]
 praw==7.0.0

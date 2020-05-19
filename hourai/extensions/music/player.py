@@ -7,13 +7,14 @@ from .queue import MusicQueue
 from . import utils
 from hourai.utils import embed
 from hourai.db import proto
+from wavelink.eqs import Equalizer
 
 log = logging.getLogger('hourai.music.player')
 
 
 PROGRESS_BAR_WIDTH = 12
 TRACKS_PER_PAGE = 10
-POST_TRACK_WAIT = 5.0
+POST_TRACK_WAIT = 1.5
 
 
 class Unauthorized(Exception):
@@ -25,21 +26,15 @@ class HouraiMusicPlayer(wavelink.Player):
     def __init__(self, bot, guild_id: int, node: wavelink.Node):
         super().__init__(bot, guild_id, node)
 
-        self.next_event = asyncio.Event()
         self.queue = MusicQueue()
 
         self.current = None
         self._requestor_id = None
 
         self.skip_votes = set()
+        self.ui_msgs = list()
 
-        self.queue_msg = None
-        self.now_playing_msg = None
-
-        self.queue_ui = None
-        self.np_msg = None
-
-        bot.loop.create_task(self.__player_loop())
+        bot.loop.create_task(self.__init_player())
 
     async def get_music_config(self):
         config = await self.bot.storage.music_configs.get(self.guild_id)
@@ -63,49 +58,12 @@ class HouraiMusicPlayer(wavelink.Player):
                 channel = None
         return channel or self.get_default_channel()
 
-    async def __init_player_loop(self):
-        await self.set_preq('Flat')
+    async def __init_player(self):
+        await self.bot.wait_until_ready()
+
+        await self.set_eq(Equalizer.flat())
         config = await self.get_music_config()
         await self.set_volume(config.volume)
-
-    async def __player_loop(self):
-        await self.bot.wait_until_ready()
-        await self.__init_player_loop()
-        while True:
-            try:
-                self.next_event.clear()
-
-                if self.is_connected and len(self.queue) <= 0:
-                    # Stop playing the song and disconnect
-                    await self.disconnect()
-                    await super().stop()
-
-                requestor_id, song = await self.queue.get()
-                if not song:
-                    continue
-
-                if not self.is_connected:
-                    channel = await self.get_voice_channel()
-                    if channel is None:
-                        continue
-                    await self.connect(channel.id)
-
-                self.current = song
-                self._requestor_id = requestor_id
-
-                await self.play(song)
-
-                self.next_event.clear()
-                # Wait for TrackEnd event to set our event...
-                await self.next_event.wait()
-
-                # Clear votes...
-                self.skip_votes.clear()
-                self.current = None
-                self._requestor_id = None
-            except Exception:
-                log.exception(f'Exception while playing for guild '
-                              f'{self.guild_id}:')
 
     async def disconnect(self):
         await super().disconnect()
@@ -114,10 +72,13 @@ class HouraiMusicPlayer(wavelink.Player):
         self.skip_votes.clear()
 
     async def hook(self, event):
-        if isinstance(event, wavelink.TrackEnd):
+        if isinstance(event, wavelink.events.TrackEnd):
             if event.reason in ('FINISHED', 'LOAD_FAILED'):
-                self.play_next()
-            log.error(event.error)
+                await asyncio.sleep(POST_TRACK_WAIT)
+                await self.play_next()
+        elif isinstance(event, wavelink.events.TrackException):
+            log.error(f"Error while playing Track {event.track} in guild "
+                      f"{self.guild_id}: {event.error}")
 
     @property
     def guild(self):
@@ -152,19 +113,43 @@ class HouraiMusicPlayer(wavelink.Player):
     def is_playing(self):
         return self.is_connected and self.current is not None
 
-    def play_next(self, skip=False):
+    async def play_next(self, skip=False):
         """Plays the next song. If a song is currently playing, it will be
         skipped.
         """
-        # Avoid triggering the
-        if self.is_playing:
-            self.next_event.set()
+        # Clear votes...
+        self.skip_votes.clear()
+        self.current = None
+        self._requestor_id = None
 
-    def enqueue(self, user, track):
+        if self.is_connected and len(self.queue) <= 0:
+            # Stop playing the song and disconnect
+            await self.disconnect()
+            await super().stop()
+            return
+
+        requestor_id, song = await self.queue.get()
+        if not song:
+            #TODO(james7132): Log an error here.
+            return
+
+        if not self.is_connected:
+            channel = await self.get_voice_channel()
+            if channel is None:
+                return
+            await self.connect(channel.id)
+
+        self.current = song
+        self._requestor_id = requestor_id
+        await self.play(song)
+
+    async def enqueue(self, user, track):
         """Adds a single track to the queue from a given user."""
-        return self.queue.put((user.id, track))
+        await self.queue.put((user.id, track))
+        if not self.is_playing:
+            await self.play_next()
 
-    def remove_entry(self, user, idx):
+    async def remove_entry(self, user, idx):
         """Removes a track from the player queue.
 
         If the provided user is not the one who requested the track. Raises
@@ -176,25 +161,30 @@ class HouraiMusicPlayer(wavelink.Player):
             raise Unauthorized
         res = self.queue.remove(idx)
         assert res == (user_id, track)
+        if len(self.queue) <= 0:
+            await self.play_next()
         return res
 
-    def clear_user(self, user):
+    async def clear_user(self, user):
         """Removes all of the user's enqueued tracks from the queue"""
-        return self.queue.remove_all(user.id)
+        count = self.queue.remove_all(user.id)
+        if len(self.queue) <= 0:
+            await self.play_next()
+        return count
 
     def shuffle_user(self, user):
         """Shuffles all of the user's enqueued tracks from the queue"""
         return self.queue.shuffle(user.id)
 
-    def vote_to_skip(self, user, threshold):
+    async def vote_to_skip(self, user, threshold):
         """Adds a vote to skip the current song. If over the threshold it will
         skip the current song.
 
         Returns true if the song was skipped, false otherwise.
         """
         self.skip_votes.add(user.id)
-        if self.current_requestor == user or len(self.skip_votes) > threshold:
-            self.play_next(skip=True)
+        if self.current_requestor == user or len(self.skip_votes) >= threshold:
+            await self.play_next(skip=True)
             return True
         return False
 
@@ -205,11 +195,9 @@ class HouraiMusicPlayer(wavelink.Player):
     async def stop(self):
         """Clears the queue and disconnects the voice client."""
         self.queue.clear()
-        self.play_next()
-        if self.queue_msg is not None:
-            await self.queue_msg.stop()
-        if self.np_msg is not None:
-            await self.np_msg.stop()
+        await self.play_next()
+        await asyncio.gather(*[ui_msg.stop() for ui_msg in self.ui_msgs])
+        self.ui_msgs.clear()
 
     async def set_volume(self, volume):
         await super().set_volume(volume)
@@ -218,17 +206,18 @@ class HouraiMusicPlayer(wavelink.Player):
         await self.set_music_config(music_config)
 
     async def create_queue_message(self, channel):
-        return await self.__run_ui('queue_msg', MusicQueueUI, channel)
+        return await self.__run_ui(MusicQueueUI, channel)
 
     async def create_now_playing_message(self, channel):
-        return await self.__run_ui('np_msg', MusicNowPlayingUI, channel)
+        return await self.__run_ui(MusicNowPlayingUI, channel)
 
-    async def __run_ui(self, attr, ui_type, channel):
-        ui = getattr(self, attr)
-        if ui is not None:
-            await ui.stop()
+    async def __run_ui(self, ui_type, channel):
+        for ui_msg in list(self.ui_msgs):
+            if isinstance(ui_msg, ui_type):
+                await ui_msg.stop()
+                self.ui_msgs.remove(ui_msg)
         ui = ui_type(self)
-        setattr(self, attr, ui)
+        self.ui_msgs.append(ui)
         return await ui.run(channel)
 
 

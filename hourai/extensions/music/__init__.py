@@ -76,7 +76,7 @@ class Music(BaseCog):
         self.config = None
 
         if not hasattr(bot, 'wavelink'):
-            self.bot.wavelink = wavelink.Client(self.bot)
+            self.bot.wavelink = wavelink.Client(bot=self.bot)
 
         self.bot.loop.create_task(self.start_nodes())
 
@@ -267,6 +267,7 @@ class Music(BaseCog):
         await ctx.send(f'Paused {format.bold(str(player.current))}.')
 
     @commands.command()
+    @commands.check(is_dj)
     async def stop(self, ctx):
         """Clears the queue and stops the bot.
 
@@ -363,7 +364,7 @@ class Music(BaseCog):
         vote_count = len(player.skip_votes) + 1
 
         required_votes = math.ceil(channel_count * 0.5)
-        skipped = player.vote_to_skip(ctx.author, required_votes)
+        skipped = await player.vote_to_skip(ctx.author, required_votes)
 
         response = (f':notes: You voted to skip the song. `{vote_count} votes,'
                     f' {required_votes}/{channel_count} needed.`')
@@ -406,7 +407,7 @@ class Music(BaseCog):
         requestor = ctx.guild.get_member(player.current_requestor)
         assert requestor is not None
 
-        player.play_next(skip=True)
+        await player.play_next(skip=True)
         await ctx.send(f':notes: Skipped **{track.title}** (requested by '
                        f'**{requestor.name}**)')
 
