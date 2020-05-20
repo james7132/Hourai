@@ -13,17 +13,14 @@ def time_format(seconds):
     if seconds == MAX_DURATION:
         return "LIVE"
     seconds = round(seconds / 1000.0)
-    components = []
     hours, seconds = divmod(seconds, 3600)
-    if hours != 0:
-        components.append(str(hours))
     minutes, seconds = divmod(seconds, 60)
-    mins = str(minutes)
-    if len(components) > 0:
-        mins.zfill(2)
-    components.append(mins)
-    components.append(str(seconds).zfill(2))
-    return ':'.join(components)
+    components = []
+    if hours != 0:
+        components.append(hours)
+    components.append(minutes)
+    components.append(seconds)
+    return ':'.join(str(comp).zfill(2) for comp in components)
 
 
 def progress_bar(percent, size=12):
