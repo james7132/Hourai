@@ -1,3 +1,4 @@
+import asyncio
 import collections
 import copy
 import discord
@@ -62,6 +63,18 @@ class Owner(BaseCog):
         users = (f'{u.id}: {u.name}#{u.discriminator}' for _,
                  u in users.items())
         await ctx.send(format.multiline_code(format.vertical_list(users)))
+
+    @commands.command()
+    async def broadcast(self, ctx, *, message: str):
+        """Broadcasts a message to all modlogs that Hourai is in."""
+        async def broadcast_msg(guild):
+            proxy = ctx.get_guild_proxy(guild)
+            modlog = await proxy.get_modlog()
+            await modlog.send(content=guild.owner.mention +
+                              '. **Announcement:**\n' + message)
+
+        await asyncio.gather(*[
+            broadcast_msg(guild) for guild in ctx.bot.guilds])
 
     @commands.command()
     async def reload(self, ctx,  *, extension: str):

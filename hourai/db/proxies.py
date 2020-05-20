@@ -3,7 +3,7 @@ from hourai.db import proto
 from hourai.utils.fake import FakeContextManager
 
 
-class ModlogMessageable(discord.abc.Messageable):
+class ModlogMessageable():
 
     def __init__(self, guild, config):
         assert guild is not None
@@ -67,12 +67,11 @@ class GuildProxy:
     def storage(self):
         return self.bot.storage
 
-    @property
-    def modlog(self):
+    async def get_modlog(self):
         """Creates a discord.abc.Messageable compatible object corresponding to
         the server's modlog.
         """
-        return ModlogMessageable(self.guild, self.get_logging_config)
+        return ModlogMessageable(self.guild, await self.get_logging_config())
 
     async def get_logging_config(self):
         if self._logging_config is None:
