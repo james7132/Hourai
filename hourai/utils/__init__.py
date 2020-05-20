@@ -2,10 +2,12 @@ import asyncio
 import discord
 import functools
 import inspect
+import pytimeparse
 import random
 import re
 import time
 from hourai import config
+from datetime import timedelta
 
 MODERATOR_PREFIX = 'mod'
 DELETED_USER_REGEX = re.compile(r'Deleted User\s+[0-9a-fA-F]+')
@@ -192,3 +194,12 @@ def has_nitro(bot, member):
     if member is None:
         return False
     return member.is_avatar_animated() or is_nitro_booster(bot, member)
+
+
+def human_timedelta(time_str):
+    seconds = pytimeparse.parse(time_str)
+    if seconds is None or not isinstance(seconds, int):
+        raise ValueError
+    return timedelta(seconds=seconds)
+
+

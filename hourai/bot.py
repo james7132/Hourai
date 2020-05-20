@@ -10,6 +10,7 @@ import sys
 import traceback
 from discord.ext import commands
 from . import config, actions
+from .state import GuildState
 from .db import storage
 from .utils import fake, format
 from .context import HouraiContext
@@ -19,14 +20,14 @@ log = logging.getLogger(__name__)
 
 class CounterKeys(enum.Enum):
     MESSAGES_RECIEVED = 0x100             # noqa: E221
-    MESSAGES_DELETED = 0x101             # noqa: E221
-    MESSAGES_EDITED = 0x102             # noqa: E221
-    MEMBERS_JOINED = 0x200             # noqa: E221
-    MEMBERS_LEFT = 0x201             # noqa: E221
-    MEMBERS_BANNED = 0x202             # noqa: E221
-    MEMBERS_UNBANNED = 0x203             # noqa: E221
-    MEMBERS_VERIFIED = 0x204             # noqa: E221
-    MEMBERS_REJECTED = 0x205             # noqa: E221
+    MESSAGES_DELETED = 0x101              # noqa: E221
+    MESSAGES_EDITED = 0x102               # noqa: E221
+    MEMBERS_JOINED = 0x200                # noqa: E221
+    MEMBERS_LEFT = 0x201                  # noqa: E221
+    MEMBERS_BANNED = 0x202                # noqa: E221
+    MEMBERS_UNBANNED = 0x203              # noqa: E221
+    MEMBERS_VERIFIED = 0x204              # noqa: E221
+    MEMBERS_REJECTED = 0x205              # noqa: E221
 
     def __repr__(self):
         return self.name
@@ -98,6 +99,8 @@ class Hourai(commands.AutoShardedBot):
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.actions = actions.ActionManager(self)
+
+        self.guild_states = collections.defaultdict(GuildState)
 
         # Counters
         self.guild_counters = collections.defaultdict(collections.Counter)
@@ -224,9 +227,6 @@ class Hourai(commands.AutoShardedBot):
     def spin_wait_until_ready(self):
         while not self.is_ready():
             pass
-
-    def get_all_matching_members(self, user):
-        return (m for m in self.get_all_members() if m.id == user.id)
 
     def get_config_value(self, *args, **kwargs):
         return config.get_config_value(self.config, *args, **kwargs)

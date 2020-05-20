@@ -4,6 +4,11 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
+### WIP (TBD)
+
+ * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
+   all new joins. Useful during raids.
+
 ### v1.1.0 (05/20/2020)
 
  * **Hourai is now a [Verified Discord Bot](https://support.discord.com/hc/en-us/articles/360040720412-Bot-Verification-and-Data-Whitelisting)**

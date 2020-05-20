@@ -2,7 +2,6 @@ import asyncio
 import discord
 import re
 import typing
-import pytimeparse
 import logging
 from datetime import datetime, timedelta
 from discord.ext import commands, tasks
@@ -30,13 +29,6 @@ async def batch_do(members, func):
         return f"{identifier}: {result}"
     results = await asyncio.gather(*[_do(member) for member in members])
     return dict(zip(members, results))
-
-
-def human_timedelta(time_str):
-    seconds = pytimeparse.parse(time_str)
-    if seconds is None or not isinstance(seconds, int):
-        raise ValueError
-    return timedelta(seconds=seconds)
 
 
 def create_action(member):
@@ -445,7 +437,7 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def temp_ban(self, ctx, duration: human_timedelta,
+    async def temp_ban(self, ctx, duration: utils.human_timedelta,
                        *members: discord.Member):
         """Temporarily bans all specified users from the server.
 
@@ -470,7 +462,7 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def temp_mute(self, ctx, duration: human_timedelta,
+    async def temp_mute(self, ctx, duration: utils.human_timedelta,
                         *members: discord.Member):
         """Temporarily server mutes all specified users.
 
@@ -494,7 +486,7 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def temp_deafen(self, ctx, duration: human_timedelta,
+    async def temp_deafen(self, ctx, duration: utils.human_timedelta,
                           *members: discord.Member):
         """Temporarily server deafen all specified users.
 
@@ -524,7 +516,7 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role_add(self, ctx, duration: human_timedelta,
+    async def temp_role_add(self, ctx, duration: utils.human_timedelta,
                             role: discord.Role, *members: discord.Member):
         """Temporarily add a role to all specified users.
 
@@ -550,7 +542,7 @@ class Admin(BaseCog):
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role_remove(self, ctx, duration: human_timedelta,
+    async def temp_role_remove(self, ctx, duration: utils.human_timedelta,
                                role: discord.Role, *members: discord.Member):
         """Temporarily removes a role to all specified users.
 

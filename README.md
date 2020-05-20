@@ -33,8 +33,8 @@ Moderation, Safety, and Security Features
  * Configurable Auto-Mod - automatically respond to known events to apply
    moderation. Integrates tightly with configurable escalation ladders.
  * Community Moderation Tools - take a load off of your mod team by letting the
-   community moderate itself. (Not yet  implemented).
- * Anti-Raid Tools - automatically or manually shut down raids (Not yet
+   community moderate itself. (Not yet implemented).
+ * Anti-Raid Tools - automatically or manually shut down raids (Partially
    implemented)
  * Identity Tracking Tools - users changing usernames to avoid punishment?
    Hourai keeps track of their 20 latest usernames.

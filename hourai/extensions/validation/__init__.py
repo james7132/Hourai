@@ -118,13 +118,11 @@ VALIDATORS = (
     # server. Requires exact username match (case insensitive)
     rejectors.BannedUsernameRejector(),
 
-    # -----------------------------------------------------------------
-    # Raid Level Validators
-    #     Validators here operate on more tha just one user, and look
-    #     at the overall rate of users joining the server.
-    # ----------------------------------------------------------------
+    # Check if the user owns a Partnered or Verified server, and approve them.
+    approvers.DistinguishedGuildOwnerApprover(),
 
-    # TODO(james7132): Add the raid validators
+    # All non-override users are rejected while guilds are locked down.
+    rejectors.LockdownRejector(),
 
     # -----------------------------------------------------------------
     # Override Level Validators
@@ -133,7 +131,6 @@ VALIDATORS = (
     #     specific group of individiuals. False positives and negatives
     #     at this level are very unlikely if not impossible.
     # -----------------------------------------------------------------
-    approvers.DistinguishedGuildOwnerApprover(),
     approvers.BotApprover(),
     approvers.BotOwnerApprover(),
 )
@@ -274,10 +271,46 @@ class Validation(BaseCog):
         await ctx.send(format.vertical_list(bans))
 
     @commands.group(invoke_without_command=True)
-    @checks.is_moderator()
     @commands.guild_only()
+    @commands.check_any(checks.is_moderator(), commands.is_owner())
     async def validation(self, ctx):
         pass
+
+    @validation.group(name='lockdown')
+    async def validation_lockdown(self, ctx, time: utils.human_timedelta):
+        """Manually locks down the server. Forces manual verification of almost
+        all users joining the server for the duration. This isn't useful unless
+        validation is enabled. See "~help validation setup" for more
+        information. A lockdown can be lifted via "~valdiation lockdown lift".
+
+        Warning: this is currently non-persistent. If the bot is restarted
+        while a lockdown is in place, it will be lifted without warning.
+
+        Example Usage:
+        ~validation lockdown 30m
+        ~validation lockdown 1h
+        ~validation lockdown 1d
+        """
+        expiration = datetime.utcnow() + time
+        guild_state = ctx.bot.guild_states[ctx.guild.id]
+        guild_state.set_lockdown(True, expiration=expiration)
+        await ctx.send(
+            f'Lockdown enabled. Will be automatically lifted at {expiration}')
+
+    @validation_lockdown.command(name='lockdown')
+    async def validation_lockdown_lift(self, ctx, time: utils.human_timedelta):
+        """Lifts a lockdown from the server. See "~help validation lockdown" for
+        more information.
+
+        Warning: this is currently non-persistent. If the bot is restarted
+        while a lockdown is in place, it will be lifted without warning.
+
+        Example Usage:
+        ~validation lockdown lift
+        """
+        guild_state = ctx.bot.guild_states[ctx.guild.id]
+        guild_state.set_lockdown(False)
+        await ctx.send('Lockdown disabled.')
 
     @validation.command(name='verify')
     async def validation_verify(self, ctx, member: discord.Member):
@@ -300,7 +333,6 @@ class Validation(BaseCog):
         validation_ctx = ValidationContext(ctx.bot, member, config)
         await validation_ctx.validate_member(VALIDATORS)
         await validation_ctx.send_log_message(ctx)
-
 
     @validation.command(name="setup")
     async def validation_setup(self, ctx, role: discord.Role = None):

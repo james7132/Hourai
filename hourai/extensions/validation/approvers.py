@@ -41,10 +41,10 @@ class BotOwnerApprover(Validator):
 
 
 class DistinguishedGuildOwnerApprover(Validator):
-    """An override level validator that approves the owners of "distinguished"
+    """A malice level approver that approves the owners of "distinguished"
     servers (i.e. Partnered or Verified servers).
 
-    Since bots cannot read profile information, the bot must be on the same
+    Since bot users cannot read profile data, the bot must be on the same
     distinguished server for this to work. As a result there may be many false
     negatives.
     """
