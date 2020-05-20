@@ -1,5 +1,57 @@
 import discord
 from hourai.db import proto
+from hourai.utils.fake import FakeContextManager
+
+
+class ModlogMessageable(discord.abc.Messageable):
+
+    def __init__(self, guild, config):
+        assert guild is not None
+        self.guild = guild
+        self.config = config
+
+    async def send(self, *args, **kwargs):
+        try:
+            modlog = self.__get_modlog_channel()
+            if modlog is not None:
+                return await modlog.send(*args, **kwargs)
+        except discord.Forbidden:
+            content = ("Oops! A message for the modlog in `{}` failed to "
+                       "send! Please make sure the bot can write to a modlog "
+                       "channel properly!")
+            content = content.format(self.guild.name)
+            await self.guild.owner.send(content)
+            return None
+
+    def typing(self):
+        modlog = self.__get_modlog_channel()
+        return modlog.typing() if modlog is not None else FakeContextManager()
+
+    async def trigger_typing(self):
+        modlog = self.__get_modlog_channel()
+        if modlog is not None:
+            await modlog.trigger_typing()
+
+    async def fetch_message(self, id):
+        modlog = self.__get_modlog_channel()
+        if modlog is not None:
+            return await modlog.fetch_message(id)
+        else:
+            raise discord.NotFound()
+
+    async def pins(self):
+        modlog = self.__get_modlog_channel()
+        return [] if modlog is None else await modlog.pins()
+
+    def history(self):
+        # TODO(james7132): Likely won't be called, but this will fail if no
+        # modlog is found or set. Fix this
+        return self.__get_modlog_channel().history()
+
+    def __get_modlog_channel(self):
+        if self.config is None or not self.config.HasField('modlog_channel_id'):
+            return None
+        return self.guild.get_channel(self.config.modlog_channel_id)
 
 
 class GuildProxy:
@@ -14,6 +66,13 @@ class GuildProxy:
     @property
     def storage(self):
         return self.bot.storage
+
+    @property
+    def modlog(self):
+        """Creates a discord.abc.Messageable compatible object corresponding to
+        the server's modlog.
+        """
+        return ModlogMessageable(self.guild, self.get_logging_config)
 
     async def get_logging_config(self):
         if self._logging_config is None:
@@ -54,20 +113,3 @@ class GuildProxy:
         else:
             config.modlog_channel_id = channel.id
         await self.set_logging_config(config)
-
-    async def send_modlog_message(self, *args, **kwargs):
-        """
-        Sends a message in the modlog channel of the guild. If the message
-        fails, a DM to the server owner is sent.
-        """
-        try:
-            modlog = await self.get_modlog_channel()
-            if modlog is not None:
-                return await modlog.send(*args, **kwargs)
-        except discord.Forbidden:
-            content = ("Oops! A message for the modlog in `{}` failed to "
-                       "send! Please make sure the bot can write to a modlog "
-                       "channel properly!")
-            content = content.format(self.guild.name)
-            await self.guild.owner.send(content)
-            return None

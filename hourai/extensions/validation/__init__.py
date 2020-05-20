@@ -278,6 +278,29 @@ class Validation(BaseCog):
     async def validation(self, ctx):
         pass
 
+    @validation.command(name='verify')
+    async def validation_verify(self, ctx, member: discord.Member):
+        """Runs verification on a provided user.
+        Must be a moderator or owner of the server to use this command.
+        Validation must be enabled on a server before running this. See
+        "~help validation setup" for more information.
+
+        Example Usage:
+        ~validation verify @Bob
+        ~validation verify Alice
+        """
+        proxy = proxies.GuildProxy(self.bot, member.guild)
+        config = await proxy.get_validation_config()
+        if config is None or not config.enabled:
+            await ctx.send('Validation has not been setup. Please see '
+                           '`~help validation` for more details.')
+            return
+
+        validation_ctx = ValidationContext(ctx.bot, member, config)
+        await validation_ctx.validate_member(VALIDATORS)
+        await validation_ctx.send_log_message(ctx)
+
+
     @validation.command(name="setup")
     async def validation_setup(self, ctx, role: discord.Role = None):
         config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
@@ -411,7 +434,7 @@ class Validation(BaseCog):
                         f"from another server for the following reason: "
                         f"`{ban_info.reason}`.")
 
-        await asyncio.gather(*[proxy.send_modlog_message(contents)
+        await asyncio.gather(*[proxy.modlog.send(contents)
                                for proxy in guild_proxies])
 
 

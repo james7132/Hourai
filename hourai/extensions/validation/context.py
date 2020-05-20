@@ -69,13 +69,27 @@ class ValidationContext():
                 await self.bot.send_owner_error(error)
         return self.approved
 
-    async def send_modlog_message(self):
+    def send_modlog_message(self):
+        """Sends verification log to a the guild's modlog."""
+        return self.send_log_message(
+                self.guild_proxy.modlog,
+                utils.mention_random_online_mod(member.guild))
+
+    async def send_log_message(self, messageable, ping_target=None):
+        """Sends verification log to a given messagable target.
+
+        messageable must be an appropriate discord.abc.Messageable object.
+        ping_target if specified be prepended to message.
+        """
         member = self.member
         if self.approved:
             message = f"Verified user: {member.mention} ({member.id})."
-        else:
-            message = (f"{utils.mention_random_online_mod(member.guild)}. "
+        elif ping_target is not None:
+            message = (f"{ping_target}. "
                        f"User {member.name} ({member.id}) requires manual "
+                       f"verification.")
+        else:
+            message = (f"User {member.name} ({member.id}) requires manual "
                        f"verification.")
 
         if len(self.approval_reasons) > 0:
@@ -90,5 +104,4 @@ class ValidationContext():
         ctx = await self.bot.get_automated_context(content='', author=member)
         async with ctx:
             whois_embed = embed.make_whois_embed(ctx, member)
-            return await self.guild_proxy.send_modlog_message(
-                    content=message, embed=whois_embed)
+            return await messageable.send(content=message, embed=whois_embed)

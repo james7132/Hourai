@@ -49,9 +49,9 @@ def __configure_logging(conf):
     default_level = get_config_value(conf, 'logging.default', default=None)
     default_level = logging.getLevelName(default_level or 'WARNING')
     logging.basicConfig(
-            level=default_level,
-            format='%(asctime)s:%(levelname)s:%(module)s:%(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S')
+        level=default_level,
+        format='%(asctime)s:%(levelname)s:%(module)s:%(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
 
     modules = get_config_value(conf, 'logging.modules', default=None)
     if modules is not None:

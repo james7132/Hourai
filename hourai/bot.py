@@ -18,15 +18,15 @@ log = logging.getLogger(__name__)
 
 
 class CounterKeys(enum.Enum):
-    MESSAGES_RECIEVED   = 0x100             # noqa: E221
-    MESSAGES_DELETED    = 0x101             # noqa: E221
-    MESSAGES_EDITED     = 0x102             # noqa: E221
-    MEMBERS_JOINED      = 0x200             # noqa: E221
-    MEMBERS_LEFT        = 0x201             # noqa: E221
-    MEMBERS_BANNED      = 0x202             # noqa: E221
-    MEMBERS_UNBANNED    = 0x203             # noqa: E221
-    MEMBERS_VERIFIED    = 0x204             # noqa: E221
-    MEMBERS_REJECTED    = 0x205             # noqa: E221
+    MESSAGES_RECIEVED = 0x100             # noqa: E221
+    MESSAGES_DELETED = 0x101             # noqa: E221
+    MESSAGES_EDITED = 0x102             # noqa: E221
+    MEMBERS_JOINED = 0x200             # noqa: E221
+    MEMBERS_LEFT = 0x201             # noqa: E221
+    MEMBERS_BANNED = 0x202             # noqa: E221
+    MEMBERS_UNBANNED = 0x203             # noqa: E221
+    MEMBERS_VERIFIED = 0x204             # noqa: E221
+    MEMBERS_REJECTED = 0x205             # noqa: E221
 
     def __repr__(self):
         return self.name
@@ -52,7 +52,7 @@ class CommandExcecutor(CommandInterpreter):
 
     async def execute(self, ctx):
         err = discord.errors.CommandNotFound(
-                'Command "{ctx.invoked_with}" is not found')
+            'Command "{ctx.invoked_with}" is not found')
         for interpreter in self.interpreters:
             try:
                 await interpreter.execute(ctx, self)
@@ -76,7 +76,7 @@ class DefaultCommandInterpreter(CommandInterpreter):
             bot.dispatch('command_completion', ctx)
         elif ctx.invoked_with:
             raise discord.errors.CommandNotFound(
-                    'Command "{ctx.invoked_with}" is not found')
+                'Command "{ctx.invoked_with}" is not found')
 
 
 class AliasInterpreter(CommandInterpreter):
@@ -91,7 +91,7 @@ class Hourai(commands.AutoShardedBot):
             self.config = kwargs['config']
         except KeyError:
             raise ValueError(
-                    '"config" must be specified when initialzing Hourai.')
+                '"config" must be specified when initialzing Hourai.')
         kwargs.setdefault('command_prefix', self.config.command_prefix)
         # kwargs.setdefault('help_command', HouraiHelpCommand())
         self.storage = kwargs.get('storage') or storage.Storage(self.config)

@@ -163,8 +163,8 @@ class ActionExecutor:
         else:
             user = (guild.me if guild is not None else self.bot.user)
         ctx = await self.bot.get_automated_context(
-                content=action.command.command, author=user,
-                channel=channel, guild=guild)
+            content=action.command.command, author=user,
+            channel=channel, guild=guild)
         async with ctx:
             await self.bot.invoke(ctx)
 
@@ -186,8 +186,8 @@ def invert_action(action):
     case = new_action.WhichOneof('details')
     if case == 'ban':
         new_action.ban.type = {
-            proto.BanMember.BAN:  proto.BanMember.UNBAN,
-            proto.BanMember.UNBAN:  proto.BanMember.BAN,
+            proto.BanMember.BAN: proto.BanMember.UNBAN,
+            proto.BanMember.UNBAN: proto.BanMember.BAN,
         }.get(new_action.ban.type, new_action.ban.type)
     elif case == 'mute':
         new_action.mute.type = {
