@@ -131,8 +131,9 @@ VALIDATORS = (
     #     Validators here are made to explictly override previous
     #     validators. These are specifically targetted at a small
     #     specific group of individiuals. False positives and negatives
-    #     at this level are not possible.
+    #     at this level are very unlikely if not impossible.
     # -----------------------------------------------------------------
+    approvers.DistinguishedGuildOwnerApprover(),
     approvers.BotApprover(),
     approvers.BotOwnerApprover(),
 )

@@ -38,3 +38,27 @@ class BotOwnerApprover(Validator):
     async def validate_member(self, ctx):
         if (await ctx.bot.is_owner(ctx.member)):
             ctx.add_approval_reason("User owns this bot.")
+
+
+class DistinguishedGuildOwnerApprover(Validator):
+    """An override level validator that approves the owners of "distinguished"
+    servers (i.e. Partnered or Verified servers).
+
+    Since bots cannot read profile information, the bot must be on the same
+    distinguished server for this to work. As a result there may be many false
+    negatives.
+    """
+
+    MATCHES = {
+        "PARTNERED": 'User is owner of partnered server: "{}"',
+        "VERIFIED": 'User is owner of verfied server: "{}"'
+    }
+
+    async def validate_member(self, ctx):
+        owned_guilds = [guild for guild in ctx.bot.guilds
+                        if guild.owner == ctx.member]
+        for guild in owned_guilds:
+            features = set(guild.features)
+            for check, reason_template in self.MATCHES:
+                if check in features:
+                    ctx.add_approval_reason(reason_template.format(guild.name))
