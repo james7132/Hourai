@@ -24,13 +24,14 @@ class ModLogging(BaseCog):
         if logging_config is None or not logging_config.log_deleted_messages:
             return
         content = 'Message deleted in <#{}>.'.format(payload.channel_id)
+        modlog = await proxy.get_modlog()
         embed = discord.Embed(
             title='ID: {}'.format(payload.message_id),
             color=discord.Colour.dark_red(),
             timestamp=datetime.utcnow())
         msg = payload.cached_message
         if msg is None or msg.author.bot:
-            await proxy.modlog.send(content=content, embed=embed)
+            await modlog.send(content=content, embed=embed)
             return
         content = 'Message by {} deleted in {}.'.format(
             msg.author.mention, msg.channel.mention)
@@ -43,7 +44,7 @@ class ModLogging(BaseCog):
             attachments = (attach.url for attach in msg.attachments)
             field = format.vertical_list(attachments)
             embed.add_field(name='Attachments', value=field)
-        await proxy.modlog.send(content=content, embed=embed)
+        await modlog.send(content=content, embed=embed)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
@@ -56,7 +57,8 @@ class ModLogging(BaseCog):
             return
         content = '{} messages bulk deleted in <#{}>.'.format(
             len(payload.message_ids), payload.channel_id)
-        await proxy.modlog.send(content=content)
+        modlog = await proxy.get_modlog()
+        await modlog.send(content=content)
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()

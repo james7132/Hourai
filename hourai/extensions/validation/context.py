@@ -69,11 +69,11 @@ class ValidationContext():
                 await self.bot.send_owner_error(error)
         return self.approved
 
-    def send_modlog_message(self):
+    async def send_modlog_message(self):
         """Sends verification log to a the guild's modlog."""
-        return self.send_log_message(
-                self.guild_proxy.modlog,
-                utils.mention_random_online_mod(member.guild))
+        modlog = await self.guild_proxy.get_modlog()
+        return await self.send_log_message(
+                modlog, utils.mention_random_online_mod(self.guild))
 
     async def send_log_message(self, messageable, ping_target=None):
         """Sends verification log to a given messagable target.

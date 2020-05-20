@@ -435,8 +435,11 @@ class Validation(BaseCog):
                         f"from another server for the following reason: "
                         f"`{ban_info.reason}`.")
 
-        await asyncio.gather(*[proxy.modlog.send(contents)
-                               for proxy in guild_proxies])
+        async def report(proxy):
+            modlog = await proxy.get_modlog()
+            await modlog.send(contents)
+
+        await asyncio.gather(*[report(proxy) for proxy in guild_proxies])
 
 
 def setup(bot):
