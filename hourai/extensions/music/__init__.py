@@ -404,10 +404,9 @@ class Music(BaseCog):
             return
 
         track = player.current
-        requestor = ctx.guild.get_member(player.current_requestor)
-        assert requestor is not None
+        assert player.current_requestor is not None
 
-        await player.play_next(skip=True)
+        await player.play_next()
         await ctx.send(f':notes: Skipped **{track.title}** (requested by '
                        f'**{requestor.name}**)')
 

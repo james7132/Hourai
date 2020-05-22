@@ -4,6 +4,10 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
+### v1.1.1 (05/21/2020)
+
+ * [Music] Hotfix: Fixing ~forceskip from erroring out.
+
 ### v1.1.0 (05/20/2020)
 
  * **Hourai is now a [Verified Discord Bot](https://support.discord.com/hc/en-us/articles/360040720412-Bot-Verification-and-Data-Whitelisting)**
