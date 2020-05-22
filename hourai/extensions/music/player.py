@@ -104,16 +104,14 @@ class HouraiMusicPlayer(wavelink.Player):
 
     @property
     def current_requestor(self):
-        guild = self.guild
-        if self._requestor_id is None or guild is None:
-            return None
-        return guild.get_member(self._requestor_id)
+        return None if self._requestor_id is None or self.guild is None: \
+               else self.guild.get_member(self._requestor_id)
 
     @property
     def is_playing(self):
         return self.is_connected and self.current is not None
 
-    async def play_next(self, skip=False):
+    async def play_next(self):
         """Plays the next song. If a song is currently playing, it will be
         skipped.
         """
@@ -184,7 +182,7 @@ class HouraiMusicPlayer(wavelink.Player):
         """
         self.skip_votes.add(user.id)
         if self.current_requestor == user or len(self.skip_votes) >= threshold:
-            await self.play_next(skip=True)
+            await self.play_next()
             return True
         return False
 

@@ -9,6 +9,10 @@ here: https://discord.gg/UydKWHX.
  * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
    all new joins. Useful during raids.
 
+### v1.1.1 (05/21/2020)
+
+ * [Music] Hotfix: Fixing ~forceskip from erroring out.
+
 ### v1.1.0 (05/20/2020)
 
  * **Hourai is now a [Verified Discord Bot](https://support.discord.com/hc/en-us/articles/360040720412-Bot-Verification-and-Data-Whitelisting)**
