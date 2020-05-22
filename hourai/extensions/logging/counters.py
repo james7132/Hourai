@@ -50,30 +50,30 @@ class Counters(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        key = CounterKeys.MEMBERS_JOINED
-        self.bot.guild_counters[member.guild.id][key] += 1
+        self.__increment_guild_counter(
+            member.guild, CounterKeys.MEMBERS_JOINED)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        key = CounterKeys.MEMBERS_LEFT
-        self.bot.guild_counters[member.guild.id][key] += 1
+        self.__increment_guild_counter(member.guild, CounterKeys.MEMBERS_LEFT)
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        key = CounterKeys.MEMBERS_BANNED
-        self.bot.guild_counters[guild.id][key] += 1
+        self.__increment_guild_counter(guild, CounterKeys.MEMBERS_BANNED)
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
-        key = CounterKeys.MEMBERS_UNBANNED
-        self.bot.guild_counters[guild.id][key] += 1
+        self.__increment_guild_counter(guild, CounterKeys.MEMBERS_UNBANNED)
 
     @commands.Cog.listener()
     async def on_verify_accept(self, member):
-        key = CounterKeys.MEMBERS_VERIFIED
-        self.bot.guild_counters[member.guild.id][key] += 1
+        self.__increment_guild_counter(member.guild,
+                                       CounterKeys.MEMBERS_VERIFIED)
 
     @commands.Cog.listener()
     async def on_verify_reject(self, member):
-        key = CounterKeys.MEMBERS_REJECTED
-        self.bot.guild_counters[member.guild.id][key] += 1
+        self.__increment_guild_counter(member.guild,
+                                       CounterKeys.MEMBERS_REJECTED)
+
+    def __increment_guild_counter(self, guild, key, count=1):
+        self.bot.guild_counters[guild.id][key] += count
