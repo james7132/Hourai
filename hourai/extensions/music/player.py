@@ -104,7 +104,7 @@ class HouraiMusicPlayer(wavelink.Player):
 
     @property
     def current_requestor(self):
-        return None if self._requestor_id is None or self.guild is None: \
+        return None if self._requestor_id is None or self.guild is None \
                else self.guild.get_member(self._requestor_id)
 
     @property

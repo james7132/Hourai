@@ -404,7 +404,8 @@ class Music(BaseCog):
             return
 
         track = player.current
-        assert player.current_requestor is not None
+        requestor = player.current_requestor
+        assert requestor is not None
 
         await player.play_next()
         await ctx.send(f':notes: Skipped **{track.title}** (requested by '
