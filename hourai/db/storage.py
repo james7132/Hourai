@@ -26,15 +26,19 @@ class StoragePrefix(enum.Enum):
     """ Top level prefixes in the root keyspace of Redis. """
     # Persistent Guild Level Data
     #   Generally stored in Redis as a hash with all submodels underneath it.
-    GUILD = 1
-    # Bans are ephemeral and have expirations assigned to them.
+    GUILD_CONFIGS = 1
+    # Cached bans. Ephemeral data that have expirations assigned to them.
     BANS = 2
+
+    GUILD_COUNTERS = 3
+    CHANNEL_COUNTERS = 4
+    USER_COUNTERS = 5
 
 
 class GuildPrefix(enum.Enum):
     """ Guild config prefixes. Used as prefixes or full keys in the hash
-    underneath the guild key. All use the StoragePrefix.GUILD as a prefix to
-    the top level key.
+    underneath the guild key. All use the StoragePrefix.GUILD_CONFIGS as a
+    prefix to the top level key.
     """
     # 1:1s. Hash key is just the prefix. Size: 1 byte.
     AUTO_CONFIG = CacheConfig(
@@ -98,45 +102,11 @@ class Storage:
 
     async def _init_redis(self):
         try:
-            # TODO(james7132): Move off of depending on Redis as a backing
-            #                  store
             log.info('Initializing connection to Redis...')
             redis_conf = config.get_config_value(self.config, 'redis',
                                                  type=str)
             await self._connect_to_redis(redis_conf)
-            for conf in Storage._get_cache_configs():
-                # Initialize Parameters
-                prefix = _prefixize(conf.prefix.value)
-                key_coder = coders.IntCoder().prefixed(prefix)
-                value_coder = conf.value_coder().compressed()
-
-                timeout = conf.timeout or 0
-                if conf.subprefix is None:
-                    store = caches.RedisStore(self.redis, timeout=timeout)
-                else:
-                    subprefix = _prefixize(conf.subprefix)
-                    subcoder = coders.ConstCoder(subprefix)
-                    if conf.subcoder is not None:
-                        subcoder = conf.subcoder.prefixed(subprefix)
-
-                    key_coder = coders.TupleCoder([key_coder, subcoder])
-                    store = caches.RedisHashStore(self.redis, timeout=timeout)
-
-                cache = caches.Cache(store,
-                                     key_coder=key_coder,
-                                     value_coder=value_coder)
-                setattr(self, conf.attr, cache)
-
-            mapping = []
-            for conf in Storage._get_cache_configs():
-                if conf.prefix != StoragePrefix.GUILD:
-                    continue
-                attr = conf.attr
-                if '_configs' in attr:
-                    attr = attr.replace('_configs', '')
-                mapping.append((attr, getattr(self, conf.attr)))
-            self.guild_configs = caches.AggregateProtoCache(proto.GuildConfig,
-                                                            mapping)
+            self.__setup_caches()
             log.info('Redis connection established.')
         except Exception:
             log.exception('Error when initializing Redis:')
@@ -159,11 +129,46 @@ class Storage:
                 await asyncio.sleep(wait_time)
                 wait_time *= 2
 
+    def __setup_caches(self):
+        for conf in Storage._get_cache_configs():
+            # Initialize Parameters
+            prefix = _prefixize(conf.prefix.value)
+            key_coder = coders.IntCoder().prefixed(prefix)
+            value_coder = conf.value_coder().compressed()
+
+            timeout = conf.timeout or 0
+            if conf.subprefix is None:
+                store = caches.RedisStore(self.redis, timeout=timeout)
+            else:
+                subprefix = _prefixize(conf.subprefix)
+                subcoder = coders.ConstCoder(subprefix)
+                if conf.subcoder is not None:
+                    subcoder = conf.subcoder.prefixed(subprefix)
+
+                key_coder = coders.TupleCoder([key_coder, subcoder])
+                store = caches.RedisHashStore(self.redis, timeout=timeout)
+
+            cache = caches.Cache(store,
+                                 key_coder=key_coder,
+                                 value_coder=value_coder)
+            setattr(self, conf.attr, cache)
+
+        mapping = []
+        for conf in Storage._get_cache_configs():
+            if conf.prefix != StoragePrefix.GUILD_CONFIGS:
+                continue
+            attr = conf.attr
+            if '_configs' in attr:
+                attr = attr.replace('_configs', '')
+            mapping.append((attr, getattr(self, conf.attr)))
+        self.guild_configs = caches.AggregateProtoCache(proto.GuildConfig,
+                                                        mapping)
+
     @staticmethod
     def _get_cache_configs():
         configs = list(GuildPrefix)
         configs = [conf.value._replace(attr=conf.name.lower() + 's',
-                                       prefix=StoragePrefix.GUILD)
+                                       prefix=StoragePrefix.GUILD_CONFIGS)
                    for conf in configs]
         configs.append(
                 CacheConfig(attr='bans',
