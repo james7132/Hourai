@@ -60,41 +60,39 @@ class GuildProxy:
         self.bot = bot
         self.guild = guild
 
-        self._logging_config = None
-        self._validation_config = None
+        self._config_cache = {}
 
     @property
     def storage(self):
         return self.bot.storage
 
+    async def get_config(self, name):
+        name = name.lower()
+        if name not in self._config_cache:
+            cache = getattr(self.storage, name + '_configs')
+            self._config_cache[name] = await cache.get(self.guild.id)
+        return self._config_cache[name]
+
+    async def set_config(self, name, cfg):
+        name = name.lower()
+        cache = getattr(self.storage, name + '_configs')
+        await cache.set(self.guild.id, cfg)
+        self._config_cache[name] = cfg
+
+    async def edit_config(self, name, edit_func):
+        assert edit_func is not None
+        conf = await self.get_config(name)
+        edit_func(conf)
+        await self.set_config(name, conf)
+
     async def get_modlog(self):
         """Creates a discord.abc.Messageable compatible object corresponding to
         the server's modlog.
         """
-        return ModlogMessageable(self.guild, await self.get_logging_config())
-
-    async def get_logging_config(self):
-        if self._logging_config is None:
-            self._logging_config = await self.storage.logging_configs.get(
-                    self.guild.id)
-        return self._logging_config
-
-    async def set_logging_config(self, cfg):
-        await self.storage.logging_configs.set(self.guild.id, cfg)
-        self._logging_config = cfg
-
-    async def get_validation_config(self):
-        if self._validation_config is None:
-            self._validation_config = (
-                await self.storage.validation_configs.get(self.guild.id))
-        return self._validation_config
-
-    async def set_validation_config(self, cfg):
-        await self.storage.validation_configs.set(self.guild.id, cfg)
-        self._validation_config = cfg
+        return ModlogMessageable(self.guild, await self.get_config('logging'))
 
     async def get_modlog_channel(self):
-        config = await self.get_logging_config()
+        config = await self.get_config('logging')
         if config is None or not config.HasField('modlog_channel_id'):
             return None
         return self.guild.get_channel(config.modlog_channel_id)
@@ -105,10 +103,10 @@ class GuildProxy:
         clears it from the config.
         """
         assert channel is None or channel.guild == self.guild
-        config = await self.get_logging_config()
+        config = await self.get_config('logging')
         config = config or proto.LoggingConfig()
         if channel is None:
             config.ClearField('modlog_channel_id')
         else:
             config.modlog_channel_id = channel.id
-        await self.set_logging_config(config)
+        await self.set_config('logging', config)

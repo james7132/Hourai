@@ -117,7 +117,7 @@ class Auto(BaseCog):
             await self.bot.actions.execute(action)
 
     async def get_events(self, guild, event_type):
-        config = await self.get_auto_config(guild)
+        config = await self.bot.create_guild_proxy(guild).get_config('auto')
         if config is None:
             return
         for evt in getattr(config.guild_events, event_type):
@@ -128,11 +128,6 @@ class Auto(BaseCog):
                 continue
             for evt in getattr(config.channel_events[key], event_type):
                 yield channel, evt
-
-    async def get_auto_config(self, guild):
-        if guild is None:
-            return None
-        return await self.bot.storage.auto_configs.get(guild.id)
 
 
 def setup(bot):

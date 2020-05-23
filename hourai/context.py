@@ -24,6 +24,8 @@ class HouraiContext(commands.Context):
         self.depth = attrs.pop('depth', 1)
         super().__init__(**attrs)
         self.session = self.bot.create_storage_session()
+        # TODO(james7132): Make this lazy
+        self.guild_proxy = self.bot.create_guild_proxy(self.guild)
 
     async def __aenter__(self):
         self.session.__enter__()
@@ -43,9 +45,6 @@ class HouraiContext(commands.Context):
     @property
     def logger(self):
         return self.bot.logger
-
-    def get_guild_proxy(self, guild=None):
-        return proxies.GuildProxy(self.bot, guild or self.guild)
 
     def get_automated_context(self, msg=None):
         if self.depth > MAX_CONTEXT_DEPTH:

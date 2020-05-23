@@ -27,6 +27,7 @@ class HouraiMusicPlayer(wavelink.Player):
         super().__init__(bot, guild_id, node)
 
         self.queue = MusicQueue()
+        self.guild_proxy = self.bot.create_guild_proxy(self.guild)
 
         self.current = None
         self._requestor_id = None
@@ -36,21 +37,13 @@ class HouraiMusicPlayer(wavelink.Player):
 
         bot.loop.create_task(self.__init_player())
 
-    async def get_music_config(self):
-        config = await self.bot.storage.music_configs.get(self.guild_id)
-        return config or proto.MusicConfig()
-
-    async def set_music_config(self, music_config):
-        await self.bot.storage.music_configs.set(self.guild_id,
-                                                 music_config)
-
     def get_default_channel(self):
         return discord.utils.find(
                 lambda ch: ch.permissions_for(self.guild.me).connect,
                 self.guild.voice_channels)
 
     async def get_voice_channel(self):
-        music_config = await self.get_music_config()
+        music_config = await self.guild_proxy.get_config('music')
         channel = None
         if music_config.HasField('voice_channel_id'):
             channel = self.guild.get_channel(music_config.voice_channel_id)
@@ -62,7 +55,7 @@ class HouraiMusicPlayer(wavelink.Player):
         await self.bot.wait_until_ready()
 
         await self.set_eq(Equalizer.flat())
-        config = await self.get_music_config()
+        config = await self.guild_proxy.get_config('music')
         await self.set_volume(config.volume)
 
     async def disconnect(self):
@@ -199,9 +192,10 @@ class HouraiMusicPlayer(wavelink.Player):
 
     async def set_volume(self, volume):
         await super().set_volume(volume)
-        music_config = (await self.get_music_config()) or proto.MusicConfig()
-        music_config.volume = volume
-        await self.set_music_config(music_config)
+
+        def set_volume(cfg):
+            cfg.volume = volume
+        await self.guild_proxy.edit_config('music', set_volume)
 
     async def create_queue_message(self, channel):
         return await self.__run_ui(MusicQueueUI, channel)

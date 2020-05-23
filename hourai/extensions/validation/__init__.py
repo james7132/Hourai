@@ -221,14 +221,14 @@ class Validation(BaseCog):
 
         async def _purge_guild(proxy):
             guild = proxy.guild
-            validation_config = await proxy.get_validation_config()
+            validation_config = await proxy.get_config('validation')
             if (validation_config is None or
                 not validation_config.enabled or
                 not validation_config.HasField(
                     'kick_unvalidated_users_after')):
                 return
             lookback = timedelta(
-                    seconds=validation_config.kick_unvalidated_users_after)
+                seconds=validation_config.kick_unvalidated_users_after)
             lookback = check_time - lookback
             role = guild.get_role(validation_config.role_id)
             if role is None or not guild.me.guild_permissions.kick_members:
@@ -256,8 +256,7 @@ class Validation(BaseCog):
     async def setmodlog(self, ctx, channel: discord.TextChannel = None):
         # TODO(jame7132): Update this so it's in a different cog.
         channel = channel or ctx.channel
-        proxy = ctx.get_guild_proxy()
-        await proxy.set_modlog_channel(channel)
+        await ctx.guild_proxy.set_modlog_channel(channel)
         await ctx.send(":thumbsup: Set {}'s modlog to {}.".format(
             ctx.guild.name,
             channel.mention if channel is not None else 'None'))
@@ -323,8 +322,8 @@ class Validation(BaseCog):
         ~validation verify @Bob
         ~validation verify Alice
         """
-        proxy = proxies.GuildProxy(self.bot, member.guild)
-        config = await proxy.get_validation_config()
+        config = await proxies.GuildProxy(self.bot, member.guild) \
+            .get_config('validation')
         if config is None or not config.enabled:
             await ctx.send('Validation has not been setup. Please see '
                            '`~help validation` for more details.')
@@ -388,18 +387,18 @@ class Validation(BaseCog):
             members_with_role = [m for m in ctx.guild.members
                                  if role in m.roles]
             if (member_count == 0 or
-               float(len(members_with_role)) / float(member_count) > 0.99):
+                    float(len(members_with_role)) / float(member_count) > 0.99):
                 lookback = int(PURGE_LOOKBACK.total_seconds())
                 config.kick_unvalidated_users_after = lookback
                 await ctx.bot.storage.validation_configs.set(
-                        ctx.guild.id, config)
+                    ctx.guild.id, config)
                 await msg.edit(content=f'Propagation conplete!')
                 return
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        proxy = proxies.GuildProxy(self.bot, member.guild)
-        config = await proxy.get_validation_config()
+        config = await proxies.GuildProxy(self.bot, member.guild) \
+                              .get_config('validation')
         if config is None or not config.enabled:
             return
 
@@ -422,8 +421,8 @@ class Validation(BaseCog):
                 reaction.emoji not in MODLOG_REACTIONS or
                 len(msg.embeds) <= 0):
             return
-        proxy = proxies.GuildProxy(self.bot, guild)
-        logging_config = await proxy.get_logging_config()
+        logging_config = await proxies.GuildProxy(self.bot, guild) \
+                                      .get_config('logging')
         if (logging_config is None or
                 logging_config.modlog_channel_id != msg.channel.id):
             return

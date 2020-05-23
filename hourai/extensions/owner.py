@@ -68,8 +68,7 @@ class Owner(BaseCog):
     async def broadcast(self, ctx, *, message: str):
         """Broadcasts a message to all modlogs that Hourai is in."""
         async def broadcast_msg(guild):
-            proxy = ctx.get_guild_proxy(guild)
-            modlog = await proxy.get_modlog()
+            modlog = await ctx.bot.create_guild_proxy(guild).get_modlog()
             await modlog.send(content=guild.owner.mention +
                               '. **Announcement:**\n' + message)
 

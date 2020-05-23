@@ -22,19 +22,11 @@ def clamp(val, min_val, max_val):
     return max(min(val, max_val), min_val)
 
 
-async def get_music_config(ctx):
-    """Gets the corresponding guild config. If none is in storage, the default
-    config is returned.
-    """
-    config = await ctx.bot.storage.music_configs.get(ctx.guild.id)
-    return config or proto.MusicConfig()
-
-
 async def get_dj_roles(ctx):
     """Gets the corresponding DJ role for a guild. Returns none if the role is
     not found or if no role has been configured.
     """
-    music_config = await get_music_config(ctx)
+    music_config = await ctx.guild_proxy.get_config('music')
     roles = [ctx.guild.get_role(role_id)
              for role_id in music_config.dj_role_id]
     return set(role for role in roles if role is not None)
@@ -60,7 +52,7 @@ def get_default_channel(guild, member=None):
 
 
 async def get_voice_channel(ctx):
-    music_config = await get_music_config(ctx)
+    music_config = await ctx.guild_config.get_config('music')
     channel = None
     if music_config.HasField('voice_channel_id'):
         channel = ctx.guild.get_channel(music_config.voice_channel_id)
@@ -111,7 +103,7 @@ class Music(BaseCog):
     async def cog_check(self, ctx):
         if ctx.guild is None:
             return False
-        music_config = await get_music_config(ctx)
+        music_config = await ctx.guild_proxy.get_config('music')
         if music_config is None:
             return True
         # If a specific text channel is required

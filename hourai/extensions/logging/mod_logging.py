@@ -20,7 +20,7 @@ class ModLogging(BaseCog):
         if guild is None:
             return
         proxy = proxies.GuildProxy(self.bot, guild)
-        logging_config = await proxy.get_logging_config()
+        logging_config = await proxy.get_config('logging')
         if logging_config is None or not logging_config.log_deleted_messages:
             return
         content = 'Message deleted in <#{}>.'.format(payload.channel_id)
@@ -52,7 +52,7 @@ class ModLogging(BaseCog):
         if guild is None:
             return
         proxy = proxies.GuildProxy(self.bot, guild)
-        logging_config = await proxy.get_logging_config()
+        logging_config = await proxy.get_config('logging')
         if logging_config is None or not logging_config.log_deleted_messages:
             return
         content = '{} messages bulk deleted in <#{}>.'.format(
@@ -69,9 +69,8 @@ class ModLogging(BaseCog):
     @log.command(name='deleted')
     async def log_deleted(self, ctx):
         proxy = proxies.GuildProxy(ctx.bot, ctx.guild)
-        conf = await proxy.get_logging_config()
-        conf = conf or proto.LoggingConfig()
+        conf = await proxy.get_config('logging')
         conf.log_deleted_messages = not conf.log_deleted_messages
-        await proxy.set_logging_config(conf)
+        await proxy.set_config('logging', conf)
         change = ('enabled' if conf.log_deleted_messages else 'disabled.')
         await success(f'Logging of deleted messages has been {change}')
