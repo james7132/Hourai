@@ -6,6 +6,9 @@ here: https://discord.gg/UydKWHX.
 
 ### WIP (TBD)
 
+ * [General] Bot will now automatically configure associated channels based on
+   pre-existing channels upon joining a server. (i.e. "#modlog" or "#bot-modlog"
+   will be set to the bot's modlog channel for the server automatically)
  * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
    all new joins. Useful during raids.
 
