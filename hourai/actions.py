@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 from hourai.utils import fake
-from hourai.db import models, proto
+from hourai.db import models, proto, escalation_history
 
 
 def _get_reason(action):
@@ -10,6 +10,7 @@ def _get_reason(action):
     return None
 
 
+# TODO(james7132): Log the actions to the log and to modlogs
 class ActionManager:
 
     def __init__(self, bot):
@@ -73,7 +74,7 @@ class ActionExecutor:
                 return
             # Schedule an undo
             duration = timedelta(seconds=action.duration)
-            self.bot.actions.schedule(
+            self.bot.action_manager.schedule(
                 datetime.utcnow() + duration,
                 ActionExecutor.__invert_action(action))
         except Exception:
@@ -82,9 +83,6 @@ class ActionExecutor:
     @staticmethod
     def __invert_action(action):
         inverted = invert_action(action)
-        if action.HasField('reason'):
-            inverted.reason = 'Undo: ' + action.reason
-        inverted.ClearField('duration')
         return inverted
 
     async def _apply_kick(self, action):
@@ -149,6 +147,17 @@ class ActionExecutor:
                 member.remove(*rm_roles, reason=_get_reason(action))
             )
 
+    async def _apply_escalate(self, action):
+        assert action.WhichOneof('details') == 'escalate'
+        guild = self.__get_guild(action)
+        if guild is None:
+            return
+        history = escalation_history.UserEscalationHistory(
+                self.bot, fake.FakeSnowflake(id=action.user_id), guild)
+        # TODO(james7132): Log this
+        await history.apply_diff(guild.me, action.reason,
+                                 action.escalate.amount)
+
     async def _apply_command(self, action):
         assert action.WhichOneof('details') == 'command'
         channel = self.bot.get_channel(action.command.channel_id)
@@ -204,6 +213,11 @@ def invert_action(action):
             proto.ChangeRole.ADD: proto.ChangeRole.REMOVE,
             proto.ChangeRole.REMOVE: proto.ChangeRole.ADD
         }.get(action.change_role.type, action.change_role.type)
+    elif case == 'escalate':
+        new_action.escalate.amount *= -1
     else:
         raise ValueError('Provided action cannot be inverted.')
+    if action.HasField('reason'):
+        new_action.reason = 'Undo: ' + action.reason
+    new_action.ClearField('duration')
     return new_action

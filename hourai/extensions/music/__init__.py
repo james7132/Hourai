@@ -11,15 +11,10 @@ from .utils import time_format
 from discord.ext import commands
 from hourai.bot import CogLoadError
 from hourai.cogs import BaseCog
-from hourai.db import proto
-from hourai.utils import format, is_moderator
+from hourai.utils import format, is_moderator, clamp
 
 
 log = logging.getLogger('hourai.music')
-
-
-def clamp(val, min_val, max_val):
-    return max(min(val, max_val), min_val)
 
 
 async def get_dj_roles(ctx):

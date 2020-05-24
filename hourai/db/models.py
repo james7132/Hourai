@@ -56,6 +56,36 @@ class PendingAction(Base):
     data = Column(Protobuf(proto.Action), nullable=False)
 
 
+class EscalationEntry(Base):
+    __tablename__ = 'escalation_histories'
+
+    id = Column(types.Integer, primary_key=True, autoincrement=True)
+    guild_id = Column(types.BigInteger, nullable=False)
+    subject_id = Column(types.BigInteger, nullable=False)
+    authorizer_id = Column(types.BigInteger, nullable=False)
+    authorizer_name = Column(types.String(255), nullable=False)
+    display_name = Column(types.String(2000), nullable=False)
+    timestamp = Column(UnixTimestamp, nullable=False)
+    action = Column(Protobuf(proto.Action), nullable=False)
+    level_delta = Column(types.Integer, nullable=False)
+
+    pending_deescalation = relationship("PendingDeescalation", uselist=False,
+                                        backref="entry")
+
+
+class PendingDeescalation(Base):
+    __tablename__ = 'pending_deescalations'
+
+    user_id = Column(types.BigInteger, primary_key=True)
+    guild_id = Column(types.BigInteger, primary_key=True)
+    expiration = Column(UnixTimestamp, nullable=False)
+    amount = Column(types.BigInteger, nullable=False)
+
+    entry_id = Column(types.Integer, ForeignKey("escalation_histories.id"),
+                      nullable=False)
+    entry = relationship("EscalationEntry", backref="pending_deescalation")
+
+
 class Username(Base):
     __tablename__ = 'usernames'
 

@@ -13,6 +13,10 @@ MODERATOR_PREFIX = 'mod'
 DELETED_USER_REGEX = re.compile(r'Deleted User\s+[0-9a-fA-F]+')
 
 
+def clamp(val, min_val, max_val):
+    return max(min(val, max_val), min_val)
+
+
 async def broadcast(channels, *args, **kwargs):
     """
     Broadcasts a message to multiple channels at once.

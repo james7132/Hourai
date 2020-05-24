@@ -200,7 +200,6 @@ class Owner(BaseCog):
         table = texttable.Texttable()
         table.set_deco(texttable.Texttable.HEADER | texttable.Texttable.VLINES)
         table.set_cols_align(["r"] * len(columns))
-        table.set_cols_valign(["t"] * len(columns))
         table.set_cols_valign(["t"] + ["i"] * (len(columns) - 1))
         table.header(columns)
         for shard_id, stats in sorted(shard_stats.items()):

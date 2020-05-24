@@ -257,7 +257,8 @@ class Admin(BaseCog):
             action.reason = (f'Role added by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.actions.execute_all(make_action(m) for m in members)
+        await ctx.bot.action_manager.execute_all(
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -283,7 +284,8 @@ class Admin(BaseCog):
             action.reason = (f'Role removed by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.actions.execute_all(make_action(m) for m in members)
+        await ctx.bot.action_manager.execute_all(
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -454,7 +456,8 @@ class Admin(BaseCog):
             action.reason = (f'Temp Ban by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.actions.execute_all(make_action(m) for m in members)
+        await ctx.bot.action_manager.execute_all(
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -479,7 +482,8 @@ class Admin(BaseCog):
             action.reason = (f'Temp mute by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.actions.execute_all(make_action(m) for m in members)
+        await ctx.bot.action_manager.execute_all(
+            make_action(m) for m in members)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @temp.group(name="deafen")
@@ -503,7 +507,8 @@ class Admin(BaseCog):
             action.reason = (f'Temp deafen by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.actions.execute_all(make_action(m) for m in members)
+        await ctx.bot.action_manager.execute_all(
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -534,7 +539,8 @@ class Admin(BaseCog):
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.actions.execute_all(make_action(m) for m in members)
+        await ctx.bot.action_manager.execute_all(
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -560,7 +566,8 @@ class Admin(BaseCog):
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        await ctx.bot.actions.execute_all(make_action(m) for m in members)
+        await ctx.bot.action_manager.execute_all(
+            make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
@@ -690,7 +697,7 @@ class Admin(BaseCog):
         """
         def msg_filter(m):
             return len(m.mentions) + len(m.role_mentions) > 0 or \
-                    m.mention_everyone
+                m.mention_everyone
         count = await self._prune(ctx, count=count, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)

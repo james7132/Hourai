@@ -11,7 +11,7 @@ import traceback
 from discord.ext import commands
 from . import config, actions
 from .state import GuildState
-from .db import storage
+from .db import storage, proxies
 from .utils import fake, format
 from .context import HouraiContext
 
@@ -98,7 +98,7 @@ class Hourai(commands.AutoShardedBot):
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
-        self.actions = actions.ActionManager(self)
+        self.actions_manager = actions.ActionManager(self)
 
         self.guild_states = collections.defaultdict(GuildState)
 
@@ -207,10 +207,6 @@ class Hourai(commands.AutoShardedBot):
                                            error.__traceback__)
         trace_str = format.multiline_code('\n'.join(trace))
         await owner.send(trace_str)
-
-    async def execute_actions(self, actions):
-        tasks = (action.execute(self) for action in actions)
-        await asyncio.gather(*tasks)
 
     def load_extension(self, module):
         try:
