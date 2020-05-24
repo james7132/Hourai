@@ -6,6 +6,9 @@ from .common import Validator, generalize_filter, split_camel_case
 from .storage import BanStorage
 
 
+LOOSE_DELETED_USERNAME_MATCH = re.compile(r'(?i).*Deleted.*User.*')
+
+
 class NameMatchRejector(Validator):
     """A suspicion level validator that rejects users for username proximity to
     other users already on the server.
@@ -48,7 +51,8 @@ class StringFilterRejector(Validator):
     def __init__(self, *, prefix, filters, full_match=False, subfield=None):
         self.prefix = prefix or ''
         self.filters = [(f, re.compile(generalize_filter(f))) for f in filters]
-        self.subfield = subfield or (lambda ctx: ctx.usernames)
+        self.subfield = subfield or (
+            lambda ctx: (u.name for u in ctx.usernames))
         if full_match:
             self.match_func = lambda r: r.match
         else:
@@ -79,14 +83,31 @@ class NewAccountRejector(Validator):
 
 
 class DeletedAccountRejector(Validator):
-    """A suspicion level validator that rejects users that are deleted."""
+    """A suspicion level validator that rejects users that are deleted or have
+    tell-tale warning signs of faking a deleted account in the past.
+    """
 
     async def validate_member(self, ctx):
         if utils.is_deleted_user(ctx.member):
             ctx.add_rejection_reason(
-                "User has been deleted by Discord of their own accord or "
-                "for Trust and Safety reasons, or is faking account "
-                "deletion.")
+                "Deleted users cannot be active on Discord. User has been "
+                "deleted by Discord of their own accord or for Trust and "
+                "Safety reasons, or is faking account deletion.")
+
+        for username in ctx.usernames:
+            is_deleted = utils.is_deleted_username(ctx.member)
+            if LOOSE_DELETED_USERNAME_MATCH.match(username.name) and \
+               not is_deleted:
+                ctx.add_rejection_reason(
+                    f'"{username.name}" does not match Discord\'s deletion '
+                    f'patterns. User may have attempted to fake account '
+                    f"deletion.")
+            elif is_deleted and username.discriminator is not None and \
+                    username.discriminator < 100:
+                ctx.add_rejection_reason(
+                    f'"{username.name}#{username.discriminator}" has an '
+                    f'unusual discriminator. These are randomly generated. '
+                    f'User may have attempted to fake account deletion.')
 
 
 class NoAvatarRejector(Validator):
@@ -139,7 +160,7 @@ class BannedUsernameRejector(Validator):
         normalized_bans = {self._normalize(ban.user.name): ban.user.name
                            for ban in bans}
         for username in ctx.usernames:
-            name = self._normalize(username)
+            name = self._normalize(username.name)
             for normalized, original in normalized_bans.items():
                 if name != normalized:
                     continue

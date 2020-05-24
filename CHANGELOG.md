@@ -9,6 +9,9 @@ here: https://discord.gg/UydKWHX.
  * [General] Bot will now automatically configure associated channels based on
    pre-existing channels upon joining a server. (i.e. "#modlog" or "#bot-modlog"
    will be set to the bot's modlog channel for the server automatically)
+ * [Validation] Automatic validation will now reject users with username
+   histories that may suggest fake account deletion (making it look like they
+   deleted their accounts without actually triggering account deletion).
  * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
    all new joins. Useful during raids.
 

@@ -10,7 +10,7 @@ from hourai import config
 from datetime import timedelta
 
 MODERATOR_PREFIX = 'mod'
-DELETED_USER_REGEX = re.compile(r'Deleted User\s+[0-9a-fA-F]+')
+DELETED_USER_REGEX = re.compile(r'Deleted User [0-9a-fA-F]{8}')
 
 
 def clamp(val, min_val, max_val):
@@ -107,7 +107,13 @@ def is_deleted_user(user):
     """
     if user is None:
         return None
-    return user.avatar is None and DELETED_USER_REGEX.match(user.name)
+    return (user.avatar is None and DELETED_USER_REGEX.match(user.name)) or \
+        user.discriminator == 0
+
+
+def is_deleted_username(username):
+    """ Checks if a username is deleted or not by Discord.  """
+    return DELETED_USER_REGEX.match(username)
 
 
 def is_moderator(member):
@@ -205,5 +211,3 @@ def human_timedelta(time_str):
     if seconds is None or not isinstance(seconds, int):
         raise ValueError
     return timedelta(seconds=seconds)
-
-
