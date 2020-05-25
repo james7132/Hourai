@@ -54,6 +54,17 @@ class ModlogMessageable():
         return self.guild.get_channel(self.config.modlog_channel_id)
 
 
+DEFAULT_TYPES = {
+    'logging': proto.LoggingConfig,
+    'validation': proto.ValidationConfig,
+    'auto': proto.AutoConfig,
+    'moderation': proto.ModerationConfig,
+    'music': proto.MusicConfig,
+    'announce': proto.AnnouncementConfig,
+    'role': proto.RoleConfig,
+}
+
+
 class GuildProxy:
 
     def __init__(self, bot, guild):
@@ -70,7 +81,8 @@ class GuildProxy:
         name = name.lower()
         if name not in self._config_cache:
             cache = getattr(self.storage, name + '_configs')
-            self._config_cache[name] = await cache.get(self.guild.id)
+            conf = await cache.get(self.guild.id)
+            self._config_cache[name] = conf or DEFAULT_TYPES[name]()
         return self._config_cache[name]
 
     async def set_config(self, name, cfg):

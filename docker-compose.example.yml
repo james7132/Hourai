@@ -12,11 +12,11 @@ services:
       - hourai-data:/data
       - ./config/hourai.jsonnet:/opt/hourai.jsonnet
     depends_on:
-      - main_database
+      - postgres
       - redis
       - lavalink
-  main_database:
-    image: "postgres:11-alpine"
+   postgres:
+    image: "postgres:12-alpine"
     container_name: "postgres-{HOURAI_ENV-dev}"
     restart: unless-stopped
     volumes:

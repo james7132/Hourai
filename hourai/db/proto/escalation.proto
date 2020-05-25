@@ -15,5 +15,5 @@ message EscalationLadderRung {
   optional string display_name = 2;
   // Optional: if set, after X period of time (in seconds), the user will be
   // deescalated.
-  repeated uint64 deescalation_period = 3;
+  optional uint64 deescalation_period = 3;
 }

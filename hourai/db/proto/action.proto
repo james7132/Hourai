@@ -21,6 +21,10 @@ message Action {
   }
 }
 
+message ActionSet {
+  repeated Action action = 1;
+}
+
 message KickMember {
 }
 

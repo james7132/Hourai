@@ -98,7 +98,7 @@ class Hourai(commands.AutoShardedBot):
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
-        self.actions_manager = actions.ActionManager(self)
+        self.action_manager = actions.ActionManager(self)
 
         self.guild_states = collections.defaultdict(GuildState)
 
@@ -197,7 +197,7 @@ class Hourai(commands.AutoShardedBot):
         if err_msg:
             await ctx.send(err_msg)
 
-    async def create_guild_proxy(self, guild):
+    def create_guild_proxy(self, guild):
         assert guild is not None
         return proxies.GuildProxy(self, guild)
 

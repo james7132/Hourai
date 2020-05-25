@@ -66,11 +66,8 @@ class EscalationEntry(Base):
     authorizer_name = Column(types.String(255), nullable=False)
     display_name = Column(types.String(2000), nullable=False)
     timestamp = Column(UnixTimestamp, nullable=False)
-    action = Column(Protobuf(proto.Action), nullable=False)
+    action = Column(Protobuf(proto.ActionSet), nullable=False)
     level_delta = Column(types.Integer, nullable=False)
-
-    pending_deescalation = relationship("PendingDeescalation", uselist=False,
-                                        backref="entry")
 
 
 class PendingDeescalation(Base):

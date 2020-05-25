@@ -43,9 +43,9 @@ class ValidationContext():
                     discriminator=self.member.discriminator,
                     timestamp=datetime.utcnow()))
             with self.bot.create_storage_session() as session:
-                names.update([x for x, in session.query(
-                    models.Username).filter_by(user_id=self.member.id)
-                                         .distinct()])
+                names.update(session.query(models.Username) \
+                                    .filter_by(user_id=self.member.id) \
+                                    .all())
             self._usernames = names
         return self._usernames
 

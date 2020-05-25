@@ -95,7 +95,7 @@ class DeletedAccountRejector(Validator):
                 "Safety reasons, or is faking account deletion.")
 
         for username in ctx.usernames:
-            is_deleted = utils.is_deleted_username(ctx.member)
+            is_deleted = utils.is_deleted_username(username.name)
             if LOOSE_DELETED_USERNAME_MATCH.match(username.name) and \
                not is_deleted:
                 ctx.add_rejection_reason(

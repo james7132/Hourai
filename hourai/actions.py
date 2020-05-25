@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-from hourai.utils import fake
+from hourai.utils import fake, format
 from hourai.db import models, proto, escalation_history
 
 
@@ -158,6 +158,18 @@ class ActionExecutor:
         await history.apply_diff(guild.me, action.reason,
                                  action.escalate.amount)
 
+    async def _apply_direct_message(self, action):
+        assert action.WhichOneof('details') == 'direct_message'
+        user = self.__get_user(action)
+        if user is None:
+            return
+        try:
+            content = format.ellipsize(action.direct_message.content)
+            await user.send(content=action.direct_message.content)
+        except (discord.Forbidden, discord.NotFound):
+            # Don't cause a ruckus if the user has the bot blocked
+            pass
+
     async def _apply_command(self, action):
         assert action.WhichOneof('details') == 'command'
         channel = self.bot.get_channel(action.command.channel_id)
@@ -180,6 +192,10 @@ class ActionExecutor:
     def __get_guild(self, action):
         assert action.HasField('guild_id')
         return self.bot.get_guild(action.guild_id)
+
+    def __get_user(self, action):
+        assert action.HasField('user_id')
+        return self.bot.get_user(action.user_id)
 
     def __get_member(self, action):
         assert action.HasField('user_id')

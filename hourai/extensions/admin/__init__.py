@@ -49,9 +49,9 @@ class Admin(BaseCog):
         try:
             session = self.bot.create_storage_session()
             with session:
-                query = self.bot.actions.query_pending_actions(session)
+                query = self.bot.action_manager.query_pending_actions(session)
                 for pending_action in query:
-                    await self.bot.actions.execute(pending_action.data)
+                    await self.bot.action_manager.execute(pending_action.data)
                     session.delete(pending_action)
                     session.commit()
         except Exception:

@@ -2,11 +2,7 @@ FROM python:3.8-alpine as base
 
 FROM base as builder
 RUN apk add --no-cache \
-  protobuf \
-  gcc \
-  make \
-  libffi-dev \
-  build-base \
+  protobuf gcc make libffi-dev build-base postgresql-dev \
   && mkdir /app
 COPY requirements.txt /
 RUN pip install --prefix /install -r /requirements.txt
@@ -17,7 +13,7 @@ RUN protoc $(find /app -type f -regex ".*\.proto") \
 
 FROM base
 WORKDIR /app
-RUN apk add --no-cache libstdc++
+RUN apk add --no-cache libstdc++ postgresql-dev
 # Run as non-root user
 RUN addgroup -g 969 -S hourai && \
     adduser -u 969 -S hourai -G hourai

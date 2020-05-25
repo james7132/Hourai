@@ -40,7 +40,7 @@ class UserEscalationHistory:
             level = max(0, level + entry.level_delta)
         return level
 
-    async def escalate(self, authorizer, reason):
+    def escalate(self, authorizer, reason):
         """|coro|
 
         Escalates a user and applies the corresponding action from the
@@ -74,57 +74,68 @@ class UserEscalationHistory:
         level = max(-1, self.current_level + diff)
         new_rung = get_rung(level, config)
 
-        action = proto.Action()
+        actions = proto.ActionSet()
         if execute:
-            action.CopyFrom(new_rung.action)
-            self.__setup_action(action, reason)
-            await self.bot.action_manager.execute(action)
+            for rung_action in new_rung.action:
+                action = actions.action.add()
+                action.CopyFrom(rung_action)
+                self.__setup_action(action, reason)
+                await self.bot.action_manager.execute(action)
         else:
+            action = actions.action.add()
             action.escalate.amount = diff
             self.__setup_action(action, reason)
 
         entry = self.__create_entry(authorizer, new_rung, diff)
-        entry.action = action
+        entry.action = actions
         self.session.add(entry)
 
-        expiration = self.__schedule_escalation(new_rung, entry)
+        expiration = self.__schedule_deescalation(new_rung, entry)
 
         self.session.commit()
 
         return EscalationResult(
             entry=entry, current_rung=new_rung,
-            next_rung=get_rung(level + 1),
+            next_rung=get_rung(level + 1, config),
             current_level=level, expiration=expiration)
 
     def __schedule_deescalation(self, rung, entry):
         expiration = None
+        deesc = self.session.query(models.PendingDeescalation) \
+                            .get((self.user.id, self.guild.id))
         # Schedule Deescalation only if it can
         if rung is not None and rung.HasField('deescalation_period'):
             #  This will update existing deescalation entries and add ones that
             #  don't already exist
             expiration = entry.timestamp + \
-                timedelta(rung.deescalation_period)
-            self.session.add(models.PendingDeescalation(
-                user_id=self.user.id, guild_id=self.guild.id,
-                expiration=expiration, amount=-1,
-                entryg=entry
-            ))
+                timedelta(seconds=rung.deescalation_period)
+
+            deesc = deesc or models.PendingDeescalation(
+                user_id=self.user.id,
+                guild_id=self.guild.id
+            )
+            deesc.amount = -1
+            deesc.expiration = expiration
+            deesc.entry = entry
+
+            self.session.merge(deesc)
         else:
             # Remove any pending deescalation if there doesn't need to be one
-            self.session.query(models.PendingDeescalation) \
-                        .filter_by(user_id=self.user.id,
-                                   guild_id=self.guild_id) \
-                        .delete()
+            if deesc is not None:
+                self.session.delete(deesc)
+
         return expiration
 
     def __create_entry(self, authorizer, rung, level_delta):
         authorizer_name = f"{authorizer.name}#{authorizer.discriminator}",
+        display_name = (rung.display_name if level_delta >= 0 else
+                        'Deescalate')
         return models.EscalationEntry(
             guild_id=self.guild.id,
             subject_id=self.user.id,
             authorizer_id=authorizer.id,
             authorizer_name=authorizer_name,
-            display_name=rung.display_name,
+            display_name=display_name,
             timestamp=datetime.utcnow(),
             level_delta=level_delta)
 

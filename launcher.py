@@ -1,11 +1,11 @@
 import click
 import logging
 import hourai.config
-from hourai import config, extensions, bot
+from hourai import extensions
 from hourai.bot import Hourai
 from hourai.db.storage import Storage
 from hourai.db.models import Base
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 
 
 @click.group()
@@ -31,32 +31,33 @@ def run(ctx):
     hourai_bot.run(conf.bot_token, bot=True, reconnect=True)
 
 
-@main.command()
+@main.group()
 @click.pass_context
 def db(ctx):
     pass
 
-# @main.command()
-# @click.pass_context
-# @click.option('engine')
-# def create(ctx, engine):
-    # storage = Storage(ctx.obj['config'])
-    # storage.ensure_created()
 
-# @main.command()
-# @click.pass_context
-# @click.argument('src')
-# @click.argument('dst')
-# def move(ctx, src, dst):
-    # storage = Storage(ctx.obj['config'])
-    # src_engine = storage._create_sql_engine(src)
-    # dst_engine = storage._create_sql_engine(dst)
+@db.command()
+@click.pass_context
+def create(ctx):
+    storage = Storage(ctx.obj['config'])
+    storage.ensure_created()
 
-    # with src_engine.connect() as src_conn:
-        # with dst_engine.connect() as dst_conn:
-            # for table in Base.metadata.sorted_tables:
-                # data = [dict(row) for row in src_conn.execute(select(table.c))]
-                # dst_engine.execute(table.insert().values(data))
+
+@db.command()
+@click.pass_context
+@click.argument('src')
+@click.argument('dst')
+def move(ctx, src, dst):
+    storage = Storage(ctx.obj['config'])
+    src_engine = storage._create_sql_engine(src)
+    dst_engine = storage._create_sql_engine(dst)
+
+    with src_engine.connect() as src_conn:
+        with dst_engine.connect():
+            for table in Base.metadata.sorted_tables:
+                data = [dict(row) for row in src_conn.execute(select(table.c))]
+                dst_engine.execute(table.insert().values(data))
 
 
 if __name__ == '__main__':

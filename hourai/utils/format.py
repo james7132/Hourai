@@ -1,3 +1,6 @@
+from . import consts
+
+
 def _surround(name, surround):
     reversed_surround = surround[::-1]  # Reverse the string
 
@@ -42,7 +45,8 @@ def code(val: str, highlight=None):
         return simple_code(val)
 
 
-def ellipsize(val: str, max_length=2000, keep_end=False):
+def ellipsize(val: str, max_length=consts.DISCORD_MAX_MESSAGE_SIZE,
+              keep_end=False):
     if len(val) <= max_length:
         return val
     if keep_end:

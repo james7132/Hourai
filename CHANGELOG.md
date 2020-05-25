@@ -14,6 +14,7 @@ here: https://discord.gg/UydKWHX.
    deleted their accounts without actually triggering account deletion).
  * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
    all new joins. Useful during raids.
+ * [Technical] Migrated Hourai to PostgreSQL instead of using SQLite.
 
 ### v1.1.1 (05/21/2020)
 

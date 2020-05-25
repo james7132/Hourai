@@ -5,11 +5,13 @@ import discord
 import logging
 import texttable
 from datetime import datetime
-from discord.ext import commands
+from discord.ext import commands, tasks
 from hourai.cogs import GuildSpecificCog
 from hourai.db import models, escalation_history
 from hourai.utils import invite, checks, format
 
+
+log = logging.getLogger(__name__)
 BANNED_GUILDS = {557153176286003221}
 
 
@@ -28,7 +30,7 @@ class GuildSpecific_TheGap(GuildSpecificCog):
             return
 
         def on_error(e, t, tb):
-            return logging.exception('Failed to get invite:')
+            return log.exception('Failed to get invite:')
         invites = await invite.get_all_discord_invites(
             self.bot, msg.content, on_error=on_error)
         invites = [inv for inv in invites if inv is not None]
@@ -47,7 +49,7 @@ class GuildSpecific_TheGap(GuildSpecificCog):
 class GuildSpecific_TouhouProject(GuildSpecificCog):
 
     def __init__(self, bot, guilds):
-        super().__init__(bot, guilds)
+        super().__init__(bot, guilds=guilds)
         self.apply_pending_deescalations.start()
 
     def cog_unload(self):
@@ -78,18 +80,18 @@ class GuildSpecific_TouhouProject(GuildSpecificCog):
 
     def __query_pending_deescalations(self, session):
         now = datetime.utcnow()
-        return session.query(models.PendingDeescalations) \
-                      .filter(models.PendingDeescalations.expiration < now) \
-                      .order_by(models.PendingDeescalations.expiration) \
+        return session.query(models.PendingDeescalation) \
+                      .filter(models.PendingDeescalation.expiration < now) \
+                      .order_by(models.PendingDeescalation.expiration) \
                       .all()
 
     @apply_pending_deescalations.before_loop
     async def before_apply_pending_deescalations(self):
         await self.bot.wait_until_ready()
 
-    @commands.group(name='escalate')
+    @commands.group(name='escalate', invoke_without_command=True)
     @checks.is_moderator()
-    async def escalate(self, ctx, reason: str, *, users: discord.Member):
+    async def escalate(self, ctx, reason: str, *users: discord.Member):
         async def escalate_user(user):
             history = escalation_history.UserEscalationHistory(
                 self.bot, user, ctx.guild)
@@ -109,7 +111,7 @@ class GuildSpecific_TouhouProject(GuildSpecificCog):
         await ctx.send("\n".join(lines))
 
     @commands.command(name='deescalate')
-    async def deescalate(self, ctx, reason: str, *, users: discord.Member):
+    async def deescalate(self, ctx, reason: str, *users: discord.Member):
         async def escalate_user(user):
             history = escalation_history.UserEscalationHistory(
                 self.bot, user, ctx.guild)
@@ -128,7 +130,7 @@ class GuildSpecific_TouhouProject(GuildSpecificCog):
         lines = [f"{u.name}: {res}" for u, res in zip(users, results)]
         await ctx.send("\n".join(lines))
 
-    @commands.command(name='history')
+    @escalate.command(name='history')
     async def escalate_history(self, ctx, user: discord.Member):
         history = escalation_history.UserEscalationHistory(
             self.bot, user, ctx.guild)
@@ -142,24 +144,29 @@ class GuildSpecific_TouhouProject(GuildSpecificCog):
             return "```\nNo history of escalation events.\n```"
         columns = ('Date', 'Action', 'Authorizer', 'Level', 'Reason')
 
-        table = texttable.Texttable()
+        table = texttable.Texttable(max_width=160)
         table.set_cols_align(["r"] * len(columns))
         table.set_cols_valign(["t"] + ["i"] * (len(columns) - 1))
         table.set_deco(texttable.Texttable.HEADER | texttable.Texttable.VLINES)
         table.header(columns)
-        level = -1
+        level = 0
         for entry in history.entries:
             level = max(-1, level + entry.level_delta)
 
             authorizer_name = entry.authorizer_name
-            authorizer = history.guild.get_member(entry.authorizer.id)
+            authorizer = history.guild.get_member(entry.authorizer_id)
             if authorizer is not None:
                 authorizer_name = \
                         f"{authorizer.name}#{authorizer.discriminator}"
 
-            table.add_row([str(entry.timestamp), entry.display_name,
-                           authorizer_name, level, entry.action.reason])
-        return f"```\n{table.render()}\n```"
+            reasons = set(a.reason for a in entry.action.action
+                          if a.HasField('reason'))
+            reason = '; '.join(reasons)
+            timestamp = entry.timestamp.strftime("%b %d %Y %H:%M")
+
+            table.add_row([timestamp, entry.display_name, authorizer_name, level,
+                           reason])
+        return f"```\n{table.draw()}\n```"
 
 
 __GUILD_COGS = {

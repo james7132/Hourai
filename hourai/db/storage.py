@@ -192,9 +192,15 @@ class Storage:
     def _create_sql_engine(self, connection_str=None):
         connection_str = connection_str or \
             config.get_config_value(self.config, 'database', type=str)
+
+        connect_args = dict()
+        if 'sqlite' in connection_str:
+            connect_args['check_same_thread'] = False
+
         return create_engine(connection_str,
                              poolclass=pool.SingletonThreadPool,
-                             connect_args={'check_same_thread': False})
+                             client_encoding='utf8',
+                             connect_args=connect_args)
 
 
 class StorageSession:
