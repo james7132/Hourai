@@ -5,7 +5,7 @@ import texttable
 from datetime import datetime
 from discord.ext import commands, tasks
 from hourai.db import escalation_history, models
-from hourai.utils import fake, checks
+from hourai.utils import fake, checks, format
 
 
 log = logging.getLogger(__name__)

@@ -94,10 +94,28 @@ class UserEscalationHistory:
 
         self.session.commit()
 
-        return EscalationResult(
+        result = EscalationResult(
             entry=entry, current_rung=new_rung,
             next_rung=get_rung(level + 1, config),
             current_level=level, expiration=expiration)
+        await self.__send_modlog_result(result, diff)
+        return result
+
+    async def __send_modlog_result(self, result, diff):
+        try:
+            reasons = set(a.reason for a in result.entry.action.action)
+            modlog = await self.guild_proxy.get_modlog()
+            await modlog.send(''.join([
+                ':arrow_up:' if diff > 0 else ':arrow_down:',
+                f'**<@{result.entry.authorizer_id}> ',
+                'escalated' if diff > 0 else 'deescalated',
+                f' <@{result.entry.subject_id}>**\n',
+                f'Reason: {"; ".join(reasons)}\n',
+                f'Action: {result.entry.display_name}\n',
+                f'Expiration: {result.expiration or "Never"}'
+            ]))
+        except Exception as error:
+            await self.bot.send_owner_error(error)
 
     def __schedule_deescalation(self, rung, entry):
         expiration = None
