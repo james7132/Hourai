@@ -3,6 +3,7 @@ import discord
 import re
 import typing
 import logging
+from . import escalation
 from datetime import datetime, timedelta
 from discord.ext import commands, tasks
 from hourai import utils
@@ -35,14 +36,16 @@ def create_action(member):
     return proto.Action(user_id=member.id, guild_id=member.guild.id)
 
 
-class Admin(BaseCog):
+class Admin(escalation.EscalationMixin, BaseCog):
 
     def __init__(self, bot):
         self.bot = bot
         self.apply_pending_actions.start()
+        super().__init__(bot)
 
     def cog_unload(self):
         self.apply_pending_actions.cancel()
+        super().cog_unload()
 
     @tasks.loop(seconds=1)
     async def apply_pending_actions(self):
