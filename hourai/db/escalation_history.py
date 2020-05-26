@@ -119,10 +119,9 @@ class UserEscalationHistory:
             deesc.entry = entry
 
             self.session.merge(deesc)
-        else:
+        elif deesc is not None:
             # Remove any pending deescalation if there doesn't need to be one
-            if deesc is not None:
-                self.session.delete(deesc)
+            self.session.delete(deesc)
 
         return expiration
 

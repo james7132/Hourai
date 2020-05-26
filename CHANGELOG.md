@@ -9,11 +9,22 @@ here: https://discord.gg/UydKWHX.
  * [General] Bot will now automatically configure associated channels based on
    pre-existing channels upon joining a server. (i.e. "#modlog" or "#bot-modlog"
    will be set to the bot's modlog channel for the server automatically)
+ * [Documentation] Documentation for the more complex features available via the
+   bot are now documented via the [GitHub
+   wiki](https://github.com/james7132/Hourai/wiki). This will be moved to a
+   seperate documentation site in the future.
  * [Validation] Automatic validation will now reject users with username
    histories that may suggest fake account deletion (making it look like they
    deleted their accounts without actually triggering account deletion).
  * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
    all new joins. Useful during raids.
+ * [Escalation] New beta feature: Escalation. A customizable way of codifying
+   progressive disciplinary action to reduce moderation mental overhead. Full
+   documentaion can be found on [the
+   wiki](https://github.com/james7132/Hourai/wiki/Escalation-Ladder). Currently
+   only available in select
+   servers (must be explicitly enabled by the bot owner). Will enter general
+   availability when the web interface launches.
  * [Technical] Migrated Hourai to PostgreSQL instead of using SQLite.
 
 ### v1.1.1 (05/21/2020)
