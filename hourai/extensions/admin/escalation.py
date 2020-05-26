@@ -90,6 +90,7 @@ class EscalationMixin:
         await ctx.send("\n".join(lines))
 
     @commands.command(name='deescalate')
+    @checks.is_moderator()
     @commands.check(require_escalation_config)
     async def deescalate(self, ctx, reason: str, *users: discord.Member):
         """Deesclates a user and applies the appropriate moderation action.

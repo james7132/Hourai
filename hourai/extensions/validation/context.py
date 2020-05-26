@@ -1,10 +1,12 @@
 import logging
+import collections
 from datetime import datetime
 from hourai import utils
 from hourai.utils import embed, format
 from hourai.db import proxies, models
 
 log = logging.getLogger('hourai.validation')
+Username = collections.namedtuple('Username', 'name discriminator timestamp')
 
 
 class ValidationContext():
@@ -38,14 +40,18 @@ class ValidationContext():
         if self._usernames is None:
             names = set()
             if self.member.name is not None:
-                names.add(models.Username(
+                names.add(Username(
                     name=self.member.name,
                     discriminator=self.member.discriminator,
                     timestamp=datetime.utcnow()))
             with self.bot.create_storage_session() as session:
-                names.update(session.query(models.Username) \
-                                    .filter_by(user_id=self.member.id) \
-                                    .all())
+                usernames = session.query(models.Username) \
+                                   .filter_by(user_id=self.member.id) \
+                                   .all()
+                names.update([Username(name=u.name,
+                                       discriminator=u.discriminator,
+                                       timestamp=u.timestamp)
+                              for u in usernames])
             self._usernames = names
         return self._usernames
 
