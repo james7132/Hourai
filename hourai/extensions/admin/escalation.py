@@ -62,6 +62,15 @@ class EscalationMixin:
     @checks.is_moderator()
     @commands.check(require_escalation_config)
     async def escalate(self, ctx, reason: str, *users: discord.Member):
+        """Escalates a user and applies the appropriate moderation action.
+
+        A history of escalation events can be seen with ~escalate history.
+        See: ~help escalate history.
+
+        Requires the escalation ladder to be configured properly.
+        For more information:
+        https://github.com/james7132/Hourai/wiki/Escalation-Ladder
+        """
         async def escalate_user(user):
             history = escalation_history.UserEscalationHistory(
                 self.bot, user, ctx.guild)
@@ -83,6 +92,15 @@ class EscalationMixin:
     @commands.command(name='deescalate')
     @commands.check(require_escalation_config)
     async def deescalate(self, ctx, reason: str, *users: discord.Member):
+        """Deesclates a user and applies the appropriate moderation action.
+
+        A history of escalation events can be seen with ~escalate history.
+        See: ~help escalate history.
+
+        Requires the escalation ladder to be configured properly.
+        For more information:
+        https://github.com/james7132/Hourai/wiki/Escalation-Ladder
+        """
         async def escalate_user(user):
             history = escalation_history.UserEscalationHistory(
                 self.bot, user, ctx.guild)
@@ -103,6 +121,15 @@ class EscalationMixin:
 
     @escalate.command(name='history')
     async def escalate_history(self, ctx, user: discord.Member):
+        """Deesclates a user and applies the appropriate moderation action.
+
+        A history of escalation events can be seen with ~escalate history.
+        See: ~help escalate history.
+
+        Requires the escalation ladder to be configured properly.
+        For more information:
+        https://github.com/james7132/Hourai/wiki/Escalation-Ladder
+        """
         history = escalation_history.UserEscalationHistory(
             self.bot, user, ctx.guild)
 
