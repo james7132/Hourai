@@ -4,7 +4,7 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
-### WIP (TBD)
+### v1.2.0 (05/26/2020)
 
  * [General] Bot will now automatically configure associated channels based on
    pre-existing channels upon joining a server. (i.e. "#modlog" or "#bot-modlog"
@@ -19,7 +19,7 @@ here: https://discord.gg/UydKWHX.
  * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
    all new joins. Useful during raids.
  * [Escalation] New beta feature: Escalation. A customizable way of codifying
-   progressive disciplinary action to reduce moderation mental overhead. Full
+   progressive moderation action to reduce moderation mental overhead. Full
    documentaion can be found on [the
    wiki](https://github.com/james7132/Hourai/wiki/Escalation-Ladder). Currently
    only available in select
