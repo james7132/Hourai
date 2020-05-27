@@ -174,7 +174,7 @@ class Validation(BaseCog):
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        await self.bot.wait_util_ready()
+        await self.bot.wait_until_ready()
         if not guild.me.guild_permissions.ban_members:
             return
         try:

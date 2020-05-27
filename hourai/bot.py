@@ -198,7 +198,8 @@ class Hourai(commands.AutoShardedBot):
             await ctx.send(err_msg)
 
     def create_guild_proxy(self, guild):
-        assert guild is not None
+        if guild is None:
+            return None
         return proxies.GuildProxy(self, guild)
 
     async def send_owner_error(self, error):

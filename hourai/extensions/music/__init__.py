@@ -47,7 +47,7 @@ def get_default_channel(guild, member=None):
 
 
 async def get_voice_channel(ctx):
-    music_config = await ctx.guild_config.get_config('music')
+    music_config = await ctx.guild_proxy.get_config('music')
     channel = None
     if music_config.HasField('voice_channel_id'):
         channel = ctx.guild.get_channel(music_config.voice_channel_id)
