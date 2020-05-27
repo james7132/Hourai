@@ -37,7 +37,7 @@ class UserEscalationHistory:
     def current_level(self):
         level = -1
         for entry in self.entries:
-            level = max(0, level + entry.level_delta)
+            level = max(-1, level + entry.level_delta)
         return level
 
     def escalate(self, authorizer, reason):
