@@ -73,6 +73,8 @@ def __make_configuration_template():
         "database": "",
         "redis": "",
 
+        "activity": "",
+
         "disabled_extensions": [""],
 
         "music": {

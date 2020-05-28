@@ -93,9 +93,13 @@ class Hourai(commands.AutoShardedBot):
         except KeyError:
             raise ValueError(
                 '"config" must be specified when initialzing Hourai.')
-        kwargs.setdefault('command_prefix', self.config.command_prefix)
         # kwargs.setdefault('help_command', HouraiHelpCommand())
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
+
+        kwargs.setdefault('command_prefix', self.config.command_prefix)
+        kwargs.setdefault('activity',
+                          discord.CustomActivity(self.config.activity))
+
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)

@@ -1,6 +1,7 @@
 local env(suffix) = {
   bot_token: error "Must override bot_token.",
   command_prefix: "~",
+  activity: "https://hourai.gg",
 
   database: "sqlite:////data/hourai.sqlite",
   redis: "redis://redis-" + suffix,
