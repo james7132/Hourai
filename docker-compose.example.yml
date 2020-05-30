@@ -15,6 +15,19 @@ services:
       - postgres
       - redis
       - lavalink
+  hourai_web:
+    build: .
+    container_name: "hourai-web-${HOURAI_ENV:-dev}"
+    command: python launcher.py run web
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=${HOURAI_ENV:-dev}
+    volumes:
+      - ./config/hourai.jsonnet:/opt/hourai.jsonnet:ro
+    depends_on:
+      - postgres
+      - redis
    postgres:
     image: "postgres:12-alpine"
     container_name: "postgres-{HOURAI_ENV-dev}"

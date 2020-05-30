@@ -12,7 +12,7 @@ from discord.ext import commands
 from . import config, actions
 from .state import GuildState
 from .db import storage, proxies
-from .utils import fake, format
+from .utils import fake, format, uvloop
 from .context import HouraiContext
 
 log = logging.getLogger(__name__)
@@ -115,13 +115,7 @@ class Hourai(commands.AutoShardedBot):
         return self.storage.create_session()
 
     def run(self, *args, **kwargs):
-        try:
-            import uvloop
-            uvloop.install()
-            log.info('uvloop found and installed.')
-        except ImportError:
-            log.warn('uvloop not found, may not be running at peak '
-                     'performance.')
+        uvloop.try_install()
         super().run(*args, **kwargs)
 
     async def start(self, *args, **kwargs):
@@ -220,7 +214,7 @@ class Hourai(commands.AutoShardedBot):
         except Exception:
             self.logger.exception(f'Failed to load extension: {module}')
 
-    def load_all_extensions(self, base_module):
+    def load_all_extensions(self, base_module=__module__):
         disabled_extensions = self.get_config_value('disabled_extensions',
                                                     type=tuple, default=())
         modules = pkgutil.iter_modules(base_module.__path__,

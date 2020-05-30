@@ -11,8 +11,7 @@ import typing
 from discord.ext import commands
 from google.protobuf import text_format
 from guppy import hpy
-from hourai import extensions
-from hourai.bot import CounterKeys
+from hourai.bot import CounterKeys, extensions
 from hourai.cogs import BaseCog
 from hourai.db import models, proto
 from hourai.utils import hastebin, format

@@ -67,7 +67,6 @@ def __configure_logging(conf):
 
 def __make_configuration_template():
     return {
-        "bot_token": "",
         "command_prefix": "",
 
         "database": "",
@@ -76,6 +75,10 @@ def __make_configuration_template():
         "activity": "",
 
         "disabled_extensions": [""],
+
+        "web": {
+            "port": 0
+        },
 
         "music": {
             "nodes": [{
@@ -87,6 +90,13 @@ def __make_configuration_template():
                 "password": ""
             }]
         },
+
+        "discord": {
+            "client_id": 0,
+            "client_secret": 0,
+            "scopes": [""],
+            "bot_token": "",
+        }
 
         "reddit": {
             "user_agent": "",

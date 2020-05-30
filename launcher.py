@@ -1,7 +1,7 @@
 import click
 import logging
 import hourai.config
-from hourai import extensions
+from hourai import web
 from hourai.bot import Hourai
 from hourai.db.storage import Storage
 from hourai.db.models import Base
@@ -22,13 +22,27 @@ def main(ctx, config_path, env):
     logging.info(f"Loaded config from {config_path}. (Environment: {env})")
 
 
-@main.command()
+@main.group(name='run')
 @click.pass_context
 def run(ctx):
+    pass
+
+
+@run.command(name='bot')
+@click.pass_context
+def run_bot(ctx):
     conf = ctx.obj['config']
     hourai_bot = Hourai(config=conf)
-    hourai_bot.load_all_extensions(extensions)
-    hourai_bot.run(conf.bot_token, bot=True, reconnect=True)
+    hourai_bot.load_all_extensions()
+    hourai_bot.run(conf.discord.bot_token, bot=True, reconnect=True)
+
+
+@run.command(name='web')
+@click.pass_context
+def run_web(ctx):
+    conf = ctx.obj['config']
+    app = web.create_app(conf)
+    web.run_app(app, port=conf.web.port)
 
 
 @main.group()

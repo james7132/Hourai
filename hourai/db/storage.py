@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 CacheConfig = collections.namedtuple(
     'CacheConfig', ('attr', 'prefix', 'subprefix', 'subcoder',
-                    'value_coder', 'timeout'),
+                    'value_coder', 'timeout', 'proto_type'),
     defaults=(None,) * 6)
 
 
@@ -41,27 +41,16 @@ class GuildPrefix(enum.Enum):
     prefix to the top level key.
     """
     # 1:1s. Hash key is just the prefix. Size: 1 byte.
-    AUTO_CONFIG = CacheConfig(
-            subprefix=0,
-            value_coder=protobuf(proto.AutoConfig))
-    MODERATION_CONFIG = CacheConfig(
-            subprefix=1,
-            value_coder=protobuf(proto.ModerationConfig))
-    LOGGING_CONFIG = CacheConfig(
-            subprefix=2,
-            value_coder=protobuf(proto.LoggingConfig))
-    VALIDATION_CONFIG = CacheConfig(
-            subprefix=3,
-            value_coder=protobuf(proto.ValidationConfig))
-    MUSIC_CONFIG = CacheConfig(
-            subprefix=4,
-            value_coder=protobuf(proto.MusicConfig))
-    ANNOUNCE_CONFIG = CacheConfig(
-            subprefix=5,
-            value_coder=protobuf(proto.AnnouncementConfig))
-    ROLE_CONFIG = CacheConfig(
-            subprefix=6,
-            value_coder=protobuf(proto.RoleConfig))
+    AUTO_CONFIG = CacheConfig(subprefix=0, proto_type=proto.AutoConfig)
+    MODERATION_CONFIG = CacheConfig(subprefix=1,
+                                    proto_type=proto.ModerationConfig)
+    LOGGING_CONFIG = CacheConfig(subprefix=2, proto_type=proto.LoggingConfig)
+    VALIDATION_CONFIG = CacheConfig(subprefix=3,
+                                    proto_type=proto.ValidationConfig)
+    MUSIC_CONFIG = CacheConfig(subprefix=4, proto_type=proto.MusicConfig)
+    ANNOUNCE_CONFIG = CacheConfig(subprefix=5,
+                                  proto_type=proto.AnnouncementConfig)
+    ROLE_CONFIG = CacheConfig(subprefix=6, proto_type=proto.RoleConfig)
 
 
 def _prefixize(val):
@@ -134,7 +123,8 @@ class Storage:
             # Initialize Parameters
             prefix = _prefixize(conf.prefix.value)
             key_coder = coders.IntCoder().prefixed(prefix)
-            value_coder = conf.value_coder().compressed()
+            value_coder = (conf.value_coder or protobuf(conf.proto_type))()
+            value_coder = value_coder.compressed()
 
             timeout = conf.timeout or 0
             if conf.subprefix is None:

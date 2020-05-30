@@ -1,20 +1,48 @@
 local env(suffix) = {
-  bot_token: error "Must override bot_token.",
   command_prefix: "~",
   activity: "https://hourai.gg",
 
-  database: "sqlite:////data/hourai.sqlite",
+  local databases = {
+    local database_params = {
+      connector: "postgresql",
+      dialect: "psycopg2",
+      user: "hourai",
+      password: "",
+      host: "postgres-" + suffix,
+      database: "hourai",
+
+      connection_string: "%s+%s://%s:%s@%s/%s" % [
+        self.connector, self.dialect, self.user, self.password, self.host,
+        self.database
+      ],
+    },
+
+    postgres: database_params,
+  },
+
+  database: databases.postgres.connection_string,
   redis: "redis://redis-" + suffix,
+
+  web: {
+    port: 8080
+  }
 
   music: {
     nodes: [{
-      identifier: "MAIN",
+      identifier: "EUROPE",
       host: "lavalink-" + suffix,
       port: 2333,
       rest_uri: "http://lavalink-" + suffix + ":2333",
-      region: "us_central",
-      password: null,
+      region: "europe",
+      password: "",
     }],
+  },
+
+  discord: {
+      client_id: 0,
+      client_secret: 0,
+      bot_token: error "Must override bot_token.",
+      scopes: [],
   },
 
   reddit: {
@@ -37,31 +65,11 @@ local env(suffix) = {
     },
   },
 
-  "disabled_extensions": []
+  disabled_extensions: []
 };
 
 {
   // Denote different configurations for different enviroments here.
-  prod: env("prod") {
-    // Hourai:
-    bot_token: "",
-  },
-  dev: env("dev") {
-    // Shanghai:
-    bot_token: "",
-
-    logging: {
-      default: "DEBUG",
-      modules: {
-        prawcore: "INFO",
-        aioredis: "DEBUG",
-        wavelink: "DEBUG",
-        discord: "INFO"
-      },
-    }
-
-    disabled_extensions: [
-      'hourai.extensions.feeds'
-    ]
-  }
+  prod: env("prod"),
+  dev: env("dev"),
 }
