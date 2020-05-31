@@ -1,6 +1,7 @@
 import logging
 from . import util
 from aiohttp import web
+from hourai.db import storage, proto
 from hourai.db.storage import GuildPrefix
 
 
@@ -11,13 +12,10 @@ def guild_config_view(storage, field, model_type, validator=None):
 
     class GuildConfigView(web.View):
 
-        def __init__(self):
-            self.model_type = model_type
-
         @property
         def guild_id(self):
             try:
-                guild_id = int(self.request.match_info["guild_id"v])
+                return int(self.request.match_info["guild_id"])
             except:
                 raise web.HTTPBadRequest("Cannot parse guild id.")
 
@@ -34,7 +32,7 @@ def guild_config_view(storage, field, model_type, validator=None):
 
         async def post(self):
             guild_id = self.guild_id
-            model = util.protobuf_json_request(self.request, self.model_type)
+            model = util.protobuf_json_request(self.request, model_type)
             try:
                 # TODO(james7132): Run validation
                 await cache.set(guild_id, model)
@@ -49,9 +47,10 @@ def guild_config_view(storage, field, model_type, validator=None):
 
 def add_routes(app, storage):
     storage = app["storage"]
-    route = '/guild/{guild_id}'
+    route = '/guild/{guild_id:\d+}'
 
-    routes = []
+    view = guild_config_view(storage, 'guild_configs', proto.GuildConfig)
+    routes = [web.view(route, view)]
     for prefix in GuildPrefix:
         cache_config = prefix.value
         if cache_config.proto_type is None:

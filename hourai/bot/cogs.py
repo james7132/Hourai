@@ -7,6 +7,10 @@ GUILD_TESTS = (lambda arg: arg.guild,
                lambda arg: arg.message.channel.guild)
 
 
+class CogLoadError(Exception):
+    pass
+
+
 class BaseCog(commands.Cog):
     pass
 

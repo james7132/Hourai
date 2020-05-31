@@ -3,7 +3,7 @@ import copy
 import discord
 import re
 from discord.ext import commands
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
 from hourai.db import proto
 
 
@@ -53,7 +53,7 @@ def parameterize_actions(actions, user, guild, channel):
             add_channel_id(channel, action)
 
 
-class Auto(BaseCog):
+class Auto(cogs.BaseCog):
 
     def __init__(self, bot):
         super().__init__()

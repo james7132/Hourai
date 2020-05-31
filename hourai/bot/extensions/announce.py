@@ -1,7 +1,7 @@
 import asyncio
 import discord
 import random
-from hourai import cogs
+from hourai.bot import cogs
 from hourai.db import proto
 from discord.ext import commands
 

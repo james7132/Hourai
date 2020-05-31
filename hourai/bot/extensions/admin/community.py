@@ -1,7 +1,7 @@
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
 
 
-class CommunityModeration(BaseCog):
+class CommunityModeration(cogs.BaseCog):
 
     def __init__(self, bot):
         self.bot = bot

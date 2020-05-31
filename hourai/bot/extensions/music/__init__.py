@@ -9,8 +9,7 @@ import wavelink
 from .player import HouraiMusicPlayer, Unauthorized
 from .utils import time_format
 from discord.ext import commands
-from hourai.bot import CogLoadError
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
 from hourai.utils import format, is_moderator, clamp
 
 
@@ -56,7 +55,7 @@ async def get_voice_channel(ctx):
     return channel or get_default_channel(ctx.guild, ctx.author)
 
 
-class Music(BaseCog):
+class Music(cogs.BaseCog):
 
     def __init__(self, bot):
         self.bot = bot
@@ -73,7 +72,7 @@ class Music(BaseCog):
         self.config = self.bot.get_config_value('music')
         if self.config is None:
             self.bot.remove_cog(self)
-            raise CogLoadError("Config option 'music' not found.")
+            raise cogs.CogLoadError("Config option 'music' not found.")
 
         async def initialize_node(node_cfg):
             # Wavelink currently throws errors when provided with non IP hosts.

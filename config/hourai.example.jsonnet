@@ -39,8 +39,8 @@ local env(suffix) = {
   },
 
   discord: {
-      client_id: 0,
-      client_secret: 0,
+      client_id: error "Must override client_id",
+      client_secret: error "Must override client_secret",
       bot_token: error "Must override bot_token.",
       scopes: [],
   },
@@ -70,6 +70,18 @@ local env(suffix) = {
 
 {
   // Denote different configurations for different enviroments here.
-  prod: env("prod"),
-  dev: env("dev"),
+  prod: env("prod") {
+    discord: {
+      client_id: "",
+      client_secret: "",
+      bot_token: "",
+    },
+  },
+  dev: env("dev") {
+    discord: {
+      client_id: "",
+      client_secret: "",
+      bot_token: "",
+    },
+  },
 }

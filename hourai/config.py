@@ -92,11 +92,11 @@ def __make_configuration_template():
         },
 
         "discord": {
-            "client_id": 0,
-            "client_secret": 0,
+            "client_id": "",
+            "client_secret": "",
             "scopes": [""],
             "bot_token": "",
-        }
+        },
 
         "reddit": {
             "user_agent": "",

@@ -1,5 +1,5 @@
 import abc
-from aiohttp_oauth import oauth2_app
+from aiohttp_oauth2 import oauth2_app
 
 
 class OAuthBuilder(abc.ABC):
@@ -22,14 +22,18 @@ class OAuthBuilder(abc.ABC):
     def token_url(self):
         raise NotImplementedError()
 
+    @property
+    def scopes(self):
+        return []
+
     def build(self):
-        oauth_config = self.oauth_config
+        oauth_config = self.oauth_config()
         return oauth2_app(
             client_id=oauth_config.client_id,
             client_secret=oauth_config.client_secret,
             authorize_url=self.authorize_url,
             token_url=self.token_url,
-            scopes=oauth_config.discord.scopes
+            scopes=self.scopes
         )
 
 

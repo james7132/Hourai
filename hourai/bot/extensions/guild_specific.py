@@ -2,7 +2,7 @@
 
 import logging
 from discord.ext import commands
-from hourai.cogs import GuildSpecificCog
+from hourai.bot.cogs import GuildSpecificCog
 from hourai.utils import invite
 
 

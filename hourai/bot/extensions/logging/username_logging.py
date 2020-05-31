@@ -3,14 +3,14 @@ import logging
 import random
 from datetime import datetime
 from discord.ext import commands
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
 from hourai.db.models import Username
 from sqlalchemy.exc import OperationalError
 
 MAX_STORED_USERNAMES = 20
 
 
-class UsernameLogging(BaseCog):
+class UsernameLogging(cogs.BaseCog):
     """ Cog for logging username changes. """
 
     def __init__(self, bot):

@@ -1,12 +1,12 @@
 import asyncio
 from discord.ext import tasks
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
 from hourai.db import models
 from sqlalchemy.orm import joinedload
 from .reddit import RedditScanner
 
 
-class Feeds(BaseCog):
+class Feeds(cogs.BaseCog):
 
     def __init__(self, bot):
         self.bot = bot

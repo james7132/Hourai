@@ -9,10 +9,10 @@ import pkgutil
 import sys
 import traceback
 from discord.ext import commands
-from . import config, actions
-from .state import GuildState
-from .db import storage, proxies
-from .utils import fake, format, uvloop
+from hourai import config
+from hourai.db import storage, proxies
+from hourai.utils import fake, format, uvloop
+from . import actions, extensions, state
 from .context import HouraiContext
 
 log = logging.getLogger(__name__)
@@ -31,10 +31,6 @@ class CounterKeys(enum.Enum):
 
     def __repr__(self):
         return self.name
-
-
-class CogLoadError(Exception):
-    pass
 
 
 class CommandInterpreter:
@@ -104,7 +100,7 @@ class Hourai(commands.AutoShardedBot):
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)
 
-        self.guild_states = collections.defaultdict(GuildState)
+        self.guild_states = collections.defaultdict(state.GuildState)
 
         # Counters
         self.guild_counters = collections.defaultdict(collections.Counter)
@@ -214,7 +210,7 @@ class Hourai(commands.AutoShardedBot):
         except Exception:
             self.logger.exception(f'Failed to load extension: {module}')
 
-    def load_all_extensions(self, base_module=__module__):
+    def load_all_extensions(self, base_module=extensions):
         disabled_extensions = self.get_config_value('disabled_extensions',
                                                     type=tuple, default=())
         modules = pkgutil.iter_modules(base_module.__path__,

@@ -1,4 +1,4 @@
-from aiothttp import web
+from aiohttp import web
 from google.protobuf import json_format
 
 

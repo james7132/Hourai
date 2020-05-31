@@ -1,6 +1,6 @@
-from .db import proxies
-from .utils.replacement import StringReplacer
-from .utils.fake import FakeMessage
+from hourai.db import proxies
+from hourai.utils.replacement import StringReplacer
+from hourai.utils.fake import FakeMessage
 from discord.ext import commands
 
 MAX_CONTEXT_DEPTH = 255

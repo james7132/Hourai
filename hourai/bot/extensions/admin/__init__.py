@@ -9,7 +9,8 @@ from discord.ext import commands, tasks
 from hourai import utils
 from hourai.utils import fake, format
 from hourai.db import proto
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
+
 
 MAX_PRUNE_LOOKBACK = timedelta(days=14)
 DELETE_WAIT_DURATION = 60
@@ -36,7 +37,7 @@ def create_action(member):
     return proto.Action(user_id=member.id, guild_id=member.guild.id)
 
 
-class Admin(escalation.EscalationMixin, BaseCog):
+class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
     def __init__(self, bot):
         self.bot = bot

@@ -11,8 +11,7 @@ import typing
 from discord.ext import commands
 from google.protobuf import text_format
 from guppy import hpy
-from hourai.bot import CounterKeys, extensions
-from hourai.cogs import BaseCog
+from hourai.bot import CounterKeys, extensions, cogs
 from hourai.db import models, proto
 from hourai.utils import hastebin, format
 
@@ -21,7 +20,7 @@ def regex_multi_attr_match(context, regex, attrs):
     return any(regex.search(func(context)) for func in attrs)
 
 
-class Owner(BaseCog):
+class Owner(cogs.BaseCog):
 
     GUILD_CRITERIA = (
         lambda g: g.name,

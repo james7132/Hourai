@@ -2,7 +2,7 @@ import asyncio
 import discord
 import logging
 from discord.ext import commands
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
 from hourai.db import proxies
 
 
@@ -18,7 +18,7 @@ def create_text_channel_search(name):
     return search
 
 
-class Setup(BaseCog):
+class Setup(cogs.BaseCog):
     """ Cog for automated guild configuration based on defaults. """
 
     def __init__(self, bot):

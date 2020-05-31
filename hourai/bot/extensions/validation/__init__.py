@@ -7,7 +7,7 @@ from .context import ValidationContext
 from discord.ext import tasks, commands
 from datetime import datetime, timedelta
 from hourai import utils
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
 from hourai.db import proxies, proto
 from hourai.utils import format, checks
 
@@ -146,7 +146,7 @@ def _chunk_iter(src, chunk_size):
     yield chunk
 
 
-class Validation(BaseCog):
+class Validation(cogs.BaseCog):
 
     def __init__(self, bot):
         super().__init__()

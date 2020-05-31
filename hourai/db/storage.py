@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 CacheConfig = collections.namedtuple(
     'CacheConfig', ('attr', 'prefix', 'subprefix', 'subcoder',
                     'value_coder', 'timeout', 'proto_type'),
-    defaults=(None,) * 6)
+    defaults=(None,) * 7)
 
 
 def protobuf(msg_type):

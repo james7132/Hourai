@@ -7,7 +7,7 @@ import collections
 import logging
 from datetime import datetime
 from hourai import utils
-from hourai.cogs import BaseCog
+from hourai.bot import cogs
 from hourai.utils import embed, format
 from discord.ext import commands
 
@@ -33,7 +33,7 @@ def die(val):
                 modifier=modifier, mod_type=match.group(3))
 
 
-class Standard(BaseCog):
+class Standard(cogs.BaseCog):
 
     def __init__(self):
         super().__init__()

@@ -1,7 +1,7 @@
 import logging
 
 
-log = logging.getLogging(__name__)
+log = logging.getLogger(__name__)
 
 
 def try_install():
