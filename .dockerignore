@@ -8,3 +8,4 @@ Dockerfile
 *_test.py
 *.sqlite
 web/
+config/
