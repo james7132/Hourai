@@ -1,63 +1,70 @@
-version: "2.3"
+version: "3.8"
 services:
   hourai:
     build: .
-    container_name: "hourai-${HOURAI_ENV:-dev}"
-    command: python launcher.py run
+    container_name: "hourai"
+    command: python launcher.py run bot
     restart: unless-stopped
     environment:
       - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=${HOURAI_ENV:-dev}
+      - HOURAI_ENV=dev
     volumes:
-      - hourai-data:/data
-      - ./config/hourai.jsonnet:/opt/hourai.jsonnet
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
     depends_on:
       - postgres
       - redis
       - lavalink
   hourai_web:
     build: .
-    container_name: "hourai-web-${HOURAI_ENV:-dev}"
+    container_name: "hourai-web"
     command: python launcher.py run web
     restart: unless-stopped
     environment:
       - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=${HOURAI_ENV:-dev}
+      - HOURAI_ENV=dev
     volumes:
-      - ./config/hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+    ports:
+      - 8080:8080
     depends_on:
       - postgres
       - redis
-   postgres:
+  postgres:
     image: "postgres:12-alpine"
-    container_name: "postgres-{HOURAI_ENV-dev}"
+    container_name: "postgres"
     restart: unless-stopped
     volumes:
       - db-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=hourai
       - POSTGRES_USER=hourai
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=ddDa
   redis:
     image: "redis:5.0-alpine"
-    container_name: "redis-${HOURAI_ENV:-dev}"
-    command: ["redis-server", "--appendonly", "yes"]
+    container_name: "redis"
+    command: ["redis-server",
+              "--appendonly", "yes",
+              "--save", "900", "1",
+              "--save", "300", "10",
+              "--save", "60", "10000"]
     restart: unless-stopped
     volumes:
       - redis-data:/data
-    mem_limit: 100M
   lavalink:
     image: "fredboat/lavalink:master"
     restart: unless-stopped
-    container_name: "lavalink-${HOURAI_ENV:-dev}"
+    container_name: "lavalink"
     volumes:
-      - ./config/lavalink.yml:/opt/Lavalink/application.yml
+      - ./lavalink.yml:/opt/Lavalink/application.yml
     expose:
       - 2333
 volumes:
-  hourai-data:
-    name: "hourai-data-${HOURAI_ENV:-dev}"
+  web-data:
+    name: "web-data"
   db-data:
-    name: "db-data-${HOURAI_ENV:-dev}"
+    name: "db-data"
   redis-data:
-    name: "redis-data-${HOURAI_ENV:-dev}"
+    name: "redis-data"
+networks:
+  default:
+    name: "hourai"
