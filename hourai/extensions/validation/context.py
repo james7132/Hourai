@@ -57,12 +57,14 @@ class ValidationContext():
 
     def add_approval_reason(self, reason):
         assert reason is not None
-        self.approval_reasons.append(reason)
+        if reason not in self.approval_reasons:
+            self.approval_reasons.append(reason)
         self.approved = True
 
     def add_rejection_reason(self, reason):
         assert reason is not None
-        self.rejection_reasons.append(reason)
+        if reason not in self.rejection_reasons:
+            self.rejection_reasons.append(reason)
         self.approved = False
 
     async def apply_role(self):

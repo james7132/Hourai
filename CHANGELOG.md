@@ -4,6 +4,10 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
+### WIP (TBD)
+
+ * [Validation] Removed redundant reasons in validation reports.
+
 ### v1.2.0 (05/26/2020)
 
  * [General] Bot will now automatically configure associated channels based on
