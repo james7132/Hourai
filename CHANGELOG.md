@@ -7,6 +7,8 @@ here: https://discord.gg/UydKWHX.
 ### WIP (TBD)
 
  * [Validation] Removed redundant reasons in validation reports.
+ * [Validation] Users that have an exact avatar match with a banned user will now
+   be rejected.
 
 ### v1.2.0 (05/26/2020)
 

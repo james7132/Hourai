@@ -147,9 +147,11 @@ class BannedUserRejector(Validator):
         return guild is not None and guild.member_count >= self.min_guild_size
 
 
-class BannedUsernameRejector(Validator):
-    """A malice level validator that rejects users that have an exact name match
-    with a banned user of the server.
+class BannedUserRejector(Validator):
+    """A malice level validator that rejects users that share characteristics
+    with banned users on the server:
+     - Exact username matches (ignoring repeated whitespace and casing).
+     - Exact avatar matches.
     """
 
     async def validate_member(self, ctx):
@@ -157,6 +159,20 @@ class BannedUsernameRejector(Validator):
             return
         # TODO(james7132): Make this use the Ban cache to pull this information
         bans = await ctx.guild.bans()
+        self.__check_usernames(ctx, bans)
+        self.__check_avatars(ctx, bans)
+
+    def __check_avatars(self, ctx, bans):
+        avatar = ctx.member.avatar
+        if avatar is None:
+            return
+        for ban in bans:
+            if avatar != ban.user.avatar:
+                continue
+            ctx.add_rejection_reason(
+                f"Exact avatar match with banned user: `{str(ban.user)}`.")
+
+    def __check_usernames(self, ctx, bans):
         normalized_bans = {self._normalize(ban.user.name): ban.user.name
                            for ban in bans}
         for username in ctx.usernames:
