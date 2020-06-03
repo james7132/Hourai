@@ -32,23 +32,15 @@ services:
   hourai_frontend:
     build: ../frontend
     container_name: "hourai-frontend"
-    command: npm run build
-    volumes:
-      - web-data:/app/dist
-  nginx:
-    image: "nginx:alpine"
-    container_name: "nginx"
     restart: unless-stopped
     ports:
       - 80:80
       - 443:443
     volumes:
-      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - web-data:/opt/data:ro
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf
+      - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
       - hourai_api
-      - hourai_frontend
   postgres:
     image: "postgres:12-alpine"
     container_name: "postgres"
@@ -79,8 +71,6 @@ services:
     expose:
       - 2333
 volumes:
-  web-data:
-    name: "web-data"
   db-data:
     name: "db-data"
   redis-data:

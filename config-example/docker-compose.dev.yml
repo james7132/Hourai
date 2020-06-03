@@ -32,19 +32,13 @@ services:
   hourai_frontend:
     build: ../frontend
     container_name: "hourai-frontend"
-    command: npm run serve
-    restart: unless-stopped
-  nginx:
-    image: "nginx:alpine"
-    container_name: "nginx"
     restart: unless-stopped
     ports:
       - 8080:80
     volumes:
-      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf
     depends_on:
       - hourai_api
-      - hourai_frontend
   postgres:
     image: "postgres:12-alpine"
     container_name: "postgres"
