@@ -31,6 +31,8 @@ def guild_config_view(storage, field, model_type, validator=None):
                 raise web.HTTPInternalServerError
 
         async def post(self):
+            # TODO(james7132): Remove this
+            return web.Response(status=403)
             guild_id = self.guild_id
             model = util.protobuf_json_request(self.request, model_type)
             try:
