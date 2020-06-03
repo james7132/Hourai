@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   hourai:
-    build: .
+    build: ../base
     container_name: "hourai"
     command: python launcher.py run bot
     restart: unless-stopped
@@ -15,7 +15,7 @@ services:
       - redis
       - lavalink
   hourai_web:
-    build: .
+    build: ../base
     container_name: "hourai-web"
     command: python launcher.py run web
     restart: unless-stopped
