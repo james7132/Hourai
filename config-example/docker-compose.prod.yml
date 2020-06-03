@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   hourai:
-    build: .
+    build: ../base
     container_name: "hourai"
     command: python launcher.py run bot
     restart: unless-stopped
@@ -14,8 +14,8 @@ services:
       - postgres
       - redis
       - lavalink
-  hourai_web:
-    build: .
+  hourai_api:
+    build: ../base
     container_name: "hourai-web"
     command: python launcher.py run web
     restart: unless-stopped
@@ -29,6 +29,12 @@ services:
     depends_on:
       - postgres
       - redis
+  hourai_frontend:
+    build: ../frontend
+    container_name: "hourai-frontend"
+    command: npm run build
+    volumes:
+      - web-data:/app/dist
   nginx:
     image: "nginx:alpine"
     container_name: "nginx"
@@ -37,11 +43,12 @@ services:
       - 80:80
       - 443:443
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - web-data:/opt/data:ro
     depends_on:
-      - hourai_web
+      - hourai_api
+      - hourai_frontend
   postgres:
     image: "postgres:12-alpine"
     container_name: "postgres"
