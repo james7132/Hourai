@@ -1,0 +1,11 @@
+/*.yml
+.dockerignore
+.gitignore
+.git/
+venv/
+*.md
+Dockerfile
+*_test.py
+*.sqlite
+web/
+config/

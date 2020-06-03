@@ -1,0 +1,78 @@
+version: "3.8"
+services:
+  hourai:
+    build: ../base
+    container_name: "hourai"
+    command: python launcher.py run bot
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=dev
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+    depends_on:
+      - postgres
+      - redis
+      - lavalink
+  hourai_api:
+    build: ../base
+    container_name: "hourai-api"
+    command: python launcher.py run web
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=dev
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+    expose:
+      - 8080
+    depends_on:
+      - postgres
+      - redis
+  hourai_frontend:
+    build: ../frontend
+    container_name: "hourai-frontend"
+    restart: unless-stopped
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - hourai_api
+  postgres:
+    image: "postgres:12-alpine"
+    container_name: "postgres"
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=hourai
+      - POSTGRES_USER=hourai
+      - POSTGRES_PASSWORD=ddDa
+  redis:
+    image: "redis:5.0-alpine"
+    container_name: "redis"
+    command: ["redis-server",
+              "--appendonly", "yes",
+              "--save", "900", "1",
+              "--save", "300", "10",
+              "--save", "60", "10000"]
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+  lavalink:
+    image: "fredboat/lavalink:master"
+    restart: unless-stopped
+    container_name: "lavalink"
+    volumes:
+      - ./lavalink.yml:/opt/Lavalink/application.yml
+    expose:
+      - 2333
+volumes:
+  db-data:
+    name: "db-data"
+  redis-data:
+    name: "redis-data"
+networks:
+  default:
+    name: "hourai"

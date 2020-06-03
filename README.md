@@ -67,12 +67,8 @@ The standard way of developing requires use of Docker and Docker Compose. See th
 [official guides](https://docs.docker.com/compose/install/) on how to install
 them.
 
-An example `docker-compose.yml` file is provided in the root level of this
-project. Before launching the bot, be sure to rename it to `docker-compose.yml`
-and fill out the relevant configuration options.
-
-At the time of writing, the bot is tuned to run on a VPS with 1 CPU coreand 2GB
-of RAM. If your development/deployment enviroment is different, you may need to
+At the time of writing, the bot is tuned to run on a VPS with 1 CPU core and 2GB
+of RAM. If your development/production enviroment is different, you may need to
 readjust the container limits.
 
 ### Configuration
@@ -80,15 +76,9 @@ Before any development or self-hosting can be done, users will need to configure
 the bot with several secrets to ensure external services are contacted
 correctsly. Hourai uses [JSONNET](https://jsonnet.org/) to configure the bot
 itself. Other dependent services have config files that also need to be
-configured. All of these config files have example configs under `config/`. Be
-sure to fill out the relevant information in each of them, then rename the files
-without the `.example.` in the name (i.e. `hourai.example.jsonnet ->
-hourai.jsonnet`). This also needs to be done with the
-`docker-compose.example.yml` in the root of the repository.
-
-When launching the bot via Docker Compose, you can change the environment the bot
-executes in via the `HOURAI_ENV` enviroment variable. It will be used to select
-the enviroment config seen in the JSONNET config.
+configured. All of these config files have example configs under
+`config-example/`. Be sure to fill out the relevant information in each of them,
+then rename the directory to `config/`.
 
 ### Building the Bot
 While written in Python, the bot needs to be built into a container to run in
