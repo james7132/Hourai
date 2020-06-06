@@ -9,6 +9,16 @@ def flatten(iterable):
             yield val
 
 
+def chunked(src, chunk_size):
+    chunk = []
+    for val in src:
+        chunk.append(val)
+        if len(chunk) >= chunk_size:
+            yield chunk
+            chunk = []
+    yield chunk
+
+
 def distinct(iterable):
     seen = set()
     for val in iterable:

@@ -2,14 +2,13 @@ import asyncio
 import discord
 import logging
 from . import approvers, rejectors
-from .storage import BanStorage
 from .context import ValidationContext
 from discord.ext import tasks, commands
 from datetime import datetime, timedelta
 from hourai import utils
 from hourai.bot import cogs
 from hourai.db import proxies, proto
-from hourai.utils import format, checks
+from hourai.utils import format, checks, iterable
 
 log = logging.getLogger(__name__)
 
@@ -136,22 +135,11 @@ VALIDATORS = (
 )
 
 
-def _chunk_iter(src, chunk_size):
-    chunk = []
-    for val in src:
-        chunk.append(val)
-        if len(chunk) >= chunk_size:
-            yield chunk
-            chunk = []
-    yield chunk
-
-
 class Validation(cogs.BaseCog):
 
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.ban_storage = BanStorage(bot, timeout=300)
         # self.purge_unverified.start()
         self.reload_bans.start()
 
@@ -163,7 +151,7 @@ class Validation(cogs.BaseCog):
     async def reload_bans(self):
         for guild in self.bot.guilds:
             try:
-                await self.ban_storage.save_bans(guild)
+                await self.bot.storage.bans.save_bans(guild)
             except Exception:
                 log.exception(
                     f"Exception while reloading bans for guild {guild.id}:")
@@ -179,8 +167,7 @@ class Validation(cogs.BaseCog):
             return
         try:
             ban_info = await guild.fetch_ban(user)
-            await self.ban_storage.save_ban(guild.id, ban_info.user.id,
-                                            ban_info.reason)
+            await self.bot.storage.bans.save_ban(guild.id, ban_info)
         except discord.Forbidden:
             pass
 
@@ -191,7 +178,7 @@ class Validation(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
-        await self.ban_storage.clear_ban(guild, user)
+        await self.bot.storage.bans.clear_ban(guild, user)
 
     @tasks.loop(seconds=5.0)
     async def purge_unverified(self):
@@ -260,14 +247,6 @@ class Validation(cogs.BaseCog):
         await ctx.send(":thumbsup: Set {}'s modlog to {}.".format(
             ctx.guild.name,
             channel.mention if channel is not None else 'None'))
-
-    @commands.command(name="getbans")
-    @commands.is_owner()
-    async def getbans(self, ctx, user_id: int):
-        guild_ids = (g.id for g in ctx.bot.guilds)
-        bans = await self.ban_storage.get_bans(user_id, guild_ids)
-        bans = (f'{ban.guild_id}: {ban.reason}' for ban in bans)
-        await ctx.send(format.vertical_list(bans))
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
@@ -378,7 +357,7 @@ class Validation(cogs.BaseCog):
                 except (discord.errors.Forbidden, discord.errors.NotFound):
                     # If members leave mid propogation, it 404s
                     pass
-            for chunk in _chunk_iter(filtered_members, BATCH_SIZE):
+            for chunk in iterable.chunked(filtered_members, BATCH_SIZE):
                 await asyncio.gather(*[add_role(mem, role) for mem in chunk])
                 total_processed += len(chunk)
                 progress = f'{total_processed}/{member_count}'

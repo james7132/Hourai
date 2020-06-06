@@ -7,7 +7,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import create_engine, orm, pool
 from hourai import config
-from . import models, caches, proto
+from . import models, caches, proto, bans
 
 log = logging.getLogger(__name__)
 
@@ -119,6 +119,8 @@ class Storage:
                 wait_time *= 2
 
     def __setup_caches(self):
+        self.bans = bans.BanStorage(self.redis, StoragePrefix.BANS.value)
+
         for conf in Storage._get_cache_configs():
             # Initialize Parameters
             prefix = _prefixize(conf.prefix.value)
@@ -160,13 +162,6 @@ class Storage:
         configs = [conf.value._replace(attr=conf.name.lower() + 's',
                                        prefix=StoragePrefix.GUILD_CONFIGS)
                    for conf in configs]
-        configs.append(
-                CacheConfig(attr='bans',
-                            prefix=StoragePrefix.BANS,
-                            subprefix=b'',
-                            subcoder=coders.IntCoder(),
-                            value_coder=coders.StringCoder,
-                            timeout=300))
         return configs
 
     def create_session(self):
