@@ -121,11 +121,14 @@ class Music(cogs.BaseCog):
         if all(is_empty(vc) for vc in guild.voice_channels):
             await player.stop()
 
-        # Remove skip votes from those who leave
+        # Remove skip votes from those who leave after 5 minutes
         channel = player.channel
         if (channel is not None and
            channel == before.channel and channel != after.channel):
-            player.clear_vote(member)
+            await asyncio.sleep(300)
+            if member.id not in channel.voice_states:
+                player.clear_vote(member)
+                await player.clear_user(member)
 
     @staticmethod
     async def connect_player(ctx, player):
@@ -281,7 +284,7 @@ class Music(cogs.BaseCog):
             await ctx.send('There is currently no music playing.')
             return
         try:
-            _, track = player.remove_entry(ctx.author, target - 1)
+            _, track = await player.remove_entry(ctx.author, target - 1)
             await ctx.send(f"Removed **{track.title}** from the queue.")
         except Unauthorized:
             await ctx.send(f"You didn't request that track!")
@@ -298,7 +301,7 @@ class Music(cogs.BaseCog):
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
-        count = player.clear_user(ctx.author)
+        count = await player.clear_user(ctx.author)
         if count <= 0:
             await ctx.send("You dont' have any songs queued.")
         else:

@@ -9,6 +9,9 @@ here: https://discord.gg/UydKWHX.
  * [Validation] Removed redundant reasons in validation reports.
  * [Validation] Users that have an exact avatar match with a banned user will now
    be rejected.
+ * [Music] When users leave the voice channel, their queued music will now be
+   cleared 5 minutes after leaving the channel if they do not return.
+ * [Music] Fixed remove and removeall commands erroring out.
 
 ### v1.2.0 (05/26/2020)
 
