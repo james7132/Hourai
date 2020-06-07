@@ -95,6 +95,7 @@ class Hourai(commands.AutoShardedBot):
         kwargs.setdefault('command_prefix', self.config.command_prefix)
         kwargs.setdefault('activity',
                           discord.CustomActivity(self.config.activity))
+        kwargs.setdefault('fetch_offline_members', False)
 
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)

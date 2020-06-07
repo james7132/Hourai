@@ -98,8 +98,6 @@ class Standard(cogs.BaseCog):
     @commands.command()
     @commands.guild_only()
     async def playing(self, ctx, *, game: str):
-        if not ctx.guild.chunked:
-            await ctx.bot.request_offline_members(ctx.guild)
         regex = re.compile(game)
 
         def activities():
@@ -176,8 +174,6 @@ class Standard(cogs.BaseCog):
         Pings a moderator on the server. Mod roles begin with "mod" or
         "admin" or have the administrator permission.
         """
-        if not ctx.guild.chunked:
-            await ctx.bot.request_offline_members(ctx.guild)
         await ctx.send(utils.mention_random_online_mod(ctx.guild))
 
     @commands.command()

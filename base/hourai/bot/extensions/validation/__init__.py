@@ -206,9 +206,6 @@ class Validation(cogs.BaseCog):
         if role is None or not guild.me.guild_permissions.kick_members:
             return
 
-        if not guild.chunked:
-            await self.bot.request_offline_members(guild)
-
         def _is_kickable(member):
             is_new = member.joined_at is not None and \
                      member.joined_at >= cutoff_time
@@ -229,11 +226,21 @@ class Validation(cogs.BaseCog):
             log.info(
                 f'Purged {mem} from {gld} for not being verified in time.')
 
-        tasks = [_kick_member(member) for member in guild.members
-                 if _is_kickable(member)]
-        if not dry_run:
+        count = 0
+        tasks = []
+        async for member in guild.fetch_members(limit=None):
+            if not _is_kickable(member):
+                continue
+            count += 1
+            if not dry_run:
+                tasks.append(_kick_member(member))
+            if len(tasks) > 5:
+                await asyncio.gather(*tasks)
+                tasks.clear()
+        if len(tasks) > 0:
             await asyncio.gather(*tasks)
-        return len(tasks)
+
+        return count
 
     @purge_unverified.before_loop
     async def before_purge_unverified(self):
@@ -369,17 +376,16 @@ class Validation(cogs.BaseCog):
                            '`~valdiation setup`')
             return
         msg = await ctx.send('Propagating validation role...!')
-        if not ctx.guild.chunked:
-            await ctx.bot.request_offline_members(ctx.guild)
         role = ctx.guild.get_role(config.role_id)
         if role is None:
             await ctx.send("Verification role not found.")
             config.ClearField('kick_unvalidated_users_after')
             await ctx.bot.storage.validation_configs.set(ctx.guild.id, config)
             return
+
+        members = await ctx.guild.fetch_members(limit=None).flatten()
         while True:
-            filtered_members = [m for m in ctx.guild.members
-                                if role not in m.roles]
+            filtered_members = [m for m in members if role not in m.roles]
             member_count = len(filtered_members)
             total_processed = 0
 

@@ -14,6 +14,9 @@ here: https://discord.gg/UydKWHX.
  * [Music] When users leave the voice channel, their queued music will now be
    cleared 5 minutes after leaving the channel if they do not return.
  * [Music] Fixed remove and removeall commands erroring out.
+ * [Technical] Stopped automatically fetching offline members at startup to
+   minimize memory usage. Some commands may take longer to run on larger
+   servers, particularly actions that apply to all members of a server.
 
 ### v1.2.0 (05/26/2020)
 

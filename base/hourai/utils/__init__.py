@@ -181,12 +181,6 @@ def find_moderators(guild):
                   all_with_roles(guild.members, find_moderator_roles(guild)))
 
 
-def find_bots(guild):
-    """Finds all of the bots on a server. Returns a generator of members.
-    """
-    return filter(lambda m: m.bot, guild.members)
-
-
 def find_online_moderators(guild):
     """Finds all of the online moderators on a server. Returns a generator of
     members.
