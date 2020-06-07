@@ -9,6 +9,8 @@ here: https://discord.gg/UydKWHX.
  * [Validation] Removed redundant reasons in validation reports.
  * [Validation] Users that have an exact avatar match with a banned user will now
    be rejected.
+ * [Validation] Cross server ban checks will now state how many servers a user
+   has been banned from.
  * [Validation] Added "~validation purge" command to mass remove unverified
    users. A potential substitute for pruning servers.
  * [Music] When users leave the voice channel, their queued music will now be

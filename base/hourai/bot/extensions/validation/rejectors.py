@@ -128,20 +128,17 @@ class BannedUserRejector(Validator):
         self.min_guild_size = min_guild_size
 
     async def validate_member(self, ctx):
-        banned = False
-        reasons = set()
         bans = await ctx.bot.storage.bans.get_user_bans(ctx.member.id)
-        for ban in bans:
-            if not self._is_valid_guild(ban):
-                continue
-            if ban.reason is not None:
-                ctx.add_rejection_reason(
-                    f"Banned on another server. Reason: `{ban.reason}`.")
-                reasons.add(ban.reason)
-            banned = True
-
-        if len(reasons) == 0 and banned:
-            ctx.add_rejection_reason("Banned on another server.")
+        valid_bans = list(filter(self._is_valid_guild, bans))
+        if len(valid_bans) <= 0:
+            return
+        reasons = set(b.reason for b in valid_bans if b.HasField('reason'))
+        reason = f"Banned from {len(bans)} servers " if len(bans) > 1 else \
+                 "Banned from another server "
+        if len(reasons) > 0:
+            reason += "for the following reasons:\n"
+            reason += "\n    - ".join(reasons)
+        ctx.add_rejection_reason(reason)
 
     def _is_valid_guild(self, ban):
         return ban.HasField('guild_size') and \
