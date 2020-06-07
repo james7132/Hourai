@@ -34,6 +34,22 @@ async def success(ctx, suffix=None):
     await ctx.send(success)
 
 
+async def wait_for_confirmation(ctx):
+    def check(m):
+        content = m.content.casefold()
+        return (content.startswith('y') or content.startswith('n')) and \
+               m.author == ctx.author and \
+               m.channel == ctx.channel
+
+    try:
+        msg = await ctx.bot.wait_for('message', check=check, timeout=600)
+        return msg.content.casefold().startswith('y')
+    except asyncio.TimeoutError:
+        await ctx.send('No resposne found in 10 minutes. Cancelling.',
+                       delete_after=60)
+        return False
+
+
 def pretty_print(resource):
     output = []
     if hasattr(resource, 'name'):

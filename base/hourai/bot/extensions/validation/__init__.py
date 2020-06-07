@@ -184,16 +184,39 @@ class Validation(cogs.BaseCog):
     async def purge_unverified(self):
         check_time = datetime.utcnow()
 
-        def _is_kickable(member, lookback_time):
-            # Does not kick
-            #  * Bots
-            #  * Nitro Boosters
-            #  * Verified users
-            #  * Unverified users who have joined less than 6 hours ago.
-            checks = (not member.bot,
-                      member.joined_at is not None,
-                      member.joined_at <= lookback_time)
-            return all(checks)
+        async def _purge_guild(proxy):
+            validation_config = await proxy.get_config('validation')
+            if (validation_config is None or
+                not validation_config.enabled or
+                not validation_config.HasField(
+                    'kick_unvalidated_users_after')):
+                return
+            lookback = timedelta(
+                seconds=validation_config.kick_unvalidated_users_after)
+            await self.purge_guild(proxy, check_time - lookback, dry_run=False)
+
+        guild_proxies = [proxies.GuildProxy(self.bot, guild)
+                         for guild in self.bot.guilds]
+        await asyncio.gather(*[_purge_guild(proxy) for proxy in guild_proxies])
+
+    async def purge_guild(self, proxy, cutoff_time, dry_run=True):
+        guild = proxy.guild
+        role = await proxy.get_validation_role()
+
+        if role is None or not guild.me.guild_permissions.kick_members:
+            return
+
+        if not guild.chunked:
+            await self.bot.request_offline_members(guild)
+
+        def _is_kickable(member):
+            is_new = member.joined_at is not None and \
+                     member.joined_at >= cutoff_time
+            checks = (role in member.roles,                 # Is verified
+                      is_new,                               # Is too new
+                      member.bot,                           # Is a bot
+                      member.premium_sinnce is not None)    # Is a booster
+            return not any(checks)
 
         async def _kick_member(member):
             try:
@@ -206,32 +229,11 @@ class Validation(cogs.BaseCog):
             log.info(
                 f'Purged {mem} from {gld} for not being verified in time.')
 
-        async def _purge_guild(proxy):
-            guild = proxy.guild
-            validation_config = await proxy.get_config('validation')
-            if (validation_config is None or
-                not validation_config.enabled or
-                not validation_config.HasField(
-                    'kick_unvalidated_users_after')):
-                return
-            lookback = timedelta(
-                seconds=validation_config.kick_unvalidated_users_after)
-            lookback = check_time - lookback
-            role = guild.get_role(validation_config.role_id)
-            if role is None or not guild.me.guild_permissions.kick_members:
-                return
-            if not guild.chunked:
-                await self.bot.request_offline_members(guild)
-            unvalidated_members = utils.all_without_roles(
-                guild.members, (role,))
-            kickable_members = filter(lambda m: _is_kickable(m, lookback),
-                                      unvalidated_members)
-            tasks = [_kick_member(member) for member in kickable_members]
+        tasks = [_kick_member(member) for member in guild.members
+                 if _is_kickable(member)]
+        if not dry_run:
             await asyncio.gather(*tasks)
-
-        guild_proxies = [proxies.GuildProxy(self.bot, guild)
-                         for guild in self.bot.guilds]
-        await asyncio.gather(*[_purge_guild(proxy) for proxy in guild_proxies])
+        return len(tasks)
 
     @purge_unverified.before_loop
     async def before_purge_unverified(self):
@@ -248,11 +250,45 @@ class Validation(cogs.BaseCog):
             ctx.guild.name,
             channel.mention if channel is not None else 'None'))
 
-    @commands.group(invoke_without_command=True)
+    @commands.group()
     @commands.guild_only()
     @commands.check_any(checks.is_moderator(), commands.is_owner())
     async def validation(self, ctx):
         pass
+
+    @validation.group(name='purge')
+    @commands.bot_has_permission(kick_members=True)
+    async def validation_purge(self, ctx, lookback: utils.human_timedelta):
+        """Mass kicks unverified users from the server. This isn't useful
+        unless validation is enabled and a role is assigned. See
+        "~help validation setup" for more information. Users newer than
+        "lookback" will not be kicked.
+
+        Example Usage:
+        ~validation purge 30m
+        ~validation purge 1h
+        ~validation purge 1d
+        """
+        role = await ctx.guild_proxy.get_validation_role()
+        if role is None:
+            await ctx.send('No role has been configured. '
+                           'Please configure and propogate a role first.')
+        check_time = datetime.utcnow()
+        async with ctx.typing():
+            count = await self.purge_guild(ctx.guild_proxy,
+                                           check_time - lookback,
+                                           dry_run=True)
+        await ctx.send(
+            f'Doing this will purge {count} users from the server.\n'
+            f'**Continue? y/n**', delete_after=600)
+        continue_purge = await utils.wait_for_confirmation()
+        if continue_purge:
+            async with ctx.typing():
+                await self.purge_guild(ctx.guild_proxy, check_time - lookback,
+                                       dry_run=False)
+            await ctx.send(f'Purged {count} unverified users from the server.')
+        else:
+            await ctx.send('Purged cancelled', delete_after=60)
 
     @validation.group(name='lockdown')
     async def validation_lockdown(self, ctx, time: utils.human_timedelta):
