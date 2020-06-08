@@ -259,7 +259,7 @@ class Validation(cogs.BaseCog):
 
     @commands.group()
     @commands.guild_only()
-    @commands.check_any(checks.is_moderator(), commands.is_owner())
+    @checks.is_moderator()
     async def validation(self, ctx):
         pass
 

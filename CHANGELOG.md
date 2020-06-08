@@ -6,6 +6,8 @@ here: https://discord.gg/UydKWHX.
 
 ### WIP (TBD)
 
+ * [General] Command will now give more complete explainations when they fail to
+   run.
  * [Validation] Removed redundant reasons in validation reports.
  * [Validation] Users that have an exact avatar match with a banned user will now
    be rejected.

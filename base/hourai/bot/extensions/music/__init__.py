@@ -37,6 +37,15 @@ async def is_dj(ctx, member=None):
     return len(dj_roles.intersection(member_roles)) > 0
 
 
+async def check_is_dj():
+    def predicate(ctx):
+        if not await is_dj(ctx, ctx.author):
+            raise commands.CheckFailure(
+                    message="Only DJs can run this command.")
+        return True
+    return commands.check(predicate)
+
+
 def get_default_channel(guild, member=None):
     channels = filter(lambda ch: ch.permissions_for(guild.me).connect,
                       guild.voice_channels)
@@ -96,15 +105,20 @@ class Music(cogs.BaseCog):
 
     async def cog_check(self, ctx):
         if ctx.guild is None:
-            return False
+            raise commands.NoPrivateMessage()
         music_config = await ctx.guild_proxy.get_config('music')
         if music_config is None:
             return True
         # If a specific text channel is required
+        channels = [ctx.guild.get_channel(id)
+                    for id in music_config.text_channel_id
+                    if ctx.guild.get_channel(id) is not None]
         if (len(music_config.text_channel_id) <= 0 or
-           ctx.channel.id in music_config.text_channel_id):
+           ctx.channel in channels):
             return True
-        return False
+        return commands.CheckFailure(
+                message=f'Music commands can only be used in these channel(s): '
+                        f'{", ".join(ch.mention for ch in channels)}')
 
     @commands.Cog.listener()
     async def on_voice_state_change(self, member, before, after):
@@ -241,7 +255,7 @@ class Music(cogs.BaseCog):
             await ctx.send(f'Only a DJ can resume a track.')
 
     @commands.command()
-    @commands.check(is_dj)
+    @check_is_dj()
     async def pause(self, ctx):
         """Pauses the current track in the music player.
 
@@ -256,7 +270,7 @@ class Music(cogs.BaseCog):
         await ctx.send(f'Paused {format.bold(str(player.current))}.')
 
     @commands.command()
-    @commands.check(is_dj)
+    @check_is_dj()
     async def stop(self, ctx):
         """Clears the queue and stops the bot.
 
@@ -380,7 +394,7 @@ class Music(cogs.BaseCog):
         await ctx.send(msg)
 
     @commands.command()
-    @commands.check(is_dj)
+    @check_is_dj()
     async def forceskip(self, ctx):
         """Forcibly skips the current song in the music player.
 

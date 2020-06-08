@@ -3,6 +3,10 @@ from hourai import utils
 
 
 def is_moderator():
-    def predicate(ctx):
-        return utils.is_moderator(ctx.author) or ctx.bot.is_owner(ctx.author)
+    async def predicate(ctx):
+        if not (utils.is_moderator(ctx.author) or
+                await ctx.bot.is_owner(ctx.author)):
+            raise commands.CheckFailure(
+                    message='You are not a moderator of this server.')
+        return True
     return commands.check(predicate)

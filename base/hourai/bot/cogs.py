@@ -35,7 +35,12 @@ class GuildSpecificCog(BaseCog):
             setattr(self, method_name, self.__check_guilds(method))
 
     def cog_check(self, ctx):
-        return ctx.guild is not None and ctx.guild.id in self.__allowed_guilds
+        if ctx.guild is None:
+            raise commands.NoPrivateMessage()
+        if ctx.guild.id not in self.__allowed_guilds:
+            raise commands.CheckFailure(
+                message='This command can only be used in specific servers.')
+        return True
 
     def __check_guilds(self, func):
         @wraps(func)

@@ -13,7 +13,11 @@ log = logging.getLogger(__name__)
 
 async def require_escalation_config(ctx):
     cfg = await ctx.guild_proxy.get_config('moderation')
-    return cfg.HasField('escalation_ladder')
+    if not cfg.HasField('escalation_ladder'):
+        raise commands.CheckFailure(
+            message="No escalation ladder has been configured for this server."
+                    " Please configure one before running this command.")
+    return True
 
 
 class EscalationMixin:

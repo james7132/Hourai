@@ -155,7 +155,7 @@ class Hourai(commands.AutoShardedBot):
 
         ctx = await self.get_context(msg)
 
-        if ctx.prefix is None:
+        if ctx.valid:
             return
 
         async with ctx:
@@ -187,8 +187,7 @@ class Hourai(commands.AutoShardedBot):
             self.loop.create_task(self.send_owner_error(error))
             err_msg = ('An unexpected error has occured and has been reported.'
                        '\nIf this happens consistently, please consider filing'
-                       'a bug:\n<https://github.com/james7132/Hourai/issues>')
-        log.debug(error)
+                       ' a bug:\n<https://github.com/james7132/Hourai/issues>')
         if err_msg:
             await ctx.send(err_msg)
 
