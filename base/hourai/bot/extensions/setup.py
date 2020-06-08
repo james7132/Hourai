@@ -60,5 +60,23 @@ class Setup(cogs.BaseCog):
             "undesirable, please use `~setmodlog <channel>` to change it.")
 
 
+class Teardown(cogs.BaseCog):
+    """ Cog for automated teardown of . """
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild):
+        with self.bot.create_storage_session() as session:
+            tasks = [
+                # Clear guild configs since they avtively use RAM in Redis.
+                session.guild_configs.clear(guild.id),
+                # Clear bans
+                session.bans.clear_guild(guild.id)
+            ]
+            await asyncio.gather(*tasks)
+
 def setup(bot):
     bot.add_cog(Setup(bot))
+    bot.add_cog(Teardown(bot))

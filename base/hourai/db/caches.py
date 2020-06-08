@@ -197,3 +197,6 @@ class AggregateProtoCache:
             if value.HasField(attr):
                 tasks.append(cache.set(key, getattr(value, attr)))
         await asyncio.gather(*tasks)
+
+    async def clear(self, key):
+        await asyncio.gather(*[cache.clear(key) for _, cache in self._mappings])
