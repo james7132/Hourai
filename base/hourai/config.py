@@ -112,6 +112,10 @@ def __make_configuration_template():
             "modules": ProtectedDict()
         },
 
+        "webhooks": {
+            "bot_log": "",
+        },
+
         "private": ProtectedDict()
     }
 

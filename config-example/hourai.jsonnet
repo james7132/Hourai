@@ -64,6 +64,10 @@ local env(suffix) = {
     },
   },
 
+  webhooks: {
+    bot_log: "",
+  }
+
   disabled_extensions: []
 };
 

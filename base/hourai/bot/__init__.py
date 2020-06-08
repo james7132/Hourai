@@ -166,12 +166,6 @@ class Hourai(commands.AutoShardedBot):
         super().add_cog(cog)
         log.info("Cog {} loaded.".format(cog.__class__.__name__))
 
-    async def on_error(self, event, *args, **kwargs):
-        error = f'Exception in event {event} (args={args}, kwargs={kwargs}):'
-        self.logger.exception(error)
-        _, error, _ = sys.exc_info()
-        self.loop.create_task(self.send_owner_error(error))
-
     async def on_command_error(self, ctx, error):
         err_msg = None
         if isinstance(error, commands.CheckFailure):
@@ -180,11 +174,6 @@ class Hourai(commands.AutoShardedBot):
             err_msg = (str(error) + '\n') or ''
             err_msg += f"Try `~help {ctx.command} for a reference."
         elif isinstance(error, commands.CommandInvokeError):
-            trace = traceback.format_exception(type(error), error,
-                                               error.__traceback__)
-            trace_str = '\n'.join(trace)
-            log.error(f'In {ctx.command.qualified_name}:\n{trace_str}\n')
-            self.loop.create_task(self.send_owner_error(error))
             err_msg = ('An unexpected error has occured and has been reported.'
                        '\nIf this happens consistently, please consider filing'
                        ' a bug:\n<https://github.com/james7132/Hourai/issues>')
@@ -195,13 +184,6 @@ class Hourai(commands.AutoShardedBot):
         if guild is None:
             return None
         return proxies.GuildProxy(self, guild)
-
-    async def send_owner_error(self, error):
-        owner = (await self.application_info()).owner
-        trace = traceback.format_exception(type(error), error,
-                                           error.__traceback__)
-        trace_str = format.multiline_code('\n'.join(trace))
-        await owner.send(trace_str)
 
     def load_extension(self, module):
         try:
