@@ -193,8 +193,8 @@ class Owner(cogs.BaseCog):
         """Provides statistics for each shard of the bot."""
         output = []
         latencies = dict(ctx.bot.latencies)
-        columns = ('Shard', 'Guilds', 'Members', 'Channels', 'Roles',
-                   'Music', 'Messages', 'Latency')
+        columns = ('Shard', 'Guilds', 'Total Members', 'Loaded Members',
+                   'Channels', 'Roles', 'Music', 'Messages', 'Latency')
         shard_stats = {shard_id: Owner.get_shard_stats(ctx, shard_id)
                        for shard_id in latencies.keys()}
         table = texttable.Texttable()
@@ -220,7 +220,8 @@ class Owner(cogs.BaseCog):
                 continue
             guild_counts = ctx.bot.guild_counters[guild.id]
             counters['Guilds'] += 1
-            counters['Members'] += guild.member_count
+            counters['Total Members'] += guild.member_count
+            counters['Loaded Members'] += len(guild.members)
             counters['Roles'] += len(guild.roles)
             counters['Channels'] += len(guild.channels)
             counters['Messages'] += guild_counts[CounterKeys.MESSAGES_RECIEVED]

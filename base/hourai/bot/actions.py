@@ -139,9 +139,10 @@ class ActionExecutor:
             await member.add_roles(*roles, reason=_get_reason(action))
         elif action.change_role.type == proto.ChangeRole.REMOVE:
             await member.remove_roles(*roles, reason=_get_reason(action))
-        elif action.change_role.type == proto.ChangeRole.REMOVE:
-            add_roles = [r for r in roles if r not in member.roles]
-            rm_roles = [r for r in roles if r in member.roles]
+        elif action.change_role.type == proto.ChangeRole.TOGGLE:
+            role_ids = set(member._roles)
+            add_roles = [r for r in roles if r.id not in roles_ids]
+            rm_roles = [r for r in roles if r.id in roles_ids]
             await asyncio.gather(
                 member.add_roles(*add_roles, reason=_get_reason(action)),
                 member.remove(*rm_roles, reason=_get_reason(action))
