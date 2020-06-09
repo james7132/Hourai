@@ -11,19 +11,46 @@
     />
     <link
       rel="stylesheet"
-      href="//cdn.jsdelivr.net/npm/docsify/lib/themes/vue.css"
+      href="//cdn.jsdelivr.net/npm/docsify-themeable@0/dist/css/theme-simple-dark.css"
     />
+    <style>
+      :root {
+        --mono-hue: 0;
+        --mono-saturation: 0%;
+      }
+
+      .app-name-link > img {
+        border-radius: 50%;
+      }
+    </style>
   </head>
   <body>
+    <nav>
+      <ul>
+        <li>
+          <a href="https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot">
+            <b>Add to Discord</b>
+          </a>
+        </li>
+        <li>
+          <a href="https://discord.gg/N3jNXXg"><b>Support Server</b></a>
+        </li>
+      </ul>
+    </nav>
     <div id="app"></div>
     <script>
       window.$docsify = {
-        name: "Hourai",
-        repo: "james7132/Hourai",
+        name: 'Hourai',
+        repo: 'james7132/Hourai',
+        logo: 'https://hourai.gg/img/logo.4709ef58.webp',
         loadSidebar: true,
         subMaxLevel: 2,
+        search: 'auto',
       };
     </script>
     <script src="//cdn.jsdelivr.net/npm/docsify/lib/docsify.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/docsify-themeable@0"></script>
+    <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
   </body>
 </html>

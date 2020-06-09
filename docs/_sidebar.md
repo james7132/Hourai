@@ -3,8 +3,13 @@
   - [Getting Started](Getting-Started.md)
   - [Commands](Commands.md)
   - [Music](Music.md)
-- **Custimizable Advanced Features**
+- **For Advanced Users**
   - [Validation](Validation.md)
   - [Automation](Automation.md)
   - [Community Moderation](Community-Moderation.md)
   - [Escalation Ladder](Escalation-Ladder.md)
+- **For Developers**
+  - [Development](development/)
+  - [Self Hosting](development/self-hosting.md)
+  - [Architecture](development/architecture.md)
+- [Privacy Information](privacy.md)
