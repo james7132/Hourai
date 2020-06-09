@@ -61,7 +61,7 @@ class Setup(cogs.BaseCog):
 
 
 class Teardown(cogs.BaseCog):
-    """ Cog for automated teardown of . """
+    """ Cog for automated teardown of guild related data. """
 
     def __init__(self, bot):
         self.bot = bot

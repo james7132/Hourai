@@ -91,6 +91,10 @@ def __make_configuration_template():
             }]
         },
 
+        "third_party": {
+            "top_gg_token": ""
+        },
+
         "discord": {
             "client_id": "",
             "client_secret": "",
