@@ -156,23 +156,6 @@ class Music(cogs.BaseCog):
                player.connect(channel.id))
         return msg is None
 
-    @commands.command()
-    @commands.is_owner()
-    async def connect_(self, ctx):
-        player = self.get_player(ctx.guild)
-        channel = await get_voice_channel(ctx)
-        if channel is None:
-            await ctx.send('No suitable channel for playing music found.')
-            return False
-        await player.connect(channel.id)
-
-    @commands.command()
-    @commands.is_owner()
-    async def disconnect_(self, ctx):
-        player = self.get_player(ctx.guild)
-        if not player.is_connected:
-            await player.disconnect()
-
     @staticmethod
     def is_empty_response(load_response):
         if load_response is None:

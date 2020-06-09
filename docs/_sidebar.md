@@ -1,0 +1,10 @@
+- [Home](/)
+- **Getting Started**
+  - [Getting Started](Getting-Started.md)
+  - [Commands](Commands.md)
+  - [Music](Music.md)
+- **Custimizable Advanced Features**
+  - [Validation](Validation.md)
+  - [Automation](Automation.md)
+  - [Community Moderation](Community-Moderation.md)
+  - [Escalation Ladder](Escalation-Ladder.md)
