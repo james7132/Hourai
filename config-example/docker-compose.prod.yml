@@ -39,6 +39,7 @@ services:
     volumes:
       - ./nginx.prod.conf:/etc/nginx/nginx.conf
       - /etc/letsencrypt:/etc/letsencrypt
+      - ../docs:/var/ww/docs;
     depends_on:
       - hourai_api
   postgres:

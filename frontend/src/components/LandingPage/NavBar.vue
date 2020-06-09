@@ -14,7 +14,7 @@
         </b-tooltip>
       </template>
       <template slot="end">
-        <b-navbar-item href="#">Docs</b-navbar-item>
+        <b-navbar-item href="https://docs.hourai.gg/">Docs</b-navbar-item>
         <b-navbar-item href="#">Log in</b-navbar-item>
       </template>
     </b-navbar>
