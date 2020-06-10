@@ -264,7 +264,7 @@ class Validation(cogs.BaseCog):
         pass
 
     @validation.group(name='purge')
-    @commands.bot_has_permission(kick_members=True)
+    @commands.bot_has_permissions(kick_members=True)
     async def validation_purge(self, ctx, lookback: utils.human_timedelta):
         """Mass kicks unverified users from the server. This isn't useful
         unless validation is enabled and a role is assigned. See

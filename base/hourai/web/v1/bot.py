@@ -1,4 +1,5 @@
 import logging
+import collections
 from aiohttp import web
 from hourai.bot import CounterKeys
 

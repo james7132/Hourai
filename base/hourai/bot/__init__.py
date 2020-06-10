@@ -120,21 +120,22 @@ class Hourai(commands.AutoShardedBot):
     async def start(self, *args, **kwargs):
         await self.storage.init()
         await self.http_session.__aenter__()
+        try:
+            app = await web.create_app(self.config, bot=self)
+            self.web_app_runner = aiohttp.web.AppRunner(app)
+            await self.web_app_runner.setup()
+            web_app_site = aiohttp.web.TCPSite(self.web_app_runner,
+                                               port=self.config.web.port)
+            await web_app_site.start()
+        except:
+            log.exception("Waduhek")
         await super().start(*args, **kwargs)
 
-        # Setup webapp
-        app = await web.create_app(self.config, bot=self)
-        self.web_app_runner = aiohttp.web.AppRunner(app)
-        web_app_site = aiohttp.web.TCPSite(runner, 'localhost',
-                                           self.config.web.port)
-        await self.web_app_runner.setup()
-        await site.setup()
-
     async def close(self):
+        await super().close()
         if self.web_app_runner is not None:
             await self.web_app_runner.cleanup()
-        await super().close()
-        await self.http_session.__aexit__()
+        await self.http_session.__aexit__(None, None, None)
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')

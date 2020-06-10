@@ -4,7 +4,6 @@ from datetime import datetime
 from hourai import utils
 from hourai.db import models
 from .common import Validator, generalize_filter, split_camel_case
-from .storage import BanStorage
 
 
 LOOSE_DELETED_USERNAME_MATCH = re.compile(r'(?i).*Deleted.*User.*')

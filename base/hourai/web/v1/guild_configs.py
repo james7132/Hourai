@@ -63,8 +63,11 @@ def __make_routes(prefix, view_constructor):
     return [web.view(route, view) for route, view in routes]
 
 
-def add_routes(app, storage):
-    storage = app["storage"]
+def add_routes(app, **kwargs):
+    storage = app.get('storage')
+    if storage is None:
+        log.warning('[Web] No storage found. Skipping guild config routes.')
+        return
     route = '/guild/{guild_id:\d+}'
 
     routes = __make_routes(route,

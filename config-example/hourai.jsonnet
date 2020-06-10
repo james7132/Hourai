@@ -66,11 +66,11 @@ local env(suffix) = {
 
   third_party: {
     top_gg_token: "",
-  }
+  },
 
   webhooks: {
     bot_log: "",
-  }
+  },
 
   disabled_extensions: []
 };

@@ -25,25 +25,25 @@ class OwnerLogging(cogs.BaseCog):
         trace_str = self._get_traceback(error)
         if len(trace_str) > consts.DISCORD_MAX_MESSAGE_SIZE:
             trace_str = await hastebin.post(self.bot.http_session, trace_str)
-        await self.send_log(msg + '\n' + format.multiline_code(trace_str)
+        await self.send_log(msg + '\n' + format.multiline_code(trace_str))
 
     @commands.Cog.listener()
     async def on_ready(self):
-        await self.send_log(f'`[{bot.user}]: Bot is ready.`')
+        await self.send_log(f'`[{self.bot.user}]: Bot is ready.`')
 
     @commands.Cog.listener()
     async def on_shard_ready(self, shard_id):
-        await self.send_log(f'`[{bot.user}]: Shard {shard_id} is ready.`')
+        await self.send_log(f'`[{self.bot.user}]: Shard {shard_id} is ready.`')
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         await self.send_log(
-                f'`[{bot.user}]: Joined {guild.name} ({guild.id}).`')
+                f'`[{self.bot.user}]: Joined {guild.name} ({guild.id}).`')
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         await self.send_log(
-                f'`[{bot.user}]: Left {guild.name} ({guild.id}).`')
+                f'`[{self.bot.user}]: Left {guild.name} ({guild.id}).`')
 
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):

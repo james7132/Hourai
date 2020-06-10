@@ -24,6 +24,7 @@ services:
       - 8080:80
     volumes:
       - ./nginx.dev.conf:/etc/nginx/nginx.conf
+      - ./nginx:/etc/nginx/common
     depends_on:
       - hourai
   postgres:
