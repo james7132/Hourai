@@ -19,6 +19,13 @@ class GuildSpecific_TheGap(GuildSpecificCog):
 
     @commands.Cog.listener()
     async def on_message(self, msg):
+        await self.check_message(msg)
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        await self.check_message(msg)
+
+    async def check_message(self, message):
         # Deletes any message that doesn't contain a server link.
         category = msg.channel.category
         if category is None or 'server' not in category.name.lower():
