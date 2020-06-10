@@ -1,36 +1,30 @@
-<!-- Please use English language -->
-<!-- Please don't delete this template -->
+# Contribute
 
-<!-- PULL REQUEST TEMPLATE -->
-<!-- (Update "[ ]" to "[x]" to check a box) -->
+## Introduction
 
-**Summary**
+First, thank you for considering contributing to docsify! It's people like you that make the open source community such a great community! 😊
 
-**What kind of change does this PR introduce?** (check at least one)
+We welcome any type of contribution, not only code. You can help with 
+- **QA**: file bug reports, the more details you can give the better (e.g. screenshots with the console open)
+- **Marketing**: writing howto's, voting for the bot on [top.gg](https://top.gg/), ...
+- **Community**: presenting the project at meetups, organizing a dedicated meetup for the local community, ...
+- **Code**: take a look at the [open issues](issues). Even if you can't write code, commenting on them, showing that you care about a given issue matters. It helps us triage them.
 
-- [ ] Bugfix
-- [ ] Feature
-- [ ] Code style update
-- [ ] Refactor
-- [ ] Docs
-- [ ] Build-related changes
-- [ ] Other, please describe:
+## Your First Contribution
 
-**Does this PR introduce a breaking change?** (check one)
+Working on your first Pull Request? You can learn how from this *free* series, [How to Contribute to an Open Source Project on GitHub](https://egghead.io/series/how-to-contribute-to-an-open-source-project-on-github).
 
-- [ ] Yes
-- [ ] No
+## Submitting code
 
-If yes, please describe the impact and migration path for existing applications:
+Any code change should be submitted as a pull request. The description should explain what the code does and give steps to execute it. The pull request should also contain tests.
 
-**The PR fulfills these requirements:**
+## Code review process
 
-- [ ] When resolving a specific issue, it's referenced in the PR's title (e.g. `fix #xxx[,#xxx]`, where "xxx" is the issue number)
+The bigger the pull request, the longer it will take to review and merge. Try to break down large pull requests in smaller chunks that are easier to review and merge.
+It is also always helpful to have some context for your pull request. What was the purpose? Why does it matter to you?
 
-If adding a **new feature**, the PR's description includes:
+## Questions
 
-- [ ] A convincing reason for adding this feature
-- [ ] Related documents have been updated
-- [ ] Related tests have been updated
+If you have any questions, please join the [support Discord server](https://discord.gg/UydKWHX).
 
-To avoid wasting your time, it's best to open a **feature request issue** first and wait for approval before working on it.
+<!-- This `CONTRIBUTING.md` is based on @nayafia's template https://github.com/nayafia/contributing-template -->
