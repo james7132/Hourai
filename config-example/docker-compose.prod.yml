@@ -10,28 +10,15 @@ services:
       - HOURAI_ENV=dev
     volumes:
       - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
-    depends_on:
-      - postgres
-      - redis
-      - lavalink
-  hourai_api:
-    build: ../base
-    container_name: "hourai-web"
-    command: python launcher.py run web
-    restart: unless-stopped
-    environment:
-      - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=dev
-    volumes:
-      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
     expose:
       - 8080
     depends_on:
       - postgres
       - redis
-  hourai_frontend:
+      - lavalink
+  nginx:
     build: ../frontend
-    container_name: "hourai-frontend"
+    container_name: nginx
     restart: unless-stopped
     ports:
       - 80:80
@@ -42,7 +29,7 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt
       - ../docs:/var/ww/docs;
     depends_on:
-      - hourai_api
+      - hourai
   postgres:
     image: "postgres:12-alpine"
     container_name: "postgres"

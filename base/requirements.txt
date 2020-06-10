@@ -25,7 +25,7 @@ texttable==1.6.2
 pytimeparse==1.1.8
 
 # Third Party Integrations
-dblpyb==0.3.4
+dblpy==0.3.4
 
 # For music bot features [Optional]
 wavelink==0.8.0

@@ -30,11 +30,6 @@ class StoragePrefix(enum.Enum):
     # Cached bans. Ephemeral data that have expirations assigned to them.
     BANS = 2
 
-    GUILD_COUNTERS = 3
-    CHANNEL_COUNTERS = 4
-    USER_COUNTERS = 5
-
-
 class GuildPrefix(enum.Enum):
     """ Guild config prefixes. Used as prefixes or full keys in the hash
     underneath the guild key. All use the StoragePrefix.GUILD_CONFIGS as a

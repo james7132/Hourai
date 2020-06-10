@@ -9,7 +9,7 @@ import pkgutil
 import sys
 import traceback
 from discord.ext import commands
-from hourai import config
+from hourai import config, web
 from hourai.db import storage, proxies
 from hourai.utils import fake, format, uvloop
 from . import actions, extensions, state
@@ -108,6 +108,8 @@ class Hourai(commands.AutoShardedBot):
         self.channel_counters = collections.defaultdict(collections.Counter)
         self.user_counters = collections.defaultdict(collections.Counter)
 
+        self.web_app_runner = None
+
     def create_storage_session(self):
         return self.storage.create_session()
 
@@ -120,9 +122,19 @@ class Hourai(commands.AutoShardedBot):
         await self.http_session.__aenter__()
         await super().start(*args, **kwargs)
 
+        # Setup webapp
+        app = await web.create_app(self.config, bot=self)
+        self.web_app_runner = aiohttp.web.AppRunner(app)
+        web_app_site = aiohttp.web.TCPSite(runner, 'localhost',
+                                           self.config.web.port)
+        await self.web_app_runner.setup()
+        await site.setup()
+
     async def close(self):
-        await self.http_session.__aexit__()
+        if self.web_app_runner is not None:
+            await self.web_app_runner.cleanup()
         await super().close()
+        await self.http_session.__aexit__()
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')
