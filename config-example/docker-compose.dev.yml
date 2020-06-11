@@ -16,8 +16,18 @@ services:
       - postgres
       - redis
       - lavalink
+  frontend-dev:
+    image: "node:14.3.0-alpine"
+    container_name: frontend-dev
+    working_dir: /app
+    command: "npm run serve"
+    restart: unless-stopped
+    expose:
+      - 8080
+    volumes:
+      - ../frontend:/app
   nginx:
-    build: ../frontend
+    image: "nginx:alpine"
     container_name: nginx
     restart: unless-stopped
     ports:
