@@ -1,18 +1,28 @@
-const API_BASE = `https://${window.location.host}/api/v{0}`
 
 class Resource {
-    constructor(api, suffix) {
+    constructor(api, suffix, supported_methods=null) {
         this.api = api
         this.endpoint = api.prefix + suffix
+        this.supported_methods = supported_methods
     }
 
     raise_if_error(method, response) {
-      if (response.ok) return
-      const format = "Error: {0} on {1} errored with status {2}"
-      throw new Error(msg.format(method, this.endpoint, response.status))
+        if (response.ok) return
+        const msg = "Error: {0} on {1} errored with status {2}"
+        throw new Error(msg.format(method, this.endpoint, response.status))
+    }
+
+    check_supported_methods(method) {
+        let supported = this.supported_methods === null ||
+                    this.supported_methods.includes(method)
+        if (!supported) {
+          throw `Endpoint "${this.endpoint}" does not support the HTTP ` +
+                `method ${method}`
+        }
     }
 
     async get() {
+          this.check_supported_methods('GET')
           const response = await fetch(this.endpoint, {
               method: 'GET'
           })
@@ -21,6 +31,7 @@ class Resource {
     }
 
     async post(data) {
+        this.check_supported_methods('POST')
         const response = await fetch(this.endpoint, {
             method: 'POST',
             credentials: 'same-origin',
@@ -35,8 +46,17 @@ class Resource {
 }
 
 export default class HouraiApi {
-    constructor(api_version) {
-        this.prefix = API_BASE.format(api_version)
+    constructor(host, version) {
+        let protocol = {
+          'development': window.location.protocol,
+          'production': 'https',
+        }[process.env.NODE_ENV]
+        this.prefix = `${protocol}//${host}/api/v${version}`
+        console.log(this.prefix)
+    }
+
+    bot_status() {
+        return new Resource(this, `/bot/status`, ['GET'])
     }
 
     guild_config(guild_id) {
