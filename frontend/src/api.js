@@ -1,89 +1,211 @@
+import qs from 'qs'
+
+const AUTH_TOKEN_KEY = 'access_token'
+
+class DiscordAuth {
+    constructor({
+        api,
+        clientId
+    }) {
+        this.api = api
+        this.clientId = clientId
+        this.authToken = null
+    }
+
+    isLoggedIn() {
+        return this.authToken !== null &&
+               typeof this.authToken !== 'undefined'
+    }
+
+    async getAuthToken() {
+        if (this.authToken === null) {
+            this.authToken = await this.fetchAuthToken()
+        }
+        return this.authToken
+    }
+
+    async fetchAuthToken() {
+        try {
+            let response = await this.api.authToken().get()
+            let data = await response.json()
+            return data[AUTH_TOKEN_KEY]
+        } catch (err) {
+            this.openOauthLogin()
+        }
+    }
+
+    async login(authCode) {
+        let response = await this.api.oauthLogin().post({
+            code: authCode
+        })
+        let data = await response.json()
+        this.authToken = data[AUTH_TOKEN_KEY]
+        return this.authToken
+    }
+
+    async logout() {
+        this.authToken = null
+        await this.api.oauthLogout().post()
+    }
+
+    openOauthLogin() {
+        const AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize"
+        const query = qs.stringify({
+            // TODO(james7132): Use state to navigate to the right location
+            client_id: this.clientId,
+            response_type: 'code',
+            scope: 'guilds',
+            redirect_uri: `${this.api.domain}/login`,
+        })
+        window.location = `${AUTHORIZE_URL}?${query}`
+    }
+}
 
 class Resource {
-    constructor(api, suffix, supported_methods=null) {
+    constructor({
+        api,
+        endpoint,
+        supportedMethods,
+        requiresAuth
+    }) {
         this.api = api
-        this.endpoint = api.prefix + suffix
-        this.supported_methods = supported_methods
+        this.endpoint = endpoint
+        this.supportedMethods = supportedMethods || null
+        this.requiresAuth = true
+        if (typeof requiresAuth !== 'undefined') {
+            this.requiresAuth = requiresAuth
+        }
     }
 
-    raise_if_error(method, response) {
+    raiseIfError(method, response) {
         if (response.ok) return
-        const msg = "Error: {0} on {1} errored with status {2}"
-        throw new Error(msg.format(method, this.endpoint, response.status))
+        const msg = `Error: ${method} on ${this.endpoint} errored with status ${response.status}`
+        throw new Error(msg)
     }
 
-    check_supported_methods(method) {
-        let supported = this.supported_methods === null ||
-                    this.supported_methods.includes(method)
+    checkSupportedMethods(method) {
+        let supported = this.supportedMethods === null ||
+            this.supportedMethods.includes(method)
         if (!supported) {
-          throw `Endpoint "${this.endpoint}" does not support the HTTP ` +
+            throw `Endpoint "${this.endpoint}" does not support the HTTP ` +
                 `method ${method}`
         }
     }
 
-    async get() {
-          this.check_supported_methods('GET')
-          const response = await fetch(this.endpoint, {
-              method: 'GET'
-          })
-          this.raise_if_error('GET', response)
-          return await response.json()
+    get() {
+        return this.fetch('GET')
     }
 
-    async post(data) {
-        this.check_supported_methods('POST')
-        const response = await fetch(this.endpoint, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
+    async post(data = null, params = {}) {
+        params.headers = {
+            ...params.headers || {},
+            ...(await this.getHeaders())
+        }
+        params.body = (data === null) ? undefined : JSON.stringify(data)
+        return await this.fetch('POST', params)
+    }
+
+    async fetch(method, params = {}) {
+        this.checkSupportedMethods(method)
+        let response = await fetch(this.endpoint, {
+            method: method,
+            ...params
         })
-        this.raise_if_error('POST', response)
-        return await response.json()
+        this.raiseIfError(method, response)
+        return response
+    }
+
+    async getHeaders() {
+        let headers = {}
+        if (this.requiresAuth) {
+            const token = await this.api.auth.getAuthToken()
+            headers['Authorization'] = 'Bearer ' + token
+        }
+        return headers
     }
 }
 
 export default class HouraiApi {
     constructor(host, version) {
-        let protocol = {
-          'development': window.location.protocol,
-          'production': 'https',
-        }[process.env.NODE_ENV]
-        this.prefix = `${protocol}//${host}/api/v${version}`
-        console.log(this.prefix)
+        let config = {
+            production: {
+                protocol: 'https:',
+                clientId: "208460637368614913"
+            },
+            development: {
+                protocol: window.location.protocol,
+                clientId: "280108190459232268",
+            }
+        } [process.env.NODE_ENV]
+        this.domain = `${config.protocol}//${host}`
+        this.prefix = `${this.domain}/api/v${version}`
+        this.auth = new DiscordAuth({
+            api: this,
+            clientId: config.clientId
+        })
+    }
+
+    createResource(endpoint, params = {}) {
+        return new Resource({
+            api: this,
+            endpoint: this.prefix + endpoint,
+            ...params
+        })
     }
 
     bot_status() {
-        return new Resource(this, `/bot/status`, ['GET'])
+        return this.createResource('/bot/status', {
+            requiresAuth: false,
+            supportedMethods: ['GET']
+        })
     }
 
-    guild_config(guild_id) {
-        return new Resource(this, `/guild/${guild_id}.json`)
+    authToken() {
+        return this.createResource('/oauth/discord/refresh', {
+            requiresAuth: false,
+            supportedMethods: ['GET']
+        })
     }
 
-    logging_config(guild_id) {
-        return new Resource(this, `/guild/${guild_id}/logging.json`)
+    oauthLogin() {
+        return this.createResource('/oauth/discord/token', {
+            requiresAuth: false,
+            supportedMethods: ['POST']
+        })
     }
 
-    auto_config(guild_id) {
-        return new Resource(this, `/guild/${guild_id}/logging.json`)
+    oauthLogout() {
+        return this.createResource('/oauth/discord/logout', {
+            requiresAuth: false,
+            supportedMethods: ['POST']
+        })
     }
 
-    moderation_config(guild_id) {
-        return new Resource(this, `/guild/${guild_id}/moderation.json`)
+    guildConfig(guildId) {
+        return this.createResource(`/guild/${guildId}`)
     }
 
-    music_config(guild_id) {
-        return new Resource(this, `/guild/${guild_id}/music.json`)
+    loggingConfig(guildId) {
+        return this.createResource(`/guild/${guildId}/logging.json`)
     }
 
-    announce_config(guild_id) {
-        return new Resource(this, `/guild/${guild_id}/announce.json`)
+    autoConfig(guildId) {
+        return this.createResource(`/guild/${guildId}/auto.json`)
     }
 
-    role_config(guild_id) {
-        return new Resource(this, `/guild/${guild_id}/role.json`)
+    moderationConfig(guildId) {
+        return new Resource(this, `/guild/${guildId}/moderation.json`)
+    }
+
+    musicConfig(guildId) {
+        return this.createResource(`/guild/${guildId}/music.json`)
+    }
+
+    announceConfig(guildId) {
+        return this.createResource(`/guild/${guildId}/announce.json`)
+    }
+
+    roleConfig(guildId) {
+        return this.createResource(`/guild/${guildId}/role.json`)
     }
 }

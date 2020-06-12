@@ -32,6 +32,14 @@
 <script>
 import LandingNavBar from './NavBar.vue'
 
+function summary_count(count) {
+  return new Intl.NumberFormat({
+    maximumSignificantDigits: 3,
+    notation: 'compact',
+    compactDisplay: 'short',
+  }).format(count)
+}
+
 function sum_stats(stats, keys) {
   let sum = {}
   for (let shard in stats) {
@@ -75,18 +83,19 @@ export default {
       this.intervalStats = setInterval(this.refresh_stats, 10000)
     },
     async refresh_stats() {
-      let bot_status = await this.$api.bot_status().get()
+      let response = await this.$api.bot_status().get()
+      let bot_status = await response.json()
       let summary = sum_stats(bot_status.shards,
-                                ['guilds', 'members', 'messages'])
+                              ['guilds', 'members', 'messages'])
       this.stats = [{
           title: "Servers",
-          value: summary['guilds']
+          value: summary_count(summary['guilds']),
         }, {
           title: "Users",
-          value: summary['members']
+          value: summary_count(summary['members']),
         }, {
           title: "Messages Proccesed",
-          value: summary['messages']
+          value: summary_count(summary['messages']),
         }]
     }
   }

@@ -98,7 +98,7 @@ def __make_configuration_template():
         "discord": {
             "client_id": "",
             "client_secret": "",
-            "scopes": [""],
+            "redirect_uri": "",
             "bot_token": "",
         },
 

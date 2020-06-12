@@ -82,6 +82,7 @@ local env(suffix) = {
     discord: {
       client_id: "ddDa",
       client_secret: "ddDa",
+      redirect_uri: "https://hourai.gg/login",
       bot_token: "ddDa",
     },
   },
@@ -90,6 +91,7 @@ local env(suffix) = {
     discord: {
       client_id: "ddDa",
       client_secret: "ddDa",
+      redirect_uri: "http://localhost:8080/login",
       bot_token: "ddDa",
     },
 

@@ -19,6 +19,9 @@
          v-bind:href="link.url">
           {{link.text}}
         </b-navbar-item>
+        <b-navbar-item tag="router-link" to="/dash">
+          Dashboard
+        </b-navbar-item>
       </template>
     </b-navbar>
   </div>
@@ -50,10 +53,6 @@ export default {
         id: "status",
         url: "https://status.hourai.gg",
         text: "Status"
-      }, {
-        id: "control_panel",
-        url: "https://status.hourai.gg",
-        text: "Control Panel"
       }]
     }
   }

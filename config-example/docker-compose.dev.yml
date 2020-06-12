@@ -17,7 +17,7 @@ services:
       - redis
       - lavalink
   frontend-dev:
-    image: "node:14.3.0-alpine"
+    image: "node:14.3.0"
     container_name: frontend-dev
     working_dir: /app
     command: "npm run serve"
