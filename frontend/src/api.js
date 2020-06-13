@@ -14,7 +14,7 @@ class DiscordAuth {
 
     isLoggedIn() {
         return this.authToken !== null &&
-               typeof this.authToken !== 'undefined'
+            typeof this.authToken !== 'undefined'
     }
 
     async getAuthToken() {
@@ -25,13 +25,9 @@ class DiscordAuth {
     }
 
     async fetchAuthToken() {
-        try {
-            let response = await this.api.authToken().get()
-            let data = await response.json()
-            return data[AUTH_TOKEN_KEY]
-        } catch (err) {
-            this.openOauthLogin()
-        }
+        let response = await this.api.authToken().get()
+        let data = await response.json()
+        return data[AUTH_TOKEN_KEY]
     }
 
     async login(authCode) {
@@ -48,16 +44,19 @@ class DiscordAuth {
         await this.api.oauthLogout().post()
     }
 
-    openOauthLogin() {
+    openOauthLogin({
+        state = null
+    }) {
         const AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize"
-        const query = qs.stringify({
+        let params = {
             // TODO(james7132): Use state to navigate to the right location
             client_id: this.clientId,
             response_type: 'code',
             scope: 'guilds',
             redirect_uri: `${this.api.domain}/login`,
-        })
-        window.location = `${AUTHORIZE_URL}?${query}`
+            state: state || undefined
+        }
+        window.location = `${AUTHORIZE_URL}?${qs.stringify(params)}`
     }
 }
 
@@ -92,15 +91,14 @@ class Resource {
         }
     }
 
-    get() {
-        return this.fetch('GET')
+    async get() {
+        return await this.fetch('GET', {
+          headers: new Headers(await this.getHeaders())
+        })
     }
 
     async post(data = null, params = {}) {
-        params.headers = {
-            ...params.headers || {},
-            ...(await this.getHeaders())
-        }
+        await this.addHeaders(params)
         params.body = (data === null) ? undefined : JSON.stringify(data)
         return await this.fetch('POST', params)
     }
@@ -115,12 +113,23 @@ class Resource {
         return response
     }
 
+    async addHeaders(params) {
+      let additionalHeaders = await this.getHeaders()
+      if (!params.headers) {
+        params.headers = new Headers()
+      }
+      for (let prop in additionalHeaders) {
+        params.headers.append(prop, additionalHeaders[prop])
+      }
+    }
+
     async getHeaders() {
         let headers = {}
         if (this.requiresAuth) {
             const token = await this.api.auth.getAuthToken()
             headers['Authorization'] = 'Bearer ' + token
         }
+        console.log(`PATH: ${this.endpoint} AUTH: ${this.requiresAuth} HEADERS: ${JSON.stringify(headers)}`)
         return headers
     }
 }
@@ -178,6 +187,18 @@ export default class HouraiApi {
         return this.createResource('/oauth/discord/logout', {
             requiresAuth: false,
             supportedMethods: ['POST']
+        })
+    }
+
+    me() {
+        return this.createResource('/users/@me', {
+            supportedMethods: ['GET']
+        })
+    }
+
+    guilds() {
+        return this.createResource('/users/@me/guilds', {
+            supportedMethods: ['GET']
         })
     }
 

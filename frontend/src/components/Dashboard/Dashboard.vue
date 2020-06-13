@@ -1,26 +1,40 @@
 <template>
-  <div id="dashboard" class="container">
+  <div id="dashboard">
+    <DashboardNavbar :guilds="guilds" :selectedGuild="selectedGuild">
+    </DashboardNavbar>
     <img class="logo" alt="Hourai Logo" src="@/assets/logo.webp">
-    <ul v-if="user">
-      <li v-for="guild in guilds" v-bind:key="guild.id">
-        {{guild.id}}: {{guild.name}}
-      </li>
-    </ul>
-    <div v-else>
-      <button @click.prevent="connect">Connect to Discord</button>
-    </div>
   </div>
 </template>
 
 <script>
+import DashboardNavbar from "./Navbar.vue"
+
 export default {
   name: 'Dashboard',
+  components: {DashboardNavbar},
   data() {
     return {
       user: null,
-      guilds: []
+      guilds: [],
+      selectedGuild: null
     }
   },
+  mounted() {
+      this.refreshGuilds()
+  },
+  methods: {
+    async refreshGuilds() {
+      let response = await this.$api.guilds().get()
+      let guilds = await response.json()
+      for (let guild of guilds) {
+        guild.icon = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
+        this.guilds.push(guild)
+      }
+      if (this.selectedGuild === null && guilds.length > 0) {
+        this.selectedGuild = guilds[0]
+      }
+    }
+  }
 }
 </script>
 

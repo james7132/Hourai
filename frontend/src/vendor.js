@@ -1,6 +1,10 @@
+import 'es6-promise/auto'
+
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Buefy from 'buefy'
+import Vuex from 'vuex'
+
 import { Plugin } from 'vue-fragment'
 
 import { library } from '@fortawesome/fontawesome-svg-core'
@@ -18,3 +22,4 @@ Vue.use(Buefy, {
 })
 Vue.use(VueRouter)
 Vue.use(Plugin)
+Vue.use(Vuex)

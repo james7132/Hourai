@@ -1,18 +1,13 @@
 import abc
 import logging
-from aiohttp import web, ClientSession, FormData
+from aiohttp import web, FormData
+from .utils import client_session
 
 
 routes = web.RouteTableDef()
 
 def redirect_uri(request):
     return str(request.url.with_path(str(request.app.router[""].url_for())))
-
-
-async def client_session(app: web.Application):
-    async with ClientSession() as session:
-        app["session"] = session
-        yield
 
 
 class ViewBase(web.View):
@@ -85,10 +80,10 @@ class RefreshView(ViewBase):
             "data": FormData(tuple({
                 "client_id": self.request.app["CLIENT_ID"],
                 "client_secret": self.request.app["CLIENT_SECRET"],
-                "code": self.request.query["code"],
+                "grant_type": "refresh_token",
                 "refresh_token": refresh_token,
                 "redirect_uri":self.request.app["REDIRECT_URI"],
-                "grant_type": "refresh_token",
+                "scope": " ".join(self.request.app["SCOPES"]),
             }.items()))
         }
 

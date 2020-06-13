@@ -17,9 +17,12 @@ export default {
       console.log("HELLO")
       await this.$auth.login(params.code)
       console.log(`TOKEN: ${this.$auth.authToken} LOGGED IN: ${this.$auth.isLoggedIn()}`)
-    } else {
-      this.$router.push('/')
+      if (params.state) {
+        this.$router.push(window.atob(params.state))
+        return
+      }
     }
+    this.$router.push('/')
   }
 }
 </script>

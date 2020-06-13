@@ -14,9 +14,11 @@
     "@fortawesome/vue-fontawesome": "^0.1.9",
     "buefy": "^0.8.20",
     "core-js": "^3.6.5",
+    "es6-promise": "^4.2.8",
     "vue": "^2.6.11",
     "vue-fragment": "^1.5.1",
-    "vue-router": "^3.3.3"
+    "vue-router": "^3.3.3",
+    "vuex": "^3.4.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^4.4.3",
