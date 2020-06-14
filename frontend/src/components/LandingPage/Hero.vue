@@ -12,7 +12,7 @@
         <h2 class="subtitle">
           The world's most advanced security and moderation bot for Discord.
         </h2>
-        <a href="https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=2147483647">
+        <a :href="botLink">
           <button class="button is-primary is-rounded">Add to Server</button>
         </a>
       </div>
@@ -30,6 +30,7 @@
 </template>
 
 <script>
+import consts from '@/consts.js'
 import LandingNavBar from './NavBar.vue'
 
 function summary_count(count) {
@@ -62,6 +63,7 @@ export default {
   },
   data() {
     return {
+      botLink: consts.links.bot,
       stats: [{
         title: "Servers",
         value: "..."
@@ -84,8 +86,7 @@ export default {
     },
     async refresh_stats() {
       let response = await this.$api.bot_status().get()
-      let bot_status = await response.json()
-      let summary = sum_stats(bot_status.shards,
+      let summary = sum_stats(response.data.shards,
                               ['guilds', 'members', 'messages'])
       this.stats = [{
           title: "Servers",

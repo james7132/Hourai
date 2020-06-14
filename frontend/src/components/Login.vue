@@ -14,9 +14,7 @@ export default {
     if (typeof params.error !== 'undefined') {
       // TODO(james7132): Handle error
     } else if (typeof params.code !== 'undefined') {
-      console.log("HELLO")
-      await this.$auth.login(params.code)
-      console.log(`TOKEN: ${this.$auth.authToken} LOGGED IN: ${this.$auth.isLoggedIn()}`)
+      await this.$store.dispatch('login', params.code)
       if (params.state) {
         this.$router.push(window.atob(params.state))
         return

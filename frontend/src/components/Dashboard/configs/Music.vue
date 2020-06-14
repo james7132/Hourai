@@ -5,12 +5,12 @@
       :can-cancel="false"></b-loading>
     <div v-if="!isLoading">
       <DashboardNavbar></DashboardNavbar>
-      <div class="container">
-        <div class="columns">
-          <div class="column is-2">
-            <DashboardMenu></DashboardMenu>
-          </div>
-          <div class="column">
+      <div class="columns">
+        <div class="column is-2">
+          <DashboardMenu></DashboardMenu>
+        </div>
+        <div class="column">
+          <div class="container">
             <router-view></router-view>
           </div>
         </div>
