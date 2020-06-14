@@ -23,6 +23,14 @@ def passthrough_view(app, path, method='get', post_process_fn=None):
     app.add_routes([getattr(web, method)(path, view)])
 
 
+def serialize_obj(obj, keys):
+    return {key: getattr(obj, key) for key in keys}
+
+
+def serialize_all(objs, keys):
+    return [serialize_obj(obj, keys) for obj in objs]
+
+
 def add_routes(app, **kwargs):
     def guilds_post_process(request: web.Request, output):
         bot = request.app["bot"]
@@ -30,8 +38,15 @@ def add_routes(app, **kwargs):
         output.clear()
         for guild in copy:
             guild_id = int(guild["id"])
-            if bot.get_guild(guild_id) is not None:
-                output.append(guild)
+            bot_guild = bot.get_guild(guild_id)
+            if bot_guild is None:
+                continue
+            props = ("id", "name")
+            guild.update(
+                roles=serialize_all(bot_guild.roles, props),
+                text_channels=serialize_all(bot_guild.text_channels, props),
+                voide_channels=serialize_all(bot_guild.voice_channels, props))
+            output.append(guild)
 
     passthrough_view(app, '/users/@me')
     passthrough_view(app, '/users/@me/guilds',
