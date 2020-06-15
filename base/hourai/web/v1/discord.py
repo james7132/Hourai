@@ -1,4 +1,5 @@
 import logging
+import discord
 from aiohttp import web
 
 def passthrough_view(app, path, method='get', post_process_fn=None):
@@ -9,7 +10,6 @@ def passthrough_view(app, path, method='get', post_process_fn=None):
             raise web.HTTPUnauthorized('"Authorization" header must be set.')
 
         endpoint = f"https://discord.com/api/v6{path}"
-        logging.debug(endpoint)
         params = { "headers": { "Authorization": auth_header } }
         session = request.app['session']
         async with getattr(session, method)(endpoint, **params) as resp:
@@ -31,21 +31,38 @@ def serialize_all(objs, keys):
     return [serialize_obj(obj, keys) for obj in objs]
 
 
+def can_add_bot(guild):
+    perms = discord.Permissions(permissions=guild.get('permissions', 0))
+    return perms.manage_guild or guild.get('owner')
+
+
 def add_routes(app, **kwargs):
     def guilds_post_process(request: web.Request, output):
         bot = request.app["bot"]
         copy = list(output)
         output.clear()
         for guild in copy:
+            logging.debug(guild)
             guild_id = int(guild["id"])
             bot_guild = bot.get_guild(guild_id)
-            if bot_guild is None:
+
+            roles = []
+            text_channels = []
+            voice_channels = []
+
+            if bot_guild is not None:
+                props = ("id", "name")
+                roles = serialize_all(bot_guild.roles, props),
+                text_channels = serialize_all(bot_guild.text_channels, props)
+                voice_channels = serialize_all(bot_guild.voice_channels, props)
+            elif not can_add_bot(guild):
                 continue
-            props = ("id", "name")
+
             guild.update(
-                roles=serialize_all(bot_guild.roles, props),
-                text_channels=serialize_all(bot_guild.text_channels, props),
-                voide_channels=serialize_all(bot_guild.voice_channels, props))
+                has_bot=bot_guild is not None,
+                roles=roles,
+                text_channels=text_channels,
+                voice_channels=voice_channels)
             output.append(guild)
 
     passthrough_view(app, '/users/@me')
