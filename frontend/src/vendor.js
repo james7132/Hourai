@@ -11,12 +11,12 @@ import { Plugin } from 'vue-fragment'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faTwitter, faDiscord, faGithub } from '@fortawesome/free-brands-svg-icons'
 import { faPlus,faSignOutAlt, faQuestionCircle } from '@fortawesome/free-solid-svg-icons'
+import { faQuestionCircle as farQuestionCircle } from '@fortawesome/free-regular-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-library.add(faTwitter, faDiscord, faGithub, faSignOutAlt, faPlus, faQuestionCircle)
+library.add(faTwitter, faDiscord, faGithub)
+library.add(faSignOutAlt, faPlus, faQuestionCircle, farQuestionCircle)
 Vue.component('font-awesome-icon', FontAwesomeIcon)
-
-import 'buefy/dist/buefy.css'
 
 Vue.prototype.$http = Axios
 Vue.use(Buefy, {

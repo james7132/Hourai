@@ -1,20 +1,22 @@
 <template>
     <b-navbar wrapper-class="container" shadow>
       <template slot="start">
-        <b-navbar-dropdown :label="selectedGuild.name" scrollable=true>
-          <NavbarGuildOption
-            v-for="guild of guilds"
-            :key="guild.id"
-            v-bind="guild">
-          </NavbarGuildOption>
-        </b-navbar-dropdown>
+        <b-navbar-item tag="router-link" to="/dash" v-if="selectedGuild">
+          <b-icon pack="fa" icon="plus"/>
+        </b-navbar-item>
+        <b-navbar-item v-if="!selectedGuild">
+          {{title}}
+        </b-navbar-item>
+        <b-navbar-item v-if="selectedGuild">
+          {{selectedGuild.name}}
+        </b-navbar-item>
+      </template>
+      <template slot="end">
         <b-tooltip label="Add to Server" position="is-bottom">
           <b-navbar-item>
             <b-icon pack="fa" icon="plus"/>
           </b-navbar-item>
         </b-tooltip>
-      </template>
-      <template slot="end">
         <b-tooltip label="Documentation" position="is-bottom">
           <b-navbar-item :href="consts.links.docs">
             <b-icon pack="fas" icon="question-circle"/>
@@ -32,19 +34,24 @@
 
 <script>
 import NavbarSocial from '@/components/common/NavbarSocial.vue'
-import NavbarGuildOption from './NavbarGuildOption.vue'
 import consts from '@/consts.js'
 import { mapGetters } from 'vuex'
 
 export default {
   name: 'DashboardNavbar',
-  components: {NavbarSocial, NavbarGuildOption},
+  components: {NavbarSocial},
+  props: {
+    title: {
+      type: String,
+      default: "Dashboard"
+    }
+  },
   data() {
     return { consts }
   },
   computed: {
     guilds: function() {
-      return this.$store.state.guilds
+       return this.$store.state.guilds.guilds
     },
     ...mapGetters(['selectedGuild'])
   },
@@ -59,9 +66,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.guild-icon {
-  margin-right: 10px;
-}
-</style>

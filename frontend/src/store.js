@@ -55,14 +55,19 @@ let auth = {
 
 let guilds = {
     state: {
-        guilds: {},
+        guilds: null,
         selectedGuildId: null,
     },
     mutations: {
         selectGuild(state, guildId) {
             state.selectedGuildId = guildId
+            console.log(state.guilds)
+            console.log(guildId)
         },
         setGuild(state,  guild) {
+            if (!state.guilds) {
+              state.guilds = {}
+            }
             state.guilds[guild.id] = guild
         }
     },
@@ -73,15 +78,22 @@ let guilds = {
         getGuild: state => id => {
             return state.guilds[id]
         },
+        haveGuildsLoaded(state) {
+            return !!state.guilds
+        }
     },
     actions: {
-        async fetchGuilds({state, commit}) {
+        async loadGuilds(ctx) {
+            if (ctx.getters.haveGuildsLoaded) return
+            await ctx.dispatch('fetchGuilds')
+        },
+        async fetchGuilds({commit}) {
             let response = await API.guilds().get()
             let guilds = response.data
             guilds.forEach(guild => commit('setGuild', guild))
-            if (guilds.length > 0 && state.selectedGuildId === null) {
-                commit('selectGuild', guilds[0].id)
-            }
+            //if (guilds.length > 0 && state.selectedGuildId === null) {
+                //commit('selectGuild', guilds[0].id)
+            //}
         }
     }
 }

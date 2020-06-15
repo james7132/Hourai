@@ -15,11 +15,16 @@ export default {
   links: {
     status: "https://status.hourai.gg/",
     docs: "https://docs.hourai.gg/",
-    bot: `${oauthLink}?client_id=${apiConfig.clientId}&scope=bot&permissions=2147483647`
+    bot: `${oauthLink}?client_id=${apiConfig.clientId}&scope=bot`
   },
   auth: {
     token_key: "access_token",
     authorize_endpoint: oauthLink
   },
-  api: apiConfig
+  api: apiConfig,
+  discord: {
+    guildIcon(guild, size=1024) {
+      return `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.webp?size=${size}`
+    }
+  }
 }

@@ -8,19 +8,19 @@
 </template>
 
 <script>
+import consts from '@/consts.js'
 export default {
   name: 'DashboardNavbarGuild',
-  props: ["id", "icon", "name"],
+  props: ["guild"],
   computed: {
     imageLink() {
-      const url = 'https://cdn.discordapp.com/icons/{0}/{1}.png?size=32'
-      return url.format(this.id, this.icon)
+      return consts.discord.guildIcon(this.guild, 32)
     }
   },
 }
 </script>
 
-<style>
+<style scoped>
 .guild-icon {
   margin-right: 10px;
 }
