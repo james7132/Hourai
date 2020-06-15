@@ -4,6 +4,7 @@ import VueRouter from 'vue-router'
 import LandingPage from '@/components/LandingPage/LandingPage.vue'
 import GuildSelect from '@/components/Dashboard/GuildSelect.vue'
 import Dashboard from '@/components/Dashboard/Dashboard.vue'
+import GuildViews from '@/components/Dashboard/configs/router.js'
 import Login from '@/components/Login.vue'
 import NotFoundComponent from '@/components/NotFoundComponent.vue'
 
@@ -27,7 +28,11 @@ export default new VueRouter({
           path: '/dash/:guild_id(\\d+)',
           name: 'dashboard-guild',
           component: Dashboard,
-          meta: { requiresAuth: true }
+          meta: { requiresAuth: true },
+          children: GuildViews.getRouterEntries(),
+          redirect(to) {
+            return { name: 'overview', params: to.params }
+          }
       }, {
           path: '*',
           component: NotFoundComponent

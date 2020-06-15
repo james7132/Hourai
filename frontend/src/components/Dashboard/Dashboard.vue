@@ -12,7 +12,7 @@
             <DashboardMenu id="menu"></DashboardMenu>
           </div>
           <div class="column">
-            <GuildConfigMusic></GuildConfigMusic>
+            <router-view></router-view>
           </div>
         </div>
       </div>
@@ -23,7 +23,6 @@
 <script>
 import DashboardNavbar from "./Navbar.vue"
 import DashboardMenu from "./Menu.vue"
-import GuildConfigMusic from './configs/Music.vue'
 import GuildIcon  from '@/components/common/GuildIcon.vue'
 import { mapGetters } from 'vuex'
 
@@ -33,7 +32,6 @@ export default {
     DashboardNavbar,
     DashboardMenu,
     GuildIcon,
-    GuildConfigMusic,
   },
   data() {
     return {

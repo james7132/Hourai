@@ -5,7 +5,7 @@
           v-model="ids"
           :native-value="option.id"
           @input="updateIds">
-          {{option.name}}
+          #{{option.name}}
       </b-checkbox>
     </div>
   </fragment>
