@@ -17,6 +17,7 @@
 </template>
 
 <script>
+import utils from '@/utils.js'
 import GuildViews from './configs/router.js'
 
 export default {
@@ -25,13 +26,7 @@ export default {
     return { categories: GuildViews.categories }
   },
   methods: {
-    titleCase(val) {
-      let str = val.toLowerCase().split(' ')
-      for (let i = 0; i < str.length; i++) {
-         str[i] = str[i].charAt(0).toUpperCase() + str[i].slice(1)
-      }
-      return str.join(' ')
-    },
+    titleCase: utils.titleCase,
     makeRoute(name) {
       return {
         name: name,

@@ -61,8 +61,6 @@ let guilds = {
     mutations: {
         selectGuild(state, guildId) {
             state.selectedGuildId = guildId
-            console.log(state.guilds)
-            console.log(guildId)
         },
         setGuild(state,  guild) {
             if (!state.guilds) {

@@ -37,8 +37,17 @@ class Resource {
 
     async get(params={}) {
         await this.checkAuth()
-        this.checkSupportedMethods('GET')
-        return await this.api.axios.get(this.endpoint, params)
+        const method = 'GET'
+        this.checkSupportedMethods(method)
+        let cacheKey = `${method}:${this.endpoint}:${JSON.stringify(params)}`
+        let request = this.api.promiseCache[cacheKey]
+        if (!request) {
+          request = this.api.axios.get(this.endpoint, params)
+          this.api.promiseCache[cacheKey] = request
+        }
+        let result = await request
+        delete this.api.promiseCache[cacheKey]
+        return result
     }
 
     async post(data = undefined, params = {}) {
@@ -53,6 +62,7 @@ export default class Api {
     constructor(host, version) {
         this.store = null
         let domain = `${consts.api.protocol}//${host}`
+        this.promiseCache = {}
         this.axios = axios.create({
             baseURL: `${domain}/api/v${version}`
         })
