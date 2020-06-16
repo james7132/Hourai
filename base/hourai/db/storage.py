@@ -116,6 +116,7 @@ class Storage:
     def __setup_caches(self):
         self.bans = bans.BanStorage(self, StoragePrefix.BANS.value)
 
+        mapping = []
         for conf in Storage._get_cache_configs():
             # Initialize Parameters
             prefix = _prefixize(conf.prefix.value)
@@ -140,16 +141,17 @@ class Storage:
                                  value_coder=value_coder)
             setattr(self, conf.attr, cache)
 
-        mapping = []
-        for conf in Storage._get_cache_configs():
-            if conf.prefix != StoragePrefix.GUILD_CONFIGS:
-                continue
-            attr = conf.attr
-            if '_configs' in attr:
-                attr = attr.replace('_configs', '')
-            mapping.append((attr, getattr(self, conf.attr)))
-        self.guild_configs = caches.AggregateProtoCache(proto.GuildConfig,
-                                                        mapping)
+            if conf.prefix == StoragePrefix.GUILD_CONFIGS:
+                mapping.append(caches.AggregateProtoHashCache.Entry(
+                    field=conf.subprefix,
+                    field_name=conf.attr.replace('_configs', ''),
+                    value_coder=value_coder))
+
+        self.guild_configs = caches.AggregateProtoHashCache(
+            self.redis, proto.GuildConfig,
+            key_coder=coders.IntCoder().prefixed(
+                _prefixize(StoragePrefix.GUILD_CONFIGS.value)),
+            value_coders=mapping)
 
     @staticmethod
     def _get_cache_configs():

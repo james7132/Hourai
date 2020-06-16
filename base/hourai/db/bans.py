@@ -5,6 +5,7 @@ import logging
 import coders
 import time
 from . import proto
+from .redis_utils import redis_transaction
 from hourai.utils import iterable
 
 log = logging.getLogger(__name__)
@@ -21,17 +22,6 @@ def _get_guild_size(guild):
         return guild.member_count
     return len([m for m in guild.members if not m.bot])
 
-
-async def redis_transaction(redis, txn_func):
-    try:
-        tr = redis.multi_exec()
-        futs = list(txn_func(tr))
-        results = await tr.execute()
-        assert results == (await asyncio.gather(*futs))
-        return results
-    except aioredis.MultiExecError:
-        log.exception('Failure in Redis Transaction:')
-        raise
 
 class BanStorage:
     """An interface for access store all of the bans seen by the bot."""
