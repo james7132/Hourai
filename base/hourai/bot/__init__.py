@@ -168,7 +168,7 @@ class Hourai(commands.AutoShardedBot):
 
         ctx = await self.get_context(msg)
 
-        if ctx.valid:
+        if not ctx.valid or ctx.prefix is None:
             return
 
         async with ctx:

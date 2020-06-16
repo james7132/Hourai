@@ -1,4 +1,5 @@
 import discord
+import traceback
 from discord.ext import commands
 from hourai.bot import cogs
 from hourai.utils import consts, hastebin, format

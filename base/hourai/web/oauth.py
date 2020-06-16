@@ -131,7 +131,6 @@ class OAuthBuilder(abc.ABC):
         assert "access_token" in data
         assert "refresh_token" in data
         keys = ("access_token", "expires_in", "token_type", "scope")
-        logging.debug(data)
         response = web.json_response({k:data.get(k) for k in keys})
         response.set_cookie(self.COOKIE_NAME, data['refresh_token'],
                             max_age=2592000, secure=True,

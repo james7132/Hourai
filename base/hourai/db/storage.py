@@ -143,7 +143,7 @@ class Storage:
 
             if conf.prefix == StoragePrefix.GUILD_CONFIGS:
                 mapping.append(caches.AggregateProtoHashCache.Entry(
-                    field=conf.subprefix,
+                    field=_prefixize(conf.subprefix),
                     field_name=conf.attr.replace('_configs', ''),
                     value_coder=value_coder))
 

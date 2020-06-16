@@ -92,7 +92,7 @@ class RedisStore(KeyValueStore):
         await self._transaction(
                 lambda tr: (func(tr, value) for value in iterable))
 
-    async def _transaction(self, iterable, txn_fn):
+    async def _transaction(self, txn_fn):
         """|coro| Runs arbitrary operations as an atomic Redis transaction.
         txn_fn is a finite generator function that takes a transaction as an
         argument and yields awaitable transaction operations."""
@@ -250,6 +250,7 @@ class AggregateProtoHashCache(RedisStore):
                  timeout=0, key_coder=IdentityCoder()):
         super().__init__(redis, timeout=timeout)
         self.msg_type = msg_type
+        self.key_coder = key_coder
         self.value_coders = value_coders
         self._fields = [entry.field for entry in value_coders]
         self._validate_config()
@@ -289,15 +290,17 @@ class AggregateProtoHashCache(RedisStore):
                 missing_fields.append(entry.field)
 
         def txn_fn(tr):
-            yield tr.hmset_dict(key_enc, fields)
-            yield tr.hdel(key_enc, *missing_fields)
+            if len(fields) > 0:
+                yield tr.hmset_dict(key_enc, fields)
+            if len(missing_fields) > 0:
+                yield tr.hdel(key_enc, *missing_fields)
             if self.timeout > 0:
                 yield tr.expire(key_enc, self.timeout)
-        await elf._transaction(txn_fn)
+        await self._transaction(txn_fn)
 
     async def clear(self, key):
         """|coro| Deletes the value for a key and field. Is atomic."""
-        await self.redis.delete(key_coder.encode(key))
+        await self.redis.delete(self.key_coder.encode(key))
 
 
 class AggregateProtoCache:

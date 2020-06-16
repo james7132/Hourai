@@ -1,5 +1,6 @@
 import aioredis
 import asyncio
+import logging
 
 async def redis_transaction(redis, txn_func):
     try:
@@ -9,5 +10,5 @@ async def redis_transaction(redis, txn_func):
         assert results == (await asyncio.gather(*futs))
         return results
     except aioredis.MultiExecError:
-        log.exception('Failure in Redis Transaction:')
+        logging.exception('Failure in Redis Transaction:')
         raise

@@ -42,11 +42,9 @@ def can_add_bot(guild):
 def add_routes(app, **kwargs):
     def guilds_post_process(request: web.Request, output):
         bot = request.app["bot"]
-        logging.debug(output)
         copy = list(output)
         output.clear()
         for guild in copy:
-            logging.debug(guild)
             guild_id = int(guild["id"])
             bot_guild = bot.get_guild(guild_id)
 
