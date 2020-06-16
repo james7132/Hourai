@@ -2,6 +2,7 @@ import logging
 import discord
 from aiohttp import web
 
+
 def passthrough_view(app, path, method='get', post_process_fn=None):
 
     async def view(request: web.Request):
@@ -13,6 +14,8 @@ def passthrough_view(app, path, method='get', post_process_fn=None):
         params = { "headers": { "Authorization": auth_header } }
         session = request.app['session']
         async with getattr(session, method)(endpoint, **params) as resp:
+            if resp.status >= 400:
+                return web.Response(status=resp.status, body=await resp.read())
             output = await resp.json()
 
         if post_process_fn is not None:
@@ -39,6 +42,7 @@ def can_add_bot(guild):
 def add_routes(app, **kwargs):
     def guilds_post_process(request: web.Request, output):
         bot = request.app["bot"]
+        logging.debug(output)
         copy = list(output)
         output.clear()
         for guild in copy:
