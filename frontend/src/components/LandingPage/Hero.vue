@@ -1,5 +1,5 @@
 <template>
-  <section class="hero is-dark is-fullheight">
+  <section class="hero is-fullheight">
     <div class="hero-head">
       <LandingNavBar></LandingNavBar>
     </div>

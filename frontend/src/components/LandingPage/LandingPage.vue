@@ -1,24 +1,17 @@
 <template>
   <fragment>
     <LandingHero></LandingHero>
-    <LandingSection
-      class="is-dark"
-      v-for="section in sections"
-      v-bind:key="section.id"
-      v-bind="section">
-    </LandingSection>
-    <LandingFooter></LandingFooter>
   </fragment>
 </template>
 
 <script>
 import LandingHero from './Hero.vue'
-import LandingSection from './Section.vue'
-import LandingFooter from './Footer.vue'
+/*import LandingSection from './Section.vue'*/
+/*import LandingFooter from './Footer.vue'*/
 
 export default {
   name: 'LandingPage',
-  components: {LandingHero, LandingFooter, LandingSection},
+  components: {LandingHero},
   data: function() {
     return {
       sections: [{
