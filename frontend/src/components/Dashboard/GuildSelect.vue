@@ -15,17 +15,22 @@
           class="column is-1-desktop is-one-fifth-mobile is-one-fifth-tablet"
           v-for="guild in guilds"
           :key="guild.id">
-          <b-tooltip class="is-block" :label="guild.name">
-            <router-link v-if="guild.has_bot" class="is-block"
-                          :to="getDashLink(guild)">
-              <GuildIcon class="is-square" :guild="guild">
-                <template slot="overlay">
-                  Lmao
-                </template>
+          <b-tooltip v-if="guild.has_bot" class="full-size" :label="guild.name">
+            <router-link class="icon-container is-block" :to="getDashLink(guild)">
+              <GuildIcon classes="is-size-4" :guild="guild">
               </GuildIcon>
             </router-link>
-            <a v-else class="is-block" :href="getInviteLink(guild)">
-              <GuildIcon class="is-square" :guild="guild"> </GuildIcon>
+          </b-tooltip>
+          <b-tooltip v-if="!guild.has_bot" class="full-size" type="is-warning"
+                     :label="`Add bot to ${guild.name}`">
+            <a class="icon-container full-size" :href="getInviteLink(guild)">
+              <GuildIcon classes="is-size-4" :guild="guild">
+                <template slot="overlay">
+                  <div class="overlay is-text-center">
+                    <b-icon type="is-primary" size="is-large" pack="fa" icon="plus"/>
+                  </div>
+                </template>
+              </GuildIcon>
             </a>
           </b-tooltip>
         </div>
@@ -95,5 +100,32 @@ export default {
 .guild-container {
   padding-left: 3%;
   padding-right: 3%;
+}
+
+.full-size {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.overlay {
+  content: " ";
+  z-index: 10;
+  display: flex;
+  position: absolute;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-radius: 50%;
+  opacity: 0;
+  background-color: #000;
+  transition: .5s ease;
+}
+
+.icon-container:hover .overlay {
+  opacity: 0.75;
 }
 </style>
