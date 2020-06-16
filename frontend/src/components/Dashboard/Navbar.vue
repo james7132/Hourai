@@ -2,7 +2,7 @@
     <b-navbar wrapper-class="container" shadow>
       <template slot="start">
         <b-navbar-item tag="router-link" to="/dash" v-if="selectedGuild">
-          <b-icon pack="fa" icon="plus"/>
+          <b-icon pack="fa" icon="arrow-left"/>
         </b-navbar-item>
         <b-navbar-item v-if="!selectedGuild">
           {{title}}

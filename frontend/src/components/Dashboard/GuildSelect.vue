@@ -8,7 +8,7 @@
     <DashboardNavbar v-if="!isLoading" title="Dashboard">l </DashboardNavbar>
     <div class="container" v-if="!isLoading">
       <b-input class="search" v-model="name"
-        placeholder="Search your servers" icon="magnify" rounded>
+        placeholder="Search your servers" icon="search" rounded>
       </b-input>
       <div class="columns is-multiline is-centered is-mobile guild-container">
         <div
@@ -27,7 +27,8 @@
               <GuildIcon classes="is-size-4" :guild="guild">
                 <template slot="overlay">
                   <div class="overlay is-text-center">
-                    <b-icon type="is-primary" size="is-large" pack="fa" icon="plus"/>
+                    <b-icon type="is-primary" size="is-large"
+                            pack="fa" icon="plus"/>
                   </div>
                 </template>
               </GuildIcon>
@@ -127,5 +128,10 @@ export default {
 
 .icon-container:hover .overlay {
   opacity: 0.75;
+}
+
+.overlay.icon {
+  height: 30rem;
+  width: 30rem;
 }
 </style>
