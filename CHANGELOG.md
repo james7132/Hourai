@@ -11,6 +11,8 @@ here: https://discord.gg/UydKWHX.
  * [Validation] Removed redundant reasons in validation reports.
  * [Validation] Users that have an exact avatar match with a banned user will now
    be rejected.
+ * [Validation] Modlog output for rejected users will now use a mention of
+   the user to make it easier to pull up the user's profile.
  * [Validation] Cross server ban checks will now state how many servers a user
    has been banned from.
  * [Validation] Added "~validation purge" command to mass remove unverified
