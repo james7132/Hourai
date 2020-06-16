@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   hourai:
-    build: ../base
+    image: james7132/hourai:latest
     container_name: "hourai"
     command: python launcher.py run bot
     restart: unless-stopped
@@ -17,7 +17,7 @@ services:
       - redis
       - lavalink
   nginx:
-    build: ../frontend
+    image: james7132/hourai:latest-frontend
     container_name: nginx
     restart: unless-stopped
     ports:
