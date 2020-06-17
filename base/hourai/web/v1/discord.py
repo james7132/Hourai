@@ -1,6 +1,8 @@
 import logging
 import discord
+import asyncio
 from aiohttp import web
+from google.protobuf import json_format
 
 
 def passthrough_view(app, path, method='get', post_process_fn=None):
@@ -19,7 +21,7 @@ def passthrough_view(app, path, method='get', post_process_fn=None):
             output = await resp.json()
 
         if post_process_fn is not None:
-            post_process_fn(request, output)
+            await post_process_fn(request, output)
 
         return web.json_response(output)
 
@@ -40,31 +42,39 @@ def can_add_bot(guild):
 
 
 def add_routes(app, **kwargs):
-    def guilds_post_process(request: web.Request, output):
+    async def guilds_post_process(request: web.Request, output):
         bot = request.app["bot"]
         copy = list(output)
+        ids = [int(g["id"]) for g in output]
         output.clear()
-        for guild in copy:
-            guild_id = int(guild["id"])
+
+        configs = await asyncio.gather(*[
+            bot.storage.guild_configs.get(guild_id) for guild_id in ids])
+
+        for guild_id, guild, config in zip(ids, copy, configs):
+            if not can_add_bot(guild):
+                continue
             bot_guild = bot.get_guild(guild_id)
 
-            roles = []
-            text_channels = []
-            voice_channels = []
-
-            if bot_guild is not None:
+            if bot_guild is None:
+                guild.update(
+                    has_bot=False,
+                    member_count=None,
+                    config=None,
+                    roles=[],
+                    text_channels=[],
+                    voice_channels=[])
+            else:
                 props = ("id", "name")
-                roles = serialize_all(bot_guild.roles, props),
-                text_channels = serialize_all(bot_guild.text_channels, props)
-                voice_channels = serialize_all(bot_guild.voice_channels, props)
-            elif not can_add_bot(guild):
-                continue
+                guild.update(
+                    has_bot=True,
+                    member_count=bot_guild.member_count,
+                    roles=serialize_all(bot_guild.roles, props),
+                    text_channels=serialize_all(bot_guild.text_channels, props),
+                    voice_channels=serialize_all(
+                        bot_guild.voice_channels, props),
+                    config=json_format.MessageToDict(config))
 
-            guild.update(
-                has_bot=bot_guild is not None,
-                roles=roles,
-                text_channels=text_channels,
-                voice_channels=voice_channels)
             output.append(guild)
 
     passthrough_view(app, '/users/@me')
