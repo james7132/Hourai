@@ -27,7 +27,6 @@ services:
       - ./nginx.prod.conf:/etc/nginx/nginx.conf
       - ./nginx:/etc/nginx/common
       - /etc/letsencrypt:/etc/letsencrypt
-      - ../docs:/var/ww/docs;
     depends_on:
       - hourai
   postgres:

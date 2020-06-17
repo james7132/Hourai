@@ -1,5 +1,5 @@
 build:
-	docker-compose -p hourai -f config/docker-compose.prod.yml build
+	docker-compose -p hourai -f config/docker-compose.build.yml build
 
 pull:
 	docker-compose -p hourai -f config/docker-compose.prod.yml pull
