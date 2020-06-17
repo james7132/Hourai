@@ -1,10 +1,12 @@
+# Changelog
+
 This is a public changelog of the alterations made to the bot, including both
 code and operational changes.
 
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
-### WIP (TBD)
+## WIP (TBD, Not yet live)
 
  * [General] Command will now give more complete explainations when they fail to
    run.
@@ -24,7 +26,7 @@ here: https://discord.gg/UydKWHX.
    minimize memory usage. Some commands may take longer to run on larger
    servers, particularly actions that apply to all members of a server.
 
-### v1.2.0 (05/26/2020)
+## v1.2.0 (05/26/2020)
 
  * [General] Bot will now automatically configure associated channels based on
    pre-existing channels upon joining a server. (i.e. "#modlog" or "#bot-modlog"
@@ -47,11 +49,11 @@ here: https://discord.gg/UydKWHX.
    availability when the web interface launches.
  * [Technical] Migrated Hourai to PostgreSQL instead of using SQLite.
 
-### v1.1.1 (05/21/2020)
+## v1.1.1 (05/21/2020)
 
  * [Music] Hotfix: Fixing ~forceskip from erroring out.
 
-### v1.1.0 (05/20/2020)
+## v1.1.0 (05/20/2020)
 
  * **Hourai is now a [Verified Discord Bot](https://support.discord.com/hc/en-us/articles/360040720412-Bot-Verification-and-Data-Whitelisting)**
  * [General] Added utilities for making public announcements via modlog channels.

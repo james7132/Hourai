@@ -12,4 +12,6 @@
   - [Development](development/)
   - [Self Hosting](development/self-hosting.md)
   - [Architecture](development/architecture.md)
-- [Privacy Information](privacy.md)
+- **Developers**
+  - [Privacy Information](privacy.md)
+  - [Changelog](Changelog.md)
