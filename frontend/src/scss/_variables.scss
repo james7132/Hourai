@@ -2,12 +2,13 @@
 // DARKLY
 ////////////////////////////////////////////////
 
-$grey-lighter: #dbdee0;
-$grey-light: #8c9b9d;
-$grey: darken($grey-light, 18);
-$grey-dark: darken($grey, 18);
-$grey-darker: darken($grey, 23);
+$grey-lighter: #99AAB5;
+$grey: #2C2F33;
+$grey-light: lighten($grey, 18);
+$grey-dark: #23272A;
+$grey-darker: #23272A;
 
+$white: #DDD;
 $orange: #e67e22;
 $yellow: #f1b70e;
 $green: #2ecc71;
@@ -15,9 +16,9 @@ $turquoise: #1abc9c;
 $blue: #3498db;
 $purple: #8e44ad;
 $red: #e74c3c;
-$white-ter: #ecf0f1;
-$primary: #de614e !default;
-$yellow-invert: #fff;
+$white-ter: #eee;
+$primary: #7289DA !default;
+$yellow-invert: $white;
 
 $family-sans-serif: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI",
   "Helvetica Neue", "Helvetica", "Arial", sans-serif;
@@ -43,19 +44,19 @@ $footer-background-color: $background;
 $button-background-color: $background;
 $button-border-color: lighten($button-background-color, 15);
 
-$title-color: #fff;
+$title-color: $white;
 $subtitle-color: $grey-light;
 $subtitle-strong-color: $grey-light;
 
-$text: #fff;
-$text-light: lighten($text, 10);
-$text-strong: darken($text, 5);
+$text: #ddd;
+$text-light: lighten($text, 2);
+$text-strong: darken($text, 2);
 
 $box-color: $text;
 $box-background-color: $grey-dark;
 $box-shadow: none;
 
-$link: $turquoise;
+$link: $primary;
 $link-hover: lighten($link, 5);
 $link-focus: darken($link, 5);
 $link-active: darken($link, 5);
@@ -89,12 +90,12 @@ $pagination-border-color: $border;
 
 $navbar-height: 4rem;
 
-$navbar-background-color: $primary;
+$navbar-background-color: $background;
 $navbar-item-color: $text;
 $navbar-item-hover-color: $link;
 $navbar-item-hover-background-color: transparent;
 $navbar-item-active-color: $link;
-$navbar-dropdown-arrow: #fff;
+$navbar-dropdown-arrow: $white;
 $navbar-divider-background-color: rgba(0, 0, 0, 0.2);
 $navbar-dropdown-border-top: 1px solid $navbar-divider-background-color;
 $navbar-dropdown-background-color: $primary;
@@ -102,6 +103,10 @@ $navbar-dropdown-item-hover-color: $grey-lighter;
 $navbar-dropdown-item-hover-background-color: transparent;
 $navbar-dropdown-item-active-background-color: transparent;
 $navbar-dropdown-item-active-color: $link;
+
+$loading-background: rgba(15,15,15,0.5);
+$loading-background-legacy: $grey-darker;
+$loading-full-page-icon-size: 15em;
 
 $dropdown-content-background-color: $background;
 $dropdown-item-color: $text;
