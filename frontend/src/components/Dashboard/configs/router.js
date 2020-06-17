@@ -1,44 +1,46 @@
-import Overview from "./Overview.vue"
-import Analytics from "./Analytics.vue"
-import Logging from "./Logging.vue"
-import Roles from "./Roles.vue"
-import Music from "./Music.vue"
-import Moderation from "./Moderation.vue"
-import Validation from "./Validation.vue"
+//import Overview from "./Overview.vue"
+//import Analytics from "./Analytics.vue"
+//import Logging from "./Logging.vue"
+//import Roles from "./Roles.vue"
+//import Music from "./Music.vue"
+//import Moderation from "./Moderation.vue"
+//import Validation from "./Validation.vue"
+
+import UnderConstruction from '@/components/common/UnderConstruction.vue'
 
 let categories = [{
     name: "General",
     entries: [{
         path: 'overview',
         name: 'overview',
-        component: Overview
+        component: UnderConstruction
     }, {
         path: 'analytics',
         name: 'analytics',
-        component: Analytics
+        component: UnderConstruction
     }]
 }, {
     name: "Configuration",
     entries: [{
         path: 'validation',
         name: 'validation',
-        component: Validation
+        component: UnderConstruction
     }, {
         path: 'logging',
         name: 'logging',
-        component: Logging
+        component: UnderConstruction
     }, {
         path: 'roles',
         name: 'roles',
-        component: Roles
+        component: UnderConstruction
     }, {
         path: 'music',
         name: 'music',
-        component: Music
+        component: UnderConstruction
     }, {
         path: 'moderation',
         name: 'moderation',
-        component: Moderation
+        component: UnderConstruction
     }]
 }]
 

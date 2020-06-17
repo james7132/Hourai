@@ -21,7 +21,7 @@
               </GuildIcon>
             </router-link>
           </b-tooltip>
-          <b-tooltip v-if="!guild.has_bot" class="full-size" type="is-warning"
+          <b-tooltip v-if="!guild.has_bot" class="full-size"
                      :label="`Add bot to ${guild.name}`">
             <a class="icon-container full-size" :href="getInviteLink(guild)">
               <GuildIcon classes="is-size-4" :guild="guild">

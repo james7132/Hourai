@@ -1,19 +1,17 @@
 <template>
-  <div id="dashboard">
+  <div id="dashboard" class="full-height">
     <b-loading :is-full-page="true"
       :active.sync="isLoading"
       :can-cancel="false"></b-loading>
-    <div v-if="!isLoading">
-      <DashboardNavbar></DashboardNavbar>
-      <div id="content" class="container">
-        <div class="columns">
-          <div class="column is-2">
-            <GuildIcon class="is-square" :guild="selectedGuild"></GuildIcon>
-            <DashboardMenu id="menu"></DashboardMenu>
-          </div>
-          <div class="column">
-            <router-view></router-view>
-          </div>
+    <DashboardNavbar v-if="!isLoading"></DashboardNavbar>
+    <div id="content" class="container" v-if="!isLoading">
+      <div class="columns">
+        <div class="column is-2">
+          <GuildIcon class="is-square" :guild="selectedGuild"></GuildIcon>
+          <DashboardMenu id="menu"></DashboardMenu>
+        </div>
+        <div class="column">
+          <router-view></router-view>
         </div>
       </div>
     </div>
@@ -56,6 +54,7 @@ export default {
 <style scoped>
 #content {
   padding-top: 0.75%;
+  height: 100%;
 }
 
 #guild-icon {
@@ -65,5 +64,10 @@ export default {
 
 #menu {
   margin-top: 20px;
+}
+
+.full-height {
+  display: block;
+  height: 100%;
 }
 </style>
