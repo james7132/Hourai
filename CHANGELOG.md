@@ -6,7 +6,7 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
-## WIP (TBD, Not yet live)
+## v1.3.0 (06/17/2020)
 
  * [General] Command will now give more complete explainations when they fail to
    run.
