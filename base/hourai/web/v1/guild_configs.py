@@ -21,6 +21,8 @@ def guild_config_view(storage, field, model_type, formatter,
                 raise web.HTTPBadRequest("Cannot parse guild id.")
 
         async def get(self):
+            # TODO(james7132): Remove this
+            return web.Response(status=403)
             log.info(str(formatter))
             guild_id = self.guild_id
             try:
