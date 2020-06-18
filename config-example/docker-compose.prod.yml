@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=dev
+      - HOURAI_ENV=prod
     volumes:
       - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
     expose:
