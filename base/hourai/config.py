@@ -113,6 +113,7 @@ def __make_configuration_template():
         # Logging can be arbitrary
         "logging": {
             "default": "",
+            "access_log_format": "",
             "modules": ProtectedDict()
         },
 

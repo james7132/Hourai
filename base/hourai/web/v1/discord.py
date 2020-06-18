@@ -1,8 +1,12 @@
 import logging
 import discord
 import asyncio
+import time
 from aiohttp import web
 from google.protobuf import json_format
+
+
+log = logging.getLogger('hourai.web.discord')
 
 
 def passthrough_view(app, path, method='get', post_process_fn=None):
@@ -15,10 +19,14 @@ def passthrough_view(app, path, method='get', post_process_fn=None):
         endpoint = f"https://discord.com/api/v6{path}"
         params = { "headers": { "Authorization": auth_header } }
         session = request.app['session']
+
+        start_time = time.time()
         async with getattr(session, method)(endpoint, **params) as resp:
             if resp.status >= 400:
                 return web.Response(status=resp.status, body=await resp.read())
             output = await resp.json()
+        latency = time.time() - start_time
+        log.info(f'Upstream request latency for "{path}": {latency}')
 
         if post_process_fn is not None:
             await post_process_fn(request, output)

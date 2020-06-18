@@ -57,6 +57,7 @@ local env(suffix) = {
 
   logging: {
     default: "INFO",
+    access_log_format: '"%r" %s %b %Tf "%{Referer}i" "%{User-Agent}i"',
     modules: {
       prawcore: "INFO",
       aioredis: "INFO",
