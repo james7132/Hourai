@@ -26,7 +26,7 @@ class OwnerLogging(cogs.BaseCog):
         trace_str = self._get_traceback(error)
         if len(trace_str) > consts.DISCORD_MAX_MESSAGE_SIZE:
             trace_str = await hastebin.post(self.bot.http_session, trace_str)
-        await self.send_log(msg + '\n' + format.multiline_code(trace_str))
+        await self.send_log(f"`msg`\n" +format.multiline_code(trace_str))
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -45,6 +45,13 @@ class OwnerLogging(cogs.BaseCog):
     async def on_guild_remove(self, guild):
         await self.send_log(
                 f'`[{self.bot.user}]: Left {guild.name} ({guild.id}).`')
+
+    @commands.Cog.listener()
+    async def on_log_error(self, event):
+        message = f'Exception in {event}:'
+        self.bot.logger.exception(message)
+        _, err, _ = sys.exc_info()
+        await self.send_error(err, msg=message)
 
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):

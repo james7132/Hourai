@@ -176,7 +176,7 @@ class Cache(KeyValueStore):
         value = await self.store.get(self.key_coder.encode(key))
         if value is None:
             return None
-        return await self.value_coder.decode(value)
+        return self.value_coder.decode(value)
 
     async def set(self, key, message):
         """|coro| Sets the value for a key and field. Atomicity depends on

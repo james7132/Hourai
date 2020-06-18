@@ -123,12 +123,12 @@ class Hourai(commands.AutoShardedBot):
         try:
             app = await web.create_app(self.config, bot=self)
 
-            kwargs = {}
+            web_app_kwargs = {}
             log_format = self.config.logging.access_log_format
             if log_format:
-                kwargs['access_log_format'] = log_format
+                web_app_kwargs['access_log_format'] = log_format
 
-            self.web_app_runner = aiohttp.web.AppRunner(app, **kwargs)
+            self.web_app_runner = aiohttp.web.AppRunner(app, **web_app_kwargs)
             await self.web_app_runner.setup()
             web_app_site = aiohttp.web.TCPSite(self.web_app_runner,
                                                port=self.config.web.port)

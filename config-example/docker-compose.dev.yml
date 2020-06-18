@@ -2,7 +2,7 @@ version: "3.8"
 services:
   hourai:
     build: ../base
-    container_name: "hourai"
+    container_name: hourai
     command: python launcher.py run bot
     restart: unless-stopped
     environment:
@@ -17,17 +17,17 @@ services:
       - redis
       - lavalink
   frontend-dev:
-    image: "node:14.3.0"
+    image: node:14.3.0
     container_name: frontend-dev
     working_dir: /app
-    command: "npm run serve"
+    command: npm run serve
     restart: unless-stopped
     expose:
       - 8080
     volumes:
       - ../frontend:/app
   nginx:
-    image: "nginx:alpine"
+    image: nginx:alpine
     container_name: nginx
     restart: unless-stopped
     ports:
@@ -38,8 +38,8 @@ services:
     depends_on:
       - hourai
   postgres:
-    image: "postgres:12-alpine"
-    container_name: "postgres"
+    image: postgres:12-alpine
+    container_name: postgres
     restart: unless-stopped
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -48,8 +48,8 @@ services:
       - POSTGRES_USER=hourai
       - POSTGRES_PASSWORD=ddDa
   redis:
-    image: "redis:5.0-alpine"
-    container_name: "redis"
+    image: redis:5.0-alpine
+    container_name: redis
     command: ["redis-server",
               "--appendonly", "yes",
               "--save", "900", "1",
@@ -59,9 +59,9 @@ services:
     volumes:
       - redis-data:/data
   lavalink:
-    image: "fredboat/lavalink:master"
+    image: fredboat/lavalink:master
     restart: unless-stopped
-    container_name: "lavalink"
+    container_name: lavalink
     volumes:
       - ./lavalink.yml:/opt/Lavalink/application.yml
     expose:

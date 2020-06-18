@@ -78,6 +78,7 @@ class ValidationContext():
             except Exception as error:
                 # TODO(james7132) Handle the error
                 log.exception('Error while running validator:')
+                await self.bot.dispatch('log_error', 'Validation')
                 await self.bot.send_owner_error(error)
         return self.approved
 

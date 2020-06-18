@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 def create_text_channel_search(name):
     def search(ch, me):
-        perms = me.permissions_for(ch)
+        perms = ch.permissions_for(me)
         return name in ch.name.lower() and \
             perms.read_messages and \
             perms.send_messages

@@ -167,7 +167,7 @@ class Validation(cogs.BaseCog):
             return
         try:
             ban_info = await guild.fetch_ban(user)
-            await self.bot.storage.bans.save_ban(guild.id, ban_info)
+            await self.bot.storage.bans.save_ban(guild, ban_info)
         except discord.Forbidden:
             pass
 

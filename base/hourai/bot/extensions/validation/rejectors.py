@@ -184,10 +184,11 @@ class BannedUsernameRejector(Validator):
 
             for banned_username in matches.all():
                 normalized = self._normalize(banned_username.name)
-                if normalized in normalized_usernames:
+                if not normalized in normalized_usernames:
                     continue
                 ban_reason = ban_reasons.get(banned_username.user_id)
-                reason = f"Exact username match with banned user: `{original}`."
+                reason = f"Exact username match with banned user: " + \
+                         f"{banned_username.name}`."
                 if ban_reason is not None:
                     reason += f" Ban Reason: {ban_reason}"
                 ctx.add_rejection_reason(reason)

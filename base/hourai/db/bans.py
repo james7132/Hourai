@@ -62,7 +62,7 @@ class BanStorage:
             for chunk in iterable.chunked(ban_protos, MAX_CHUNK_SIZE):
                 yield tr.hmset_dict(guild_key, dict(chunk))
             for ban in bans:
-                user_key = self._guild_key_coder.encode(ban.user.id)
+                user_key = self._user_key_coder.encode(ban.user.id)
                 yield tr.sadd(user_key, guild_key)
                 yield tr.expire(user_key, self.timeout)
             yield tr.expire(guild_key, self.timeout)
@@ -98,7 +98,7 @@ class BanStorage:
             return []
 
         user_id_enc = self._id_coder.encode(user_id)
-        def transacation(tr):
+        def transaction(tr):
             for key in guild_keys:
                 yield tr.hget(key, user_id_enc)
         results = await redis_transaction(self.redis, transaction)

@@ -1,3 +1,4 @@
+import discord
 import asyncio
 from datetime import datetime, timedelta
 from hourai.utils import fake, format
