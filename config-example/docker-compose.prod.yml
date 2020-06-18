@@ -40,7 +40,7 @@ services:
       - POSTGRES_USER=hourai
       - POSTGRES_PASSWORD=ddDa
   redis:
-    image: redis:5.0-alpine
+    image: redis:6.0-alpine
     container_name: redis
     command: ["redis-server",
               "--appendonly", "yes",
