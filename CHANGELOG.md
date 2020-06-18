@@ -1,16 +1,32 @@
+# Changelog
+
 This is a public changelog of the alterations made to the bot, including both
 code and operational changes.
 
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
-### WIP (TBD)
+## WIP (TBD, Not yet live)
 
+ * [General] Command will now give more complete explainations when they fail to
+   run.
  * [Validation] Removed redundant reasons in validation reports.
  * [Validation] Users that have an exact avatar match with a banned user will now
    be rejected.
+ * [Validation] Modlog output for rejected users will now use a mention of
+   the user to make it easier to pull up the user's profile.
+ * [Validation] Cross server ban checks will now state how many servers a user
+   has been banned from.
+ * [Validation] Added "~validation purge" command to mass remove unverified
+   users. A potential substitute for pruning servers.
+ * [Music] When users leave the voice channel, their queued music will now be
+   cleared 5 minutes after leaving the channel if they do not return.
+ * [Music] Fixed remove and removeall commands erroring out.
+ * [Technical] Stopped automatically fetching offline members at startup to
+   minimize memory usage. Some commands may take longer to run on larger
+   servers, particularly actions that apply to all members of a server.
 
-### v1.2.0 (05/26/2020)
+## v1.2.0 (05/26/2020)
 
  * [General] Bot will now automatically configure associated channels based on
    pre-existing channels upon joining a server. (i.e. "#modlog" or "#bot-modlog"
@@ -33,11 +49,11 @@ here: https://discord.gg/UydKWHX.
    availability when the web interface launches.
  * [Technical] Migrated Hourai to PostgreSQL instead of using SQLite.
 
-### v1.1.1 (05/21/2020)
+## v1.1.1 (05/21/2020)
 
  * [Music] Hotfix: Fixing ~forceskip from erroring out.
 
-### v1.1.0 (05/20/2020)
+## v1.1.0 (05/20/2020)
 
  * **Hourai is now a [Verified Discord Bot](https://support.discord.com/hc/en-us/articles/360040720412-Bot-Verification-and-Data-Whitelisting)**
  * [General] Added utilities for making public announcements via modlog channels.

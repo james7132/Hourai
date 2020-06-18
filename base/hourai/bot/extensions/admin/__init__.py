@@ -310,9 +310,9 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         """
 
         async def _check_highest_role(member):
-            highest_role = max(member.roles)
+            top_role = member.top_role
             for role in roles:
-                if role > highest_role:
+                if role > top_role:
                     msg = (f'Cannot allow self serve of "{role.name}". Role is'
                            f' higher than {member.mention}\'s highest role.')
                     await ctx.send(msg, delete_after=DELETE_WAIT_DURATION)
@@ -392,8 +392,12 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         role_config = role_config or proto.RoleConfig()
         role_ids = set(role_config.self_serve_role_ids)
         # Ensure the roles can be safely added.
-        roles = [r for r in roles if r < max(ctx.guild.me.roles)]
+        top_role = ctx.guild.me.top_role
         for role in roles:
+            if role >= top_role:
+                await ctx.send(f"`{role.name}` is higher than Hourai's highest.",
+                               delete_after=DELETE_WAIT_DURATION)
+                return
             if role.id not in role_ids:
                 await ctx.send(f'`{role.name}` is not set up for self-serve.',
                                delete_after=DELETE_WAIT_DURATION)

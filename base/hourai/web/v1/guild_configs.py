@@ -3,11 +3,12 @@ from . import util
 from aiohttp import web
 from hourai.db import storage, proto
 from hourai.db.storage import GuildPrefix
-
+from hourai.web import formatters
 
 log = logging.getLogger(__name__)
 
-def guild_config_view(storage, field, model_type, validator=None):
+def guild_config_view(storage, field, model_type, formatter,
+                      validator=None):
     cache = getattr(storage, field)
 
     class GuildConfigView(web.View):
@@ -20,15 +21,18 @@ def guild_config_view(storage, field, model_type, validator=None):
                 raise web.HTTPBadRequest("Cannot parse guild id.")
 
         async def get(self):
+            # TODO(james7132): Remove this
+            return web.Response(status=403)
+            log.info(str(formatter))
             guild_id = self.guild_id
             try:
                 model = await cache.get(self.guild_id)
                 if model is None:
                     raise web.HTTPForbidden()
-                return util.protobuf_json_response(model)
+                return formatter(200).format_response(model)
             except:
                 log.exception('Error:')
-                raise web.HTTPInternalServerError
+                raise web.HTTPInternalServerError()
 
         async def post(self):
             # TODO(james7132): Remove this
@@ -41,24 +45,44 @@ def guild_config_view(storage, field, model_type, validator=None):
                 return web.Response(status=200)
             except:
                 log.exception('Error:')
-                raise web.HTTPInternalServerError
+                raise web.HTTPInternalServerError()
 
     GuildConfigView.__name__ += "_" + model_type.__name__
     return GuildConfigView
 
 
-def add_routes(app, storage):
-    storage = app["storage"]
+SUBFORMATTERS = {
+    '': formatters.JsonProtobufFormatter,
+    '.json': formatters.JsonProtobufFormatter,
+    '.pb': formatters.BinaryProtobufFormatter,
+    '.pbtxt': formatters.TextProtobufFormatter,
+}
+
+
+def __make_routes(prefix, view_constructor):
+    routes = ((prefix + suffix, view_constructor(formatter))
+               for suffix, formatter in SUBFORMATTERS.items())
+    return [web.view(route, view) for route, view in routes]
+
+
+def add_routes(app, **kwargs):
+    storage = app.get('storage')
+    if storage is None:
+        log.warning('[Web] No storage found. Skipping guild config routes.')
+        return
     route = '/guild/{guild_id:\d+}'
 
-    view = guild_config_view(storage, 'guild_configs', proto.GuildConfig)
-    routes = [web.view(route, view)]
+    routes = __make_routes(route,
+            lambda formatter: guild_config_view(storage, 'guild_configs',
+                proto.GuildConfig, formatter))
+
     for prefix in GuildPrefix:
         cache_config = prefix.value
         if cache_config.proto_type is None:
             continue
         field = prefix.name.lower() + "s"
-        view = guild_config_view(storage, field, cache_config.proto_type)
         view_route = f'{route}/{field.replace("_configs", "")}'
-        routes.append(web.view(view_route, view))
+        routes += __make_routes(view_route,
+                lambda formatter: guild_config_view(storage, field,
+                    cache_config.proto_type, formatter))
     app.add_routes(routes)

@@ -2,8 +2,8 @@ import humanize
 import re
 from datetime import datetime
 from hourai import utils
+from hourai.db import models
 from .common import Validator, generalize_filter, split_camel_case
-from .storage import BanStorage
 
 
 LOOSE_DELETED_USERNAME_MATCH = re.compile(r'(?i).*Deleted.*User.*')
@@ -127,27 +127,24 @@ class BannedUserRejector(Validator):
         self.min_guild_size = min_guild_size
 
     async def validate_member(self, ctx):
-        banned = False
-        reasons = set()
-        guild_ids = [g.id for g in ctx.bot.guilds if self._is_valid_guild(g)]
-        bans = await BanStorage(ctx.bot).get_bans(ctx.member.id, guild_ids)
-        for ban in bans:
-            guild = ctx.bot.get_guild(ban.guild_id)
-            assert self._is_valid_guild(guild)
-            if ban.reason is not None and ban.reason not in reasons:
-                ctx.add_rejection_reason(
-                    f"Banned on another server. Reason: `{ban.reason}`.")
-                reasons.add(ban.reason)
-            banned = True
+        bans = await ctx.bot.storage.bans.get_user_bans(ctx.member.id)
+        valid_bans = list(filter(self._is_valid_guild, bans))
+        if len(valid_bans) <= 0:
+            return
+        reasons = set(b.reason for b in valid_bans if b.HasField('reason'))
+        reason = f"Banned from {len(bans)} servers " if len(bans) > 1 else \
+                 "Banned from another server "
+        if len(reasons) > 0:
+            reason += "for the following reasons:\n"
+            reason += "\n    - ".join(reasons)
+        ctx.add_rejection_reason(reason)
 
-        if len(reasons) == 0 and banned:
-            ctx.add_rejection_reason("Banned on another server.")
-
-    def _is_valid_guild(self, guild):
-        return guild is not None and guild.member_count >= self.min_guild_size
+    def _is_valid_guild(self, ban):
+        return ban.HasField('guild_size') and \
+               ban.guild_size >= self.min_guild_size
 
 
-class BannedUserRejector(Validator):
+class BannedUsernameRejector(Validator):
     """A malice level validator that rejects users that share characteristics
     with banned users on the server:
      - Exact username matches (ignoring repeated whitespace and casing).
@@ -157,8 +154,7 @@ class BannedUserRejector(Validator):
     async def validate_member(self, ctx):
         if not ctx.guild.me.guild_permissions.ban_members:
             return
-        # TODO(james7132): Make this use the Ban cache to pull this information
-        bans = await ctx.guild.bans()
+        bans = await ctx.bot.storage.bans.get_guild_bans(ctx.guild.id)
         self.__check_usernames(ctx, bans)
         self.__check_avatars(ctx, bans)
 
@@ -167,21 +163,34 @@ class BannedUserRejector(Validator):
         if avatar is None:
             return
         for ban in bans:
-            if avatar != ban.user.avatar:
+            if not ban.HasField('avatar') or avatar != ban.avatar:
                 continue
-            ctx.add_rejection_reason(
-                f"Exact avatar match with banned user: `{str(ban.user)}`.")
+            reason = f"Exact username match with banned user: `{str(ban.user)}`."
+            if ban.HasField('reason'):
+                reason += f" Ban Reason: {ban.reason}"
+            ctx.add_rejection_reason(reason)
 
     def __check_usernames(self, ctx, bans):
-        normalized_bans = {self._normalize(ban.user.name): ban.user.name
-                           for ban in bans}
-        for username in ctx.usernames:
-            name = self._normalize(username.name)
-            for normalized, original in normalized_bans.items():
-                if name != normalized:
+        ban_ids = [ban.user_id for ban in bans]
+        ban_reasons = {ban.user_id:
+                       ban.reason if ban.HasField('reason') else None
+                       for ban in bans}
+        normalized_usernames = set(self._normalize(u.name)
+                                   for u in ctx.usernames)
+        with ctx.bot.create_storage_session() as session:
+            matches = session.query(models.Username) \
+                             .filter(models.Username.user_id.in_(ban_ids)) \
+                             .distinct(models.Username.name)
+
+            for banned_username in matches.all():
+                normalized = self._normalize(banned_username.name)
+                if normalized in normalized_usernames:
                     continue
-                ctx.add_rejection_reason(
-                    f"Exact username match with banned user: `{original}`.")
+                ban_reason = ban_reasons.get(banned_username.user_id)
+                reason = f"Exact username match with banned user: `{original}`."
+                if ban_reason is not None:
+                    reason += f" Ban Reason: {ban_reason}"
+                ctx.add_rejection_reason(reason)
                 break
 
     def _normalize(self, val):

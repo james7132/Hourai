@@ -34,6 +34,22 @@ async def success(ctx, suffix=None):
     await ctx.send(success)
 
 
+async def wait_for_confirmation(ctx):
+    def check(m):
+        content = m.content.casefold()
+        return (content.startswith('y') or content.startswith('n')) and \
+               m.author == ctx.author and \
+               m.channel == ctx.channel
+
+    try:
+        msg = await ctx.bot.wait_for('message', check=check, timeout=600)
+        return msg.content.casefold().startswith('y')
+    except asyncio.TimeoutError:
+        await ctx.send('No resposne found in 10 minutes. Cancelling.',
+                       delete_after=60)
+        return False
+
+
 def pretty_print(resource):
     output = []
     if hasattr(resource, 'name'):
@@ -163,12 +179,6 @@ def find_moderators(guild):
     """
     return filter(lambda m: m is not None and not m.bot,
                   all_with_roles(guild.members, find_moderator_roles(guild)))
-
-
-def find_bots(guild):
-    """Finds all of the bots on a server. Returns a generator of members.
-    """
-    return filter(lambda m: m.bot, guild.members)
 
 
 def find_online_moderators(guild):

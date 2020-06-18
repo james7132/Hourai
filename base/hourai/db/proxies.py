@@ -103,6 +103,12 @@ class GuildProxy:
         """
         return ModlogMessageable(self.guild, await self.get_config('logging'))
 
+    async def get_validation_role(self):
+        config = await self.get_config('validation')
+        if config is None or not config.HasField('role_id'):
+            return None
+        return self.guild.get_role(config.role_id)
+
     async def get_modlog_channel(self):
         config = await self.get_config('logging')
         if config is None or not config.HasField('modlog_channel_id'):

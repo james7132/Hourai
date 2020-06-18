@@ -9,7 +9,7 @@ import pkgutil
 import sys
 import traceback
 from discord.ext import commands
-from hourai import config
+from hourai import config, web
 from hourai.db import storage, proxies
 from hourai.utils import fake, format, uvloop
 from . import actions, extensions, state
@@ -94,7 +94,8 @@ class Hourai(commands.AutoShardedBot):
 
         kwargs.setdefault('command_prefix', self.config.command_prefix)
         kwargs.setdefault('activity',
-                          discord.CustomActivity(self.config.activity))
+                          discord.Game(self.config.activity))
+        kwargs.setdefault('fetch_offline_members', False)
 
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
@@ -107,6 +108,8 @@ class Hourai(commands.AutoShardedBot):
         self.channel_counters = collections.defaultdict(collections.Counter)
         self.user_counters = collections.defaultdict(collections.Counter)
 
+        self.web_app_runner = None
+
     def create_storage_session(self):
         return self.storage.create_session()
 
@@ -117,11 +120,28 @@ class Hourai(commands.AutoShardedBot):
     async def start(self, *args, **kwargs):
         await self.storage.init()
         await self.http_session.__aenter__()
+        try:
+            app = await web.create_app(self.config, bot=self)
+
+            kwargs = {}
+            log_format = self.config.logging.access_log_format
+            if log_format:
+                kwargs['access_log_format'] = log_format
+
+            self.web_app_runner = aiohttp.web.AppRunner(app, **kwargs)
+            await self.web_app_runner.setup()
+            web_app_site = aiohttp.web.TCPSite(self.web_app_runner,
+                                               port=self.config.web.port)
+            await web_app_site.start()
+        except:
+            log.exception("Waduhek")
         await super().start(*args, **kwargs)
 
     async def close(self):
-        await self.http_session.__aexit__()
         await super().close()
+        if self.web_app_runner is not None:
+            await self.web_app_runner.cleanup()
+        await self.http_session.__aexit__(None, None, None)
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')
@@ -154,7 +174,7 @@ class Hourai(commands.AutoShardedBot):
 
         ctx = await self.get_context(msg)
 
-        if ctx.prefix is None:
+        if not ctx.valid or ctx.prefix is None:
             return
 
         async with ctx:
@@ -165,12 +185,6 @@ class Hourai(commands.AutoShardedBot):
         super().add_cog(cog)
         log.info("Cog {} loaded.".format(cog.__class__.__name__))
 
-    async def on_error(self, event, *args, **kwargs):
-        error = f'Exception in event {event} (args={args}, kwargs={kwargs}):'
-        self.logger.exception(error)
-        _, error, _ = sys.exc_info()
-        self.loop.create_task(self.send_owner_error(error))
-
     async def on_command_error(self, ctx, error):
         err_msg = None
         if isinstance(error, commands.CheckFailure):
@@ -179,15 +193,9 @@ class Hourai(commands.AutoShardedBot):
             err_msg = (str(error) + '\n') or ''
             err_msg += f"Try `~help {ctx.command} for a reference."
         elif isinstance(error, commands.CommandInvokeError):
-            trace = traceback.format_exception(type(error), error,
-                                               error.__traceback__)
-            trace_str = '\n'.join(trace)
-            log.error(f'In {ctx.command.qualified_name}:\n{trace_str}\n')
-            self.loop.create_task(self.send_owner_error(error))
             err_msg = ('An unexpected error has occured and has been reported.'
                        '\nIf this happens consistently, please consider filing'
-                       'a bug:\n<https://github.com/james7132/Hourai/issues>')
-        log.debug(error)
+                       ' a bug:\n<https://github.com/james7132/Hourai/issues>')
         if err_msg:
             await ctx.send(err_msg)
 
@@ -195,13 +203,6 @@ class Hourai(commands.AutoShardedBot):
         if guild is None:
             return None
         return proxies.GuildProxy(self, guild)
-
-    async def send_owner_error(self, error):
-        owner = (await self.application_info()).owner
-        trace = traceback.format_exception(type(error), error,
-                                           error.__traceback__)
-        trace_str = format.multiline_code('\n'.join(trace))
-        await owner.send(trace_str)
 
     def load_extension(self, module):
         try:

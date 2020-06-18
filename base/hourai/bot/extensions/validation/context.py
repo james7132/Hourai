@@ -98,10 +98,10 @@ class ValidationContext():
             message = f"Verified user: {member.mention} ({member.id})."
         elif ping_target is not None:
             message = (f"{ping_target}. "
-                       f"User {member.name} ({member.id}) requires manual "
+                       f"User {member.mention} ({member.id}) requires manual "
                        f"verification.")
         else:
-            message = (f"User {member.name} ({member.id}) requires manual "
+            message = (f"User {member.mention} ({member.id}) requires manual "
                        f"verification.")
 
         if len(self.approval_reasons) > 0:

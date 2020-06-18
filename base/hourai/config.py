@@ -91,10 +91,14 @@ def __make_configuration_template():
             }]
         },
 
+        "third_party": {
+            "top_gg_token": ""
+        },
+
         "discord": {
             "client_id": "",
             "client_secret": "",
-            "scopes": [""],
+            "redirect_uri": "",
             "bot_token": "",
         },
 
@@ -109,7 +113,12 @@ def __make_configuration_template():
         # Logging can be arbitrary
         "logging": {
             "default": "",
+            "access_log_format": "",
             "modules": ProtectedDict()
+        },
+
+        "webhooks": {
+            "bot_log": "",
         },
 
         "private": ProtectedDict()
