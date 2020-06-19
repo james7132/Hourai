@@ -1,4 +1,4 @@
-## Adding the bot to your server
+# Getting Started
 
 To start using the bot, use this
 [link](https://discordapp.com/oauth2/authorize?client_id=208460637368614913&scope=bot&permissions=0xFFFFFFFFFFFF)

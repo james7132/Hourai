@@ -1,17 +1,17 @@
 - [Home](/)
-- **Getting Started**
-  - [Getting Started](Getting-Started.md)
+- [Getting Started](Getting-Started.md)
+- **Basic Features**
   - [Commands](Commands.md)
   - [Music](Music.md)
-- **For Advanced Users**
+- **Advanced Features**
   - [Validation](Validation.md)
   - [Automation](Automation.md)
+  - [Escalation](Escalation.md)
   - [Community Moderation](Community-Moderation.md)
-  - [Escalation Ladder](Escalation-Ladder.md)
 - **For Developers**
-  - [Development](development/)
-  - [Self Hosting](development/self-hosting.md)
-  - [Architecture](development/architecture.md)
-- **Developers**
-  - [Privacy Information](privacy.md)
+  - [Development](Development.md)
+  - [Self Hosting](Self-Hosting.md)
+  - [Architecture](Architecture.md)
+- **Additional Information**
   - [Changelog](Changelog.md)
+  - [Privacy Information](Privacy.md)
