@@ -10,7 +10,6 @@ import traceback
 import typing
 from discord.ext import commands
 from google.protobuf import text_format
-from guppy import hpy
 from hourai.bot import CounterKeys, extensions, cogs
 from hourai.db import models, proto
 from hourai.utils import hastebin, format
@@ -130,17 +129,6 @@ class Owner(cogs.BaseCog):
         except Exception:
             await ctx.send(f"Error when running eval of `{expr}`:\n"
                            f"```{str(traceback.format_exc())}```")
-
-    @commands.command()
-    async def heap(self, ctx):
-        """Provides a dump of heap memory diagnositics."""
-        heap = hpy().heap()
-        output = str(heap)
-        if len(output) > 1992:
-            output = await utils.hastebin.post(ctx.bot.http_session, output)
-        else:
-            output = f"```\n{output}\n```"
-        await ctx.send(output)
 
     @commands.group(name="config", invoke_without_command=True)
     @commands.guild_only()
