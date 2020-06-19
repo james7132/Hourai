@@ -193,7 +193,7 @@ class StorageSession:
         self.db_session = storage.session_class()
         self.redis = storage.redis
 
-        self.subitems = (self.db_session, self.redis)
+        self.subitems = (self.db_session, self.storage)
 
     @property
     def executor(self):
