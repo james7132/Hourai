@@ -10,6 +10,7 @@ services:
       - HOURAI_ENV=dev
     volumes:
       - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
     expose:
       - 8080
     depends_on:

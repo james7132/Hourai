@@ -37,7 +37,7 @@ async def is_dj(ctx, member=None):
     return len(dj_roles.intersection(member_roles)) > 0
 
 
-async def check_is_dj():
+async def check_is_dj(ctx):
     if not (await is_dj(ctx, ctx.author)):
         raise commands.CheckFailure(
                 message="Only DJs can run this command.")
@@ -236,7 +236,7 @@ class Music(cogs.BaseCog):
             await ctx.send(f'Only a DJ can resume a track.')
 
     @commands.command()
-    @commands.check(check_is_dj())
+    @commands.check(check_is_dj)
     async def pause(self, ctx):
         """Pauses the current track in the music player.
 
@@ -251,7 +251,7 @@ class Music(cogs.BaseCog):
         await ctx.send(f'Paused {format.bold(str(player.current))}.')
 
     @commands.command()
-    @commands.check(check_is_dj())
+    @commands.check(check_is_dj)
     async def stop(self, ctx):
         """Clears the queue and stops the bot.
 
@@ -375,7 +375,7 @@ class Music(cogs.BaseCog):
         await ctx.send(msg)
 
     @commands.command()
-    @commands.check(check_is_dj())
+    @commands.check(check_is_dj)
     async def forceskip(self, ctx):
         """Forcibly skips the current song in the music player.
 

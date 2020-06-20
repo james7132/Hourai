@@ -6,6 +6,7 @@ from .context import ValidationContext
 from discord.ext import tasks, commands
 from datetime import datetime, timedelta
 from hourai import utils
+from hourai import config as hourai_config
 from hourai.bot import cogs
 from hourai.db import proxies, proto
 from hourai.utils import format, checks, iterable
@@ -23,6 +24,11 @@ APPROVE_REACTION = '\u2705'
 KICK_REACTION = '\u274C'
 BAN_REACTION = '\u2620'
 MODLOG_REACTIONS = (APPROVE_REACTION, KICK_REACTION, BAN_REACTION)
+
+
+def load_list(name):
+    return hourai_config.load_list(hourai_config.get_config(), name)
+
 
 # TODO(james7132): Add per-server validation configuration.
 # TODO(james7132): Add filter for pornographic or violent avatars
@@ -48,15 +54,11 @@ VALIDATORS = (
     # Filter likely user bots based on usernames.
     rejectors.StringFilterRejector(
         prefix='Likely user bot. ',
-        filters=[r'discord\.gg', r'twitter\.com', r'twitch\.tv',
-                 r'youtube\.com', r'youtu\.be',
-                 '@everyone', '@here', 'admin', 'mod']),
+        filters=load_list('user_bot_names')),
     rejectors.StringFilterRejector(
         prefix='Likely user bot. ',
         full_match=True,
-        filters=['[0-9a-fA-F]+',  # Full Hexadecimal name
-                 r'\d+',          # Full Decimal name
-                 ]),
+        filters=load_list('user_bot_names_fullmatch')),
 
     # If a user has Nitro, they probably aren't an alt or user bot.
     approvers.NitroApprover(),
@@ -94,13 +96,12 @@ VALIDATORS = (
     # Filter offensive usernames.
     rejectors.StringFilterRejector(
         prefix='Offensive username. ',
-        filters=['nigger', 'nigga', 'faggot', 'cuck', 'retard']),
+        filters=load_list('offensive_usernames')),
 
     # Filter sexually inapproriate usernames.
     rejectors.StringFilterRejector(
         prefix='Sexually inapproriate username. ',
-        filters=['anal', 'cock', 'vore', 'scat', 'fuck', 'pussy', 'urethra',
-                 'rape', 'penis', 'piss', 'shit', 'cum']),
+        filters=load_list('sexually_inappropriate_usernames')),
 
     # -----------------------------------------------------------------
     # Malicious Level Validators
