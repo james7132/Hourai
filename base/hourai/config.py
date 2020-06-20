@@ -1,12 +1,15 @@
 import _jsonnet
 import json
 import logging
+import os
 import time
+import typing
 from hourai.utils.tupperware import tupperware, conform, ProtectedDict
 
 
 __DEFAULT = object()
 __CONFIG = None
+__LOADED_LISTS = {}
 
 
 def load_config(file_path, env):
@@ -25,6 +28,25 @@ def get_config():
     if __CONFIG is None:
         raise ConfigNotLoaded
     return __CONFIG
+
+
+def load_list(config, name):
+    global __LOADED_LISTS
+    if name not in __LOADED_LISTS:
+        directory = get_config_value(config, "list_directory",
+                                     default="config/lists")
+        path = os.path.join(directory, f"{name}.json")
+        path = os.path.abspath(path)
+        try:
+            with open(path, 'r') as f:
+                loaded_list = json.load(f)
+                assert isinstance(loaded_list, typing.Iterable)
+                __LOADED_LISTS[name] = tuple(loaded_list)
+            logging.info(f'Loaded config list: {name} from {path}')
+        except Exception:
+            __LOADED_LISTS[name] = tuple()
+            logging.exception(f'Config list could not be loaded from {path}. Using empty list.')
+    return __LOADED_LISTS[name]
 
 
 def get_config_value(config, path, *, type=__DEFAULT, default=__DEFAULT):
@@ -75,6 +97,8 @@ def __make_configuration_template():
         "activity": "",
 
         "disabled_extensions": [""],
+
+        "list_directory": "",
 
         "web": {
             "port": 0

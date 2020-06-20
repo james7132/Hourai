@@ -2,12 +2,12 @@
 
 import logging
 from discord.ext import commands
+from hourai import config
 from hourai.bot.cogs import GuildSpecificCog
 from hourai.utils import invite
 
 
 log = logging.getLogger(__name__)
-BANNED_GUILDS = {557153176286003221}
 
 
 class GuildSpecific_TheGap(GuildSpecificCog):
@@ -16,6 +16,11 @@ class GuildSpecific_TheGap(GuildSpecificCog):
     """
 
     BIG_SERVER_SIZE = 250
+
+    def __init__(self, bot, *, guilds):
+        super().__init__( bot, guilds=guilds)
+        self.banned_guilds = set(config.load_list(bot.config,
+                                                  "gap_banned_servers"))
 
     @commands.Cog.listener()
     async def on_message(self, msg):
@@ -42,7 +47,7 @@ class GuildSpecific_TheGap(GuildSpecificCog):
             delete = delete or not any(
                 inv.approximate_member_count >= self.BIG_SERVER_SIZE
                 for inv in invites)
-        delete = delete or any(inv.guild.id in BANNED_GUILDS
+        delete = delete or any(inv.guild.id in self.banned_guilds
                                for inv in invites)
         if delete:
             await msg.delete()
