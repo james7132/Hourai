@@ -6,6 +6,15 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
+## WIP (TBD)
+
+ * [Feeds] `~announce join/leave/ban` have been fixed and will toggle the correct
+   announcements in the target channels.
+ * [Validation] The three reaction buttons will now operate as expected
+   - White Check Mark: Verify User. User reacting needs Manage Roles.
+   - Red X: Kick User. User reacting needs Kick Users.
+   - Skull and Cross Bones: Ban User. User reacting needs Ban Members.
+
 ## v1.3.0 (06/17/2020)
 
  * [General] Command will now give more complete explainations when they fail to

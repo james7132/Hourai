@@ -38,8 +38,7 @@ VALIDATORS = (
     # ---------------------------------------------------------------
     # Suspicion Level Validators
     #     Validators here are mostly for suspicious characteristics.
-    #     These are designed with a high-recall, low precision
-    #     methdology. False positives from these are more likely.
+    #     These are designed with a high-recall, low precision methdology. False positives from these are more likely.
     #     These are low severity checks.
     # -----------------------------------------------------------------
 
@@ -213,7 +212,7 @@ class Validation(cogs.BaseCog):
             checks = (role in member.roles,                 # Is verified
                       is_new,                               # Is too new
                       member.bot,                           # Is a bot
-                      member.premium_sinnce is not None)    # Is a booster
+                      member.premium_since is not None)     # Is a booster
             return not any(checks)
 
         async def _kick_member(member):
@@ -289,7 +288,7 @@ class Validation(cogs.BaseCog):
         await ctx.send(
             f'Doing this will purge {count} users from the server.\n'
             f'**Continue? y/n**', delete_after=600)
-        continue_purge = await utils.wait_for_confirmation()
+        continue_purge = await utils.wait_for_confirmation(ctx)
         if continue_purge:
             async with ctx.typing():
                 await self.purge_guild(ctx.guild_proxy, check_time - lookback,
@@ -435,38 +434,53 @@ class Validation(cogs.BaseCog):
         except (AttributeError, discord.errors.Forbidden):
             pass
 
-    @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
-        msg = reaction.message
-        guild = msg.guild
-        if (reaction.me or reaction.custom_emoji or guild is None or
-                reaction.emoji not in MODLOG_REACTIONS or
-                len(msg.embeds) <= 0):
-            return
+    async def get_message(self, payload):
+        guild = self.bot.get_guild(payload.guild_id)
+        if guild is None or \
+           payload.member == guild.me or \
+           payload.emoji.name not in MODLOG_REACTIONS:
+            return None
+        channel = guild.get_channel(payload.channel_id)
         logging_config = await proxies.GuildProxy(self.bot, guild) \
                                       .get_config('logging')
-        if (logging_config is None or
-                logging_config.modlog_channel_id != msg.channel.id):
+        if channel is None or logging_config.modlog_channel_id != channel.id:
+            return None
+        return await channel.fetch_message(payload.message_id)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        message = await self.get_message(payload)
+        guild = payload.member.guild
+        if message is None or len(message.embeds) <= 0 or \
+           message.author != guild.me:
             return
-        embed = reaction.message.embed[0]
+        embed = message.embeds[0]
+        user = payload.member
+
         try:
-            member = guild.get_member(int(embed.footer.text, 16))
-            if member is None:
+            target_id = int(embed.footer.text, 16)
+            target = guild.get_member(target_id)
+            if target is None:
+                log.info(f'Member not found: {target_id}')
                 return
         except ValueError:
             return
+
         perms = user.guild_permissions
-        if reaction.emoji == APPROVE_REACTION and perms.manage_messages:
+        if payload.emoji.name == APPROVE_REACTION and perms.manage_messages:
             config = await self.bot.storage.validation_configs.get(guild.id)
             config = config or proto.ValidationConfig()
-            ctx = ValidationContext(self.bot, member, config)
+            ctx = ValidationContext(self.bot, target, config)
             await self.verify_member(ctx)
-        elif reaction.emoji == KICK_REACTION and perms.kick_members:
-            await member.kick(reason=(f'Failed verification.'
-                                      f' Kicked by {user.name}.'))
-        elif reaction.emoji == BAN_REACTION and perms.ban_members:
-            await member.ban(reason=(f'Failed verification.'
-                                     f' Banned by {user.name}.'))
+            log.info(f'Verified user {target} manually via reaction from {user}')
+        elif payload.emoji.name == KICK_REACTION and perms.kick_members:
+            await target.kick(reason=(f'Failed verification.'
+                                      f' Manually kicked by {user}.'))
+            log.info(f'Kicked user {target} manually via reaction from {user}')
+        elif payload.emoji.name == BAN_REACTION and perms.ban_members:
+            await target.ban(reason=(f'Failed verification.'
+                                     f' Manually banned by {user}.'))
+            log.info(f'Banned user {target} manually via reaction from {user}')
 
     async def verify_member(self, ctx):
         await ctx.apply_role()

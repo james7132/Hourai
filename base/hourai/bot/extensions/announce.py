@@ -42,7 +42,7 @@ class Announce(cogs.BaseCog):
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Ban messages {suffix}")
 
-    async def __toggle_channel(self, ctx, config):
+    def __toggle_channel(self, ctx, config):
         if ctx.channel.id in config.channel_ids:
             config.channel_ids.remove(ctx.channel.id)
             return False

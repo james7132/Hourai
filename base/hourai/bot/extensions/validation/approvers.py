@@ -59,6 +59,6 @@ class DistinguishedGuildOwnerApprover(Validator):
                         if guild.owner == ctx.member]
         for guild in owned_guilds:
             features = set(guild.features)
-            for check, reason_template in self.MATCHES:
+            for check, reason_template in self.MATCHES.items():
                 if check in features:
                     ctx.add_approval_reason(reason_template.format(guild.name))
