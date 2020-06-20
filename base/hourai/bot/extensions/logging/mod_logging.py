@@ -19,7 +19,7 @@ class ModLogging(cogs.BaseCog):
         guild = self.bot.get_guild(payload.guild_id or 0)
         if guild is None:
             return
-        proxy = proxies.GuildProxy(self.bot, guild)
+        proxy = self.bot.create_guild_proxy(guild)
         logging_config = await proxy.get_config('logging')
         if logging_config is None or not logging_config.log_deleted_messages:
             return
@@ -51,7 +51,7 @@ class ModLogging(cogs.BaseCog):
         guild = self.bot.get_guild(payload.guild_id or 0)
         if guild is None:
             return
-        proxy = proxies.GuildProxy(self.bot, guild)
+        proxy = self.bot.create_guild_proxy(guild)
         logging_config = await proxy.get_config('logging')
         if logging_config is None or not logging_config.log_deleted_messages:
             return
@@ -68,7 +68,7 @@ class ModLogging(cogs.BaseCog):
 
     @log.command(name='deleted')
     async def log_deleted(self, ctx):
-        proxy = proxies.GuildProxy(ctx.bot, ctx.guild)
+        proxy = self.bot.create_guild_proxy(guild)
         conf = await proxy.get_config('logging')
         conf.log_deleted_messages = not conf.log_deleted_messages
         await proxy.set_config('logging', conf)

@@ -31,7 +31,7 @@ class Setup(cogs.BaseCog):
             await asyncio.gather(*tasks)
 
     async def __setup_modlog(self, session, guild):
-        proxy = proxies.GuildProxy(session, guild)
+        proxy = self.bot.create_guild_proxy(guild)
         config = await proxy.get_config('logging')
 
         # Only configure this if it isn't set

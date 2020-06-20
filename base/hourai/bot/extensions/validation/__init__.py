@@ -195,7 +195,7 @@ class Validation(cogs.BaseCog):
                 seconds=validation_config.kick_unvalidated_users_after)
             await self.purge_guild(proxy, check_time - lookback, dry_run=False)
 
-        guild_proxies = [proxies.GuildProxy(self.bot, guild)
+        guild_proxies = [self.bot.create_guild_proxy(guild)
                          for guild in self.bot.guilds]
         await asyncio.gather(*[_purge_guild(proxy) for proxy in guild_proxies])
 
@@ -344,8 +344,7 @@ class Validation(cogs.BaseCog):
         ~validation verify @Bob
         ~validation verify Alice
         """
-        config = await proxies.GuildProxy(self.bot, member.guild) \
-            .get_config('validation')
+        config = await self.bot.get_guild_config(member.guild, 'validation')
         if config is None or not config.enabled:
             await ctx.send('Validation has not been setup. Please see '
                            '`~help validation` for more details.')
@@ -418,8 +417,7 @@ class Validation(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        config = await proxies.GuildProxy(self.bot, member.guild) \
-                              .get_config('validation')
+        config = await self.bot.get_guild_config(member.guild, 'validation')
         if config is None or not config.enabled:
             return
 
@@ -441,8 +439,7 @@ class Validation(cogs.BaseCog):
            payload.emoji.name not in MODLOG_REACTIONS:
             return None
         channel = guild.get_channel(payload.channel_id)
-        logging_config = await proxies.GuildProxy(self.bot, guild) \
-                                      .get_config('logging')
+        logging_config = await self.bot.get_guild_config(guild, 'logging')
         if channel is None or logging_config.modlog_channel_id != channel.id:
             return None
         return await channel.fetch_message(payload.message_id)
@@ -489,7 +486,8 @@ class Validation(cogs.BaseCog):
 
     async def report_bans(self, ban_info):
         user = ban_info.user
-        guild_proxies = [proxies.GuildProxy(self.bot, guild)
+        # FIXME(james7132): This will not scale to multiple processes/nodes.
+        guild_proxies = [self.bot.get_guild_proxy(guild)
                          for guild in self.bot.guilds
                          if guild.get_member(user.id) is not None]
 

@@ -8,6 +8,7 @@ here: https://discord.gg/UydKWHX.
 
 ## WIP (TBD)
 
+ * [Actions] Fixed crash when sending empty direct messages.
  * [Feeds] `~announce join/leave/ban` have been fixed and will toggle the correct
    announcements in the target channels.
  * [Validation] The three reaction buttons will now operate as expected

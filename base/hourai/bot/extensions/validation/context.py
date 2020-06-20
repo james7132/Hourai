@@ -16,6 +16,7 @@ class ValidationContext():
 
         self.bot = bot
         self.member = member
+        self.guild_proxy = self.bot.create_guild_proxy(bot, self.guild)
         self.guild_config = guild_config
         self.role = None
         if guild_config.role_id:
@@ -30,10 +31,6 @@ class ValidationContext():
     @property
     def guild(self):
         return self.member.guild
-
-    @property
-    def guild_proxy(self):
-        return proxies.GuildProxy(self.bot, self.member.guild)
 
     @property
     def usernames(self):

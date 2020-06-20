@@ -118,24 +118,27 @@ class Hourai(commands.AutoShardedBot):
         super().run(*args, **kwargs)
 
     async def start(self, *args, **kwargs):
-        await self.storage.init()
-        await self.http_session.__aenter__()
         try:
-            app = await web.create_app(self.config, bot=self)
-
-            web_app_kwargs = {}
-            log_format = self.config.logging.access_log_format
-            if log_format:
-                web_app_kwargs['access_log_format'] = log_format
-
-            self.web_app_runner = aiohttp.web.AppRunner(app, **web_app_kwargs)
-            await self.web_app_runner.setup()
-            web_app_site = aiohttp.web.TCPSite(self.web_app_runner,
-                                               port=self.config.web.port)
-            await web_app_site.start()
+            await self.storage.init()
+            await self.http_session.__aenter__()
+            await self.start_web_api()
         except:
-            log.exception("Waduhek")
+            log.exception("Failed to set up web API.")
+            raise
         await super().start(*args, **kwargs)
+
+    async def start_web_api(self):
+        app = await web.create_app(self.config, bot=self)
+
+        web_app_kwargs = {}
+        log_format = self.config.logging.access_log_format
+        if log_format:
+            web_app_kwargs['access_log_format'] = log_format
+
+        self.web_app_runner = aiohttp.web.AppRunner(app, **web_app_kwargs)
+        port = self.config.web.port
+        await self.web_app_runner.setup()
+        await  aiohttp.web.TCPSite(self.web_app_runner, port=port).start()
 
     async def close(self):
         await super().close()
@@ -203,6 +206,11 @@ class Hourai(commands.AutoShardedBot):
         if guild is None:
             return None
         return proxies.GuildProxy(self, guild)
+
+    def get_guild_config(self, guild, target_config):
+        if guild is None:
+            return None
+        return self.create_guild_proxy(guild).get_config(target_config)
 
     def load_extension(self, module):
         try:
