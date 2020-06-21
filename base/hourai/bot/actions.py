@@ -163,7 +163,7 @@ class ActionExecutor:
     async def _apply_direct_message(self, action):
         assert action.WhichOneof('details') == 'direct_message'
         user = self.__get_user(action)
-        if user is None:
+        if user is None or not action.direct_message.content:
             return
         try:
             content = format.ellipsize(action.direct_message.content)
