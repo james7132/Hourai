@@ -1,6 +1,33 @@
 import discord
+from typing import List
+from discord import flags
+from hourai import utils
 from hourai.db import proto
 from hourai.utils.fake import FakeContextManager
+
+
+@flags.fill_with_flags()
+class Permissions(flags.BaseFlags):
+
+    def __init__(self, permissions=0, **kwargs):
+        if not isinstance(permissions, int):
+            raise TypeError('Expected int parameter, received %s instead.' %
+                            permissions.__class__.__name__)
+
+        self.value = permissions
+        super().__init__(**kwargs)
+
+    @flags.flag_value
+    def self_serve(self) -> int:
+        return 1 << 0
+
+    @flags.flag_value
+    def is_dj(self) -> int:
+        return 1 << 1
+
+    @flags.flag_value
+    def moderator(self) -> int:
+        return 1 << 2
 
 
 class ModlogMessageable():
@@ -96,6 +123,32 @@ class GuildProxy:
         conf = await self.get_config(name)
         edit_func(conf)
         await self.set_config(name, conf)
+
+    async def get_role_permissions(self, role: discord.Role) -> Permissions:
+        config = await self.get_config('role')
+        return Permissions(config.settings[role.id].permissions)
+
+    async def get_member_permissions(
+            self, member: discord.Member) -> Permissions:
+        config = await self.get_config('role')
+
+        permissions = 0
+        for role_id in member._roles:
+            permissions = config.settings[role_id].permissions
+        return Permissions(permissions)
+
+    async def find_moderators(self) -> List[discord.Member]:
+        config = await self.get_config('role')
+
+        roles = self.guild.roles
+        perms = (Permissions(config.settings[role.id].permissions)
+                 for role in roles)
+        mod_roles = [role for role, perm in zip(roles, perms)
+                     if perm.moderator]
+        if not mod_roles:
+            return utils.find_moderator(self.guild)
+
+        return list(utils.all_with_roles(self.guild.members, mod_roles))
 
     async def get_modlog(self):
         """Creates a discord.abc.Messageable compatible object corresponding to

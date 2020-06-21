@@ -45,6 +45,7 @@ message ModerationConfig {
 message MusicConfig {
   // The volume the music bot operates at.
   optional uint32 volume = 1 [default = 100];
+  // DEPRECATED: Use RoleSettings.settings.permissions
   // Optional: If set, people who can DJ the bot need to have this role.
   // Otherwise, moderators by default have the permission.
   repeated uint64 dj_role_id = 2 [packed = true];
@@ -132,6 +133,17 @@ message CrossGuildValidationConfig {
 // Role Configs
 // ------------------------------------------------------------------------------
 message RoleConfig {
+  // DEPRECATED: Use setting.permissions
   // Optional: The IDs of the roles that normal users can request whenever.
   repeated uint64 self_serve_role_ids = 1 [packed = true];
+  // Settings for each role, keyed by role ID
+  map<uint64, RoleSettings> settings = 2;
+}
+
+message RoleSettings {
+  // Bitfield:
+  //  0 - Self-Serve
+  //  1 - DJ role
+  //  2 - Moderator
+  optional uint64 permissions = 1;
 }
