@@ -8,11 +8,12 @@ here: https://discord.gg/UydKWHX.
 
 ## WIP (TBD)
 
+ * [General] Fixed `~move`'s permissions checks.
  * [Feeds] `~announce join/leave/ban` have been fixed and will toggle the correct
    announcements in the target channels.
  * [Validation] Expanded approval check for Nitro to include users with custom
    statuses with custom emoji, which can only be set by users with Nitro.
- * [Validation] The three reaction buttons will now operate as expected
+ * [Validation] The three reaction buttons will now operate as expected:
    - White Check Mark: Verify User. User reacting needs Manage Roles.
    - Red X: Kick User. User reacting needs Kick Users.
    - Skull and Cross Bones: Ban User. User reacting needs Ban Members.
