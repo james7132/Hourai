@@ -1,3 +1,4 @@
+import asyncio
 from discord.ext import commands
 from hourai.bot import cogs
 from hourai.db import models
@@ -31,6 +32,11 @@ class RoleLogging(cogs.BaseCog):
     @commands.Cogs.listener()
     async def on_guild_remove(self, guild):
         self.clear_guild(guild)
+
+    async def log_all_guilds(self, guild):
+        # FIXME: This will not scale to multiple processes/machines.
+        await asyncio.gather(*[self.log_guild_roles(guild)
+                               for guild in self.bot.guilds])
 
     async def log_guild_roles(self, guild):
         model = models.MemberRoles
