@@ -5,7 +5,7 @@ from hourai.utils import fake, format
 from hourai.db import models, proto, escalation_history
 
 
-def _get_reason(action):
+def _get_reason(action: proto.Action) -> str:
     if action.HasField('reason'):
         return action.reason
     return None
@@ -34,7 +34,8 @@ class ActionScheduler:
     def __init__(self, bot):
         self.bot = bot
 
-    def schedule(self, timestamp, *actions):
+    def schedule(self, timestamp: int,
+                *actions: typing.Iterable[proto.Action]) -> None:
         """Schedules an action to be done in the future."""
         session = self.bot.create_storage_session()
         with session:
@@ -59,11 +60,11 @@ class ActionExecutor:
     def __init__(self, bot):
         self.bot = bot
 
-    async def execute_all(self, actions):
+    async def execute_all(self, actions: typing.Iterable[proto.Action]) -> None:
         """Executes multiple actions in parallel."""
         return await asyncio.gather(*[self.execute(a) for a in actions])
 
-    async def execute(self, action):
+    async def execute(self, action: proto.Action) -> None:
         action_type = action.WhichOneof('details')
         try:
             handler = getattr(self, "_apply_" + action_type)
@@ -82,17 +83,17 @@ class ActionExecutor:
             self.bot.logger.exception('Error while executing action:')
 
     @staticmethod
-    def __invert_action(action):
+    def __invert_action(action: proto.Action) -> proto.Action:
         inverted = invert_action(action)
         return inverted
 
-    async def _apply_kick(self, action):
+    async def _apply_kick(self, action) -> None:
         assert action.WhichOneof('details') == 'kick'
         member = self.__get_member(action)
         if member is not None:
             await member.kick(reason=_get_reason(action))
 
-    async def _apply_ban(self, action):
+    async def _apply_ban(self, action) -> None:
         assert action.WhichOneof('details') == 'ban'
         guild = self.__get_guild(action)
         if guild is None:
@@ -104,7 +105,7 @@ class ActionExecutor:
         if action.ban.type != proto.BanMember.BAN:
             await guild.unban(user, reason=_get_reason(action))
 
-    async def _apply_mute(self, action):
+    async def _apply_mute(self, action) -> None:
         assert action.WhichOneof('details') == 'mute'
         member = self.__get_member(action)
         if member is not None:
@@ -116,7 +117,7 @@ class ActionExecutor:
             }[action.mute.type]
             await member.edit(mute=mute, reason=_get_reason(action))
 
-    async def _apply_deafen(self, action):
+    async def _apply_deafen(self, action) -> None:
         assert action.WhichOneof('details') == 'deafen'
         member = self.__get_member(action)
         if member is not None:
@@ -128,7 +129,7 @@ class ActionExecutor:
             }[action.deafen.type]
             await member.edit(deafen=deafen, reason=_get_reason(action))
 
-    async def _apply_change_role(self, action):
+    async def _apply_change_role(self, action) -> None:
         assert action.WhichOneof('details') == 'change_role'
         member = self.__get_member(action)
         if member is None:
@@ -149,7 +150,7 @@ class ActionExecutor:
                 member.remove(*rm_roles, reason=_get_reason(action))
             )
 
-    async def _apply_escalate(self, action):
+    async def _apply_escalate(self, action) -> None:
         assert action.WhichOneof('details') == 'escalate'
         guild = self.__get_guild(action)
         if guild is None:
@@ -160,7 +161,7 @@ class ActionExecutor:
         await history.apply_diff(guild.me, action.reason,
                                  action.escalate.amount)
 
-    async def _apply_direct_message(self, action):
+    async def _apply_direct_message(self, action) -> None:
         assert action.WhichOneof('details') == 'direct_message'
         user = self.__get_user(action)
         if user is None or not action.direct_message.content:
@@ -172,7 +173,7 @@ class ActionExecutor:
             # Don't cause a ruckus if the user has the bot blocked
             pass
 
-    async def _apply_command(self, action):
+    async def _apply_command(self, action) -> None:
         assert action.WhichOneof('details') == 'command'
         channel = self.bot.get_channel(action.command.channel_id)
         try:
@@ -191,15 +192,15 @@ class ActionExecutor:
         async with ctx:
             await self.bot.invoke(ctx)
 
-    def __get_guild(self, action):
+    def __get_guild(self, action: proto.Action) -> discord.Guild:
         assert action.HasField('guild_id')
         return self.bot.get_guild(action.guild_id)
 
-    def __get_user(self, action):
+    def __get_user(self, action: proto.Action) -> discord.User:
         assert action.HasField('user_id')
         return self.bot.get_user(action.user_id)
 
-    def __get_member(self, action):
+    def __get_member(self, action: proto.Action) -> discord.Member:
         assert action.HasField('user_id')
         guild = self.__get_guild(action)
         if guild is None:
@@ -207,7 +208,7 @@ class ActionExecutor:
         return guild.get_member(action.user_id)
 
 
-def invert_action(action):
+def invert_action(action: proto.Action) -> proto.Action:
     new_action = proto.Action()
     new_action.CopyFrom(action)
     case = new_action.WhichOneof('details')

@@ -4,6 +4,7 @@ import random
 from datetime import datetime
 from discord.ext import commands
 from hourai.bot import cogs
+from hourai.utils import iterable
 from hourai.db.models import Username
 from sqlalchemy.exc import OperationalError
 
@@ -55,12 +56,20 @@ class UsernameLogging(cogs.BaseCog):
     async def on_group_remove(self, group, user):
         self.bot.loop.create_task(self.log_username_change(user))
 
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        members = guild.fetch_members(limit=None)
+        async for chunk in iterable.chunk_async(members, chunk_size=10):
+            await asyncio.gather(
+                *[self.log_username_change(user) for user in chunk])
+
     @commands.command()
     @commands.is_owner()
     async def refresh(self, ctx):
         async with ctx.typing():
-            await asyncio.gather(
-                *[self.log_username_change(user) for user in ctx.bot.users])
+            async for chunk in iterable.chunk(ctx.bot.users, chunk_size=10):
+                await asyncio.gather(
+                    *[self.log_username_change(user) for user in chunk])
         await ctx.send(':thumbsup:')
 
     async def log_username_change(self, user):

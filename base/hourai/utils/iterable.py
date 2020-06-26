@@ -15,8 +15,20 @@ def chunked(src, chunk_size):
         chunk.append(val)
         if len(chunk) >= chunk_size:
             yield chunk
-            chunk = []
-    yield chunk
+            chunk.clear()
+    if chunk:
+        yield chunk
+
+
+async def chunked_async(src, chunk_size):
+    chunk = []
+    async for val in src:
+        chunk.append(val)
+        if len(chunk) >= chunk_size:
+            yield chunk
+            chunk.clear()
+    if chunk:
+        yield chunk
 
 
 def distinct(iterable):

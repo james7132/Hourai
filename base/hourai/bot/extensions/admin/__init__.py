@@ -198,8 +198,8 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
     @commands.command(name="move")
     @commands.guild_only()
-    @commands.has_permissions(move_members=True)
-    @commands.bot_has_permissions(move_members=True)
+    @commands.has_guild_permissions(move_members=True)
+    @commands.bot_has_guild_permissions(move_members=True)
     async def move(self, ctx,
                    src: discord.VoiceChannel,
                    dst: discord.VoiceChannel):
@@ -211,8 +211,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Move Members (User and Bot)
         """
-        await self._admin_action(ctx, src.members,
-                                 lambda m: m.edit(voice_channel=dst))
+        await self._admin_action(ctx, src.members, lambda m: m.move_to(dst))
 
     @commands.command(name="nickname")
     @commands.guild_only()

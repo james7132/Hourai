@@ -1,4 +1,5 @@
 import discord
+import typing
 from functools import wraps
 from discord.ext import commands
 
@@ -58,7 +59,7 @@ class GuildSpecificCog(BaseCog):
         return _check_guilds
 
     @staticmethod
-    def __get_guild_id(arg):
+    def __get_guild_id(arg: typing.Any) -> int:
         if isinstance(arg, discord.Guild):
             return arg.id
         for test in GUILD_TESTS:

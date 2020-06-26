@@ -141,44 +141,17 @@ class Validation(cogs.BaseCog):
         super().__init__()
         self.bot = bot
         # self.purge_unverified.start()
-        self.reload_bans.start()
 
     def cog_unload(self):
         # self.purge_unverified.cancel()
-        self.reload_bans.cancel()
-
-    @tasks.loop(seconds=180)
-    async def reload_bans(self):
-        for guild in self.bot.guilds:
-            try:
-                await self.bot.storage.bans.save_bans(guild)
-            except Exception:
-                log.exception(
-                    f"Exception while reloading bans for guild {guild.id}:")
-
-    @reload_bans.before_loop
-    async def before_reload_bans(self):
-        await self.bot.wait_until_ready()
+        pass
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        await self.bot.wait_until_ready()
-        if not guild.me.guild_permissions.ban_members:
-            return
-        try:
-            ban_info = await guild.fetch_ban(user)
-            await self.bot.storage.bans.save_ban(guild, ban_info)
-        except discord.Forbidden:
-            pass
-
         if guild.member_count >= MINIMUM_GUILD_SIZE:
             # TODO(james7132): Enable this after adding deduplication.
             # await self.report_bans(ban)
             pass
-
-    @commands.Cog.listener()
-    async def on_member_unban(self, guild, user):
-        await self.bot.storage.bans.clear_ban(guild, user)
 
     @tasks.loop(seconds=5.0)
     async def purge_unverified(self):

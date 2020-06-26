@@ -72,8 +72,6 @@ class Teardown(cogs.BaseCog):
             tasks = [
                 # Clear guild configs since they avtively use RAM in Redis.
                 session.guild_configs.clear(guild.id),
-                # Clear bans
-                session.bans.clear_guild(guild.id)
             ]
             await asyncio.gather(*tasks)
 

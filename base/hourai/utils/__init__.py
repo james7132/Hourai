@@ -210,10 +210,21 @@ def is_nitro_booster(bot, member):
 
 
 def has_nitro(bot, member):
-    """Checks if the user has Nitro, may have false negatives."""
+    """Checks if the user has Nitro, may have false negatives. Cannot have false
+    positives. Checks:
+     - Has animated avatar
+     - Is boosting a server the bot is on
+     - Has a custom status with a custom emoji
+    """
     if member is None:
         return False
-    return member.is_avatar_animated() or is_nitro_booster(bot, member)
+    try:
+        has_nitro_activity = member.activity.emoji.is_custom_emoji()
+    except AttributeError:
+        has_nitro_activity = False
+    return any((member.is_avatar_animated(),
+                is_nitro_booster(bot, member),
+                has_custom_emote_activity))
 
 
 def human_timedelta(time_str):

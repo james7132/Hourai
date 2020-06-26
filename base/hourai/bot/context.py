@@ -27,26 +27,27 @@ class HouraiContext(commands.Context):
         # TODO(james7132): Make this lazy
         self.guild_proxy = self.bot.create_guild_proxy(self.guild)
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> HouraiContext:
         self.session.__enter__()
         return self
 
     async def __aexit__(self, exc_type, exc, traceback):
         self.session.__exit__(exc_type, exc, traceback)
 
-    def substitute_content(self, repeats=20):
+    def substitute_content(self, repeats: int = 20) -> str:
         return self.REPLACER.substitute(self.content, context=self,
                                         repeats=repeats)
 
     @property
-    def is_automated(self):
+    def is_automated(self) -> bool:
         return isinstance(self.message, FakeMessage)
 
     @property
     def logger(self):
         return self.bot.logger
 
-    def get_automated_context(self, msg=None):
+    def get_automated_context(self,
+                              msg: discord.Message = None) -> HouraiContext:
         if self.depth > MAX_CONTEXT_DEPTH:
             raise RecursionError
         return self.bot.get_automated_context(message=msg or self.message,

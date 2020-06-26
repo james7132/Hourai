@@ -1,5 +1,4 @@
 import dbl
-import logging
 from discord.ext import commands
 from hourai.bot import cogs
 
@@ -15,5 +14,5 @@ class TopGG(cogs.BaseCog):
             self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True)
 
     @commands.Cog.listener()
-    async def on_guild_post():
+    async def on_guild_post(self):
         self.bot.logger.info(f'Server count posted successfully.')

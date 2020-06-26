@@ -6,6 +6,7 @@ from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy.schema import Table, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.dialects import postgresql
 
 Base = declarative_base()
 
@@ -81,6 +82,14 @@ class PendingDeescalation(Base):
     entry_id = Column(types.Integer, ForeignKey("escalation_histories.id"),
                       nullable=False)
     entry = relationship("EscalationEntry", backref="pending_deescalation")
+
+
+class MemberRoles(Base):
+    __tablename__ = 'member_roles'
+
+    guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
+    user_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
+    role_ids = Column(postgresql.ARRAY(types.BigInteger), nullable=False)
 
 
 class Username(Base):

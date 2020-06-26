@@ -14,8 +14,12 @@ data types and how long Hourai retains them after their deletion from Discord.
 - Bans - Hourai caches information about bans in all servers it has access to.
   Including the server ID, user ID, user avatar hash, and the ban reason. To
   avoid providing this data to Hourai, remove the `Ban Members` permission from
-  the bot. This is used to provide more accurate information to This cache is
-  wiped and repopulated approximately every 5 minutes.
+  the bot. This is used to provide more accurate information for validation.
+  This cache is wiped and repopulated approximately every 5 minutes.
+- Member Roles - Hourai stores a copy of all role ids of server members, even
+  after they leave the server. This is used to allow Hourai to restore roles to
+  users that leave and rejoin the server. All role information about a server is
+  deleted upon removing the bot from a server.
 - Reddit Posts - the titles of posts on these sites may appear in Hourai's logs,
   even if the post was deleted from the source site. No public way of seeing the
   output of these logs is available. These logs are persisted for a maximum of
