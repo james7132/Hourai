@@ -1,5 +1,4 @@
 import dbl
-import logging
 from discord.ext import commands
 from hourai.bot import cogs
 
