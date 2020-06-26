@@ -40,7 +40,7 @@ class Standard(cogs.BaseCog):
 
     @commands.command()
     async def echo(self, ctx, *, content: str):
-        await ctx.send(content)
+        await ctx.send(discord.utils.escape_mentions(content))
 
     @commands.command()
     async def roll(self, ctx, *dice: die):
