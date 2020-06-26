@@ -68,6 +68,7 @@ local env(suffix) = {
 
   third_party: {
     discord_bots_token: "",
+    discord_boats_token: "",
     top_gg_token: "",
   },
 

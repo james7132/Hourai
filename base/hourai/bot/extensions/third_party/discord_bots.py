@@ -1,6 +1,4 @@
 from .base import ThirdPartyistingBase
-from discord.ext import commands
-from hourai.bot import cogs
 
 
 class DiscordBots(ThirdPartyListingBase):

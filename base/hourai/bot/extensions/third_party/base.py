@@ -13,7 +13,7 @@ class ThirdPartyListingBase(cogs.BaseCog):
         self.bot.loop.create_task(self._auto_post())
 
     async def _auto_post(self):
-        if self.get_token() is None:
+        if not self.get_token():
             self.bot.logger.warning(
                 f'No token specified for {self.qualified_name}. Disabling.')
             return

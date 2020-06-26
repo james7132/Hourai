@@ -117,6 +117,7 @@ def __make_configuration_template():
 
         "third_party": {
             "discord_bots_token": "",
+            "discord_boats_token": "",
             "top_gg_token": ""
         },
 
