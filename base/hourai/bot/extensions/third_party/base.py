@@ -12,7 +12,7 @@ class ThirdPartyListingBase(cogs.BaseCog):
         self.delay = 1.0
         self.bot.loop.create_task(self._auto_post())
 
-    async def _auto_post(self):
+    async def _auto_post(self) -> None:
         if not self.get_token():
             self.bot.logger.warning(
                 f'No token specified for {self.qualified_name}. Disabling.')
@@ -29,24 +29,24 @@ class ThirdPartyListingBase(cogs.BaseCog):
             await asyncio.sleep(self.delay)
 
     @abstractmethod
-    def get_token(self):
+    def get_token(self) -> str:
         raise NotImplementedError()
 
     @abstractmethod
-    def get_api_endpoint(self, client_id):
+    def get_api_endpoint(self, client_id) -> str:
         raise NotImplementedError()
 
     @abstractmethod
-    def create_guild_count_payload(self):
+    def create_guild_count_payload(self) -> dict:
         raise NotImplementedError()
 
-    async def get_client_id(self):
+    async def get_client_id(self) -> int:
         if self.client_id is None:
             app_info = await self.bot.application_info()
             self.client_id = app_info.id
         return self.client_id
 
-    async def send_server_count(self):
+    async def send_server_count(self) -> None:
         client_id = await self.get_client_id()
         endpoint = self.get_api_endpoint(client_id)
         params = {

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from hourai.db import proxies
 from hourai.utils.replacement import StringReplacer
 from hourai.utils.fake import FakeMessage

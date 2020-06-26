@@ -48,7 +48,7 @@ class LRUCache:
         queue. O(1) time.
         """
         entry = self.cache.get(key)
-        ttl = ttl or default_ttl
+        ttl = ttl or self.default_ttl
         if entry is None:
             self.cache[key] = LRUCache.Entry(value, ttl)
         else:

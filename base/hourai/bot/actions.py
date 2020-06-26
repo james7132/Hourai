@@ -1,5 +1,6 @@
 import discord
 import asyncio
+import typing
 from datetime import datetime, timedelta
 from hourai.utils import fake, format
 from hourai.db import models, proto, escalation_history
