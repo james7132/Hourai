@@ -1,3 +1,4 @@
+import asyncio
 from abc import abstractmethod
 from discord.ext import commands
 from hourai.bot import cogs
@@ -9,7 +10,7 @@ class ThirdPartyListingBase(cogs.BaseCog):
     def __init__(self, bot):
         self.bot = bot
         self.client_id = None
-        self.delay = 1.0
+        self.delay = 10
         self.bot.loop.create_task(self._auto_post())
 
     async def _auto_post(self) -> None:
@@ -56,7 +57,7 @@ class ThirdPartyListingBase(cogs.BaseCog):
             "json": self.create_guild_count_payload()
         }
         async with self.bot.http_session.post(endpoint, **params) as resp:
-            response = await resp.body()
+            response = await resp.read()
             self.bot.logger.debug(
                     f"Guild Count Posted to {endpoint} Response: {response}")
-            await resp.raise_for_status()
+            resp.raise_for_status()

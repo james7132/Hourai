@@ -2,6 +2,7 @@ import asyncio
 from discord.ext import commands, tasks
 from hourai.bot import cogs
 from hourai.db import models
+from hourai.utils import iterable
 
 
 class BanLogging(cogs.BaseCog):
@@ -17,9 +18,9 @@ class BanLogging(cogs.BaseCog):
 
     @tasks.loop(seconds=180)
     async def reload_bans(self):
-        await asyncio.gather(*[
-            self.save_bans(guild) for guild in
-            self.bot.guilds])
+        for chunk in iterable.chunked(self.bot.guilds, chunk_size=5):
+            await asyncio.gather(*[
+                self.save_bans(guild) for guild in chunk])
 
     @reload_bans.before_loop
     async def before_reload_bans(self):

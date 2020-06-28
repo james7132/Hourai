@@ -224,7 +224,7 @@ def has_nitro(bot, member):
         has_nitro_activity = False
     return any((member.is_avatar_animated(),
                 is_nitro_booster(bot, member),
-                has_custom_emote_activity))
+                has_nitro_activity))
 
 
 def human_timedelta(time_str):

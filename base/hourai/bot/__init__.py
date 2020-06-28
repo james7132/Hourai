@@ -188,6 +188,11 @@ class Hourai(commands.AutoShardedBot):
         super().add_cog(cog)
         log.info("Cog {} loaded.".format(cog.__class__.__name__))
 
+    async def on_error(self, event, *args, **kwargs):
+        _, err, _ = sys.exc_info()
+        self.dispatch('log_error', f'{event} (args={args}, kwargs={kwargs}):',
+                      err)
+
     async def on_command_error(self, ctx, error):
         err_msg = None
         if isinstance(error, commands.CheckFailure):

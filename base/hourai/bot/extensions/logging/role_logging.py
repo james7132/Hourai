@@ -22,6 +22,8 @@ class RoleLogging(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
+        if before._roles == after._roles:
+            return
         self.log_member_roles(after)
 
     @commands.Cog.listener()
@@ -42,8 +44,8 @@ class RoleLogging(cogs.BaseCog):
 
     async def log_all_guilds(self):
         # FIXME: This will not scale to multiple processes/machines.
-        await asyncio.gather(*[self.log_guild_roles(guild)
-                               for guild in self.bot.guilds])
+        for guild in self.bot.guilds:
+            await self.log_guild_roles(guild)
 
     async def log_guild_roles(self, guild):
         model = models.MemberRoles
@@ -59,14 +61,15 @@ class RoleLogging(cogs.BaseCog):
 
                 for existing_roles in existing:
                     # Only merge those posts which already exist in the database
-                    new_roles = roles.pop(existing_roles.user_id)
-                    new_roles = session.merge(new_roles)
-                    if len(new_roles.role_ids) <= 0:
-                        session.delete(new_roles)
+                    session.merge(roles.pop(existing_roles.user_id))
 
                 # Only add those posts which did not exist in the database
+                # with roles
+                roles = {key: value for key, value in roles.items()
+                         if len(value.role_ids) > 0}
                 session.add_all(roles.values())
                 session.commit()
+                self._clear_empty(session)
 
     def log_member_roles(self, member):
         member_roles = self.create_member_roles(member)
@@ -74,14 +77,21 @@ class RoleLogging(cogs.BaseCog):
             id = (member.guild.id, member.id)
             existing = session.query(models.MemberRoles).get(id)
 
-            if existing:
-                member_roles = session.merge(member_roles)
-                if len(member_roles.role_ids) <= 0:
+            if len(member_roles.role_ids) <= 0:
+                if existing:
                     session.delete(member_roles)
+                else:
+                    return
             else:
-                session.add(member_roles)
+                if existing:
+                    session.merge(member_roles)
+                else:
+                    session.add(member_roles)
 
             session.commit()
+
+        self.bot.logger.info(
+            f'Updated roles for user {member.id}, guild {member.guild.id}')
 
     def clear_role(self, role):
         assert isinstance(role, discord.Role)
@@ -91,10 +101,7 @@ class RoleLogging(cogs.BaseCog):
             SET role_ids = array_remove(role_ids, {role.id})
             WHERE guild_id = {role.guild.id}
             """)
-            session.execute(f"""
-            DELETE FROM member_roles
-            WHERE guild_id = {role.guild.id} AND cardinality(role_ids) = 0
-            """)
+            self._clear_empty(session)
 
     def clear_guild(self, guild):
         with self.bot.create_storage_session() as session:
@@ -102,10 +109,11 @@ class RoleLogging(cogs.BaseCog):
                    .delete()
 
     def create_member_roles(self, member):
-        role_ids = list(member._roles)
-        if member.guild.default_role.id in role_ids:
-            role_ids.remove(member.guild.default_role.id)
         return models.MemberRoles(
             guild_id=member.guild.id,
             user_id=member.id,
-            role_ids=role_ids)
+            role_ids=member._roles)
+
+    def _clear_empty(self, session):
+        session.execute(
+            f"DELETE FROM member_roles WHERE cardinality(role_ids) = 0")

@@ -16,7 +16,7 @@ class ValidationContext():
 
         self.bot = bot
         self.member = member
-        self.guild_proxy = self.bot.create_guild_proxy(bot, self.guild)
+        self.guild_proxy = self.bot.create_guild_proxy(self.guild)
         self.guild_config = guild_config
         self.role = None
         if guild_config.role_id:
@@ -74,9 +74,7 @@ class ValidationContext():
                 await validator.validate_member(self)
             except Exception as error:
                 # TODO(james7132) Handle the error
-                log.exception('Error while running validator:')
-                self.bot.dispatch('log_error', 'Validation')
-                await self.bot.send_owner_error(error)
+                self.bot.dispatch('log_error', 'Validation', error)
         return self.approved
 
     async def send_modlog_message(self):

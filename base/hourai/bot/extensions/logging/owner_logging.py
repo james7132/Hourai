@@ -1,4 +1,5 @@
 import discord
+import sys
 import traceback
 from discord.ext import commands
 from hourai.bot import cogs
@@ -47,18 +48,12 @@ class OwnerLogging(cogs.BaseCog):
                 f'`[{self.bot.user}]: Left {guild.name} ({guild.id}).`')
 
     @commands.Cog.listener()
-    async def on_log_error(self, event):
-        message = f'Exception in {event}:'
-        self.bot.logger.exception(message)
-        _, err, _ = sys.exc_info()
-        await self.send_error(err, msg=message)
-
-    @commands.Cog.listener()
-    async def on_error(self, event, *args, **kwargs):
-        message = f'Exception in event {event} (args={args}, kwargs={kwargs}):'
-        self.bot.logger.exception(message)
-        _, err, _ = sys.exc_info()
-        await self.send_error(err, msg=message)
+    async def on_log_error(self, event, error):
+        if error is None:
+            return
+        trace_str = self._get_stack_trace(error)
+        self.bot.logger.error(f"Exception in {event}:\n{trace_str}")
+        await self.send_error(error, msg=f'Exception in {event}:')
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
