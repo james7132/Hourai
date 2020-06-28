@@ -75,9 +75,10 @@ class RoleLogging(cogs.BaseCog):
             existing = session.query(models.MemberRoles).get(id)
 
             if existing:
-                member_roles = session.merge(member_roles)
                 if len(member_roles.role_ids) <= 0:
-                    session.delete(member_roles)
+                    session.delete(existing)
+                else:
+                    member_roles = session.merge(member_roles)
             else:
                 session.add(member_roles)
 
