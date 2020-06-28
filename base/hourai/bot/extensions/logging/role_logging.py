@@ -79,7 +79,7 @@ class RoleLogging(cogs.BaseCog):
 
             if len(member_roles.role_ids) <= 0:
                 if existing:
-                    session.delete(member_roles)
+                    session.delete(existing)
                 else:
                     return
             else:

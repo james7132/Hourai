@@ -20,14 +20,17 @@ class OwnerLogging(cogs.BaseCog):
                     adapter=discord.AsyncWebhookAdapter(bot.http_session))
 
     async def send_log(self, *args, **kwargs):
-        if self.log:
-            await self.log.send(*args, **kwargs)
+        try:
+            if self.log:
+                await self.log.send(*args, **kwargs)
+        except discord.errors.HTTPException:
+            pass
 
     async def send_error(self, error, msg=''):
         trace_str = self._get_traceback(error)
         if len(trace_str) > consts.DISCORD_MAX_MESSAGE_SIZE:
             trace_str = await hastebin.post(self.bot.http_session, trace_str)
-        await self.send_log(f"`msg`\n" +format.multiline_code(trace_str))
+        await self.send_log(f"`{msg}`\n" +format.multiline_code(trace_str))
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -51,7 +54,7 @@ class OwnerLogging(cogs.BaseCog):
     async def on_log_error(self, event, error):
         if error is None:
             return
-        trace_str = self._get_stack_trace(error)
+        trace_str = self._get_traceback(error)
         self.bot.logger.error(f"Exception in {event}:\n{trace_str}")
         await self.send_error(error, msg=f'Exception in {event}:')
 

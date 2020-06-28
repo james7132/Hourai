@@ -101,7 +101,7 @@ class Hourai(commands.AutoShardedBot):
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)
 
-        self.guild_states = collections.defaultdict(state.GuildState)
+        self.guild_states = state.GuildStateMapping(self)
 
         # Counters
         self.guild_counters = collections.defaultdict(collections.Counter)
@@ -189,9 +189,13 @@ class Hourai(commands.AutoShardedBot):
         log.info("Cog {} loaded.".format(cog.__class__.__name__))
 
     async def on_error(self, event, *args, **kwargs):
-        _, err, _ = sys.exc_info()
-        self.dispatch('log_error', f'{event} (args={args}, kwargs={kwargs}):',
-                      err)
+        try:
+            _, err, _ = sys.exc_info()
+            err_msg = f'Error in {event} (args={args}, kwargs={kwargs}):'
+            self.logger.exception(err_msg)
+            self.dispatch('log_error', err_msg, err)
+        except Exception:
+            self.logger.exception('Waduhek')
 
     async def on_command_error(self, ctx, error):
         err_msg = None
