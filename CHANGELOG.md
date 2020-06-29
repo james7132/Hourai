@@ -14,6 +14,13 @@ here: https://discord.gg/UydKWHX.
    announcements in the target channels.
  * [Validation] Expanded approval check for Nitro to include users with custom
    statuses with custom emoji, which can only be set by users with Nitro.
+ * [Validation] Attempts to bypass username filters by using non-ASCII characters
+   to avoid direct matches will now fail. (i.e. using the username "ＦＵＣＣＫ"
+   will still the match the "fuck" username filter). This applies to the
+   following checks:
+   - Sexually Inapproriate Usernames
+   - Offensive Usernames
+   - Banned User Names
  * [Validation] The three reaction buttons will now operate as expected:
    - White Check Mark: Verify User. User reacting needs Manage Roles.
    - Red X: Kick User. User reacting needs Kick Users.

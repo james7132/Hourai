@@ -1,5 +1,6 @@
 import humanize
 import re
+from unidecode import unidecode
 from datetime import datetime
 from hourai import utils
 from hourai.db import models
@@ -7,6 +8,7 @@ from .common import Validator, generalize_filter, split_camel_case
 
 
 LOOSE_DELETED_USERNAME_MATCH = re.compile(r'(?i).*Deleted.*User.*')
+TRANSFORMS = (lambda x: x, unidecode)
 
 
 class NameMatchRejector(Validator):
@@ -62,9 +64,11 @@ class StringFilterRejector(Validator):
     async def validate_member(self, ctx):
         for field_value in self.subfield(ctx):
             for filter_name, regex in self.filters:
-                if self.match_func(regex)(field_value):
-                    ctx.add_rejection_reason(
-                        self.prefix + f'Matches: `{filter_name}`')
+                for transform in TRANSFORMS:
+                    transformed = transform(field_value)
+                    if self.match_func(regex)(transformed):
+                        ctx.add_rejection_reason(
+                            self.prefix + f'Matches: `{filter_name}`')
 
 
 class NewAccountRejector(Validator):
@@ -94,20 +98,22 @@ class DeletedAccountRejector(Validator):
                 "deleted by Discord of their own accord or for Trust and "
                 "Safety reasons, or is faking account deletion.")
 
-        for username in ctx.usernames:
-            is_deleted = utils.is_deleted_username(username.name)
-            if LOOSE_DELETED_USERNAME_MATCH.match(username.name) and \
-               not is_deleted:
-                ctx.add_rejection_reason(
-                    f'"{username.name}" does not match Discord\'s deletion '
-                    f'patterns. User may have attempted to fake account '
-                    f"deletion.")
-            elif is_deleted and username.discriminator is not None and \
-                    username.discriminator < 100:
-                ctx.add_rejection_reason(
-                    f'"{username.name}#{username.discriminator}" has an '
-                    f'unusual discriminator. These are randomly generated. '
-                    f'User may have attempted to fake account deletion.')
+        for transform in TRANSFORMS:
+            for username in ctx.usernames:
+                name = transform(username.name)
+                is_deleted = utils.is_deleted_username(username.name)
+                if LOOSE_DELETED_USERNAME_MATCH.match(username.name) and \
+                   not is_deleted:
+                    ctx.add_rejection_reason(
+                        f'"{username.name}" does not match Discord\'s deletion '
+                        f'patterns. User may have attempted to fake account '
+                        f"deletion.")
+                elif is_deleted and username.discriminator is not None and \
+                        username.discriminator < 100:
+                    ctx.add_rejection_reason(
+                        f'"{username.name}#{username.discriminator}" has an '
+                        f'unusual discriminator. These are randomly generated. '
+                        f'User may have attempted to fake account deletion.')
 
 
 class NoAvatarRejector(Validator):
@@ -175,24 +181,27 @@ class BannedUsernameRejector(Validator):
         ban_reasons = {ban.user_id:
                        ban.reason if ban.HasField('reason') else None
                        for ban in bans}
-        normalized_usernames = set(self._normalize(u.name)
-                                   for u in ctx.usernames)
         with ctx.bot.create_storage_session() as session:
             matches = session.query(models.Username) \
                              .filter(models.Username.user_id.in_(ban_ids)) \
                              .distinct(models.Username.name)
 
-            for banned_username in matches.all():
-                normalized = self._normalize(banned_username.name)
-                if not normalized in normalized_usernames:
-                    continue
-                ban_reason = ban_reasons.get(banned_username.user_id)
-                reason = f"Exact username match with banned user: " + \
-                         f"{banned_username.name}`."
-                if ban_reason is not None:
-                    reason += f" Ban Reason: {ban_reason}"
-                ctx.add_rejection_reason(reason)
-                break
+            for transform in TRANSFORMS:
+                normalized_usernames = set(self._normalize(transform(u.name))
+                                           for u in ctx.usernames)
+
+                for banned_username in matches.all():
+                    transformed = transform(banned_username.name)
+                    normalized = self._normalize(transformed)
+                    if not normalized in normalized_usernames:
+                        continue
+                    ban_reason = ban_reasons.get(banned_username.user_id)
+                    reason = f"Exact username match with banned user: " + \
+                             f"{banned_username.name}`."
+                    if ban_reason is not None:
+                        reason += f" Ban Reason: {ban_reason}"
+                    ctx.add_rejection_reason(reason)
+                    break
 
     def _normalize(self, val):
         return " ".join(val.casefold().split())
