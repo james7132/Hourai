@@ -3,6 +3,7 @@ import asyncio
 import collections
 import discord
 import enum
+import time
 import itertools
 import logging
 import pkgutil
@@ -104,6 +105,7 @@ class Hourai(commands.AutoShardedBot):
         self.guild_states = state.GuildStateMapping(self)
 
         # Counters
+        self.bot_counters = collections.defaultdict(collections.Counter)
         self.guild_counters = collections.defaultdict(collections.Counter)
         self.channel_counters = collections.defaultdict(collections.Counter)
         self.user_counters = collections.defaultdict(collections.Counter)
@@ -112,6 +114,25 @@ class Hourai(commands.AutoShardedBot):
 
     def create_storage_session(self):
         return self.storage.create_session()
+
+    def dispatch(self, event, *args, **kwargs):
+        self.bot_counters['events_dispatched'][event] += 1
+        super().dispatch(event, *args, **kwargs)
+
+    async def _run_event(self, coro, event_name, *args, **kwargs):
+        self.bot_counters['events_run'][event] += 1
+        start = time.time()
+        try:
+            await coro(*args, **kwargs)
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            try:
+                await self.on_error(event_name, *args, **kwargs)
+            except asyncio.CancelledError:
+                pass
+        runtime = time.time() - start
+        self.bot_counters['event_total_runtime'][event] += runtime
 
     def run(self, *args, **kwargs):
         uvloop.try_install()

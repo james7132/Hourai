@@ -122,9 +122,7 @@ class Owner(cogs.BaseCog):
             if inspect.isawaitable(result):
                 result = await result
             result = str(result)
-            if len(result) > 2000:
-                result = await utils.hastebin.post(ctx.bot.http_session,
-                                                   result)
+            result = await hastebin.str_or_hastebin_link(ctx.bot, result)
             await ctx.send(f"Eval results for `{expr}`:\n```{result}```")
         except Exception:
             await ctx.send(f"Error when running eval of `{expr}`:\n"
@@ -175,6 +173,33 @@ class Owner(cogs.BaseCog):
             if guild is None:
                 continue
             await guild.leave()
+
+    @commands.command()
+    async def events(self, ctx):
+        """Provides debug informatioo about the events run by the bot."""
+        counters = ctx.bot.bot_counters
+        columns = ('Event', '# Dispatched', '# Run', 'Total Runtime',
+                   'Average Time')
+        keys = set()
+        for key in ('events_dispatched', 'events_run', 'event_total_runtime'):
+            keys.update(counters[key].keys())
+
+        table = texttable.Texttable()
+        table.set_deco(texttable.Texttable.HEADER | texttable.Texttable.VLINES)
+        table.set_cols_align(["r"] * len(columns))
+        table.set_cols_valign(["t"] + ["i"] * (len(columns) - 1))
+        table.header(columns)
+        for key in sorted(keys):
+            runtime = counters['events_total_runtime'][key]
+            run_count = counters['events_run'][key]
+            avg_runtime = runtime / run_count if run_count else "N/A"
+            table.add_row([key,
+                counters['events_dispatched'][key],
+                run_count, runtime, avg_runtime
+            ])
+
+        output = await hastebin.str_or_hastebin_link(ctx.bot, table.draw())
+        await ctx.send(format.multiline_code(output))
 
     @commands.command()
     async def stats(self, ctx):
