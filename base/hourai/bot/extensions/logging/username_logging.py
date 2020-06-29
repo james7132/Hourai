@@ -59,7 +59,7 @@ class UsernameLogging(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         members = guild.fetch_members(limit=None)
-        async for chunk in iterable.chunk_async(members, chunk_size=10):
+        async for chunk in iterable.chunked_async(members, chunk_size=10):
             await asyncio.gather(
                 *[self.log_username_change(user) for user in chunk])
 
