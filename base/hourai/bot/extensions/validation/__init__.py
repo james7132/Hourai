@@ -191,9 +191,9 @@ class Validation(cogs.BaseCog):
         async def _kick_member(member):
             try:
                 await utils.send_dm(member, PURGE_DM.format(member.guild.name))
-            except Exception:
+                await member.kick(reason='Unverified in sufficient time.')
+            except discord.Forbidden:
                 pass
-            await member.kick(reason='Unverified in sufficient time.')
             mem = utils.pretty_print(member)
             gld = utils.pretty_print(member.guild)
             log.info(
