@@ -126,7 +126,7 @@ class BanStorage:
         user_id_enc = self._id_coder.encode(user.id)
 
         def transaction(tr):
-            yield tr.hdel(guild_key, user_id_enc),
+            yield tr.hdel(guild_key, user_id_enc)
             yield tr.srem(user_key, guild_key)
         await redis_transaction(self.redis, transaction)
 
