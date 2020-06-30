@@ -14,6 +14,9 @@ here: https://discord.gg/UydKWHX.
    announcements in the target channels.
  * [Validation] Expanded approval check for Nitro to include users with custom
    statuses with custom emoji, which can only be set by users with Nitro.
+ * [Validation] Added wide-width unicode character username rejectors. Examples
+   of these kinds of characters can be seen
+   [here](https://www.reddit.com/r/Unicode/comments/5qa7e7/widestlongest_unicode_characters_list/).
  * [Validation] The three reaction buttons will now operate as expected:
    - White Check Mark: Verify User. User reacting needs Manage Roles.
    - Red X: Kick User. User reacting needs Kick Users.

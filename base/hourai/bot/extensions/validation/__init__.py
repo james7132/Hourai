@@ -102,6 +102,13 @@ VALIDATORS = (
         prefix='Sexually inapproriate username. ',
         filters=load_list('sexually_inappropriate_usernames')),
 
+    # Filter potentially long usernames that use wide unicode characters that
+    # may be disruptive or spammy to other members.
+    rejectors.StringFilterRejector(
+        prefix='Username contains wide unicode characters which may be '
+               'disruptive to others. ',
+        filters=load_list('wide_characters')),
+
     # -----------------------------------------------------------------
     # Malicious Level Validators
     #     Validators here are mostly for known offenders.
