@@ -28,8 +28,7 @@ class OwnerLogging(cogs.BaseCog):
 
     async def send_error(self, error, msg=''):
         trace_str = self._get_traceback(error)
-        if len(trace_str) > consts.DISCORD_MAX_MESSAGE_SIZE:
-            trace_str = await hastebin.post(self.bot.http_session, trace_str)
+        trace_str = await hastebin.str_or_hastebin_link(self.bot, trace_str)
         await self.send_log(f"`{msg}`\n" +format.multiline_code(trace_str))
 
     @commands.Cog.listener()
