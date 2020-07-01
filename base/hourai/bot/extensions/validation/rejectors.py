@@ -51,11 +51,13 @@ class StringFilterRejector(Validator):
     """A general validator that rejects users that have a field that matches
     a set of predefined list of regexes.
     """
-    __slots__ = ("filters", "prefix", "match_func", "subfield")
+    __slots__ = ("filters", "prefix", "match_func", "subfield", "use_transforms")
 
-    def __init__(self, *, prefix, filters, full_match=False, subfield=None):
+    def __init__(self, *, prefix, filters, full_match=False, subfield=None,
+                 use_transforms=True):
         self.prefix = prefix or ''
         self.filters = [(f, re.compile(generalize_filter(f))) for f in filters]
+        self.use_transforms = use_transforms
         self.subfield = subfield or (
             lambda ctx: (u.name for u in ctx.usernames))
         if full_match:
@@ -64,9 +66,10 @@ class StringFilterRejector(Validator):
             self.match_func = lambda r: r.search
 
     async def validate_member(self, ctx):
+        transforms = TRANSFORMS if self.use_transforms else (lambda x: x,)
         for field_value in self.subfield(ctx):
             for filter_name, regex in self.filters:
-                for transform in TRANSFORMS:
+                for transform in transforms:
                     transformed = transform(field_value)
                     if self.match_func(regex)(transformed):
                         ctx.add_rejection_reason(

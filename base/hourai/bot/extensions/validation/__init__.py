@@ -104,11 +104,13 @@ VALIDATORS = (
 
     # Filter potentially long usernames that use wide unicode characters that
     # may be disruptive or spammy to other members.
-    rejectors.StringFilterRejector(
-        prefix='Username contains wide unicode characters which may be '
-               'disruptive to others. ',
-        subfield=lambda m: (m.member.display_name,),
-        filters=load_list('wide_characters')),
+    # TODO(james7132): Reenable this
+    # rejectors.StringFilterRejector(
+        # prefix='Username contains wide unicode characters which may be '
+               # 'disruptive to others. ',
+        # subfield=lambda m: (m.member.display_name,),
+        # use_transforms=False,
+        # filters=load_list('wide_characters')),
 
     # -----------------------------------------------------------------
     # Malicious Level Validators
@@ -445,20 +447,64 @@ class Validation(cogs.BaseCog):
             return
 
         perms = user.guild_permissions
-        if payload.emoji.name == APPROVE_REACTION and perms.manage_messages:
-            config = await self.bot.storage.validation_configs.get(guild.id)
-            config = config or proto.ValidationConfig()
-            ctx = ValidationContext(self.bot, target, config)
+        action = {
+            APPROVE_REACTION:
+                (self.approve_member_by_reaction, perms.manage_roles),
+            KICK_REACTION:
+                (self.kick_member_by_reaction, perms.kick_members),
+            BAN_REACTION:
+                (self.ban_member_by_reaction, perms.ban_members),
+        }.get(payload.emoji.name)
+        if action is None:
+            return
+        func, perm = action
+        if perm:
+            await func(guild, user, target)
+
+    async def approve_member_by_reaction(self, guild, user, target):
+        proxy = self.bot.create_guild_proxy(guild)
+        modlog = await proxy.get_modlog()
+        config = await proxy.get_config('validation')
+        ctx = ValidationContext(self.bot, target, config)
+        try:
             await self.verify_member(ctx)
+            await modlog.send(
+                f'{APPROVE_REACTION} **{user}** manually verified **{target}**'
+                f' via reaction.')
             log.info(f'Verified user {target} manually via reaction from {user}')
-        elif payload.emoji.name == KICK_REACTION and perms.kick_members:
+        except discord.Forbidden:
+            await modlog.send(
+                f'{APPROVE_REACTION} Attempted')
+
+    async def kick_member_by_reaction(self, guild, user, target):
+        proxy = self.bot.create_guild_proxy(guild)
+        modlog = await proxy.get_modlog()
+        try:
             await target.kick(reason=(f'Failed verification.'
                                       f' Manually kicked by {user}.'))
+            await modlog.send(
+                f'{KICK_REACTION} **{user}** kicked **{target}**'
+                f' via reaction during manual verification.')
             log.info(f'Kicked user {target} manually via reaction from {user}')
-        elif payload.emoji.name == BAN_REACTION and perms.ban_members:
+        except discord.Forbidden:
+            await modlog.send(
+                f'{KICK_REACTION} Attempted to kick {target.mention} and failed'
+                f'. Bot does not have **Kick Members** permission.')
+
+    async def ban_member_by_reaction(self, guild, user, target):
+        proxy = self.bot.get_guild_proxy(guild)
+        modlog = await proxy.get_modlog()
+        try:
             await target.ban(reason=(f'Failed verification.'
                                      f' Manually banned by {user}.'))
+            await modlog.send(
+                f'{BAN_REACTION} **{user}** ban **{target}**'
+                f' via reaction during manual verification.')
             log.info(f'Banned user {target} manually via reaction from {user}')
+        except discord.Forbidden:
+            await modlog.send(
+                f'{BAN_REACTION} Attempted to ban {target.mention} and failed'
+                f'. Bot does not have **Ban Members** permission.')
 
     async def verify_member(self, ctx):
         await ctx.apply_role()
