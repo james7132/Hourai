@@ -3,6 +3,7 @@ import re
 
 class Validator():
     """Base class for all validators."""
+    __slots__ = ()
 
     async def validate_member(self, ctx):
         pass

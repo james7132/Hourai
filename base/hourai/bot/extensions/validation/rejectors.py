@@ -15,6 +15,8 @@ class NameMatchRejector(Validator):
     """A suspicion level validator that rejects users for username proximity to
     other users already on the server.
     """
+    __slots__ = ("filter", "prefix", "subfield", "member_selector",
+                 "min_match_length")
 
     def __init__(self, *, prefix, filter_func,
                  min_match_length=None, subfield=None, member_selector=None):
@@ -49,6 +51,7 @@ class StringFilterRejector(Validator):
     """A general validator that rejects users that have a field that matches
     a set of predefined list of regexes.
     """
+    __slots__ = ("filters", "prefix", "match_func")
 
     def __init__(self, *, prefix, filters, full_match=False, subfield=None):
         self.prefix = prefix or ''
@@ -59,7 +62,6 @@ class StringFilterRejector(Validator):
             self.match_func = lambda r: r.match
         else:
             self.match_func = lambda r: r.search
-        print(self.filters)
 
     async def validate_member(self, ctx):
         for field_value in self.subfield(ctx):
@@ -75,6 +77,7 @@ class NewAccountRejector(Validator):
     """A suspicion level validator that rejects users that were recently
     created.
     """
+    __slots__ = ("lookback")
 
     def __init__(self, *, lookback):
         self.lookback = lookback
@@ -90,6 +93,7 @@ class DeletedAccountRejector(Validator):
     """A suspicion level validator that rejects users that are deleted or have
     tell-tale warning signs of faking a deleted account in the past.
     """
+    __slots__ = ()
 
     async def validate_member(self, ctx):
         if utils.is_deleted_user(ctx.member):
@@ -118,6 +122,7 @@ class DeletedAccountRejector(Validator):
 
 class NoAvatarRejector(Validator):
     """A suspicion level validator that rejects users without avatars."""
+    __slots__ = ()
 
     async def validate_member(self, ctx):
         if ctx.member.avatar is None:
@@ -128,6 +133,7 @@ class BannedUserRejector(Validator):
     """A malice level validator that rejects users that are banned on other
     servers.
     """
+    __slots__ = ("min_guild_size")
 
     def __init__(self, *, min_guild_size):
         self.min_guild_size = min_guild_size
@@ -156,6 +162,7 @@ class BannedUsernameRejector(Validator):
      - Exact username matches (ignoring repeated whitespace and casing).
      - Exact avatar matches.
     """
+    __slots__ = ()
 
     async def validate_member(self, ctx):
         if not ctx.guild.me.guild_permissions.ban_members:
@@ -189,6 +196,8 @@ class BannedUsernameRejector(Validator):
             for transform in TRANSFORMS:
                 normalized_usernames = set(self._normalize(transform(u.name))
                                            for u in ctx.usernames)
+                # Don't match on empty string matches
+                normalized_usernames.discard("")
 
                 for banned_username in matches.all():
                     transformed = transform(banned_username.name)
@@ -196,7 +205,7 @@ class BannedUsernameRejector(Validator):
                     if not normalized in normalized_usernames:
                         continue
                     ban_reason = ban_reasons.get(banned_username.user_id)
-                    reason = f"Exact username match with banned user: " + \
+                    reason = f"Exact avatar match with banned user: " + \
                              f"{banned_username.name}`."
                     if ban_reason is not None:
                         reason += f" Ban Reason: {ban_reason}"
@@ -211,6 +220,7 @@ class LockdownRejector(Validator):
     """A malice level validator that rejects all users if the guild has been put
     into lockdown.
     """
+    __slots__ = ()
 
     async def validate_member(self, ctx):
         guild_state = ctx.bot.guild_states[ctx.guild.id]
