@@ -10,7 +10,11 @@ from .redis_utils import redis_transaction
 
 
 class LRUCache:
+    """A LRU (Least Recently Used) key-value cache with optional TTL for items
+    in it. Supports storing any value and hashable key. Not threadsafe.
+    """
 
+    __slots__ = ("cache", "max_size", "default_ttl")
     NOT_FOUND = object()
 
     class Entry:
@@ -31,7 +35,7 @@ class LRUCache:
         self.default_ttl = default_ttl
 
     def get(self, key):
-        """ Gets the value of a single key in the cache. Move to end of LRU
+        """Gets the value of a single key in the cache. Move to end of LRU
         queue. Returns LRUCache.NOT_FOUND if no key is there. O(1) time.
         """
         entry = self.cache.get(key)
@@ -43,29 +47,24 @@ class LRUCache:
         self.cache.move_to_end(key)
         return entry.value
 
-    def set(self, key, value, ttl=0):
-        """ Sets the value of a single key in the cache. Added to end of LRU
+    def set(self, key, value, ttl: float = 0) -> None:
+        """Sets the value of a single key in the cache. Added to end of LRU
         queue. O(1) time.
         """
-        entry = self.cache.get(key)
         ttl = ttl or self.default_ttl
-        if entry is None:
-            self.cache[key] = LRUCache.Entry(value, ttl)
-        else:
-            entry.value = value
-            entry.ttl = ttl
-            self.cache.move_to_end(key)
+        self.cache[key] = LRUCache.Entry(value, ttl or self.default_ttl)
+        self.cache.move_to_end(key)
 
         while len(self.cache) > self.max_size:
             self.cache.popitem(last=False)
 
-    def clear(self, key):
-        """ Invalidates a single key in the cache. """
+    def clear(self, key) -> None:
+        """Invalidates a single key in the cache."""
         if key in self.cache:
             del self.cache[key]
 
-    def flush(self, key):
-        """ Flushes all TTL-expired items from the cache """
+    def flush(self, key) -> None:
+        """Flushes all TTL-expired items from the cache."""
         pairs = ((key, value) for key, value in self.cache.items()
                  if not value.is_expired)
         self.cache = collections.OrderedDict(pairs)
