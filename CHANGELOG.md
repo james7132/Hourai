@@ -28,6 +28,8 @@ here: https://discord.gg/UydKWHX.
    - White Check Mark: Verify User. User reacting needs Manage Roles.
    - Red X: Kick User. User reacting needs Kick Users.
    - Skull and Cross Bones: Ban User. User reacting needs Ban Members.
+ * [Validation] Actions taken by pressing the reaction buttons on validation logs
+   will be logged in the modlog.
 
 ## v1.3.0 (06/17/2020)
 

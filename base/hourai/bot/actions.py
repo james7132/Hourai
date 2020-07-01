@@ -2,6 +2,7 @@ import discord
 import asyncio
 import typing
 from datetime import datetime, timedelta
+from hourai import utils
 from hourai.utils import fake, format
 from hourai.db import models, proto, escalation_history
 
@@ -90,7 +91,7 @@ class ActionExecutor:
 
     async def _apply_kick(self, action) -> None:
         assert action.WhichOneof('details') == 'kick'
-        member = self.__get_member(action)
+        member = await self.__get_member(action)
         if member is not None:
             await member.kick(reason=_get_reason(action))
 
@@ -104,11 +105,12 @@ class ActionExecutor:
         if action.ban.type != proto.BanMember.UNBAN:
             await guild.ban(user, reason=_get_reason(action))
         if action.ban.type != proto.BanMember.BAN:
-            await guild.unban(user, reason=_get_reason(action))
+            await guild.un
+            ban(user, reason=_get_reason(action))
 
     async def _apply_mute(self, action) -> None:
         assert action.WhichOneof('details') == 'mute'
-        member = self.__get_member(action)
+        member = await self.__get_member(action)
         if member is not None:
             mute = {
                 proto.MuteMenber.MUTE: True,
@@ -120,7 +122,7 @@ class ActionExecutor:
 
     async def _apply_deafen(self, action) -> None:
         assert action.WhichOneof('details') == 'deafen'
-        member = self.__get_member(action)
+        member = await self.__get_member(action)
         if member is not None:
             deafen = {
                 proto.DeafenMember.DEAFEN: True,
@@ -132,7 +134,7 @@ class ActionExecutor:
 
     async def _apply_change_role(self, action) -> None:
         assert action.WhichOneof('details') == 'change_role'
-        member = self.__get_member(action)
+        member = await self.__get_member(action)
         if member is None:
             return
         roles = (member.guild.get_role(id)
@@ -164,7 +166,7 @@ class ActionExecutor:
 
     async def _apply_direct_message(self, action) -> None:
         assert action.WhichOneof('details') == 'direct_message'
-        user = self.__get_user(action)
+        user = await self.__get_user(action)
         if user is None or not action.direct_message.content:
             return
         try:
@@ -181,12 +183,13 @@ class ActionExecutor:
             guild = channel.guild
         except AttributeError:
             guild = self.bot.get_guild(action.guild_id)
+
         if action.HasField('user_id'):
-            user = (guild.get_member(action.user_id)
-                    if guild is not None else
-                    self.bot.get_user(action.user_id))
+            user = (await self.__get_member(action)) if guild is not None \
+                    else (await self.__get_user(action))
         else:
             user = (guild.me if guild is not None else self.bot.user)
+
         ctx = await self.bot.get_automated_context(
             content=action.command.command, author=user,
             channel=channel, guild=guild)
@@ -199,14 +202,15 @@ class ActionExecutor:
 
     def __get_user(self, action: proto.Action) -> discord.User:
         assert action.HasField('user_id')
-        return self.bot.get_user(action.user_id)
+        return utils.get_user_async(self.bot, action.user_id)
 
     def __get_member(self, action: proto.Action) -> discord.Member:
         assert action.HasField('user_id')
+        # FIXME: This will not work once the bot is larger than a single process.
         guild = self.__get_guild(action)
         if guild is None:
             return None
-        return guild.get_member(action.user_id)
+        return utils.get_member_async(guild, action.user_id)
 
 
 def invert_action(action: proto.Action) -> proto.Action:

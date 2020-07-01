@@ -5,6 +5,7 @@ import wavelink
 import math
 from .queue import MusicQueue
 from . import utils
+from hourai import utils as hourai_utils
 from hourai.utils import embed
 from hourai.db import proto
 from wavelink.eqs import Equalizer
@@ -95,10 +96,11 @@ class HouraiMusicPlayer(wavelink.Player):
     def entries(self):
         return list(self.queue)
 
-    @property
-    def current_requestor(self):
-        return None if self._requestor_id is None or self.guild is None \
-               else self.guild.get_member(self._requestor_id)
+    async def get_current_requestor(self):
+        if self._requestor_id is None or self.guild is None:
+            return None
+        return await hourai_utils.get_member_async(self.guild,
+                                                   self._requestor_id)
 
     @property
     def is_playing(self):
@@ -174,7 +176,7 @@ class HouraiMusicPlayer(wavelink.Player):
         Returns true if the song was skipped, false otherwise.
         """
         self.skip_votes.add(user.id)
-        if self.current_requestor == user or len(self.skip_votes) >= threshold:
+        if user.id == self._requestor_id or len(self.skip_votes) >= threshold:
             await self.play_next()
             return True
         return False
@@ -248,7 +250,7 @@ class MusicNowPlayingUI(MusicPlayerUI):
                       f'{utils.time_format(track.duration)}]`')
             progress = float(self.player.position) / float(track.duration)
 
-        requestor = self.player.current_requestor
+        requestor = await self.player.get_current_requestor()
         if requestor is not None:
             avatar_url = (requestor.avatar_url or
                           requestor.default_avatar_url)

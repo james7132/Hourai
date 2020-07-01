@@ -90,6 +90,8 @@ def _to_username_line(username):
 
 
 def _get_guild_count(ctx, user):
+    # FIXME: This may be broken when fetch_offline_members is set to False
+    # FIXME: This will not work when the bot grows larger than one process.
     return sum(1 if g.get_member(user.id) is not None else 0
                for g in ctx.bot.guilds)
 

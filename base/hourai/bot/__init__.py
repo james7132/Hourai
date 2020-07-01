@@ -102,7 +102,7 @@ class Hourai(commands.AutoShardedBot):
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)
 
-        self.guild_states = state.GuildStateMapping(self)
+        self.guild_states = collections.defaultdict(state.GuildState)
 
         # Counters
         self.bot_counters = collections.defaultdict(collections.Counter)
@@ -120,7 +120,9 @@ class Hourai(commands.AutoShardedBot):
         super().dispatch(event, *args, **kwargs)
 
     async def _run_event(self, coro, event_name, *args, **kwargs):
-        self.bot_counters['events_run'][event] += 1
+        if event_name.startswith('on_'):
+            event_name = event_name[3:]
+        self.bot_counters['events_run'][event_name] += 1
         start = time.time()
         try:
             await coro(*args, **kwargs)
@@ -132,7 +134,7 @@ class Hourai(commands.AutoShardedBot):
             except asyncio.CancelledError:
                 pass
         runtime = time.time() - start
-        self.bot_counters['event_total_runtime'][event] += runtime
+        self.bot_counters['event_total_runtime'][event_name] += runtime
 
     def run(self, *args, **kwargs):
         uvloop.try_install()

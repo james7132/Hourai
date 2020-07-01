@@ -4,6 +4,7 @@ import logging
 import texttable
 from datetime import datetime
 from discord.ext import commands, tasks
+from hourai import utils
 from hourai.db import escalation_history, models
 from hourai.utils import fake, checks, format
 
@@ -141,10 +142,10 @@ class EscalationMixin:
             self.bot, user, ctx.guild)
 
         comps = [f"**Escalation History for {user.mention}**"]
-        comps.append(self.__build_escalation_history_table(history))
+        comps.append(await self.__build_escalation_history_table(history))
         await ctx.send(format.vertical_list(comps))
 
-    def __build_escalation_history_table(self, history):
+    async def __build_escalation_history_table(self, history):
         if len(history.entries) <= 0:
             return "```\nNo history of escalation events.\n```"
         columns = ('Date', 'Action', 'Authorizer', 'Level', 'Reason')
@@ -159,7 +160,8 @@ class EscalationMixin:
             level = max(-1, level + entry.level_delta)
 
             authorizer_name = entry.authorizer_name
-            authorizer = history.guild.get_member(entry.authorizer_id)
+            authorizer = await utils.get_member_async(
+                    history.guild, entry.authorizer_id)
             if authorizer is not None:
                 authorizer_name = \
                         f"{authorizer.name}#{authorizer.discriminator}"

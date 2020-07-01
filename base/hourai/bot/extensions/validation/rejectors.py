@@ -51,7 +51,7 @@ class StringFilterRejector(Validator):
     """A general validator that rejects users that have a field that matches
     a set of predefined list of regexes.
     """
-    __slots__ = ("filters", "prefix", "match_func")
+    __slots__ = ("filters", "prefix", "match_func", "subfield")
 
     def __init__(self, *, prefix, filters, full_match=False, subfield=None):
         self.prefix = prefix or ''

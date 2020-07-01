@@ -340,7 +340,7 @@ class Music(cogs.BaseCog):
         assert player.current is not None
 
         track = player.current
-        requestor = player.current_requestor
+        requestor = await player.get_current_requestor()
         assert requestor is not None
 
         channel_count = len([m for m in player.voice_channel_members
@@ -388,7 +388,7 @@ class Music(cogs.BaseCog):
             return
 
         track = player.current
-        requestor = player.current_requestor
+        requestor = await player.get_current_requestor()
         assert requestor is not None
 
         await player.play_next()

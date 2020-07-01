@@ -1,5 +1,4 @@
 from .mod_logging import ModLogging
-from .state_updates import StateUpdates
 from .username_logging import UsernameLogging
 from .owner_logging import OwnerLogging
 from .role_logging import RoleLogging
@@ -13,7 +12,6 @@ def setup(bot):
             OwnerLogging(bot),
             RoleLogging(bot),
             BanLogging(bot),
-            # StateUpdates(bot),
             Counters(bot))
     for cog in cogs:
         bot.add_cog(cog)

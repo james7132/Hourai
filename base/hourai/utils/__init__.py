@@ -17,6 +17,17 @@ def clamp(val, min_val, max_val):
     return max(min(val, max_val), min_val)
 
 
+async def get_user_async(bot: discord.Client, user_id: int) \
+                          -> discord.User:
+    user = bot.get_user(user_id)
+    return user or (await bot.fetch_user(user_id))
+
+
+async def get_member_async(guild: discord.Guild, user_id: int) \
+                          -> discord.Member:
+    member = guild.get_member(user_id)
+    return member or (await guild.fetch_member(user_id))
+
 async def broadcast(channels, *args, **kwargs):
     """
     Broadcasts a message to multiple channels at once.
