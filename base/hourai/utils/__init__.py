@@ -19,14 +19,25 @@ def clamp(val, min_val, max_val):
 
 async def get_user_async(bot: discord.Client, user_id: int) \
                           -> discord.User:
-    user = bot.get_user(user_id)
-    return user or (await bot.fetch_user(user_id))
+    try:
+        user = bot.get_user(user_id)
+        return user or (await bot.fetch_user(user_id))
+    except discord.NotFound:
+        return None
 
 
 async def get_member_async(guild: discord.Guild, user_id: int) \
                           -> discord.Member:
     member = guild.get_member(user_id)
-    return member or (await guild.fetch_member(user_id))
+    if member:
+        return member
+
+    members = await guild.query_members(limit=1, user_ids=[user_id],
+                                        cache=True)
+    if len(members) <= 0:
+        return None
+    return next(iter(member))
+
 
 async def broadcast(channels, *args, **kwargs):
     """
