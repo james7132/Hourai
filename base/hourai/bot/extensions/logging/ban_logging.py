@@ -1,4 +1,5 @@
 import asyncio
+import discord
 from discord.ext import commands, tasks
 from hourai.bot import cogs
 from hourai.db import models
