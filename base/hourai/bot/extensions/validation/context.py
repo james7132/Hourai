@@ -1,3 +1,4 @@
+import discord
 import logging
 import collections
 from datetime import datetime
