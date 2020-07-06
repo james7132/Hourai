@@ -19,7 +19,8 @@ class NitroApprover(Validator):
 
     async def validate_member(self, ctx):
         if utils.has_nitro(ctx.bot, ctx.member):
-            ctx.add_approval_reason('User has Nitro. Probably not a user bot.')
+            ctx.add_approval_reason(
+                'User currently has or has had Nitro. Probably not a user bot.')
 
 
 class BotApprover(Validator):

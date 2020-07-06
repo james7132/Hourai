@@ -22,6 +22,8 @@ here: https://discord.gg/UydKWHX.
    bot developers strict identity verification and require developing a bot that
    is on more than 75 servers. This is sufficient to pass most forms of
    validation.
+ * [Validation] Expanded approval check for Nitro include users with the Early
+   Supporter badges.
  * [Validation] Expanded approval check for Nitro to include users with custom
    statuses with custom emoji, which can only be set by users with Nitro.
  * [Validation] Attempts to bypass username filters by using non-ASCII characters

@@ -18,7 +18,7 @@ def clamp(val, min_val, max_val):
 
 
 async def get_user_async(bot: discord.Client, user_id: int) \
-                          -> discord.User:
+        -> discord.User:
     try:
         user = bot.get_user(user_id)
         return user or (await bot.fetch_user(user_id))
@@ -27,7 +27,7 @@ async def get_user_async(bot: discord.Client, user_id: int) \
 
 
 async def get_member_async(guild: discord.Guild, user_id: int) \
-                          -> discord.Member:
+        -> discord.Member:
     member = guild.get_member(user_id)
     if member:
         return member
@@ -60,8 +60,8 @@ async def wait_for_confirmation(ctx):
     def check(m):
         content = m.content.casefold()
         return (content.startswith('y') or content.startswith('n')) and \
-               m.author == ctx.author and \
-               m.channel == ctx.channel
+            m.author == ctx.author and \
+            m.channel == ctx.channel
 
     try:
         msg = await ctx.bot.wait_for('message', check=check, timeout=600)
@@ -234,9 +234,10 @@ def is_nitro_booster(bot, member):
 
 
 def has_nitro(bot, member):
-    """Checks if the user has Nitro, may have false negatives. Cannot have false
-    positives. Checks:
+    """Checks if the user currently has or has previous had Nitro, may have
+    false negatives. Cannot have false positives. Checks:
      - Has animated avatar
+     - Has the Early Supporter badge
      - Is boosting a server the bot is on
      - Has a custom status with a custom emoji
     """
@@ -247,6 +248,7 @@ def has_nitro(bot, member):
     except AttributeError:
         has_nitro_activity = False
     return any((member.is_avatar_animated(),
+                member.public_flags.early_supporter,
                 is_nitro_booster(bot, member),
                 has_nitro_activity))
 
