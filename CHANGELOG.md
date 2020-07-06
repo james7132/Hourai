@@ -6,7 +6,7 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
-## WIP (TBD)
+## v1.4.0 (07/06/2020)
 
  * [Actions] Fixed crash when sending empty direct messages.
  * [General] Fixed `~move`'s permissions checks.
