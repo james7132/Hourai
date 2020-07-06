@@ -2,7 +2,7 @@ FROM python:3.8-alpine as base
 
 FROM base as builder
 RUN apk add --no-cache \
-  protobuf gcc make libffi-dev build-base postgresql-dev \
+  git protobuf gcc make libffi-dev build-base postgresql-dev \
   && mkdir /app
 COPY requirements.txt /
 RUN pip install --prefix /install -r /requirements.txt
