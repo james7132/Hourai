@@ -97,6 +97,9 @@ class Hourai(commands.AutoShardedBot):
         kwargs.setdefault('activity',
                           discord.Game(self.config.activity))
         kwargs.setdefault('fetch_offline_members', False)
+        kwargs.setdefault('allowed_mentions',
+                          discord.AllowedMentions(everyone=False, users=False,
+                                                       roles=False))
 
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
@@ -161,7 +164,7 @@ class Hourai(commands.AutoShardedBot):
         self.web_app_runner = aiohttp.web.AppRunner(app, **web_app_kwargs)
         port = self.config.web.port
         await self.web_app_runner.setup()
-        await  aiohttp.web.TCPSite(self.web_app_runner, port=port).start()
+        await aiohttp.web.TCPSite(self.web_app_runner, port=port).start()
 
     async def close(self):
         await super().close()

@@ -80,10 +80,12 @@ class ValidationContext():
     async def send_modlog_message(self):
         """Sends verification log to a the guild's modlog."""
         modlog = await self.guild_proxy.get_modlog()
+        online_mod, mention = utils.mention_random_online_mod(self.guild)
         return await self.send_log_message(
-                modlog, utils.mention_random_online_mod(self.guild))
+            modlog, ping_target=mention, allowed_mentions=[online_mod])
 
-    async def send_log_message(self, messageable, ping_target=None):
+    async def send_log_message(self, messageable, ping_target=None,
+                               allowed_mentions=False):
         """Sends verification log to a given messagable target.
 
         messageable must be an appropriate discord.abc.Messageable object.
@@ -111,5 +113,10 @@ class ValidationContext():
 
         ctx = await self.bot.get_automated_context(content='', author=member)
         async with ctx:
-            whois_embed = embed.make_whois_embed(ctx, member)
-            return await messageable.send(content=message, embed=whois_embed)
+            return await messageable.send(
+                content=message,
+                embed= embed.make_whois_embed(ctx, member),
+                allowed_mentions=discord.AllowedMentions(
+                    everyone=False, users=allowed_mentions,
+                    roles=False)
+            )

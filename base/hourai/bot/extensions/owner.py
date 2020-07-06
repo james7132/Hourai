@@ -69,7 +69,9 @@ class Owner(cogs.BaseCog):
         async def broadcast_msg(guild):
             modlog = await ctx.bot.create_guild_proxy(guild).get_modlog()
             await modlog.send(content=guild.owner.mention +
-                              '. **Announcement:**\n' + message)
+                              '. **Announcement:**\n' + message,
+                              allowed_mentions=discord.AllowedMentions(
+                                  users=[guild.owner]))
 
         await asyncio.gather(*[
             broadcast_msg(guild) for guild in ctx.bot.guilds])

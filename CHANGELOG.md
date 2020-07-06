@@ -10,6 +10,9 @@ here: https://discord.gg/UydKWHX.
 
  * [Actions] Fixed crash when sending empty direct messages.
  * [General] Fixed `~move`'s permissions checks.
+ * [General] Hourai will no longer mention @everyone, ping roles, or ping users
+   unless a feature requires an explicit ping to one specific user (i.e.
+   `~pingmod`)
  * [Feeds] `~announce join/leave/ban` have been fixed and will toggle the correct
    announcements in the target channels.
  * [Validation] Expanded approval check for Nitro to include users with custom

@@ -40,7 +40,7 @@ class Standard(cogs.BaseCog):
 
     @commands.command()
     async def echo(self, ctx, *, content: str):
-        await ctx.send(discord.utils.escape_mentions(content))
+        await ctx.send(content)
 
     @commands.command()
     async def roll(self, ctx, *dice: die):
@@ -174,7 +174,10 @@ class Standard(cogs.BaseCog):
         Pings a moderator on the server. Mod roles begin with "mod" or
         "admin" or have the administrator permission.
         """
-        await ctx.send(utils.mention_random_online_mod(ctx.guild))
+        online_mod, mention = utils.mention_random_online_mod(ctx.guild)
+        await ctx.send(mention,
+                allowed_mentions=discord.AllowedMentions(
+                    users=[online_mod]))
 
     @commands.command()
     async def whois(self, ctx, user: typing.Union[discord.Member,

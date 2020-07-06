@@ -211,15 +211,17 @@ def find_online_moderators(guild):
 
 
 def mention_random_online_mod(guild):
-    """
-    Returns a string containing a mention of a currently online moderator.
+    """Mentions a of a currently online moderator.
     If no moderator is online, returns a ping to the server owner.
+
+    Returns a tuple of (Member, str).
     """
     moderators = list(find_online_moderators(guild))
     if len(moderators) > 0:
-        return random.choice(moderators).mention
+        moderator = random.choice(moderators)
+        return moderator, moderator.mention
     else:
-        return f'{guild.owner.mention}, no mods are online!'
+        return guild.owner, f'{guild.owner.mention}, no mods are online!'
 
 
 def is_nitro_booster(bot, member):
