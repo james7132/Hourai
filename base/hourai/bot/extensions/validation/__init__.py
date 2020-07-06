@@ -127,8 +127,9 @@ VALIDATORS = (
     # server. Requires exact username match (case insensitive)
     rejectors.BannedUsernameRejector(),
 
-    # Check if the user owns a Partnered or Verified server, and approve them.
-    approvers.DistinguishedGuildOwnerApprover(),
+    # Check if the user is distinguished (Discord Staff, Verified, Partnered,
+    # etc).
+    approvers.DistinguishedUserApprover(),
 
     # All non-override users are rejected while guilds are locked down.
     rejectors.LockdownRejector(),

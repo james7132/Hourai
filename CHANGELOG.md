@@ -15,6 +15,13 @@ here: https://discord.gg/UydKWHX.
    `~pingmod`)
  * [Feeds] `~announce join/leave/ban` have been fixed and will toggle the correct
    announcements in the target channels.
+ * [Validation] Removed any potential for false positives in detecting Discord
+   Staff or Discord Partners.
+ * [Validation] The bot will now approve all Verified Bot Developers as
+   distinguished users (like Discord Staff or Partners). This is done as verified
+   bot developers strict identity verification and require developing a bot that
+   is on more than 75 servers. This is sufficient to pass most forms of
+   validation.
  * [Validation] Expanded approval check for Nitro to include users with custom
    statuses with custom emoji, which can only be set by users with Nitro.
  * [Validation] Attempts to bypass username filters by using non-ASCII characters
@@ -24,7 +31,8 @@ here: https://discord.gg/UydKWHX.
    - Sexually Inapproriate Usernames
    - Offensive Usernames
    - Banned User Names
- * [Validation] Added wide-width unicode character username rejectors. Examples
+ * [Validation] The bot will now reject any user with wide-width unicode
+   character usernames as these tend to be disruptive to other users. Examples
    of these kinds of characters can be seen
    [here](https://www.reddit.com/r/Unicode/comments/5qa7e7/widestlongest_unicode_characters_list/).
  * [Validation] The three reaction buttons will now operate as expected:
