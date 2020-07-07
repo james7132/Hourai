@@ -49,6 +49,14 @@ class Protobuf(types.TypeDecorator):
         return msg
 
 
+class AdminConfig(Base):
+    __tablename__ = 'admin_configs'
+
+    id = Column(types.Integer, primary_key=True, autoincrement=False)
+    source_bans = Column(types.Boolean, nullable=False)
+    is_blocked = Column(types.Boolean, nullable=False)
+
+
 class PendingAction(Base):
     __tablename__ = 'pending_actions'
 

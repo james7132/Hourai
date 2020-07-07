@@ -4,8 +4,10 @@ package hourai.db.proto;
 
 // Used to cache information about user bans
 message BanInfo {
+  // NEXT ID: 7
   optional uint64 guild_id = 1;
   optional uint64 guild_size = 2;
+  optional bool guild_blocked = 6;
   optional uint64 user_id = 3;
   optional string reason = 4;
   optional string avatar = 5;

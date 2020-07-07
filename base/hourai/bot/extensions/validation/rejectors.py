@@ -143,7 +143,7 @@ class BannedUserRejector(Validator):
 
     async def validate_member(self, ctx):
         bans = await ctx.bot.storage.bans.get_user_bans(ctx.member.id)
-        valid_bans = list(filter(self._is_valid_guild, bans))
+        valid_bans = list(filter(self._is_valid_ban, bans))
         if len(valid_bans) <= 0:
             return
         reasons = set(b.reason for b in valid_bans if b.HasField('reason'))
@@ -154,9 +154,8 @@ class BannedUserRejector(Validator):
             reason += "\n    - ".join(reasons)
         ctx.add_rejection_reason(reason)
 
-    def _is_valid_guild(self, ban):
-        return ban.HasField('guild_size') and \
-               ban.guild_size >= self.min_guild_size
+    def _is_valid_ban(self, ban):
+        return not ban.guild_blocked and ban.guild_size >= self.min_guild_size
 
 
 class BannedUsernameRejector(Validator):

@@ -27,6 +27,11 @@ class Setup(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         with self.bot.create_storage_session() as session:
+            config = session.query(models.AdminConfig).get(guild.id)
+            if config is not None and config.is_blocked:
+                await guild.leave()
+                return
+
             tasks = [self.__setup_modlog(session, guild)]
             await asyncio.gather(*tasks)
 

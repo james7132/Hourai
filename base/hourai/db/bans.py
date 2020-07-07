@@ -4,7 +4,7 @@ import collections
 import logging
 import coders
 import time
-from . import proto
+from . import proto, models
 from .redis_utils import redis_transaction
 from hourai.utils import iterable
 
@@ -18,9 +18,10 @@ MAX_CHUNK_SIZE = 1024
 
 
 def _get_guild_size(guild):
-    if not guild.chunked:
-        return guild.member_count
-    return len([m for m in guild.members if not m.bot])
+    """Gets the approximate count of real non-bot users on a server."""
+    # Good bots are 24/7 online so this count should be close to accurate
+    bot_count = sum(1 for m in guild._members.values() if m.bot)
+    return guild.member_count - bot_count
 
 
 class BanStorage:
@@ -44,19 +45,28 @@ class BanStorage:
     def redis(self):
         return self.storage.redis
 
+    def is_guild_blocked(self, guild):
+        session = self.storage.create_session()
+        with session:
+            config = session.query(models.AdminConfig).get(guild.id)
+            return config is not None and not config.source_bans
+
     async def save_bans(self, guild):
         """Atomically saves all of the bans for a given guild to the backng
         store.
         """
         if not guild.me.guild_permissions.ban_members:
             return
+
         bans = await guild.bans()
 
         if len(bans) <= 0:
             return
 
+        blocked = self.is_guild_blocked(guild)
         guild_key = self._guild_key_coder.encode(guild.id)
-        ban_protos = (self.__encode_ban(guild, ban) for ban in bans)
+        ban_protos = (self.__encode_ban(guild, ban, blocked=blocked)
+                      for ban in bans)
 
         def transaction(tr):
             for chunk in iterable.chunked(ban_protos, MAX_CHUNK_SIZE):
@@ -69,9 +79,11 @@ class BanStorage:
         await redis_transaction(self.redis, transaction)
 
     async def save_ban(self, guild, ban):
+        blocked = self.is_guild_blocked(guild)
         guild_key = self._guild_key_coder.encode(guild.id)
         user_key = self._user_key_coder.encode(ban.user.id)
-        user_id_enc, guild_value = self.__encode_ban(guild, ban)
+        user_id_enc, guild_value = self.__encode_ban(
+                guild, ban, blocked=blocked)
 
         def transaction(tr):
             yield tr.hset(guild_key, user_id_enc, guild_value)
@@ -130,10 +142,11 @@ class BanStorage:
             yield tr.srem(user_key, guild_key)
         await redis_transaction(self.redis, transaction)
 
-    def __encode_ban(self, guild, ban):
+    def __encode_ban(self, guild, ban, blocked=False):
         ban_proto = proto.BanInfo()
         ban_proto.guild_id = guild.id
         ban_proto.guild_size = _get_guild_size(guild)
+        ban_proto.guild_blocked = blocked
         ban_proto.user_id = ban.user.id
         if ban.user.avatar is not None:
             ban_proto.avatar = ban.user.avatar
