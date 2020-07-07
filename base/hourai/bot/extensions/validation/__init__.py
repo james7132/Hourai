@@ -127,8 +127,9 @@ VALIDATORS = (
     # server. Requires exact username match (case insensitive)
     rejectors.BannedUsernameRejector(),
 
-    # Check if the user owns a Partnered or Verified server, and approve them.
-    approvers.DistinguishedGuildOwnerApprover(),
+    # Check if the user is distinguished (Discord Staff, Verified, Partnered,
+    # etc).
+    approvers.DistinguishedUserApprover(),
 
     # All non-override users are rejected while guilds are locked down.
     rejectors.LockdownRejector(),
@@ -492,7 +493,7 @@ class Validation(cogs.BaseCog):
                 f'. Bot does not have **Kick Members** permission.')
 
     async def ban_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.get_guild_proxy(guild)
+        proxy = self.bot.create_guild_proxy(guild)
         modlog = await proxy.get_modlog()
         try:
             await target.ban(reason=(f'Failed verification.'
@@ -517,7 +518,7 @@ class Validation(cogs.BaseCog):
         members = await asyncio.gather(
                 *[utils.get_member_async(guild, user.id)
                   for guild in self.bot.guilds])
-        guild_proxies = [self.bot.get_guild_proxy(guild)
+        guild_proxies = [self.bot.create_guild_proxy(guild)
                          for member in members if member is not None]
 
         contents = None

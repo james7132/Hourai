@@ -19,7 +19,8 @@ class NitroApprover(Validator):
 
     async def validate_member(self, ctx):
         if utils.has_nitro(ctx.bot, ctx.member):
-            ctx.add_approval_reason('User has Nitro. Probably not a user bot.')
+            ctx.add_approval_reason(
+                'User currently has or has had Nitro. Probably not a user bot.')
 
 
 class BotApprover(Validator):
@@ -40,25 +41,43 @@ class BotOwnerApprover(Validator):
             ctx.add_approval_reason("User owns this bot.")
 
 
-class DistinguishedGuildOwnerApprover(Validator):
-    """A malice level approver that approves the owners of "distinguished"
-    servers (i.e. Partnered or Verified servers).
+class DistinguishedUserApprover(Validator):
+    """A malice level approver that approves distinguished users. Approves the
+    following:
+    - Discord Staff
+    - Discord Partners
+    - Owners of verified servers*
 
     Since bot users cannot read profile data, the bot must be on the same
-    distinguished server for this to work. As a result there may be many false
-    negatives.
+    server for this to work. Any of the designations marked above by a * may
+    result in many false negatives.
     """
 
-    MATCHES = {
-        "PARTNERED": 'User is owner of partnered server: "{}"',
+    FLAG_MATCHES = {
+        "staff": 'User is Discord Staff.',
+        "partner": 'User is a Discord Partner.',
+        "verified_bot_developer": 'User is a verified bot developer.',
+    }
+
+    SERVER_SEARCH_MATCHES = {
         "VERIFIED": 'User is owner of verfied server: "{}"'
     }
 
     async def validate_member(self, ctx):
+        self.__validate_via_user_flags(ctx)
+        self.__validate_via_server_ownership(ctx)
+
+    def __validate_via_user_flags(self, ctx):
+        flags = ctx.member.public_flags
+        for attr, reason in self.FLAG_MATCHES.items():
+            if getattr(flags, attr):
+                ctx.add_approval_reason(reason)
+
+    def __validate_via_server_ownership(self, ctx):
+        # FIXME: This will not scale to multiple processes/nodes
         owned_guilds = [guild for guild in ctx.bot.guilds
                         if guild.owner == ctx.member]
         for guild in owned_guilds:
-            features = set(guild.features)
-            for check, reason_template in self.MATCHES.items():
-                if check in features:
+            for check, reason_template in self.SERVER_SEARCH_MATCHES.items():
+                if check in guild.features:
                     ctx.add_approval_reason(reason_template.format(guild.name))

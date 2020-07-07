@@ -1,5 +1,5 @@
 # Core packages
-discord.py==1.3.3
+discord.py @ git+https://github.com/Rapptz/discord.py.git@e971e2f16cba22decd25db6b44e9cc84adf08555
 aiohttp==3.6.2
 uvloop==0.14.0
 psycopg2==2.8.5

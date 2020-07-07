@@ -18,7 +18,7 @@ def clamp(val, min_val, max_val):
 
 
 async def get_user_async(bot: discord.Client, user_id: int) \
-                          -> discord.User:
+        -> discord.User:
     try:
         user = bot.get_user(user_id)
         return user or (await bot.fetch_user(user_id))
@@ -27,7 +27,7 @@ async def get_user_async(bot: discord.Client, user_id: int) \
 
 
 async def get_member_async(guild: discord.Guild, user_id: int) \
-                          -> discord.Member:
+        -> discord.Member:
     member = guild.get_member(user_id)
     if member:
         return member
@@ -60,8 +60,8 @@ async def wait_for_confirmation(ctx):
     def check(m):
         content = m.content.casefold()
         return (content.startswith('y') or content.startswith('n')) and \
-               m.author == ctx.author and \
-               m.channel == ctx.channel
+            m.author == ctx.author and \
+            m.channel == ctx.channel
 
     try:
         msg = await ctx.bot.wait_for('message', check=check, timeout=600)
@@ -211,15 +211,17 @@ def find_online_moderators(guild):
 
 
 def mention_random_online_mod(guild):
-    """
-    Returns a string containing a mention of a currently online moderator.
+    """Mentions a of a currently online moderator.
     If no moderator is online, returns a ping to the server owner.
+
+    Returns a tuple of (Member, str).
     """
     moderators = list(find_online_moderators(guild))
     if len(moderators) > 0:
-        return random.choice(moderators).mention
+        moderator = random.choice(moderators)
+        return moderator, moderator.mention
     else:
-        return f'{guild.owner.mention}, no mods are online!'
+        return guild.owner, f'{guild.owner.mention}, no mods are online!'
 
 
 def is_nitro_booster(bot, member):
@@ -232,9 +234,10 @@ def is_nitro_booster(bot, member):
 
 
 def has_nitro(bot, member):
-    """Checks if the user has Nitro, may have false negatives. Cannot have false
-    positives. Checks:
+    """Checks if the user currently has or has previous had Nitro, may have
+    false negatives. Cannot have false positives. Checks:
      - Has animated avatar
+     - Has the Early Supporter badge
      - Is boosting a server the bot is on
      - Has a custom status with a custom emoji
     """
@@ -245,6 +248,7 @@ def has_nitro(bot, member):
     except AttributeError:
         has_nitro_activity = False
     return any((member.is_avatar_animated(),
+                member.public_flags.early_supporter,
                 is_nitro_booster(bot, member),
                 has_nitro_activity))
 
