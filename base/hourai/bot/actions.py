@@ -69,33 +69,33 @@ class ActionExecutor:
     async def execute(self, action: proto.Action) -> None:
         action_type = action.WhichOneof('details')
         try:
-            handler = getattr(self, "_apply_" + action_type)
-        except AttributeError:
-            raise ValueError(f'Action type not supported: {action_type}')
-        try:
-            await handler(action)
+            await getattr(self, "_apply_" + action_type)(action)
             if not action.HasField('duration'):
                 return
             # Schedule an undo
             duration = timedelta(seconds=action.duration)
-            self.bot.action_manager.schedule(
-                datetime.utcnow() + duration,
-                ActionExecutor.__invert_action(action))
+            self.bot.action_manager.schedule(datetime.utcnow() + duration,
+                                             invert_action(action))
+        except AttributeError:
+            raise ValueError(f'Action type not supported: {action_type}')
+        except discord.NotFound:
+            # If the guild or the target is not found, silence the error
+            pass
+        except discord.Forbidden:
+            # TODO(james7132): Properly report missing permissions
+            # If the guild or the target is not found, silence the error
+            pass
+            self.bot.logger.exception('Error while executing action:')
         except Exception:
             self.bot.logger.exception('Error while executing action:')
 
-    @staticmethod
-    def __invert_action(action: proto.Action) -> proto.Action:
-        inverted = invert_action(action)
-        return inverted
-
-    async def _apply_kick(self, action) -> None:
+    async def _apply_kick(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'kick'
         member = await self.__get_member(action)
         if member is not None:
             await member.kick(reason=_get_reason(action))
 
-    async def _apply_ban(self, action) -> None:
+    async def _apply_ban(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'ban'
         guild = self.__get_guild(action)
         if guild is None:
@@ -103,12 +103,13 @@ class ActionExecutor:
         assert action.HasField('user_id')
         user = fake.FakeSnowflake(id=action.user_id)
         if action.ban.type != proto.BanMember.UNBAN:
-            await guild.ban(user, reason=_get_reason(action))
+            await guild.ban(user,
+                    reason=_get_reason(action),
+                    delete_message_days=action.ban.delete_message_days)
         if action.ban.type != proto.BanMember.BAN:
-            await guild.un
-            ban(user, reason=_get_reason(action))
+            await guild.unban(user, reason=_get_reason(action))
 
-    async def _apply_mute(self, action) -> None:
+    async def _apply_mute(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'mute'
         member = await self.__get_member(action)
         if member is not None:
@@ -120,7 +121,7 @@ class ActionExecutor:
             }[action.mute.type]
             await member.edit(mute=mute, reason=_get_reason(action))
 
-    async def _apply_deafen(self, action) -> None:
+    async def _apply_deafen(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'deafen'
         member = await self.__get_member(action)
         if member is not None:
@@ -132,7 +133,7 @@ class ActionExecutor:
             }[action.deafen.type]
             await member.edit(deafen=deafen, reason=_get_reason(action))
 
-    async def _apply_change_role(self, action) -> None:
+    async def _apply_change_role(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'change_role'
         member = await self.__get_member(action)
         if member is None:
@@ -153,7 +154,7 @@ class ActionExecutor:
                 member.remove(*rm_roles, reason=_get_reason(action))
             )
 
-    async def _apply_escalate(self, action) -> None:
+    async def _apply_escalate(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'escalate'
         guild = self.__get_guild(action)
         if guild is None:
@@ -164,7 +165,7 @@ class ActionExecutor:
         await history.apply_diff(guild.me, action.reason,
                                  action.escalate.amount)
 
-    async def _apply_direct_message(self, action) -> None:
+    async def _apply_direct_message(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'direct_message'
         user = await self.__get_user(action)
         if user is None or not action.direct_message.content:
@@ -176,7 +177,7 @@ class ActionExecutor:
             # Don't cause a ruckus if the user has the bot blocked
             pass
 
-    async def _apply_command(self, action) -> None:
+    async def _apply_command(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'command'
         channel = self.bot.get_channel(action.command.channel_id)
         try:
@@ -213,35 +214,47 @@ class ActionExecutor:
         return utils.get_member_async(guild, action.user_id)
 
 
+def _invert_ban(self, action: proto.Action) -> proto.Action:
+    action.ban.type = {
+        proto.BanMember.BAN: proto.BanMember.UNBAN,
+        proto.BanMember.UNBAN: proto.BanMember.BAN,
+    }.get(action.ban.type, action.ban.type)
+
+
+def _invert_status(attr: str):
+    def invert_status_action(action: proto.Action) -> proto.Action:
+        sub_proto = getattr(action, attr)
+        sub_proto.type = {
+            proto.StatusType.APPLY: proto.StatusType.UNAPPLY,
+            proto.StatusType.UNAPPLY: proto.StatusType.APPLY
+        }.get(sub_proto.type, sub_proto.type)
+    return invert_status_action
+
+
+def _invert_escalate(action: proto.Action) -> proto.Action:
+    action.escalate.amount *= -1
+
+
+INVERT_MAPPING = {
+    "ban": _invert_ban,
+    "change_role": _invert_status('change_role'),
+    "mute": _invert_status('mute'),
+    "deafen": _invert_status('deafen'),
+    "escalate": _invert_escalate,
+}
+
+
 def invert_action(action: proto.Action) -> proto.Action:
     new_action = proto.Action()
     new_action.CopyFrom(action)
-    case = new_action.WhichOneof('details')
-    if case == 'ban':
-        new_action.ban.type = {
-            proto.BanMember.BAN: proto.BanMember.UNBAN,
-            proto.BanMember.UNBAN: proto.BanMember.BAN,
-        }.get(new_action.ban.type, new_action.ban.type)
-    elif case == 'mute':
-        new_action.mute.type = {
-            proto.MuteMenber.MUTE: proto.MuteMember.UNMUTE,
-            proto.MuteMenber.UNMUTE: proto.MuteMember.MUTE
-        }.get(action.mute.type, action.mute.type)
-    elif case == 'deafen':
-        new_action.deafen.type = {
-            proto.DeafenMember.DEAFEN: proto.DeafenMember.UNDEAFEN,
-            proto.DeafenMember.UNDEAFEN: proto.DeafenMember.DEAFEN
-        }.get(action.deafen.type, action.deafen.type)
-    elif case == 'change_role':
-        new_action.change_role.type = {
-            proto.ChangeRole.ADD: proto.ChangeRole.REMOVE,
-            proto.ChangeRole.REMOVE: proto.ChangeRole.ADD
-        }.get(action.change_role.type, action.change_role.type)
-    elif case == 'escalate':
-        new_action.escalate.amount *= -1
-    else:
-        raise ValueError('Provided action cannot be inverted.')
+
     if action.HasField('reason'):
         new_action.reason = 'Undo: ' + action.reason
     new_action.ClearField('duration')
+
+    try:
+        INVERT_MAPPING[action.WhichOneOf('details')](new_action)
+    except KeyError:
+        raise ValueError('Provided action cannot be inverted.')
+
     return new_action
