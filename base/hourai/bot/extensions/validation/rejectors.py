@@ -181,7 +181,8 @@ class BannedUsernameRejector(Validator):
         for ban in bans:
             if not ban.HasField('avatar') or avatar != ban.avatar:
                 continue
-            reason = f"Exact username match with banned user: `{str(ban.user)}`."
+            reason = (f"Exact avatar match with banned user: {str(ban.user)} "
+                      f"({ban.user_id})")
             if ban.HasField('reason'):
                 reason += f" Ban Reason: {ban.reason}"
             ctx.add_rejection_reason(reason)
@@ -208,8 +209,9 @@ class BannedUsernameRejector(Validator):
                     if not normalized in normalized_usernames:
                         continue
                     ban_reason = ban_reasons.get(banned_username.user_id)
-                    reason = f"Exact avatar match with banned user: " + \
-                             f"{banned_username.name}`."
+                    reason = f"Exact username match with banned user: " + \
+                             f"{banned_username.name} " \
+                             f"({banned_username.id})."
                     if ban_reason is not None:
                         reason += f" Ban Reason: {ban_reason}"
                     ctx.add_rejection_reason(reason)
