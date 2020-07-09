@@ -6,6 +6,12 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
+## WIP (TBD)
+
+ * [Moderation] `~ban` and other moderation commands now support adding a reason
+   to the ban. Regardless of whether a reason is provided , the bot will log who
+   used the command as a part of the reasn.
+
 ## v1.4.0 (07/06/2020)
 
  * [Actions] Fixed crash when sending empty direct messages.
