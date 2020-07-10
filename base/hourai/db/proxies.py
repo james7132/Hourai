@@ -1,4 +1,5 @@
 import discord
+from datetime import datetime
 from typing import List
 from discord import flags
 from hourai import utils
@@ -92,45 +93,105 @@ DEFAULT_TYPES = {
 }
 
 
+class InviteCache:
+
+    """An in-memory cache of the invites for a given guild"""
+    __slots__ = ('guild', '_cache')
+
+    def __init__(self, guild):
+        assert guild is not None
+        self.guild = guild
+        self._cache = {}
+
+    async def fetch(self) -> dict:
+        """Fetches the remote state of all invites in the guild"""
+        if self.guild.me.guild_permissions.manage_guild:
+            invites = await self.guild.invites()
+            return {inv.code: inv for inv in invites}
+        else:
+            return {}
+
+    async def refresh(self) -> None:
+        """Fetches the remote state of all invites in the guild and updates the
+        cache with the results
+        """
+        self._cache = await self.fetch()
+
+    def add(self, invite: discord.Invite) -> None:
+        """Adds a new invite to the cache."""
+        self._cache[invite.code] = invite
+
+    def remove(self, invite: discord.Invite) -> None:
+        """Removes an invite to the cache."""
+        try:
+            del self._cache[invite.code]
+        except KeyError:
+            pass
+
+
+class ConfigCache:
+
+    __slots__ = ('storage', 'guild', '_cache')
+
+    def __init__(self, storage, guild):
+        self.storage = storage
+        self.guild = guild
+        self._cache = {}
+
+    async def get(self, name):
+        name = name.lower()
+        if name not in self.__cache:
+            cache = getattr(self.storage, name + '_configs')
+            conf = await cache.get(self.guild.id)
+            self._cache[name] = conf or DEFAULT_TYPES[name]()
+        return self._cache[name]
+
+    async def set(self, name, cfg):
+        name = name.lower()
+        cache = getattr(self.storage, name + '_configs')
+        await cache.set(self.guild.id, cfg)
+        self._cache[name] = cfg
+
+    async def edit(self, name, edit_func):
+        assert edit_func is not None
+        conf = await self.get(name)
+        edit_func(conf)
+        await self.set(name, conf)
+
+
 class GuildProxy:
+
+    __slots__ = ('bot', 'guild', 'config', 'invites', '_lockdown_expiration')
 
     def __init__(self, bot, guild):
         self.bot = bot
         self.guild = guild
 
-        self._config_cache = {}
+        self.config = ConfigCache(self.storage, guild)
+
+        # Ephemeral state associated with a Discord guild. Lost on bot restart.
+        self._lockdown_expiration = None
+        self.invites = InviteCache(guild)
 
     @property
     def storage(self):
         return self.bot.storage
 
-    async def get_config(self, name):
-        name = name.lower()
-        if name not in self._config_cache:
-            cache = getattr(self.storage, name + '_configs')
-            conf = await cache.get(self.guild.id)
-            self._config_cache[name] = conf or DEFAULT_TYPES[name]()
-        return self._config_cache[name]
+    @property
+    def is_locked_down(self):
+        return self._lockdown_expiration is not None and \
+               datetime.utcnow() < self._lockdown_expiration
 
-    async def set_config(self, name, cfg):
-        name = name.lower()
-        cache = getattr(self.storage, name + '_configs')
-        await cache.set(self.guild.id, cfg)
-        self._config_cache[name] = cfg
-
-    async def edit_config(self, name, edit_func):
-        assert edit_func is not None
-        conf = await self.get_config(name)
-        edit_func(conf)
-        await self.set_config(name, conf)
+    def set_lockdown(self, state, expiration=datetime.max):
+        self._lockdown_expiration = None if not state else expiration
 
     async def get_role_permissions(self, role: discord.Role) -> Permissions:
-        config = await self.get_config('role')
+        config = await self.config.get('role')
         return Permissions(config.settings[role.id].permissions)
 
     async def get_member_permissions(
             self, member: discord.Member) -> Permissions:
-        config = await self.get_config('role')
+        config = await self.config.get('role')
 
         permissions = 0
         for role_id in member._roles:
@@ -138,7 +199,7 @@ class GuildProxy:
         return Permissions(permissions)
 
     async def find_moderators(self) -> List[discord.Member]:
-        config = await self.get_config('role')
+        config = await self.config.get('role')
 
         roles = self.guild.roles
         perms = (Permissions(config.settings[role.id].permissions)
@@ -154,30 +215,28 @@ class GuildProxy:
         """Creates a discord.abc.Messageable compatible object corresponding to
         the server's modlog.
         """
-        return ModlogMessageable(self.guild, await self.get_config('logging'))
+        return ModlogMessageable(self.guild, await self.config.get('logging'))
 
     async def get_validation_role(self):
-        config = await self.get_config('validation')
+        config = await self.config.get('validation')
         if config is None or not config.HasField('role_id'):
             return None
         return self.guild.get_role(config.role_id)
 
     async def get_modlog_channel(self):
-        config = await self.get_config('logging')
+        config = await self.config.get('logging')
         if config is None or not config.HasField('modlog_channel_id'):
             return None
         return self.guild.get_channel(config.modlog_channel_id)
 
     async def set_modlog_channel(self, channel):
-        """
-        Sets the modlog channel to a certain channel. If channel is none, it
+        """Sets the modlog channel to a certain channel. If channel is none, it
         clears it from the config.
         """
         assert channel is None or channel.guild == self.guild
-        config = await self.get_config('logging')
-        config = config or proto.LoggingConfig()
+        config = await self.config.get('logging')
         if channel is None:
             config.ClearField('modlog_channel_id')
         else:
             config.modlog_channel_id = channel.id
-        await self.set_config('logging', config)
+        await self.config.set('logging', config)

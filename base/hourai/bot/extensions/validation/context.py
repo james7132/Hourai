@@ -17,7 +17,7 @@ class ValidationContext():
 
         self.bot = bot
         self.member = member
-        self.guild_proxy = self.bot.create_guild_proxy(self.guild)
+        self.guild_proxy = self.bot.get_guild_proxy(self.guild)
         self.guild_config = guild_config
         self.role = None
         if guild_config.role_id:

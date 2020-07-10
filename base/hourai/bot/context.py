@@ -26,7 +26,7 @@ class HouraiContext(commands.Context):
         super().__init__(**attrs)
         self.session = self.bot.create_storage_session()
         # TODO(james7132): Make this lazy
-        self.guild_proxy = self.bot.create_guild_proxy(self.guild)
+        self.guild_proxy = self.bot.get_guild_proxy(self.guild)
 
     async def __aenter__(self) -> HouraiContext:
         self.session.__enter__()

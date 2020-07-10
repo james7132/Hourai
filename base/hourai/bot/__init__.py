@@ -105,7 +105,7 @@ class Hourai(commands.AutoShardedBot):
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)
 
-        self.guild_states = collections.defaultdict(state.GuildState)
+        self.guild_proxies = {}
 
         # Counters
         self.bot_counters = collections.defaultdict(collections.Counter)
@@ -180,6 +180,15 @@ class Hourai(commands.AutoShardedBot):
             return
         await self.process_commands(message)
 
+    async def on_guild_available(self, guild):
+        self.guild_proxies[guild.id] = proxies.GuildProxy(self, guild)
+
+    async def on_guild_remove(self, guild):
+        try:
+            del self.guild_proxies[guild.id]
+        except KeyError:
+            pass
+
     async def get_prefix(self, message):
         if isinstance(message, fake.FakeMessage):
             return ''
@@ -237,15 +246,13 @@ class Hourai(commands.AutoShardedBot):
         if err_msg:
             await ctx.send(err_msg)
 
-    def create_guild_proxy(self, guild):
-        if guild is None:
-            return None
-        return proxies.GuildProxy(self, guild)
+    def get_guild_proxy(self, guild):
+        return self.guild_proxies.get(guild.id)
 
     def get_guild_config(self, guild, target_config):
         if guild is None:
             return None
-        return self.create_guild_proxy(guild).get_config(target_config)
+        return self.get_guild_proxy(guild).config.get(target_config)
 
     def load_extension(self, module):
         try:

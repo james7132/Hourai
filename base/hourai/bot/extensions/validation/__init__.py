@@ -169,7 +169,7 @@ class Validation(cogs.BaseCog):
         check_time = datetime.utcnow()
 
         async def _purge_guild(proxy):
-            validation_config = await proxy.get_config('validation')
+            validation_config = await proxy.config.get('validation')
             if (validation_config is None or
                 not validation_config.enabled or
                 not validation_config.HasField(
@@ -179,7 +179,7 @@ class Validation(cogs.BaseCog):
                 seconds=validation_config.kick_unvalidated_users_after)
             await self.purge_guild(proxy, check_time - lookback, dry_run=False)
 
-        guild_proxies = [self.bot.create_guild_proxy(guild)
+        guild_proxies = [self.bot.get_guild_proxy(guild)
                          for guild in self.bot.guilds]
         await asyncio.gather(*[_purge_guild(proxy) for proxy in guild_proxies])
 
@@ -296,9 +296,7 @@ class Validation(cogs.BaseCog):
         ~validation lockdown 1h
         ~validation lockdown 1d
         """
-        expiration = datetime.utcnow() + time
-        guild_state = ctx.bot.guild_states[ctx.guild.id]
-        guild_state.set_lockdown(True, expiration=expiration)
+        ctx.guild_proxy.set_lockdown(True, expiration=datetime.utcnow() + time)
         await ctx.send(
             f'Lockdown enabled. Will be automatically lifted at {expiration}')
 
@@ -313,8 +311,7 @@ class Validation(cogs.BaseCog):
         Example Usage:
         ~validation lockdown lift
         """
-        guild_state = ctx.bot.guild_states[ctx.guild.id]
-        guild_state.set_lockdown(False)
+        ctx.guild_proxy.set_lockdown(False)
         await ctx.send('Lockdown disabled.')
 
     @validation.command(name='verify')
@@ -463,9 +460,9 @@ class Validation(cogs.BaseCog):
             await func(guild, user, target)
 
     async def approve_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.create_guild_proxy(guild)
+        proxy = self.bot.get_guild_proxy(guild)
         modlog = await proxy.get_modlog()
-        config = await proxy.get_config('validation')
+        config = await proxy.config.get('validation')
         ctx = ValidationContext(self.bot, target, config)
         try:
             await self.verify_member(ctx)
@@ -478,7 +475,7 @@ class Validation(cogs.BaseCog):
                 f'{APPROVE_REACTION} Attempted')
 
     async def kick_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.create_guild_proxy(guild)
+        proxy = self.bot.get_guild_proxy(guild)
         modlog = await proxy.get_modlog()
         try:
             await target.kick(reason=(f'Failed verification.'
@@ -493,7 +490,7 @@ class Validation(cogs.BaseCog):
                 f'. Bot does not have **Kick Members** permission.')
 
     async def ban_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.create_guild_proxy(guild)
+        proxy = self.bot.get_guild_proxy(guild)
         modlog = await proxy.get_modlog()
         try:
             await target.ban(reason=(f'Failed verification.'
@@ -518,7 +515,7 @@ class Validation(cogs.BaseCog):
         members = await asyncio.gather(
                 *[utils.get_member_async(guild, user.id)
                   for guild in self.bot.guilds])
-        guild_proxies = [self.bot.create_guild_proxy(guild)
+        guild_proxies = [self.bot.get_guild_proxy(guild)
                          for member in members if member is not None]
 
         contents = None

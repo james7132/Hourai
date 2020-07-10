@@ -31,8 +31,8 @@ class Setup(cogs.BaseCog):
             await asyncio.gather(*tasks)
 
     async def __setup_modlog(self, session, guild):
-        proxy = self.bot.create_guild_proxy(guild)
-        config = await proxy.get_config('logging')
+        proxy = self.bot.get_guild_proxy(guild)
+        config = await proxy.config.get('logging')
 
         # Only configure this if it isn't set
         if config is not None and config.HasField('modlog_channel_id'):

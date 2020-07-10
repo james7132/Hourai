@@ -228,7 +228,6 @@ class LockdownRejector(Validator):
     __slots__ = ()
 
     async def validate_member(self, ctx):
-        guild_state = ctx.bot.guild_states[ctx.guild.id]
-        if guild_state.is_locked_down:
+        if ctx.guild_proxy.is_locked_down:
             ctx.add_rejection_reason(
                 'Lockdown enabled. All new joins must be manually verified.')
