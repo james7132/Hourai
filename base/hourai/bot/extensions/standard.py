@@ -5,9 +5,10 @@ import re
 import typing
 import collections
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from hourai import utils
 from hourai.bot import cogs
+from hourai.db import proto
 from hourai.utils import embed, format
 from discord.ext import commands
 
@@ -94,6 +95,33 @@ class Standard(cogs.BaseCog):
             await ctx.send(f'I choose {format.simple_code(choice)}!')
         except IndexError:
             await ctx.send("There's nothing to choose from!")
+
+    @commands.command()
+    async def remindme(self, ctx, time: utils.human_timedelta, reminder: str):
+        """Schedules a reminder for the future. The bot will send a direct
+        message to remind you at the approriate time.
+
+        To avoid abuse, can only schedule events up to 1 year into the future.
+
+        Examples:
+            ~remindme 30m Mow the lawn!
+            ~remindme 6h Poke Bob about dinner.
+            ~remindme 90d Send mom Mother's Day gift.
+        """
+        if time > timedelta(years=1):
+            await ctx.send(
+                "Cannot schedule reminders more than 1 year in advance!",
+                delete_after=90)
+
+        action = proto.Action()
+        action.user_id = ctx.author.id
+        action.direct_message.content = f"Reminder: {reminder}"
+
+        scheduled_time = datetime.utcnow() + time
+        ctx.bot.action_manager.schedule(scheduled_time, action)
+        await ctx.send(
+            f"You will be reminded via direct message at {scheduled_time}.",
+            delete_after=90)
 
     @commands.command()
     @commands.guild_only()
