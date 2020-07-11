@@ -104,18 +104,35 @@ class InviteCache:
         self._cache = {}
 
     async def fetch(self) -> dict:
-        """Fetches the remote state of all invites in the guild"""
-        if self.guild.me.guild_permissions.manage_guild:
-            invites = await self.guild.invites()
-            return {inv.code: inv for inv in invites}
-        else:
+        """Fetches the remote state of all invites in the guild. This includes
+        the vanity invite, if available.
+        """
+        if not self.guild.me.guild_permissions.manage_guild:
             return {}
+        invites = await self.guild.invites()
+        if "VANITY_URL" in self.guild.features:
+            invites.append(await self.guild.vanity_invite())
+        return {inv.code: inv for inv in invites}
+
+    def diff(self, updated: dict) -> list:
+        """Diffs the internal state of the cache and pulls out the differing
+        elements.
+        """
+        keys = set(self._cache.keys()) & set(updated.keys())
+        return [updated[k] for k in keys
+                if self._cache[k].uses != updated[k].uses]
+
+    def update(self, values: dict) -> None:
+        """Updates the cache with a dict of values."""
+        self._cache = values
 
     async def refresh(self) -> None:
         """Fetches the remote state of all invites in the guild and updates the
-        cache with the results
+        cache with the results.
+
+        Shorthand for update(await fetch()).
         """
-        self._cache = await self.fetch()
+        self.update(await self.fetch())
 
     def add(self, invite: discord.Invite) -> None:
         """Adds a new invite to the cache."""

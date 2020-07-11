@@ -180,9 +180,6 @@ class Hourai(commands.AutoShardedBot):
             return
         await self.process_commands(message)
 
-    async def on_guild_available(self, guild):
-        self.guild_proxies[guild.id] = proxies.GuildProxy(self, guild)
-
     async def on_guild_remove(self, guild):
         try:
             del self.guild_proxies[guild.id]
@@ -247,7 +244,12 @@ class Hourai(commands.AutoShardedBot):
             await ctx.send(err_msg)
 
     def get_guild_proxy(self, guild):
-        return self.guild_proxies.get(guild.id)
+        try:
+            return self.guild_proxies[guild.id]
+        except KeyError:
+            if isinstance(guild, discord.Guild):
+                self.guild_proxies[guild.id] = proxies.GuildProxy(self, guild)
+            return self.guild_proxies.get(guild.id)
 
     def get_guild_config(self, guild, target_config):
         if guild is None:
