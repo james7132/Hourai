@@ -89,6 +89,7 @@ def __configure_logging(conf):
 
 def __make_configuration_template():
     return {
+        "description": "",
         "command_prefix": "",
 
         "database": "",
