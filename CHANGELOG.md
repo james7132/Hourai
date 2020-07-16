@@ -10,6 +10,7 @@ here: https://discord.gg/UydKWHX.
 
  * [General] Added a `~remindme` command to allow users to set up reminders for
    themselves up to 1 year into the future.
+ * [General] Added a `~tag` command for saving and retrieving snippets of text.
  * [Moderation] `~ban` and other moderation commands now support adding a reason
    to the ban. Regardless of whether a reason is provided , the bot will log who
    used the command as a part of the reasn.

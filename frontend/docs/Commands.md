@@ -27,6 +27,9 @@ user must have the specified Discord permissions.
 users. If no user is provided, it shows the caller's avatar instead.|
 |`~whois <User>`|None|Provides detailed information about a user.|
 |`~serverinfo`|None|Provides detailed information about the current server.|
+|`~tag <tag>`|None|Fetches a tag, a snippet of saved text.|
+|`~tag set <tag> <response>`|Moderator|Sets a tag.|
+|`~tag list`|None|Lists all of the tags in the server.|
 
 ## Moderation Commands
 

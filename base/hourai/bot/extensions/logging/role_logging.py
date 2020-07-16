@@ -35,10 +35,6 @@ class RoleLogging(cogs.BaseCog):
         await self.log_guild_roles(guild)
 
     @commands.Cog.listener()
-    async def on_guild_remove(self, guild):
-        self.clear_guild(guild)
-
-    @commands.Cog.listener()
     async def on_guild_role_delete(self, role):
         self.clear_role(role)
 
@@ -102,11 +98,6 @@ class RoleLogging(cogs.BaseCog):
             WHERE guild_id = {role.guild.id}
             """)
             self._clear_empty(session)
-
-    def clear_guild(self, guild):
-        with self.bot.create_storage_session() as session:
-            session.query(models.MemberRoles).filter_by(guild_id=guild.id) \
-                   .delete()
 
     def create_member_roles(self, member):
         return models.MemberRoles(
