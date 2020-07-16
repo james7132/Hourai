@@ -65,6 +65,14 @@ class PendingAction(Base):
     data = Column(Protobuf(proto.Action), nullable=False)
 
 
+class Tag(Base):
+    __tablename__ = 'tags'
+
+    guild_id = Column(types.Integer, primary_key=True, autoincrement=False)
+    tag = Column(types.String(2000), primary_key=True)
+    response = Column(types.String(2000), nullable=False)
+
+
 class EscalationEntry(Base):
     __tablename__ = 'escalation_histories'
 

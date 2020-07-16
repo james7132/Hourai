@@ -36,8 +36,8 @@ class Setup(cogs.BaseCog):
             await asyncio.gather(*tasks)
 
     async def __setup_modlog(self, session, guild):
-        proxy = self.bot.create_guild_proxy(guild)
-        config = await proxy.get_config('logging')
+        proxy = self.bot.get_guild_proxy(guild)
+        config = await proxy.config.get('logging')
 
         # Only configure this if it isn't set
         if config is not None and config.HasField('modlog_channel_id'):
@@ -74,11 +74,24 @@ class Teardown(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         with self.bot.create_storage_session() as session:
-            tasks = [
-                # Clear guild configs since they avtively use RAM in Redis.
+            await asyncio.gather(
                 session.guild_configs.clear(guild.id),
-            ]
-            await asyncio.gather(*tasks)
+                self.__clear_sql(session, guild)
+            )
+
+    async def __clear_sql(self, guild):
+        tables = (models.MemberRoles, models.Tag, models.PendingDeescalation,
+                  models.Channel, model.Alias)
+        queries = (session.query(table).filter_by(guild_id=guild.id)
+                   for table in tables)
+
+        for query in queries:
+            try:
+                query.delete()
+            except Exception as error:
+                # TODO(james7132) Handle the error
+                self.bot.dispatch('log_error', 'SQL Cleanup', error)
+        session.commit()
 
 def setup(bot):
     bot.add_cog(Setup(bot))

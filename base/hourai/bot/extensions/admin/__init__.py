@@ -37,6 +37,11 @@ def create_action(member):
     return proto.Action(user_id=member.id, guild_id=member.guild.id)
 
 
+def create_reason(ctx, action, reason):
+    reason_prefix = f"{action} by {ctx.author}"
+    return f"{reason_prefix} for: {reason}" if reason else reason_prefix
+
+
 class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
     def __init__(self, bot):
@@ -79,59 +84,78 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx, *members: discord.Member):
+    async def kick(self, ctx, members: commands.Greedy[discord.Member],
+                   *, reason: str = None):
         """Kicks all specified users.
+
+        An optional reason can be specified, which will be logged to the audit
+        log.
 
         Examples:
           ~kick @bob
+          ~kick @bob Spam
           ~kick @bob Alice#1234 208460178863947776
 
         Requires Kick Members (User and Bot)
         """
-        await self._admin_action(ctx, members, lambda m: m.kick())
+        reason = create_reason(ctx, "Kicked", reason)
+        await self._admin_action(ctx, members, lambda m: m.kick(reason=reason))
 
     @commands.command(name="ban")
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, *members: typing.Union[discord.Member, int]):
+    async def ban(self, ctx,
+                  members: commands.Greedy[typing.Union[discord.Member, int]],
+                  *, reason: str = None):
         """Bans all specified users from the server.
 
-        Can be used with user IDs to ban users outside the server.
+        Can be used with user ID(s) to ban users outside the server. An optional
+        reason can be specified, which will be logged to the audit log.
 
         Examples:
           ~ban @bob
+          ~ban @bob Raiding.
           ~ban @bob Alice#1234 208460178863947776
+          ~ban @bob Alice#1234 208460178863947776 Targetted harassment.
 
         Requires Ban Members (User and Bot)
         """
+        reason = create_reason(ctx, "Banned", reason)
+
         def _to_user(member):
             if isinstance(member, int):
                 return fake.FakeSnowflake(id=member)
             return member
 
         def ban_member(m):
-            return ctx.guild.ban(m, delete_message_days=0)
-        members = (_to_user(mem) for mem in members)
-        await self._admin_action(ctx, members, ban_member)
+            return ctx.guild.ban(m, delete_message_days=0, reason=reason)
+
+        await self._admin_action(ctx, (_to_user(mem) for mem in members),
+                                 ban_member)
 
     @commands.command(name="softban")
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def softban(self, ctx, *members: discord.Member):
+    async def softban(self, ctx, members: commands.Greedy[discord.Member],
+                      *, reason: str = None):
         """Bans then unbans all specified users from the server.
 
         Deletes the last 7 days of messages from the softbanned users.
+        An optional reason can be specified, which will be logged to the audit
+        log.
 
         Examples:
           ~softban @bob
+          ~softban @bob Raiding.
           ~softban @bob Alice#1234 208460178863947776
 
         Requires Kick Members (User), Ban Members (Bot)
         """
+        reason = create_reason(ctx, "Softbanned", reason)
         async def _softban(member):
-            await member.ban(delete_message_days=7)
+            await member.ban(delete_message_days=7, reason=reason)
             await member.guild.unban(member)
         await self._admin_action(ctx, members, _softban)
 
@@ -139,22 +163,30 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def mute(self, ctx, *members: discord.Member):
+    async def mute(self, ctx, members: commands.Greedy[discord.Member],
+                   *, reason: str = None):
         """Server mutes all specified users.
+
+        An optional reason can be specified, which will be logged to the audit
+        log.
 
         Examples:
           ~mute @bob
+          ~mute @bob Screaming in voice chat.
           ~mute @bob Alice#1234 208460178863947776
 
         Requires Mute Members (User and Bot)
         """
-        await self._admin_action(ctx, members, lambda m: m.edit(mute=True))
+        reason = create_reason(ctx, "Muted", reason)
+        await self._admin_action(ctx, members,
+                lambda m: m.edit(mute=True, reason=reason))
 
     @commands.command(name="unmute")
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def unmute(self, ctx, *members: discord.Member):
+    async def unmute(self, ctx, members: commands.Greedy[discord.Member],
+                     *, reason: str = None):
         """Server unmutes all specified users.
 
         Examples:
@@ -163,29 +195,42 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Mute Members (User and Bot)
         """
-        await self._admin_action(ctx, members, lambda m: m.edit(mute=False))
+        reason = create_reason(ctx, "Muted", reason)
+        await self._admin_action(ctx, members,
+                lambda m: m.edit(mute=False, reason=reason))
 
     @commands.command(name="deafen")
     @commands.guild_only()
     @commands.has_permissions(deafen_members=True)
     @commands.bot_has_permissions(deafen_members=True)
-    async def deafen(self, ctx, *members: discord.Member):
+    async def deafen(self, ctx, members: commands.Greedy[discord.Member],
+                     *, reason: str = None):
         """Deafens all specified users.
+
+        An optional reason can be specified, which will be logged to the audit
+        log.
 
         Examples:
           ~deafen @bob
+          ~deafen @bob Screaming in voice chat.
           ~deafen @bob Alice#1234 208460178863947776
 
         Requires Deafen Members (User and Bot)
         """
-        await self._admin_action(ctx, members, lambda m: m.edit(deafen=True))
+        reason = create_reason(ctx, "Deafened", reason)
+        await self._admin_action(ctx, members,
+                lambda m: m.edit(deafen=True, reason=reason))
 
     @commands.command(name="undeafen")
     @commands.guild_only()
     @commands.has_permissions(deafen_members=True)
     @commands.bot_has_permissions(deafen_members=True)
-    async def undeafen(self, ctx, *members: discord.Member):
+    async def undeafen(self, ctx, members: commands.Greedy[discord.Member],
+                       *, reason: str = None):
         """Server undeafens all specified users.
+
+        An optional reason can be specified, which will be logged to the audit
+        log.
 
         Examples:
           ~undeafen @bob
@@ -193,8 +238,9 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Deafen Members (User and Bot)
         """
+        reason = create_reason(ctx, "Undeafened", reason)
         await self._admin_action(ctx, members,
-                                 lambda m: m.edit(deafen=False))
+                                 lambda m: m.edit(deafen=False, reason=reason))
 
     @commands.command(name="move")
     @commands.guild_only()

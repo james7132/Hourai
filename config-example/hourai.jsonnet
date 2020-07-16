@@ -1,6 +1,7 @@
 local env(suffix) = {
+  description: "The world's most advanced security and moderation bot for Discord.",
   command_prefix: "~",
-  activity: "https://hourai.gg",
+  activity: "Use ~help, https://hourai.gg",
   list_directory: "/opt/lists",
 
   local databases = {
