@@ -68,7 +68,7 @@ class PendingAction(Base):
 class Tag(Base):
     __tablename__ = 'tags'
 
-    guild_id = Column(types.Integer, primary_key=True, autoincrement=False)
+    guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
     tag = Column(types.String(2000), primary_key=True)
     response = Column(types.String(2000), nullable=False)
 

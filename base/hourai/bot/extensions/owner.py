@@ -69,9 +69,7 @@ class Owner(cogs.BaseCog):
         async def broadcast_msg(guild):
             modlog = await ctx.bot.get_guild_proxy(guild).get_modlog()
             await modlog.send(content=guild.owner.mention +
-                              '. **Announcement:**\n' + message,
-                              allowed_mentions=discord.AllowedMentions(
-                                  users=[guild.owner]))
+                              '. **Announcement:**\n' + message)
 
         await asyncio.gather(*[
             broadcast_msg(guild) for guild in ctx.bot.guilds])
@@ -209,7 +207,7 @@ class Owner(cogs.BaseCog):
         output = []
         latencies = dict(ctx.bot.latencies)
         columns = ('Shard', 'Guilds', 'Total Members', 'Loaded Members',
-                   'Channels', 'Roles', 'Music', 'Messages', 'Latency')
+                   'Music', 'Messages', 'Latency')
         shard_stats = {shard_id: Owner.get_shard_stats(ctx, shard_id)
                        for shard_id in latencies.keys()}
         table = texttable.Texttable()
@@ -237,8 +235,6 @@ class Owner(cogs.BaseCog):
             counters['Guilds'] += 1
             counters['Total Members'] += guild.member_count
             counters['Loaded Members'] += len(guild.members)
-            counters['Roles'] += len(guild.roles)
-            counters['Channels'] += len(guild.channels)
             counters['Messages'] += guild_counts[CounterKeys.MESSAGES_RECIEVED]
             if any(guild.me in vc.members for vc in guild.voice_channels):
                 counters['Music'] += 1

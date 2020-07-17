@@ -90,17 +90,17 @@ class Hourai(commands.AutoShardedBot):
         except KeyError:
             raise ValueError(
                 '"config" must be specified when initialzing Hourai.')
-        # kwargs.setdefault('help_command', HouraiHelpCommand())
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
 
         defaults = {
             'description': self.config.description,
             'command_prefix': self.config.command_prefix,
             'activity': discord.Game(self.config.activity),
+            'help_command': HouraiHelpCommand(),
             'fetch_offline_members': False,
             'allowed_mentions':
-                  discord.AllowedMentions(everyone=False, users=False,
-                                               roles=False)
+                  discord.AllowedMentions(everyone=False, users=True,
+                                          roles=False)
         }
         for key, value, in defaults.items():
             kwargs.setdefault(key,value)
@@ -290,22 +290,18 @@ class HouraiHelpCommand(commands.DefaultHelpCommand):
         bot = self.context.bot
         command_name = self.clean_prefix + self.invoked_with
 
-        response = f"""
-        **{bot.user.name}**
-        {bot.description}
-
-        For a full list of available commands, please see +
-        <https://docs.hourai.gg/Commands>.
-        For more detailed usage information on any command, use `{command_name}+
-         <command>`.
-
-        {bot.user.name} is a bot focused on automating security and moderation +
-        with extensive configuration options. Most of the advanced features are +
-        directly accessible via commands. Please see the full documentation +
-        at <https://docs.hourai.gg/>.
-
-        If you find the bot useful, please vote for the bot:
-        <https://top.gg/bot/{bot.user.id}>
-        """.replace("+\n", "")
+        response = (
+            f"**{bot.user.name}**\n"
+            f"{bot.description}\n"
+            f"For a full list of available commands, please see "
+            f"<https://docs.hourai.gg/Commands>.\n"
+            f"For more detailed usage information on any command, use "
+            f"`{command_name} <command>`.\n\n"
+            f"{bot.user.name} is a bot focused on automating security and "
+            f"moderation with extensive configuration options. Most of the "
+            f"advanced features are not directly accessible via commands. "
+            f"Please see the full documentation at <https://docs.hourai.gg/>."
+            f"\n\n If you find this bot useful, please vote for the bot: "
+            f"<https://top.gg/bot/{bot.user.id}>")
 
         await self.context.send(response)

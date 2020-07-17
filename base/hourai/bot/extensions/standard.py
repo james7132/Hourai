@@ -109,7 +109,7 @@ class Standard(cogs.BaseCog):
             ~remindme 6h Poke Bob about dinner.
             ~remindme 90d Send mom Mother's Day gift.
         """
-        if time > timedelta(years=1):
+        if time > timedelta(days=365):
             await ctx.send(
                 "Cannot schedule reminders more than 1 year in advance!",
                 delete_after=90)
@@ -201,7 +201,7 @@ class Standard(cogs.BaseCog):
            ~tag set hi
         """
         lower_tag = tag.casefold()
-        query = cts.session.query(models.Tag).filter_by(
+        query = ctx.session.query(models.Tag).filter_by(
                 guild_id=ctx.guild.id, tag=lower_tag)
 
         if not response:
@@ -223,11 +223,11 @@ class Standard(cogs.BaseCog):
 
     @tag.command(name="list")
     @commands.guild_only()
-    async def tag_list(self, ctx, tag: str, *, response: str = None):
+    async def tag_list(self, ctx):
         """Lists all available tags."""
-        db_tags = ctx.session.query(model.Tag.tag) \
+        db_tags = ctx.session.query(models.Tag.tag) \
                              .filter_by(guild_id=ctx.guild.id) \
-                             .order_by(model.Tag.tag) \
+                             .order_by(models.Tag.tag) \
                              .all()
         await ctx.send(
             format.code_list(tag for tag, in db_tags) or
@@ -265,9 +265,7 @@ class Standard(cogs.BaseCog):
         "admin" or have the administrator permission.
         """
         online_mod, mention = utils.mention_random_online_mod(ctx.guild)
-        await ctx.send(mention,
-                allowed_mentions=discord.AllowedMentions(
-                    users=[online_mod]))
+        await ctx.send(mention)
 
     @commands.command()
     async def whois(self, ctx, user: typing.Union[discord.Member,

@@ -157,7 +157,7 @@ class ConfigCache:
 
     async def get(self, name):
         name = name.lower()
-        if name not in self.__cache:
+        if name not in self._cache:
             cache = getattr(self.storage, name + '_configs')
             conf = await cache.get(self.guild.id)
             self._cache[name] = conf or DEFAULT_TYPES[name]()

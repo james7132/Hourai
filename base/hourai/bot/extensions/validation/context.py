@@ -17,7 +17,6 @@ class ValidationContext:
 
         self.bot = bot
         self.member = member
-        self.guild_proxy = self.bot.get_guild_proxy(self.guild)
         self.guild_config = guild_config
         self.role = None
         if guild_config.role_id:
@@ -32,6 +31,10 @@ class ValidationContext:
     @property
     def guild(self):
         return self.member.guild
+
+    @property
+    def guild_proxy(self):
+        return self.bot.get_guild_proxy(self.guild)
 
     @property
     def usernames(self):
@@ -68,7 +71,7 @@ class ValidationContext:
     async def get_join_invite(self):
         if not self.guild.me.guild_permissions.manage_guild:
             return None
-        cache = self.proxy.invites
+        cache = self.guild_proxy.invites
         invites = await cache.fetch()
         diff = cache.diff(invites)
         cache.update(invites)
@@ -104,7 +107,7 @@ class ValidationContext:
         ping_target if specified be prepended to message.
         """
         member = self.member
-        components = []
+        message = []
         if self.approved:
             message.append(f"Verified user: {member.mention} ({member.id}).")
         elif ping_target is not None:
@@ -118,8 +121,9 @@ class ValidationContext:
         if include_invite:
             invite = await self.get_join_invite()
             if invite is not None:
+                inviter = invite.inviter or "vanity URL"
                 message.append(
-                    f"Invited by **{invite.inviter}** using invite "
+                    f"Joined via **{inviter}** using invite "
                     f"**{invite.code}** (**{invite.uses}** uses)")
 
         if len(self.approval_reasons) > 0:
@@ -138,8 +142,4 @@ class ValidationContext:
         async with ctx:
             return await messageable.send(
                 content="\n".join(message),
-                embed= embed.make_whois_embed(ctx, member),
-                allowed_mentions=discord.AllowedMentions(
-                    everyone=False, users=allowed_mentions,
-                    roles=False)
-            )
+                embed= embed.make_whois_embed(ctx, member))

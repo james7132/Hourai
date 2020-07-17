@@ -23,8 +23,7 @@ user must have the specified Discord permissions.
 |`~echo <message>`|None|Repeats a message in chat.|
 |`~choose <choice(s)>`|None|Randomly chooses one of the provided selections.|
 |`~invite`|None|Provides a link to add the bot to any server.|
-|`~avatar <user(s)>`|None|Provides a link to the avatar image for all provided
-users. If no user is provided, it shows the caller's avatar instead.|
+|`~avatar <user(s)>`|None|Provides a link to the avatar image for all provided users. If no user is provided, it shows the caller's avatar instead.|
 |`~whois <User>`|None|Provides detailed information about a user.|
 |`~serverinfo`|None|Provides detailed information about the current server.|
 |`~tag <tag>`|None|Fetches a tag, a snippet of saved text.|
@@ -39,38 +38,25 @@ be written into the audit log when provided.
 |Command|Permissions|Description|
 |:------|:----------|:----------|
 |`~kick <user(s)> <reason>`|Kick Members|Kicks all provided users from the serverr.|
-|`~ban <user(s)> <reason>`|Ban Members|Bans all provided users from the server.
-Can be used with user IDs to ban users outside of the server.|
-|`~softban <user(s)> <reason>`|Kick Members (User), Ban Members (Bot)|Bans then
-unbans a user from the server, deleteing the last 7 days of messages from them
+|`~ban <user(s)> <reason>`|Ban Members|Bans all provided users from the server.  Can be used with user IDs to ban users outside of the server.|
+|`~softban <user(s)> <reason>`|Kick Members (User), Ban Members (Bot)|Bans then unbans a user from the server, deleteing the last 7 days of messages from them
 without leaving a lasting ban.|
 |`~mute <user(s)> <reason>`|Mute Members|Server mutes all provided users.|
-|`~unmute <user(s)> <reason>`|Mute Members|Server unmutes all provided users.
+|`~unmute <user(s)> <reason>`|Mute Members|Server unmutes all provided users.|
 |`~deafen <user(s)>`|Deafen Members|Server deafen all provided users.|
 |`~undeafen <user(s)>`|Deafen Members|Server undeafens all provided users.|
-|`~move <src> <dst>`|Move Members|Moves all users from one voice channel to
-another.|
-|`~nickname <nickname> <user(s)>`|Manage Nicknames|Changes the nicknames of all
-provided users to a specified name. Must be shorter than 32 characters.|
+|`~move <src> <dst>`|Move Members|Moves all users from one voice channel to another.|
+|`~nickname <nickname> <user(s)>`|Manage Nicknames|Changes the nicknames of all provided users to a specified name. Must be shorter than 32 characters.|
 |`~role add <role> <user(s)>`|Manage Roles|Adds a role to all provided users.|
-|`~role remove <role> <user(s)>`|Manage Roles|Removes a role to all provided
-users.|
-|`~temp ban <time> <user(s)>`|Ban Members|Temporarily bans a user from the
-server. The bot will automatically undo it when time is up.|
-|`~temp mute <time> <user(s)>`|Mute Members|Temporarily mutes all provided
-users. The bot will automatically undo it when time is up.|
-|`~temp unmute <time> <user(s)>`|Mute Members| Temporarily unmutes all provided
-users. The bot will automatically undo it when time is up.|
-|`~temp deafen <time> <user(s)>`|Deafen Members|Temporarily deafens all provided
-users. The bot will automatically undo it when time is up.|
-|`~temp undeafen <time> <user(s)>`|Deafen Members|Temporarily undeafens all
-users. The bot will automatically undo it when time is up.|
-|`~temp role add <time> <role> <user(s)>`|Deafen Members|Temporarily adds a role
-to all provided users. The bot will automatically undo it when time is up.|
-|`~temp role remove <time> <role> <user(s)>`|Deafen Members|Temporarily removes
-a role to all provided users. The bot will automatically undo it when time is up.|
-|`~escalate <reason> <user(s)>`|Escalate Members|Escalates all provided user in
-accordance with the server's confiugred escalation ladder.|
+|`~role remove <role> <user(s)>`|Manage Roles|Removes a role to all provided users.|
+|`~temp ban <time> <user(s)>`|Ban Members|Temporarily bans a user from the server. The bot will automatically undo it when time is up.|
+|`~temp mute <time> <user(s)>`|Mute Members|Temporarily mutes all provided users. The bot will automatically undo it when time is up.|
+|`~temp unmute <time> <user(s)>`|Mute Members| Temporarily unmutes all provided users. The bot will automatically undo it when time is up.|
+|`~temp deafen <time> <user(s)>`|Deafen Members|Temporarily deafens all provided users. The bot will automatically undo it when time is up.|
+|`~temp undeafen <time> <user(s)>`|Deafen Members|Temporarily undeafens all users. The bot will automatically undo it when time is up.|
+|`~temp role add <time> <role> <user(s)>`|Deafen Members|Temporarily adds a role to all provided users. The bot will automatically undo it when time is up.|
+|`~temp role remove <time> <role> <user(s)>`|Deafen Members|Temporarily removes a role to all provided users. The bot will automatically undo it when time is up.|
+|`~escalate <reason> <user(s)>`|Escalate Members|Escalates all provided user in accordance with the server's confiugred escalation ladder.|
 |`~escalate history <user>`|None|Shows the escalation history for a given user.|
 
 ## Logging Commands
@@ -80,10 +66,8 @@ these options will be configurable from the control panel.
 
 |Command|Permissions|Description|
 |:------|:----------|:----------|
-|`~setmodlog <channel>`|Manage Guild (User)|Sets the server's modlog to the
-specified channel.|
-|`~log deleted`|Manage Guild (User)|Toggles whehter deleted messages are logged
-to the server's modlog.|
+|`~setmodlog <channel>`|Manage Guild (User)|Sets the server's modlog to the specified channel.|
+|`~log deleted`|Manage Guild (User)|Toggles whehter deleted messages are logged to the server's modlog.|
 
 ## Feed Commands
 
@@ -102,14 +86,10 @@ All of the commands in this module require the following permissions:
 
 |Command|Permissions|Description|
 |:------|:----------|:----------|
-|`~announce join`|Manage Guild (User)|Starts/stops the bot from announcing users
-joining the server in the current channel.|
-|`~announce leave`|Manage Guild (User)| Starts/stops the bot from announcing
-users leaving from the server in the current channel.|
-|`~announce ban`|Manage Guild (User)|Starts/stops the bot from announcing bans
-from the server in the current channel.|
-|`~announce voice`|Manage Guild (User)|Starts/stops the bot from announcing
-joining/leaving/moving users within voice channels in the current channel.|
+|`~announce join`|Manage Guild (User)|Starts/stops the bot from announcing users joining the server in the current channel.|
+|`~announce leave`|Manage Guild (User)| Starts/stops the bot from announcing users leaving from the server in the current channel.|
+|`~announce ban`|Manage Guild (User)|Starts/stops the bot from announcing bans from the server in the current channel.|
+|`~announce voice`|Manage Guild (User)|Starts/stops the bot from announcing joining/leaving/moving users within voice channels in the current channel.|
 
 ## Music Commands
 
@@ -118,38 +98,16 @@ these commands can only be used in that channel.
 
 |Command|Permissions|Description|
 |:------|:----------|:----------|
-|`~play <query|url>`|None|Adds a piece of music to the music queue. Must be used
-while in a voice channel. If music isn't already playing, the bot will join
-your voice channel and start playing.
-
-Supports links from the following services:
-
- - YouTube
- - SoundCloud
- - Bandcamp
- - Shoutcast
- - Direct File links (\*.mp3, \*.wav, etc)
-
-Can also be used by DJs to continue playback if the bot is paused.|
-|`~nowplaying`|None|Displays a live updating UI with information about the
-currently playing song.|
-|`~queue`|None|Displays a live updating UI with information about the songs
-currently in the queue.|
-|`~skip`|None|Casts a vote to skip the current song. Over 50% of the current
-users in the voice channel must vote to skip before the song is skipped.
-
-If called by the user who requested the song, it will always skip regardless of
-how many votes there are.|
+|`~play <query|url>`|None|Adds a piece of music to the music queue.|
+|`~nowplaying`|None|Displays a live updating UI with information about the currently playing song.|
+|`~queue`|None|Displays a live updating UI with information about the songs currently in the queue.|
+|`~skip`|None|Casts a vote to skip the current song. Over 50% of the current users in the voice channel must vote to skip before the song is skipped.|
 
 ## DJ Commands
 
 |Command|Permissions|Description|
 |:------|:----------|:----------|
 |`~pause`|DJs|Pauses playback from the bot. Use `~play` to resume playback.|
-|`~volume <vol>`|DJs|Changes the volume of the playback. Accepted range is 0
-to 150. If called without a volume value (i.e. `~volume`), it will respond with
-the current volume setting.|
-|`~forceskip`|DJs|Forcibly skipss the currently playing song, regardless of how
-many votes to skip have been cast.|
-|`~stop`|DJs|Stop playing music, clears the queue, and has the bot leave the
-voice channel.|
+|`~volume <vol>`|DJs|Changes the volume of the playback. Range is 0-150.|
+|`~forceskip`|DJs|Forcibly skipss the currently playing song, regardless of how many votes to skip have been cast.|
+|`~stop`|DJs|Stop playing music, clears the queue, and has the bot leave the voice channel.|
