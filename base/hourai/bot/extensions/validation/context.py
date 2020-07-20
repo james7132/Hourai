@@ -10,14 +10,13 @@ log = logging.getLogger('hourai.validation')
 Username = collections.namedtuple('Username', 'name discriminator timestamp')
 
 
-class ValidationContext():
+class ValidationContext:
 
     def __init__(self, bot, member, guild_config):
         assert member is not None
 
         self.bot = bot
         self.member = member
-        self.guild_proxy = self.bot.create_guild_proxy(self.guild)
         self.guild_config = guild_config
         self.role = None
         if guild_config.role_id:
@@ -32,6 +31,10 @@ class ValidationContext():
     @property
     def guild(self):
         return self.member.guild
+
+    @property
+    def guild_proxy(self):
+        return self.bot.get_guild_proxy(self.guild)
 
     @property
     def usernames(self):
@@ -65,6 +68,17 @@ class ValidationContext():
             self.rejection_reasons.append(reason)
         self.approved = False
 
+    async def get_join_invite(self):
+        if not self.guild.me.guild_permissions.manage_guild:
+            return None
+        cache = self.guild_proxy.invites
+        invites = await cache.fetch()
+        diff = cache.diff(invites)
+        cache.update(invites)
+        if len(diff) != 1:
+            return None
+        return diff[0]
+
     async def apply_role(self):
         if self.approved and self.role and self.role not in self.member.roles:
             await self.member.add_roles(self.role)
@@ -86,38 +100,46 @@ class ValidationContext():
             modlog, ping_target=mention, allowed_mentions=[online_mod])
 
     async def send_log_message(self, messageable, ping_target=None,
-                               allowed_mentions=False):
+                               allowed_mentions=False, include_invite=True):
         """Sends verification log to a given messagable target.
 
         messageable must be an appropriate discord.abc.Messageable object.
         ping_target if specified be prepended to message.
         """
         member = self.member
+        message = []
         if self.approved:
-            message = f"Verified user: {member.mention} ({member.id})."
+            message.append(f"Verified user: {member.mention} ({member.id}).")
         elif ping_target is not None:
-            message = (f"{ping_target}. "
-                       f"User {member.mention} ({member.id}) requires manual "
-                       f"verification.")
+            message.append(f"{ping_target}. "
+                           f"User {member.mention} ({member.id}) requires "
+                           f"manual verification.")
         else:
-            message = (f"User {member.mention} ({member.id}) requires manual "
-                       f"verification.")
+            message.append(f"User {member.mention} ({member.id}) requires "
+                           f"manual verification.")
+
+        if include_invite:
+            invite = await self.get_join_invite()
+            if invite is not None:
+                inviter = invite.inviter or "vanity URL"
+                message.append(
+                    f"Joined via **{inviter}** using invite "
+                    f"**{invite.code}** (**{invite.uses}** uses)")
 
         if len(self.approval_reasons) > 0:
-            message += ("\nApproved for the following reasons: \n"
-                        f"```\n{format.bullet_list(self.approval_reasons)}\n"
-                        f"```")
+            message += [
+                "Approved for the following reasons:",
+                f"```{format.bullet_list(self.approval_reasons)}```"
+            ]
         if len(self.rejection_reasons) > 0:
-            message += (f"\nRejected for the following reasons: \n"
-                        f"```\n{format.bullet_list(self.rejection_reasons)}\n"
-                        f"```")
+            message += [
+                "Rejected for the following reasons:",
+                f"```{format.bullet_list(self.rejection_reasons)}```"
+            ]
+
 
         ctx = await self.bot.get_automated_context(content='', author=member)
         async with ctx:
             return await messageable.send(
-                content=message,
-                embed= embed.make_whois_embed(ctx, member),
-                allowed_mentions=discord.AllowedMentions(
-                    everyone=False, users=allowed_mentions,
-                    roles=False)
-            )
+                content="\n".join(message),
+                embed= embed.make_whois_embed(ctx, member))

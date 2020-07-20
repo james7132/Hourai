@@ -90,22 +90,26 @@ class Hourai(commands.AutoShardedBot):
         except KeyError:
             raise ValueError(
                 '"config" must be specified when initialzing Hourai.')
-        # kwargs.setdefault('help_command', HouraiHelpCommand())
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
 
-        kwargs.setdefault('command_prefix', self.config.command_prefix)
-        kwargs.setdefault('activity',
-                          discord.Game(self.config.activity))
-        kwargs.setdefault('fetch_offline_members', False)
-        kwargs.setdefault('allowed_mentions',
-                          discord.AllowedMentions(everyone=False, users=False,
-                                                       roles=False))
+        defaults = {
+            'description': self.config.description,
+            'command_prefix': self.config.command_prefix,
+            'activity': discord.Game(self.config.activity),
+            'help_command': HouraiHelpCommand(),
+            'fetch_offline_members': False,
+            'allowed_mentions':
+                  discord.AllowedMentions(everyone=False, users=True,
+                                          roles=False)
+        }
+        for key, value, in defaults.items():
+            kwargs.setdefault(key,value)
 
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)
 
-        self.guild_states = collections.defaultdict(state.GuildState)
+        self.guild_proxies = {}
 
         # Counters
         self.bot_counters = collections.defaultdict(collections.Counter)
@@ -180,6 +184,12 @@ class Hourai(commands.AutoShardedBot):
             return
         await self.process_commands(message)
 
+    async def on_guild_remove(self, guild):
+        try:
+            del self.guild_proxies[guild.id]
+        except KeyError:
+            pass
+
     async def get_prefix(self, message):
         if isinstance(message, fake.FakeMessage):
             return ''
@@ -237,15 +247,18 @@ class Hourai(commands.AutoShardedBot):
         if err_msg:
             await ctx.send(err_msg)
 
-    def create_guild_proxy(self, guild):
-        if guild is None:
-            return None
-        return proxies.GuildProxy(self, guild)
+    def get_guild_proxy(self, guild):
+        try:
+            return self.guild_proxies[guild.id]
+        except KeyError:
+            if isinstance(guild, discord.Guild):
+                self.guild_proxies[guild.id] = proxies.GuildProxy(self, guild)
+            return self.guild_proxies.get(guild.id)
 
     def get_guild_config(self, guild, target_config):
         if guild is None:
             return None
-        return self.create_guild_proxy(guild).get_config(target_config)
+        return self.get_guild_proxy(guild).config.get(target_config)
 
     def load_extension(self, module):
         try:
@@ -274,32 +287,21 @@ class Hourai(commands.AutoShardedBot):
 class HouraiHelpCommand(commands.DefaultHelpCommand):
 
     async def send_bot_help(self, mapping):
-        ctx = self.context
-        bot = ctx.bot
-
-        if bot.description:
-            # <description> portion
-            self.paginator.add_line(bot.description, empty=True)
-
-        self.paginator.add_line('')
-        self.paginator.add_line('Available modules:')
-
-        no_category = '\u200b{0.no_category}:'.format(self)
-
-        def get_category(command, *, no_category=no_category):
-            cog = command.cog
-            return cog.qualified_name + ':' if cog is not None else no_category
-        filtered = await self.filter_commands(bot.commands, sort=True,
-                                              key=get_category)
-        to_iterate = itertools.groupby(filtered, key=get_category)
-
-        for category, _ in to_iterate:
-            self.paginator.add_line(' ' * 3 + category)
-
+        bot = self.context.bot
         command_name = self.clean_prefix + self.invoked_with
-        note = (f"Type {command_name} module for more info on a module.\nYou"
-                f" can also type {command_name} category for more info on a "
-                f"category.")
-        self.paginator.add_line()
-        self.paginator.add_line(note)
-        await self.send_pages()
+
+        response = (
+            f"**{bot.user.name}**\n"
+            f"{bot.description}\n"
+            f"For a full list of available commands, please see "
+            f"<https://docs.hourai.gg/Commands>.\n"
+            f"For more detailed usage information on any command, use "
+            f"`{command_name} <command>`.\n\n"
+            f"{bot.user.name} is a bot focused on automating security and "
+            f"moderation with extensive configuration options. Most of the "
+            f"advanced features are not directly accessible via commands. "
+            f"Please see the full documentation at <https://docs.hourai.gg/>."
+            f"\n\n If you find this bot useful, please vote for the bot: "
+            f"<https://top.gg/bot/{bot.user.id}>")
+
+        await self.context.send(response)

@@ -151,37 +151,20 @@ class Validation(cogs.BaseCog):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        # self.purge_unverified.start()
-
-    def cog_unload(self):
-        # self.purge_unverified.cancel()
-        pass
 
     @commands.Cog.listener()
-    async def on_member_ban(self, guild, user):
-        if guild.member_count >= MINIMUM_GUILD_SIZE:
-            # TODO(james7132): Enable this after adding deduplication.
-            # await self.report_bans(ban)
-            pass
+    async def on_guild_available(self, guild):
+        if not guild.me.guild_permissions.manage_guild:
+            return
+        await self.bot.get_guild_proxy(guild).invites.refresh()
 
-    @tasks.loop(seconds=5.0)
-    async def purge_unverified(self):
-        check_time = datetime.utcnow()
+    @commands.Cog.listener()
+    async def on_invite_create(self, invite):
+        self.bot.get_guild_proxy(invite.guild).invites.add(invite)
 
-        async def _purge_guild(proxy):
-            validation_config = await proxy.get_config('validation')
-            if (validation_config is None or
-                not validation_config.enabled or
-                not validation_config.HasField(
-                    'kick_unvalidated_users_after')):
-                return
-            lookback = timedelta(
-                seconds=validation_config.kick_unvalidated_users_after)
-            await self.purge_guild(proxy, check_time - lookback, dry_run=False)
-
-        guild_proxies = [self.bot.create_guild_proxy(guild)
-                         for guild in self.bot.guilds]
-        await asyncio.gather(*[_purge_guild(proxy) for proxy in guild_proxies])
+    @commands.Cog.listener()
+    async def on_invite_delete(self, invite):
+        self.bot.get_guild_proxy(invite.guild).invites.remove(invite)
 
     async def purge_guild(self, proxy, cutoff_time, dry_run=True):
         guild = proxy.guild
@@ -225,10 +208,6 @@ class Validation(cogs.BaseCog):
             await asyncio.gather(*tasks)
 
         return count
-
-    @purge_unverified.before_loop
-    async def before_purge_unverified(self):
-        await self.bot.wait_until_ready()
 
     @commands.command(name="setmodlog")
     @checks.is_moderator()
@@ -296,9 +275,7 @@ class Validation(cogs.BaseCog):
         ~validation lockdown 1h
         ~validation lockdown 1d
         """
-        expiration = datetime.utcnow() + time
-        guild_state = ctx.bot.guild_states[ctx.guild.id]
-        guild_state.set_lockdown(True, expiration=expiration)
+        ctx.guild_proxy.set_lockdown(True, expiration=datetime.utcnow() + time)
         await ctx.send(
             f'Lockdown enabled. Will be automatically lifted at {expiration}')
 
@@ -313,8 +290,7 @@ class Validation(cogs.BaseCog):
         Example Usage:
         ~validation lockdown lift
         """
-        guild_state = ctx.bot.guild_states[ctx.guild.id]
-        guild_state.set_lockdown(False)
+        ctx.guild_proxy.set_lockdown(False)
         await ctx.send('Lockdown disabled.')
 
     @validation.command(name='verify')
@@ -336,7 +312,7 @@ class Validation(cogs.BaseCog):
 
         validation_ctx = ValidationContext(ctx.bot, member, config)
         await validation_ctx.validate_member(VALIDATORS)
-        await validation_ctx.send_log_message(ctx)
+        await validation_ctx.send_log_message(ctx, include_invite=False)
 
     @validation.command(name="setup")
     async def validation_setup(self, ctx, role: discord.Role = None):
@@ -463,9 +439,9 @@ class Validation(cogs.BaseCog):
             await func(guild, user, target)
 
     async def approve_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.create_guild_proxy(guild)
+        proxy = self.bot.get_guild_proxy(guild)
         modlog = await proxy.get_modlog()
-        config = await proxy.get_config('validation')
+        config = await proxy.config.get('validation')
         ctx = ValidationContext(self.bot, target, config)
         try:
             await self.verify_member(ctx)
@@ -478,7 +454,7 @@ class Validation(cogs.BaseCog):
                 f'{APPROVE_REACTION} Attempted')
 
     async def kick_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.create_guild_proxy(guild)
+        proxy = self.bot.get_guild_proxy(guild)
         modlog = await proxy.get_modlog()
         try:
             await target.kick(reason=(f'Failed verification.'
@@ -493,7 +469,7 @@ class Validation(cogs.BaseCog):
                 f'. Bot does not have **Kick Members** permission.')
 
     async def ban_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.create_guild_proxy(guild)
+        proxy = self.bot.get_guild_proxy(guild)
         modlog = await proxy.get_modlog()
         try:
             await target.ban(reason=(f'Failed verification.'
@@ -518,7 +494,7 @@ class Validation(cogs.BaseCog):
         members = await asyncio.gather(
                 *[utils.get_member_async(guild, user.id)
                   for guild in self.bot.guilds])
-        guild_proxies = [self.bot.create_guild_proxy(guild)
+        guild_proxies = [self.bot.get_guild_proxy(guild)
                          for member in members if member is not None]
 
         contents = None

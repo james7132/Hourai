@@ -6,6 +6,19 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
+## v1.4.1 (07/16/2020)
+
+ * [General] Added a `~remindme` command to allow users to set up reminders for
+   themselves up to 1 year into the future.
+ * [General] Added a `~tag` command for saving and retrieving snippets of text.
+ * [Moderation] `~ban` and other moderation commands now support adding a reason
+   to the ban. Regardless of whether a reason is provided , the bot will log who
+   used the command as a part of the reason.
+ * [Validation] Validation messages will now include information about which
+   instant invite a user used to join. This will also work with servers with
+   vanity URLs. This is only available when the bot has the `Manage Server`
+   permissions due to Discord API restrictions.
+
 ## v1.4.0 (07/06/2020)
 
  * [Actions] Fixed crash when sending empty direct messages.

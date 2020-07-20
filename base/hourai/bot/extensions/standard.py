@@ -5,11 +5,13 @@ import re
 import typing
 import collections
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
+from discord.ext import commands
 from hourai import utils
 from hourai.bot import cogs
-from hourai.utils import embed, format
-from discord.ext import commands
+from hourai.db import proto, models
+from hourai.utils import embed, format, checks
+from sqlalchemy.orm.exc import NoResultFound
 
 
 DICE_REGEX = re.compile(r"(\d+)d(\d+)(.?)(\d*)")
@@ -96,6 +98,33 @@ class Standard(cogs.BaseCog):
             await ctx.send("There's nothing to choose from!")
 
     @commands.command()
+    async def remindme(self, ctx, time: utils.human_timedelta, reminder: str):
+        """Schedules a reminder for the future. The bot will send a direct
+        message to remind you at the approriate time.
+
+        To avoid abuse, can only schedule events up to 1 year into the future.
+
+        Examples:
+            ~remindme 30m Mow the lawn!
+            ~remindme 6h Poke Bob about dinner.
+            ~remindme 90d Send mom Mother's Day gift.
+        """
+        if time > timedelta(days=365):
+            await ctx.send(
+                "Cannot schedule reminders more than 1 year in advance!",
+                delete_after=90)
+
+        action = proto.Action()
+        action.user_id = ctx.author.id
+        action.direct_message.content = f"Reminder: {reminder}"
+
+        scheduled_time = datetime.utcnow() + time
+        ctx.bot.action_manager.schedule(scheduled_time, action)
+        await ctx.send(
+            f"You will be reminded via direct message at {scheduled_time}.",
+            delete_after=90)
+
+    @commands.command()
     @commands.guild_only()
     async def playing(self, ctx, *, game: str):
         regex = re.compile(game)
@@ -123,6 +152,7 @@ class Standard(cogs.BaseCog):
     @commands.command()
     @commands.guild_only()
     async def serverinfo(self, ctx):
+        """Displays detailed information about the server."""
         guild = ctx.guild
         owner = guild.owner
         msg_embed = discord.Embed(title=f'{guild.name} ({guild.id})',
@@ -142,6 +172,66 @@ class Standard(cogs.BaseCog):
             msg_embed.add_field(name='Features',
                                 value=format.code_list(guild.features))
         await ctx.send(embed=msg_embed)
+
+    @commands.group(invoke_without_command=True)
+    @commands.guild_only()
+    async def tag(self, ctx, *, tag: str):
+        """Allows tagging text for later retreival.
+
+        If used without a subcomand, it will search the tag database for the tag
+        requested.
+        """
+        db_tag = ctx.session.query(models.Tag).get(
+                (ctx.guild.id, tag.casefold()))
+
+        response = db_tag.response if db_tag else f"Tag `{tag}` does not exist."
+        await ctx.send(response)
+
+    @tag.command(name="set")
+    @commands.guild_only()
+    @checks.is_moderator()
+    async def tag_set(self, ctx, tag: str, *, response: str = None):
+        """Sets a tag.
+
+        If the tag doesn't exist, a tag for the name will be created.
+        If the tag exists, it'll be updated:
+           ~tag set hi Hello World!
+
+        If the response is empty, the tag will be deleted.
+           ~tag set hi
+        """
+        lower_tag = tag.casefold()
+        query = ctx.session.query(models.Tag).filter_by(
+                guild_id=ctx.guild.id, tag=lower_tag)
+
+        if not response:
+            query.delete()
+            ctx.session.commit()
+            await ctx.send(f"Tag `{tag}` deleted")
+            return
+
+        try:
+            db_tag = query.one()
+            db_tag.response = response
+        except NoResultFound:
+            db_tag = models.Tag(guild_id=ctx.guild.id, tag=lower_tag,
+                                response=response)
+
+        ctx.session.add(db_tag)
+        ctx.session.commit()
+        await ctx.send(f"Tag `{tag}` set!")
+
+    @tag.command(name="list")
+    @commands.guild_only()
+    async def tag_list(self, ctx):
+        """Lists all available tags."""
+        db_tags = ctx.session.query(models.Tag.tag) \
+                             .filter_by(guild_id=ctx.guild.id) \
+                             .order_by(models.Tag.tag) \
+                             .all()
+        await ctx.send(
+            format.code_list(tag for tag, in db_tags) or
+            "No tags have been set! Use `~tag set` to make some.")
 
     # @commands.command()
     # async def convert(self, ctx, src_unit, dst_unit):
@@ -175,9 +265,7 @@ class Standard(cogs.BaseCog):
         "admin" or have the administrator permission.
         """
         online_mod, mention = utils.mention_random_online_mod(ctx.guild)
-        await ctx.send(mention,
-                allowed_mentions=discord.AllowedMentions(
-                    users=[online_mod]))
+        await ctx.send(mention)
 
     @commands.command()
     async def whois(self, ctx, user: typing.Union[discord.Member,

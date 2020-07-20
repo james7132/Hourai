@@ -117,7 +117,7 @@ class Auto(cogs.BaseCog):
             await self.bot.actions.execute(action)
 
     async def get_events(self, guild, event_type):
-        config = await self.bot.create_guild_proxy(guild).get_config('auto')
+        config = await self.bot.get_guild_config(guild, 'auto')
         if config is None:
             return
         for evt in getattr(config.guild_events, event_type):
