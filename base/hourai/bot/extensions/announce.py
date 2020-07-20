@@ -32,7 +32,7 @@ class Announce(cogs.BaseCog):
         result = None
         def edit_config(conf):
             result = self.__toggle_channel(ctx, announce_config.leaves)
-        await ctx.guild_proxy.config.edit('announce', announce_config)
+        await ctx.guild_proxy.config.edit('announce', edit_config)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Leave messages {suffix}")
 
@@ -41,7 +41,7 @@ class Announce(cogs.BaseCog):
         result = None
         def edit_config(conf):
             result = self.__toggle_channel(ctx, announce_config.bans)
-        await ctx.guild_proxy.config.edit('announce', announce_config)
+        await ctx.guild_proxy.config.edit('announce', edit_config)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Ban messages {suffix}")
 

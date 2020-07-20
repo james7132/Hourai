@@ -72,5 +72,5 @@ class ModLogging(cogs.BaseCog):
         def edit_config(conf):
             conf.log_deleted_messages = not conf.log_deleted_messages
             change = ('enabled' if conf.log_deleted_messages else 'disabled.')
-        await ctx.guild_prxy.config.edit('logging', conf)
+        await ctx.guild_prxy.config.edit('logging', edit_config)
         await success(f'Logging of deleted messages has been {change}')

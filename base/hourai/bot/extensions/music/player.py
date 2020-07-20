@@ -197,7 +197,7 @@ class HouraiMusicPlayer(wavelink.Player):
 
         def set_volume(cfg):
             cfg.volume = volume
-        await self.guild_proxy.edit_config('music', set_volume)
+        await self.guild_proxy.config.edit('music', set_volume)
 
     async def create_queue_message(self, channel):
         return await self.__run_ui(MusicQueueUI, channel)
