@@ -3,7 +3,7 @@ import discord
 import logging
 from discord.ext import commands
 from hourai.bot import cogs
-from hourai.db import proxies
+from hourai.db import proxies, models
 
 
 log = logging.getLogger(__name__)
@@ -76,10 +76,10 @@ class Teardown(cogs.BaseCog):
         with self.bot.create_storage_session() as session:
             await asyncio.gather(
                 session.guild_configs.clear(guild.id),
-                self.__clear_sql(session, guild)
+                self.__clear_sqlsession, (guild)
             )
 
-    async def __clear_sql(self, guild):
+    async def __clear_sql(self, session, guild):
         tables = (models.MemberRoles, models.Tag, models.PendingDeescalation,
                   models.Channel, model.Alias)
         queries = (session.query(table).filter_by(guild_id=guild.id)
