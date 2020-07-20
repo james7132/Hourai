@@ -25,49 +25,49 @@ message ActionSet {
   repeated Action action = 1;
 }
 
+enum StatusType {
+  APPLY = 1;
+  UNAPPLY = 2;
+  TOGGLE  = 3;
+}
+
 message KickMember {
 }
 
 message BanMember {
   enum Type {
+    // Bans a user from the server.
     BAN     = 1;
+    // Unbans a user from the server.
     UNBAN   = 2;
+    // Bans then immediately unbans the user from the server. Useful for deleting
+    // the user's messages via bans.
     SOFTBAN = 3;
   }
-  // Optional: if set to true, the user will immediately be unbanned following
+  // Required: if set to true, the user will immediately be unbanned following
   // the ban.
   optional Type type = 2 [default = BAN];
+
+  // Optional: If set, the ban will delete the last X days of messages from the
+  // user in the server.
+  optional uint32 delete_message_days = 3 [default = 0];
+
   reserved 1;
 }
 
 message ChangeRole {
-  enum Type {
-    ADD     = 1;
-    REMOVE  = 2;
-    TOGGLE  = 3;
-  }
   // Required: the direction and change that was applied.
-  optional Type type = 1;
+  optional StatusType type = 1;
   // Required: the roles used by the action.
   repeated uint64 role_ids = 2;
 }
 
 message MuteMember {
-  enum Type {
-    MUTE    = 1;
-    UNMUTE  = 2;
-    TOGGLE  = 3;
-  }
-  optional Type type = 1;
+  optional StatusType type = 1;
 }
 
 message DeafenMember {
-  enum Type {
-    DEAFEN   = 1;
-    UNDEAFEN = 2;
-    TOGGLE   = 3;
-  }
-  optional Type type = 1;
+  optional StatusType type = 1;
 }
 
 message EscalateMember {
