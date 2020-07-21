@@ -210,7 +210,7 @@ class BannedUsernameRejector(Validator):
                     ban_reason = ban_reasons.get(banned_username.user_id)
                     reason = f"Exact username match with banned user: " + \
                              f"{banned_username.name} " \
-                             f"({banned_username.id})."
+                             f"({banned_username.user_id})."
                     if ban_reason is not None:
                         reason += f" Ban Reason: {ban_reason}"
                     ctx.add_rejection_reason(reason)
