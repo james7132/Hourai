@@ -81,7 +81,13 @@ class ValidationContext:
 
     async def apply_role(self):
         if self.approved and self.role and self.role not in self.member.roles:
-            await self.member.add_roles(self.role)
+            try:
+                await self.member.add_roles(self.role)
+            except discord.Forbidden:
+                modlog = await self.guild_proxy.get_modlog()
+                await modlog.send(
+                    f'Verified {self.member.mention}, but bot is missing '
+                    f' permissions to give them the role')
 
     async def validate_member(self, validators):
         for validator in validators:

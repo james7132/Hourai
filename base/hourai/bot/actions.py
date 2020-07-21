@@ -114,8 +114,8 @@ class ActionExecutor:
         member = await self.__get_member(action)
         if member is not None:
             mute = {
-                proto.MuteMenber.MUTE: True,
-                proto.MuteMenber.UNMUTE: False,
+                proto.StatusType.APPLY: True,
+                proto.StatusType.UNAPPLY: False,
                 # TODO(james7132): Implement this properly
                 proto.MuteMember.TOGGLE: False,
             }[action.mute.type]
@@ -126,10 +126,10 @@ class ActionExecutor:
         member = await self.__get_member(action)
         if member is not None:
             deafen = {
-                proto.DeafenMember.DEAFEN: True,
-                proto.DeafenMember.UNDEAFEN: False,
+                proto.StatusType.APPLY: True,
+                proto.StatusType.UNAPPLY: False,
                 # TODO(james7132): Implement this properly
-                proto.DeafenMember.TOGGLE: False,
+                proto.StatusType.TOGGLE: False,
             }[action.deafen.type]
             await member.edit(deafen=deafen, reason=_get_reason(action))
 
@@ -141,11 +141,11 @@ class ActionExecutor:
         roles = (member.guild.get_role(id)
                  for id in action.change_role.role_ids)
         roles = [r for r in roles if r is not None]
-        if action.change_role.type == proto.ChangeRole.ADD:
+        if action.change_role.type == proto.StatusType.APPLY:
             await member.add_roles(*roles, reason=_get_reason(action))
-        elif action.change_role.type == proto.ChangeRole.REMOVE:
+        elif action.change_role.type == proto.StatusyType.UNAPPLY:
             await member.remove_roles(*roles, reason=_get_reason(action))
-        elif action.change_role.type == proto.ChangeRole.TOGGLE:
+        elif action.change_role.type == proto.StatusType.TOGGLE:
             role_ids = set(member._roles)
             add_roles = [r for r in roles if r.id not in roles_ids]
             rm_roles = [r for r in roles if r.id in roles_ids]

@@ -301,7 +301,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         """
         def make_action(member):
             action = create_action(member)
-            action.change_role.type = proto.ChangeRole.ADD
+            action.change_role.type = proto.StatusType.APPLY
             action.change_role.role_ids.append(role.id)
             action.reason = (f'Role added by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
@@ -328,7 +328,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         """
         def make_action(member):
             action = create_action(member)
-            action.change_role.type = proto.ChangeRole.REMOVE
+            action.change_role.type = proto.StatusType.UNAPPLY
             action.change_role.role_ids.append(role.id)
             action.reason = (f'Role removed by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
@@ -555,7 +555,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         """
         def make_action(member):
             action = create_action(member)
-            action.deafen.type = proto.DeafenMember.DEAFEN
+            action.deafen.type = proto.StatusType.APPLY
             action.duration = int(duration.total_seconds())
             action.reason = (f'Temp deafen by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
@@ -586,7 +586,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         """
         def make_action(member):
             action = create_action(member)
-            action.change_role.type = proto.ChangeRole.ADD
+            action.change_role.type = proto.StatusType.APPLY
             action.change_role.role_ids.append(role.id)
             action.duration = int(duration.total_seconds())
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
@@ -613,7 +613,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         """
         def make_action(member):
             action = create_action(member)
-            action.change_role.type = proto.ChangeRole.REMOVE
+            action.change_role.type = proto.StatusType.UNAPPLY
             action.change_role.role_ids.append(role.id)
             action.duration = int(duration.total_seconds())
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
