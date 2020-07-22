@@ -67,7 +67,7 @@ class UsernameLogging(cogs.BaseCog):
     @commands.is_owner()
     async def refresh(self, ctx):
         async with ctx.typing():
-            async for chunk in iterable.chunk(ctx.bot.users, chunk_size=10):
+            async for chunk in iterable.chunked(ctx.bot.users, chunk_size=10):
                 await asyncio.gather(
                     *[self.log_username_change(user) for user in chunk])
         await ctx.send(':thumbsup:')
