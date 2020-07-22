@@ -1,11 +1,12 @@
 import logging
 from . import util
 from aiohttp import web
-from hourai.db import storage, proto
+from hourai.db import proto
 from hourai.db.storage import GuildPrefix
 from hourai.web import formatters
 
 log = logging.getLogger(__name__)
+
 
 def guild_config_view(storage, field, model_type, formatter,
                       validator=None):
@@ -15,35 +16,29 @@ def guild_config_view(storage, field, model_type, formatter,
 
         @property
         def guild_id(self):
-            try:
-                return int(self.request.match_info["guild_id"])
-            except:
-                raise web.HTTPBadRequest("Cannot parse guild id.")
+            return int(self.request.match_info["guild_id"])
 
         async def get(self):
             # TODO(james7132): Remove this
             return web.Response(status=403)
-            log.info(str(formatter))
-            guild_id = self.guild_id
             try:
                 model = await cache.get(self.guild_id)
                 if model is None:
                     raise web.HTTPForbidden()
                 return formatter(200).format_response(model)
-            except:
+            except Exception:
                 log.exception('Error:')
                 raise web.HTTPInternalServerError()
 
         async def post(self):
             # TODO(james7132): Remove this
             return web.Response(status=403)
-            guild_id = self.guild_id
             model = util.protobuf_json_request(self.request, model_type)
             try:
                 # TODO(james7132): Run validation
-                await cache.set(guild_id, model)
+                await cache.set(self.guild_id, model)
                 return web.Response(status=200)
-            except:
+            except Exception:
                 log.exception('Error:')
                 raise web.HTTPInternalServerError()
 

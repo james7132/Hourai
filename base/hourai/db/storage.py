@@ -30,6 +30,7 @@ class StoragePrefix(enum.Enum):
     # Cached bans. Ephemeral data that have expirations assigned to them.
     BANS = 2
 
+
 class GuildPrefix(enum.Enum):
     """ Guild config prefixes. Used as prefixes or full keys in the hash
     underneath the guild key. All use the StoragePrefix.GUILD_CONFIGS as a
@@ -139,18 +140,6 @@ class Storage:
                                  key_coder=key_coder,
                                  value_coder=value_coder)
             setattr(self, conf.attr, cache)
-
-            # if conf.prefix == StoragePrefix.GUILD_CONFIGS:
-                # mapping.append(caches.AggregateProtoHashCache.Entry(
-                    # field=_prefixize(conf.subprefix),
-                    # field_name=conf.attr.replace('_configs', ''),
-                    # value_coder=value_coder))
-
-        # self.guild_configs = caches.AggregateProtoHashCache(
-            # self.redis, proto.GuildConfig,
-            # key_coder=coders.IntCoder().prefixed(
-                # _prefixize(StoragePrefix.GUILD_CONFIGS.value)),
-            # value_coders=mapping)
 
         # TODO(james7132): Uncomment the above once AggregateProtoHashCache
         # supports client side caching

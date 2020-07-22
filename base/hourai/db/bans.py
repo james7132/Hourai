@@ -1,9 +1,6 @@
-import aioredis
-import asyncio
 import collections
 import logging
 import coders
-import time
 from . import proto, models
 from .redis_utils import redis_transaction
 from hourai.utils import iterable
@@ -38,7 +35,7 @@ class BanStorage:
         self._user_key_coder = coders.IntCoder().prefixed(user_prefix)
 
         self._guild_value_coder = coders.ProtobufCoder(proto.BanInfo) \
-                                       .compressed()
+                                        .compressed()
         self._id_coder = coders.IntCoder()
 
     @property
@@ -110,6 +107,7 @@ class BanStorage:
             return []
 
         user_id_enc = self._id_coder.encode(user_id)
+
         def transaction(tr):
             for key in guild_keys:
                 yield tr.hget(key, user_id_enc)

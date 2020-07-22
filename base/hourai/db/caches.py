@@ -141,8 +141,8 @@ class RedisStore(KeyValueStore):
 
     async def set_all(self, mapping):
         """|coro| Sets the values for multiple keys. Is an atomic operation."""
-        await self._batch_do(mapping.items(),
-                lambda tr, entry: tr.set(etnry[0], entry[1]))
+        await self._batch_do(
+                mapping.items(), lambda tr, entry: tr.set(entry[0], entry[1]))
 
     async def clear_all(self, keys):
         """|coro| Deletes the value for a key. Is an atomic operation."""
@@ -168,11 +168,13 @@ class RedisHashStore(RedisStore):
     """
 
     async def get(self, key):
-        """|coro| Gets the value for a key and field. Is an atomic operation."""
+        """|coro| Gets the value for a key and field. Is an atomic operation.
+        """
         return await self.redis.hget(*key)
 
     async def set(self, key, value):
-        """|coro| Sets the value for a key and field. Is an atomic operation."""
+        """|coro| Sets the value for a key and field. Is an atomic operation.
+        """
         if self.timeout <= 0:
             await self.redis.hset(key[0], key[1], value)
             return
@@ -183,7 +185,8 @@ class RedisHashStore(RedisStore):
         await self._transaction(txn_fn)
 
     async def clear(self, key):
-        """|coro| Deletes the value for a key and field. Is an atomic operation.
+        """|coro| Deletes the value for a key and field. Is an atomic
+        operation.
         """
         await self.redis.hdel(key[0], key[1])
 
@@ -283,9 +286,11 @@ class Cache(KeyValueStore):
         encoded_keys = [self.key_coder.encode(key) for key in keys
                         if key not in local_cache]
         results = await self.store.get_all(encoded_keys)
-        ret_val = {self.key_coder.decode(key):
-                   self.value_coder.decode(value) if value is not None else None
-                   for key, value in results.items()}
+        ret_val = {
+            self.key_coder.decode(key):
+            self.value_coder.decode(value) if value is not None else None
+            for key, value in results.items()
+        }
         for key, value in ret_val.items():
             self.local_cache.set(key, value, ttl=self.store.timeout)
         return {**local_cache, **ret_val}

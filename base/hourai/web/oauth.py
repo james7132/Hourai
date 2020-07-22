@@ -1,10 +1,10 @@
 import abc
-import logging
 from aiohttp import web, FormData
 from .utils import client_session
 
 
 routes = web.RouteTableDef()
+
 
 def redirect_uri(request):
     return str(request.url.with_path(str(request.app.router[""].url_for())))
@@ -25,7 +25,8 @@ class ViewBase(web.View):
         handler = self.request.app.get("ON_ERROR")
         if handler is not None:
             return handler(error, self.request)
-        raise web.HTTPInternalServerError(text=f"Unhandled OAuth2 Error: {error}")
+        raise web.HTTPInternalServerError(
+                text=f"Unhandled OAuth2 Error: {error}")
 
     async def handle_success(self, user_data):
         handler = self.request.app.get("ON_LOGIN")
@@ -82,7 +83,7 @@ class RefreshView(ViewBase):
                 "client_secret": self.request.app["CLIENT_SECRET"],
                 "grant_type": "refresh_token",
                 "refresh_token": refresh_token,
-                "redirect_uri":self.request.app["REDIRECT_URI"],
+                "redirect_uri": self.request.app["REDIRECT_URI"],
                 "scope": " ".join(self.request.app["SCOPES"]),
             }.items()))
         }
@@ -131,7 +132,7 @@ class OAuthBuilder(abc.ABC):
         assert "access_token" in data
         assert "refresh_token" in data
         keys = ("access_token", "expires_in", "token_type", "scope")
-        response = web.json_response({k:data.get(k) for k in keys})
+        response = web.json_response({k: data.get(k) for k in keys})
         response.set_cookie(self.COOKIE_NAME, data['refresh_token'],
                             max_age=2592000, secure=True,
                             httponly=True, path='/api')

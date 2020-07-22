@@ -25,7 +25,6 @@ class BinaryProtobufFormatter(ResponseFormatter):
     MIME_TYPE = 'application/x-protobuf; messageType="{}"'
 
     def format_response(self, proto):
-        blob = proto.SerializeToString()
         content_type = self.MIME_TYPE.format(proto.DESCRIPTOR.name)
         return web.Response(body=proto.SerializeToString(),
                             content_type=content_type,

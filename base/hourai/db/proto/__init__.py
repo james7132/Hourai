@@ -7,6 +7,4 @@ from .guild_configs_pb2 import *  # noqa
 
 
 def get_field(msg, field):
-    if msg.HasField(field):
-        return getattr(msg ,field)
-    return None
+    return getattr(msg, field) if msg.HasField(field) else None

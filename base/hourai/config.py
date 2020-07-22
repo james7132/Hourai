@@ -45,7 +45,9 @@ def load_list(config, name):
             logging.info(f'Loaded config list: {name} from {path}')
         except Exception:
             __LOADED_LISTS[name] = tuple()
-            logging.exception(f'Config list could not be loaded from {path}. Using empty list.')
+            logging.exception(
+                    f'Config list could not be loaded from {path}. '
+                    f'Using empty list.')
     return __LOADED_LISTS[name]
 
 

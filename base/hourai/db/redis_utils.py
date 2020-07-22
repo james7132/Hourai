@@ -1,7 +1,5 @@
 import aioredis
 import asyncio
-import collections
-import time
 import logging
 
 

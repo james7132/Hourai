@@ -2,7 +2,6 @@ import pkgutil
 import sys
 import logging
 from aiohttp import web
-from hourai.utils import uvloop
 from hourai.db.storage import Storage
 
 

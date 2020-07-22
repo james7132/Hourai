@@ -77,7 +77,8 @@ class ModlogMessageable():
         return self.__get_modlog_channel().history()
 
     def __get_modlog_channel(self):
-        if self.config is None or not self.config.HasField('modlog_channel_id'):
+        if self.config is None or \
+                not self.config.HasField('modlog_channel_id'):
             return None
         return self.guild.get_channel(self.config.modlog_channel_id)
 
