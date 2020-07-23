@@ -36,6 +36,84 @@ message LoggingConfig {
 
 message ModerationConfig {
   optional EscalationLadder escalation_ladder = 1;
+  optional MessageFilterOptions message_filter  = 2;
+}
+
+message MessageFilterOptions {
+  // Rules are applied in order and only one rule will apply to a given message.
+  // Either the first applicable rule will be applied or none will apply at all.
+  repeated MessageFilterRule rules = 1;
+}
+
+message MessageFilterRule {
+  // Actually required. Criteria for triggering the rule.
+  optional Criteria criteria = 1;
+
+  // If set to true (the default), the message will be deleted.
+  optional bool delete_message = 2  [default = true];
+  // If set to true (the default), a moderator will be notified of the message
+  // via modlog.
+  optional bool notify_moderator = 3 [default = true];
+  // Optional: additional actions to take on the author of the message. Actions
+  // are applied sequentially and will all be applied even if earlier actions are
+  // unsuccessful.
+  repeated Action additional_actions = 3;
+
+  message Criteria {
+    // All of the following criteria are applied conjunctively, meaning all of
+    // them need to be satisfied for the rule to be used.
+
+    // A list of regexes. Triggers if any of them match the message content.
+    repeated string matches = 1;
+
+    // If set to true, triggers if the message content includes anything from a
+    // globally managed list of racial slurs.
+    optional bool includes_racial_slurs = 2;
+
+    // If set, triggers if the message includes a Discord invite link.
+    optional bool includes_invite_links = 3;
+
+    // If set to true, this exempts the user from the rule if the user is a
+    // moderator. Defaults to true.
+    optional bool exclude_moderators = 4 [default = true];
+
+    // If set to true, this exempts the user from the rule if the user is a
+    // bot. Defaults to true.
+    optional bool exclude_bots = 5 [default = true];
+
+    // Channel IDs where the rule does not apply.
+    repeated uint64 excluded_channels = 5;
+
+    // Triggers based on the number of mentions in a given message.
+    optional MentionFilterCriteria mentions = 6;
+
+    // Triggers based on the embeds or attachments in a given message.
+    optional EmbedFilterCriteria mentions = 7;
+  }
+}
+
+
+message MentionFilterCriteria {
+  message MentionLimits {
+    // One of the following must be speciified.
+    //
+    // maximum_total: an upper limit uses the total raw count
+    // maximum_unique: an upper limit that uses the count of unique mentions.
+    optional uint32 maximum_total = 1;
+    optional uint32 maximum_unique = 1;
+  }
+
+  // Limits that apply to any mention, and uses the total number of mentions
+  // across all categories.
+  optional MentionLimits any_mention = 1;
+  optional MentionLimits user_mention = 2;
+  optional MentionLimits role_mention = 2;
+}
+
+message EmbedFilterCriteria {
+  // The maximum number of embeds or attachments that can be included for the
+  // criteria to be met.
+  optional uint32 max_embed_count = 1;
 }
 
 // ------------------------------------------------------------------------------
