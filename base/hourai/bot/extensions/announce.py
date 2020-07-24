@@ -22,7 +22,7 @@ class Announce(cogs.BaseCog):
     async def announce_join(self, ctx):
         result = None
         def edit_config(conf):
-            result = self.__toggle_channel(ctx, announce_config.joins)
+            result = self.__toggle_channel(ctx, conf.joins)
         await ctx.guild_proxy.config.edit('announce', edit_config)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Join messages {suffix}")
@@ -31,7 +31,7 @@ class Announce(cogs.BaseCog):
     async def announce_leave(self, ctx):
         result = None
         def edit_config(conf):
-            result = self.__toggle_channel(ctx, announce_config.leaves)
+            result = self.__toggle_channel(ctx, conf.leaves)
         await ctx.guild_proxy.config.edit('announce', edit_config)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Leave messages {suffix}")
@@ -40,7 +40,7 @@ class Announce(cogs.BaseCog):
     async def announce_ban(self, ctx):
         result = None
         def edit_config(conf):
-            result = self.__toggle_channel(ctx, announce_config.bans)
+            result = self.__toggle_channel(ctx, conf.bans)
         await ctx.guild_proxy.config.edit('announce', edit_config)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Ban messages {suffix}")
