@@ -253,7 +253,7 @@ def invert_action(action: proto.Action) -> proto.Action:
     new_action.ClearField('duration')
 
     try:
-        INVERT_MAPPING[action.WhichOneOf('details')](new_action)
+        INVERT_MAPPING[action.WhichOneof('details')](new_action)
     except KeyError:
         raise ValueError('Provided action cannot be inverted.')
 
