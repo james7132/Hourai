@@ -46,6 +46,9 @@ message MessageFilterOptions {
 }
 
 message MessageFilterRule {
+  // The name of the rule
+  optional string name = 5;
+
   // Actually required. Criteria for triggering the rule.
   optional Criteria criteria = 1;
 
@@ -57,7 +60,7 @@ message MessageFilterRule {
   // Optional: additional actions to take on the author of the message. Actions
   // are applied sequentially and will all be applied even if earlier actions are
   // unsuccessful.
-  repeated Action additional_actions = 3;
+  repeated Action additional_actions = 4;
 
   message Criteria {
     // All of the following criteria are applied conjunctively, meaning all of
@@ -88,7 +91,7 @@ message MessageFilterRule {
     optional MentionFilterCriteria mentions = 6;
 
     // Triggers based on the embeds or attachments in a given message.
-    optional EmbedFilterCriteria mentions = 7;
+    optional EmbedFilterCriteria embeds = 7;
   }
 }
 
@@ -111,8 +114,8 @@ message MentionFilterCriteria {
 }
 
 message EmbedFilterCriteria {
-  // The maximum number of embeds or attachments that can be included for the
-  // criteria to be met.
+  // The maximum number of unique embeds or attachments that can be included for
+  // the criteria to be met.
   optional uint32 max_embed_count = 1;
 }
 

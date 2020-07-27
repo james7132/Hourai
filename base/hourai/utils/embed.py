@@ -19,6 +19,20 @@ def text_to_embed(txt, keep_end=False):
     return embed
 
 
+def message_to_embed(message):
+    if isinstance(message, int):
+        return discord.Embed(
+            title='ID: {}'.format(message),
+            timestamp=datetime.utcnow())
+    embed = discord.Embed(
+        title='ID: {}'.format(message.id),
+        description=message.content,
+        timestamp=datetime.utcnow())
+    embed.set_author(name=f"{message.author} ({message.author.id})",
+                     icon_url=message.author.avatar_url)
+    return embed
+
+
 def traceback_to_embed(keep_end=False):
     text = format.multiline_code(traceback.format_exc())
     return text_to_embed(text, keep_end=keep_end)

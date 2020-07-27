@@ -2,6 +2,7 @@ import asyncio
 import copy
 import discord
 import re
+from .message_filter import MessageFilter
 from discord.ext import commands
 from hourai.bot import cogs
 from hourai.db import proto
@@ -132,3 +133,4 @@ class Auto(cogs.BaseCog):
 
 def setup(bot):
     bot.add_cog(Auto(bot))
+    bot.add_cog(MessageFilter(bot))

@@ -3,6 +3,7 @@ from datetime import datetime
 from discord.ext import commands
 from hourai.bot import cogs
 from hourai.db import proxies, proto
+from hourai.utils import embed as embed_utils
 from hourai.utils import format, success, checks
 
 
@@ -25,21 +26,16 @@ class ModLogging(cogs.BaseCog):
             return
         content = 'Message deleted in <#{}>.'.format(payload.channel_id)
         modlog = await proxy.get_modlog()
-        embed = discord.Embed(
-            title='ID: {}'.format(payload.message_id),
-            color=discord.Colour.dark_red(),
-            timestamp=datetime.utcnow())
         msg = payload.cached_message
-        if msg is None or msg.author.bot:
+        embed = embed_utils.message_to_embed(msg or payload.message_id)
+        embed.color = discord.Color.dark_red()
+        if msg is None:
             await modlog.send(content=content, embed=embed)
+            return
+        elif msg.author.bot:
             return
         content = 'Message by {} deleted in {}.'.format(
             msg.author.mention, msg.channel.mention)
-        author = msg.author
-        embed.description = msg.content
-        embed.set_author(name=(f'{author.name}#{author.discriminator} '
-                               f'{author.id})'),
-                         icon_url=msg.author.avatar_url)
         if len(msg.attachments) > 0:
             attachments = (attach.url for attach in msg.attachments)
             field = format.vertical_list(attachments)

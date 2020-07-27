@@ -62,6 +62,12 @@ class ActionExecutor:
     def __init__(self, bot):
         self.bot = bot
 
+    async def sequentially_execute(self,
+            actions: typing.Iterable[proto.Action]) -> None:
+        """Executes multiple actions sequentially."""
+        for action in actions:
+            await self.execute(action)
+
     async def execute_all(self, actions: typing.Iterable[proto.Action]) -> None:
         """Executes multiple actions in parallel."""
         return await asyncio.gather(*[self.execute(a) for a in actions])

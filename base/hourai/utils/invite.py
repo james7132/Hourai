@@ -20,6 +20,14 @@ def has_discord_invite(text):
     return __DISCORD_INVITE_REGEX.match(text) is not None
 
 
+def get_discord_invite_codes(text):
+    """Gets all of the Discord invite codes from a string.
+
+    Returns a list of strings of invite codes.
+    """
+    return __DISCORD_INVITE_REGEX.findall(text)
+
+
 async def get_all_discord_invites(bot, text, on_error=None):
     """Fetches all of the Discord invites from a string.
 
@@ -28,7 +36,7 @@ async def get_all_discord_invites(bot, text, on_error=None):
 
     Returns a list `discord.Invite` objects.
     """
-    matches = __DISCORD_INVITE_REGEX.findall(text)
+    matches = get_discord_invite_codes(text)
 
     async def _fetch_invite(invite):
         try:
