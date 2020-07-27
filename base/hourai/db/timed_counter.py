@@ -2,6 +2,7 @@ import time
 import collections
 import typing
 
+
 class TimedCounter:
     """A counter that resets itself a periodically. Not thread-safe."""
     __slots__ = ("_counts", "_resolution", "_last_updated")
@@ -21,8 +22,7 @@ class TimedCounter:
         self.clear_if_expired()
         return self._counts[key]
 
-    def increment(self, key: typing.Any, amt: int = 1) \
-                  -> typing.Union[int, float]:
+    def increment(self, key: typing.Any, amt: int = 1) -> int:
         """Increments a value in the counter."""
         self.clear_if_expired()
         self._counts[key] += amt

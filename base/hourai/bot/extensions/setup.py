@@ -81,7 +81,7 @@ class Teardown(cogs.BaseCog):
 
     async def __clear_sql(self, session, guild):
         tables = (models.MemberRoles, models.Tag, models.PendingDeescalation,
-                  models.Channel, model.Alias)
+                  models.Channel, models.Alias)
         queries = (session.query(table).filter_by(guild_id=guild.id)
                    for table in tables)
 
