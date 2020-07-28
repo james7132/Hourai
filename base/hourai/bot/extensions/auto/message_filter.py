@@ -1,11 +1,33 @@
 import asyncio
 import discord
 import re
+import logging
 from hourai import utils
 from hourai.bot import cogs
 from hourai.db import proto
+from hourai import config as hourai_config
 from hourai.utils import embed as embed_utils
 from hourai.utils import invite, mention
+
+
+def generalize_filter(filter_value):
+    filter_value = re.escape(filter_value)
+
+    def _generalize_character(char):
+        return char + '+' if char.isalnum() else char
+    return ''.join(_generalize_character(char) for char in filter_value)
+
+
+def make_slur_filter():
+    slurs = hourai_config.load_list(hourai_config.get_config(),
+                                    'message_filter_slurs')
+    components = [generalize_filter(s) for s in slurs]
+    regex = "({'|'.join(components)})"
+    logging.info("Slur Filter: {regex}")
+    return re.compile(regex)
+
+
+SLUR_FILTER = make_slur_filter()
 
 
 class MessageFilter(cogs.BaseCog):
@@ -15,7 +37,7 @@ class MessageFilter(cogs.BaseCog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_message(self, message);
+    async def on_message(self, message):
         proxy = self.bot.get_guild_config(message.guild)
         if proxy is None:
             return
@@ -33,14 +55,14 @@ class MessageFilter(cogs.BaseCog):
         action_taken = ""
         mention_mod = False
         reasons_block = "\n```\n{'\n'.join(reasons)}\n```"
-        if rule.mention_moderator
+        if rule.mention_moderator:
             mention_mod = True
             action_taken  = "Bot found notable message."
         if rule.delete_message:
             permissions = message.channel.permissions_for(message.guild.me)
             if permissions.manage_messages:
-                dm = f"[{message.guild.name}] Your message was deleted for "
-                     f"the following reasons: {reasons_block}"
+                dm = (f"[{message.guild.name}] Your message was deleted for "
+                      f"the following reasons: {reasons_block}")
                 async def delete():
                     await message.delete()
                     await message.author.send(dm)
@@ -80,9 +102,14 @@ class MessageFilter(cogs.BaseCog):
         reasons = []
         for regex in criteria.matches:
             if re.search(regex, message.content):
-                reaosns.append("Message contains banned word or phrase.")
+                reasons.append("Message contains banned word or phrase.")
 
-        # TODO(james7132): Add racial slur filter
+        if criteria.includes_slurs:
+            for word in message.content.split():
+                if SLUR_FILTER.match(word):
+                    reasons.append(
+                            f"Message contains recognized racial slur: {word}")
+                    break
 
         if criteria.includes_discord_invite_links:
             if any(invite.get_discord_invite_codes(message.content)):
@@ -93,7 +120,7 @@ class MessageFilter(cogs.BaseCog):
 
         exclude_criteria = (
             # Exclude the owner of the bot and the owner of the server.
-            await self.bot.is_owner(message.author)
+            await self.bot.is_owner(message.author),
             message.guild.owner == message.author,
             # Exclude moderators and bots if configured.
             criteria.exclude_moderators and util.is_moderator(message.author),
@@ -101,7 +128,9 @@ class MessageFilter(cogs.BaseCog):
             # Exclude specific channels when configured.
             message.channel.id in criteria.excluded_channels,
         )
-        return reasons if not any(exclude_criteria) and len(reasons) > 0 else []
+        if any(exclude_criteria):
+            reasons.clear()
+        return reasons
 
     def get_mention_reason(self, message, criteria):
         reasons = []
@@ -109,12 +138,12 @@ class MessageFilter(cogs.BaseCog):
             unqiue_mentions = set(mentions)
             if limits.HasField('maximum_total') and \
                len(mentions) > limits.maximum_total:
-                yield f"Total {name} more than the server limit "
-                      f"({limits.maximum_total})."
+                yield (f"Total {name} more than the server limit "
+                       f"({limits.maximum_total}).")
             if limits.HasField('maximum_unique') and \
                len(mentions) > limits.maximum_unique:
-                yield f"Unique {name} more than the server limit "
-                      f"({limits.maximum_unique})."
+                yield (f"Unique {name} more than the server limit "
+                       f"({limits.maximum_unique}).")
 
         users = mention.get_user_mention_ids(message.content)
         roles = mention.get_role_mention_ids(message.content)
@@ -135,5 +164,6 @@ class MessageFilter(cogs.BaseCog):
         unique_embeds = embed_urls + attachment_urls
         if criteria.HasField('max_embed_count') and \
            len(unique_embeds) > criteria.max_embed_count:
-            yield f"Message has {len(unique_embeds)} embeds or attachments. "
-                  f"More than the server maximum of {criteria.max_embed_count}."
+            yield (f"Message has {len(unique_embeds)} embeds or attachments. "
+                   f"More than the server maximum of "
+                   f"{criteria.max_embed_count}.")

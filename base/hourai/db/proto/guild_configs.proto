@@ -71,8 +71,8 @@ message MessageFilterRule {
     repeated string matches = 1;
 
     // If set to true, triggers if the message content includes anything from a
-    // globally managed list of racial slurs.
-    optional bool includes_racial_slurs = 2;
+    // globally managed list of slurs.
+    optional bool includes_slurs = 2;
 
     // If set, triggers if the message includes a Discord invite link.
     optional bool includes_invite_links = 3;
