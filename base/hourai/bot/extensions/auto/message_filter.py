@@ -2,6 +2,7 @@ import asyncio
 import discord
 import re
 import logging
+from discord.ext import commands
 from hourai import utils
 from hourai.bot import cogs
 from hourai.db import proto
@@ -22,7 +23,7 @@ def make_slur_filter():
     slurs = hourai_config.load_list(hourai_config.get_config(),
                                     'message_filter_slurs')
     components = [generalize_filter(s) for s in slurs]
-    regex = "({'|'.join(components)})"
+    regex = f"({'|'.join(components)})"
     logging.info("Slur Filter: {regex}")
     return re.compile(regex)
 
@@ -46,7 +47,7 @@ class MessageFilter(cogs.BaseCog):
             return
 
         for rule in config.message_filter.rules:
-            reasaons = await self.get_rule_reason(message, rule.criteria)
+            reasons = await self.get_rule_reason(message, rule.criteria)
             if reasons:
                 await self.apply_rule(rule, message, reasons)
 
@@ -71,7 +72,7 @@ class MessageFilter(cogs.BaseCog):
                 mention_mod = True
                 action_taken = (f"Attempted to delete, but don't have "
                                 f"`Manage Messages` in "
-                                f"{messages.channel.mention}.")
+                                f"{message.channel.mention}.")
         if rule.additional_actions:
             actions = []
             for action_template in rule.additional_actions:
@@ -84,13 +85,13 @@ class MessageFilter(cogs.BaseCog):
                 actions.append(action)
             tasks.append(self.bot.action_manaager.sequentially_execute(actions))
 
-        if mention_mod or action:
-            text = action + f"\n\nReason(s):{reasons_block}"
-            if meniton_mod:
+        if mention_mod or action_taken:
+            text = action_taken + f"\n\nReason(s):{reasons_block}"
+            if mention_mod:
                 text = utils.mention_random_online_moderator(message.guild) + \
                        text
             embed = embed_utils.message_to_embed(message)
-            modlog = await proxy.get_modlog()
+            modlog = await self.bot.get_guild_proxy(message.guild).get_modlog()
             tasks.append(modlog.send(content=text, embed=embed))
 
         try:
@@ -123,7 +124,7 @@ class MessageFilter(cogs.BaseCog):
             await self.bot.is_owner(message.author),
             message.guild.owner == message.author,
             # Exclude moderators and bots if configured.
-            criteria.exclude_moderators and util.is_moderator(message.author),
+            criteria.exclude_moderators and utils.is_moderator(message.author),
             criteria.exclude_bots and message.author.bot,
             # Exclude specific channels when configured.
             message.channel.id in criteria.excluded_channels,
@@ -133,30 +134,29 @@ class MessageFilter(cogs.BaseCog):
         return reasons
 
     def get_mention_reason(self, message, criteria):
-        reasons = []
-        def check_counts(name, limits, mentions):
-            unqiue_mentions = set(mentions)
+        def check_counts(name, limits, msg_mentions):
+            unique_mentions = set(msg_mentions)
             if limits.HasField('maximum_total') and \
-               len(mentions) > limits.maximum_total:
+               len(msg_mentions) > limits.maximum_total:
                 yield (f"Total {name} more than the server limit "
                        f"({limits.maximum_total}).")
             if limits.HasField('maximum_unique') and \
-               len(mentions) > limits.maximum_unique:
+               len(unique_mentions) > limits.maximum_unique:
                 yield (f"Unique {name} more than the server limit "
                        f"({limits.maximum_unique}).")
 
-        users = mention.get_user_mention_ids(message.content)
-        roles = mention.get_role_mention_ids(message.content)
+        users = mentions.get_user_mention_ids(message.content)
+        roles = mentions.get_role_mention_ids(message.content)
 
         user_mentions = ["u{id}" for id in users]
         role_mentions = ["r{id}" for id in roles]
         all_mentions = user_mentions + role_mentions
 
-        yield from check_counts("user mentions", limits.role_mention,
+        yield from check_counts("user mentions", criteria.role_mention,
                                 user_mentions)
-        yield from check_counts("role mentions", limits.role_mention,
+        yield from check_counts("role mentions", criteria.role_mention,
                                 role_mentions)
-        yield from check_counts("mentions", limits.role_mention, all_mentions)
+        yield from check_counts("mentions", criteria.any_mention, all_mentions)
 
     def get_embed_reason(self, message, criteria):
         embed_urls = {e.url for e in message.embedsV}

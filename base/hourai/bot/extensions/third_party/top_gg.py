@@ -15,4 +15,4 @@ class TopGG(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_guild_post(self):
-        self.bot.logger.info(f'Server count posted successfully.')
+        self.bot.logger.info('Server count posted successfully.')

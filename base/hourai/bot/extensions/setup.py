@@ -3,7 +3,7 @@ import discord
 import logging
 from discord.ext import commands
 from hourai.bot import cogs
-from hourai.db import proxies, models
+from hourai.db import models
 
 
 log = logging.getLogger(__name__)

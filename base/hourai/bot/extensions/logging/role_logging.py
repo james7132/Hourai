@@ -1,7 +1,4 @@
-import logging
 import discord
-import asyncio
-from sqlalchemy import func
 from discord.ext import commands
 from hourai.bot import cogs
 from hourai.db import models
@@ -107,4 +104,4 @@ class RoleLogging(cogs.BaseCog):
 
     def _clear_empty(self, session):
         session.execute(
-            f"DELETE FROM member_roles WHERE cardinality(role_ids) = 0")
+            "DELETE FROM member_roles WHERE cardinality(role_ids) = 0")

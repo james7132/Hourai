@@ -4,7 +4,7 @@ import collections
 from datetime import datetime
 from hourai import utils
 from hourai.utils import embed, format
-from hourai.db import proxies, models
+from hourai.db import models
 
 log = logging.getLogger('hourai.validation')
 Username = collections.namedtuple('Username', 'name discriminator timestamp')

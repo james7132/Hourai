@@ -233,7 +233,7 @@ class Music(cogs.BaseCog):
             await player.set_pause(False)
             await ctx.send(f'Resumed {format.bold(player.current.name)}.')
         else:
-            await ctx.send(f'Only a DJ can resume a track.')
+            await ctx.send('Only a DJ can resume a track.')
 
     @commands.command()
     @commands.check(check_is_dj)
@@ -282,7 +282,7 @@ class Music(cogs.BaseCog):
             _, track = await player.remove_entry(ctx.author, target - 1)
             await ctx.send(f"Removed **{track.title}** from the queue.")
         except Unauthorized:
-            await ctx.send(f"You didn't request that track!")
+            await ctx.send("You didn't request that track!")
         except IndexError:
             await ctx.send(f"There is no track at place: {target}")
 

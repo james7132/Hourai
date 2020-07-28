@@ -1,6 +1,5 @@
 import asyncio
 from abc import abstractmethod
-from discord.ext import commands
 from hourai.bot import cogs
 
 

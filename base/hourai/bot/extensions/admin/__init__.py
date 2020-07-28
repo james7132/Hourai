@@ -376,7 +376,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             if role.id not in role_ids:
                 role_config.self_serve_role_ids.append(role.id)
         await storage.set(ctx.guild.id, role_config)
-        await ctx.send(f':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="forbid")
     @commands.guild_only()
@@ -417,7 +417,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             if role.id in role_ids:
                 role_config.self_serve_role_ids.remove(role.id)
         await storage.set(ctx.guild.id, role_config)
-        await ctx.send(f':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
 
     @role.command(name="get")
     @commands.guild_only()

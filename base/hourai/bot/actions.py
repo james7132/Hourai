@@ -153,8 +153,8 @@ class ActionExecutor:
             await member.remove_roles(*roles, reason=_get_reason(action))
         elif action.change_role.type == proto.StatusType.TOGGLE:
             role_ids = set(member._roles)
-            add_roles = [r for r in roles if r.id not in roles_ids]
-            rm_roles = [r for r in roles if r.id in roles_ids]
+            add_roles = [r for r in roles if r.id not in role_ids]
+            rm_roles = [r for r in roles if r.id in role_ids]
             await asyncio.gather(
                 member.add_roles(*add_roles, reason=_get_reason(action)),
                 member.remove(*rm_roles, reason=_get_reason(action))
@@ -178,7 +178,7 @@ class ActionExecutor:
             return
         try:
             content = format.ellipsize(action.direct_message.content)
-            await user.send(content=action.direct_message.content)
+            await user.send(content=content)
         except (discord.Forbidden, discord.NotFound):
             # Don't cause a ruckus if the user has the bot blocked
             pass

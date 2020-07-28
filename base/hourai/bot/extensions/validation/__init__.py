@@ -3,13 +3,13 @@ import discord
 import logging
 from . import approvers, rejectors
 from .context import ValidationContext
-from discord.ext import tasks, commands
+from discord.ext import commands
 from datetime import datetime, timedelta
 from hourai import utils
 from hourai import config as hourai_config
 from hourai.bot import cogs
-from hourai.db import proxies, proto
-from hourai.utils import format, checks, iterable
+from hourai.db import proto
+from hourai.utils import checks, iterable
 
 log = logging.getLogger(__name__)
 
@@ -373,7 +373,7 @@ class Validation(cogs.BaseCog):
                 config.kick_unvalidated_users_after = lookback
                 await ctx.bot.storage.validation_configs.set(
                     ctx.guild.id, config)
-                await msg.edit(content=f'Propagation conplete!')
+                await msg.edit(content='Propagation conplete!')
                 return
 
     @commands.Cog.listener()
@@ -495,7 +495,7 @@ class Validation(cogs.BaseCog):
         members = await asyncio.gather(
                 *[utils.get_member_async(guild, user.id)
                   for guild in self.bot.guilds])
-        guild_proxies = [self.bot.get_guild_proxy(guild)
+        guild_proxies = [self.bot.get_guild_proxy(member.guild)
                          for member in members if member is not None]
 
         contents = None

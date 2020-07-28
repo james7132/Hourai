@@ -105,22 +105,20 @@ class DeletedAccountRejector(Validator):
                 "deleted by Discord of their own accord or for Trust and "
                 "Safety reasons, or is faking account deletion.")
 
-        for transform in TRANSFORMS:
-            for username in ctx.usernames:
-                name = transform(username.name)
-                is_deleted = utils.is_deleted_username(username.name)
-                if LOOSE_DELETED_USERNAME_MATCH.match(username.name) and \
-                   not is_deleted:
-                    ctx.add_rejection_reason(
-                        f'"{username.name}" does not match Discord\'s deletion '
-                        f'patterns. User may have attempted to fake account '
-                        f"deletion.")
-                elif is_deleted and username.discriminator is not None and \
-                        username.discriminator < 100:
-                    ctx.add_rejection_reason(
-                        f'"{username.name}#{username.discriminator}" has an '
-                        f'unusual discriminator. These are randomly generated. '
-                        f'User may have attempted to fake account deletion.')
+        for username in ctx.usernames:
+            is_deleted = utils.is_deleted_username(username.name)
+            if LOOSE_DELETED_USERNAME_MATCH.match(username.name) and \
+               not is_deleted:
+                ctx.add_rejection_reason(
+                    f'"{username.name}" does not match Discord\'s deletion '
+                    f'patterns. User may have attempted to fake account '
+                    f"deletion.")
+            elif is_deleted and username.discriminator is not None and \
+                    username.discriminator < 100:
+                ctx.add_rejection_reason(
+                    f'"{username.name}#{username.discriminator}" has an '
+                    f'unusual discriminator. These are randomly generated. '
+                    f'User may have attempted to fake account deletion.')
 
 
 class NoAvatarRejector(Validator):
@@ -208,9 +206,9 @@ class BannedUsernameRejector(Validator):
                     if not normalized in normalized_usernames:
                         continue
                     ban_reason = ban_reasons.get(banned_username.user_id)
-                    reason = f"Exact username match with banned user: " + \
-                             f"{banned_username.name} " \
-                             f"({banned_username.user_id})."
+                    reason = (f"Exact username match with banned user: "
+                              f"{banned_username.name} "
+                              f"({banned_username.user_id}).")
                     if ban_reason is not None:
                         reason += f" Ban Reason: {ban_reason}"
                     ctx.add_rejection_reason(reason)

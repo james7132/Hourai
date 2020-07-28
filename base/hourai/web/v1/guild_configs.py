@@ -56,7 +56,7 @@ SUBFORMATTERS = {
 
 def __make_routes(prefix, view_constructor):
     routes = ((prefix + suffix, view_constructor(formatter))
-               for suffix, formatter in SUBFORMATTERS.items())
+              for suffix, formatter in SUBFORMATTERS.items())
     return [web.view(route, view) for route, view in routes]
 
 
@@ -67,9 +67,9 @@ def add_routes(app, **kwargs):
         return
     route = '/guild/{guild_id:\d+}'
 
-    routes = __make_routes(route,
-            lambda formatter: guild_config_view(storage, 'guild_configs',
-                proto.GuildConfig, formatter))
+    routes = __make_routes(
+            route, lambda formatter: guild_config_view(
+                storage, 'guild_configs', proto.GuildConfig, formatter))
 
     for prefix in GuildPrefix:
         cache_config = prefix.value
@@ -77,7 +77,8 @@ def add_routes(app, **kwargs):
             continue
         field = prefix.name.lower() + "s"
         view_route = f'{route}/{field.replace("_configs", "")}'
-        routes += __make_routes(view_route,
-                lambda formatter: guild_config_view(storage, field,
-                    cache_config.proto_type, formatter))
+        routes += __make_routes(
+                view_route,
+                lambda formatter: guild_config_view(
+                    storage, field, cache_config.proto_type, formatter))
     app.add_routes(routes)

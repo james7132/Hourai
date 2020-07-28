@@ -2,7 +2,6 @@ import asyncio
 import discord
 import random
 from hourai.bot import cogs
-from hourai.db import proto
 from discord.ext import commands
 
 
@@ -20,28 +19,25 @@ class Announce(cogs.BaseCog):
 
     @announce.command(name='join')
     async def announce_join(self, ctx):
-        result = None
-        def edit_config(conf):
-            result = self.__toggle_channel(ctx, conf.joins)
-        await ctx.guild_proxy.config.edit('announce', edit_config)
+        conf = await ctx.guild_proxy.config.edit('announce')
+        result = self.__toggle_channel(ctx, conf.joins)
+        await ctx.guild_proxy.config.set('announce', conf)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Join messages {suffix}")
 
     @announce.command(name='leave')
     async def announce_leave(self, ctx):
-        result = None
-        def edit_config(conf):
-            result = self.__toggle_channel(ctx, conf.leaves)
-        await ctx.guild_proxy.config.edit('announce', edit_config)
+        conf = await ctx.guild_proxy.config.edit('announce')
+        result = self.__toggle_channel(ctx, conf.leaves)
+        await ctx.guild_proxy.config.set('announce', conf)
         suffix = 'enabled' if result else 'disabled'
-        await ctx.send(f":thumbsup: Leave messages {suffix}")
+        await ctx.send(f":thumbsup: Leave  messages {suffix}")
 
     @announce.command(name='ban')
     async def announce_ban(self, ctx):
-        result = None
-        def edit_config(conf):
-            result = self.__toggle_channel(ctx, conf.bans)
-        await ctx.guild_proxy.config.edit('announce', edit_config)
+        conf = await ctx.guild_proxy.config.edit('announce')
+        result = self.__toggle_channel(ctx, conf.bans)
+        await ctx.guild_proxy.config.set('announce', conf)
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Ban messages {suffix}")
 

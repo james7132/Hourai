@@ -2,7 +2,6 @@ import asyncio
 import discord
 from discord.ext import commands, tasks
 from hourai.bot import cogs
-from hourai.db import models
 from hourai.utils import iterable
 
 
@@ -54,5 +53,5 @@ class BanLogging(cogs.BaseCog):
         try:
             await self.bot.storage.bans.save_bans(guild)
         except Exception:
-            log.exception(
+            self.bot.logger.exception(
                 f"Exception while reloading bans for guild {guild.id}:")

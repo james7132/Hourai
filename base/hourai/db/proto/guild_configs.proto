@@ -96,7 +96,6 @@ message MessageFilterRule {
   }
 }
 
-
 message MentionFilterCriteria {
   message MentionLimits {
     // One of the following must be speciified.

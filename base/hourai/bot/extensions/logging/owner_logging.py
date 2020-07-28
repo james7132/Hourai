@@ -1,9 +1,8 @@
 import discord
-import sys
 import traceback
 from discord.ext import commands
 from hourai.bot import cogs
-from hourai.utils import consts, hastebin, format
+from hourai.utils import hastebin, format
 
 
 class OwnerLogging(cogs.BaseCog):

@@ -7,7 +7,6 @@ from .queue import MusicQueue
 from . import utils
 from hourai import utils as hourai_utils
 from hourai.utils import embed
-from hourai.db import proto
 from wavelink.eqs import Equalizer
 
 log = logging.getLogger('hourai.music.player')

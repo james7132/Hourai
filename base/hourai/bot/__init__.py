@@ -4,16 +4,14 @@ import collections
 import discord
 import enum
 import time
-import itertools
 import logging
 import pkgutil
 import sys
-import traceback
 from discord.ext import commands
 from hourai import config, web
 from hourai.db import storage, proxies
-from hourai.utils import fake, format, uvloop
-from . import actions, extensions, state
+from hourai.utils import fake, uvloop
+from . import actions, extensions
 from .context import HouraiContext
 
 log = logging.getLogger(__name__)
@@ -222,7 +220,7 @@ class Hourai(commands.AutoShardedBot):
 
     def add_cog(self, cog):
         super().add_cog(cog)
-        log.info("Cog {} loaded.".format(cog.__class__.__name__))
+        log.info(f"Cog {cog.__class__.__name__} loaded.")
 
     async def on_error(self, event, *args, **kwargs):
         try:

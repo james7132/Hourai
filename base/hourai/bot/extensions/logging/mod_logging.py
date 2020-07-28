@@ -1,8 +1,6 @@
 import discord
-from datetime import datetime
 from discord.ext import commands
 from hourai.bot import cogs
-from hourai.db import proxies, proto
 from hourai.utils import embed as embed_utils
 from hourai.utils import format, success, checks
 
@@ -64,9 +62,8 @@ class ModLogging(cogs.BaseCog):
 
     @log.command(name='deleted')
     async def log_deleted(self, ctx):
-        change = None
-        def edit_config(conf):
-            conf.log_deleted_messages = not conf.log_deleted_messages
-            change = ('enabled' if conf.log_deleted_messages else 'disabled.')
-        await ctx.guild_proxy.config.edit('logging', edit_config)
+        config = await ctx.guild_proxy.config.get('logging')
+        config.log_deleted_messages = not config.log_deleted_messages
+        change = ('enabled' if config.log_deleted_messages else 'disabled.')
+        await ctx.guild_proxy.config.set('logging', config)
         await success(f'Logging of deleted messages has been {change}')
