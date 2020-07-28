@@ -2,6 +2,7 @@ syntax = "proto2";
 
 package hourai.db.proto;
 
+import "hourai/db/proto/action.proto";
 import "hourai/db/proto/auto_config.proto";
 import "hourai/db/proto/escalation.proto";
 import "hourai/db/proto/util.proto";
@@ -47,20 +48,20 @@ message MessageFilterOptions {
 
 message MessageFilterRule {
   // The name of the rule
-  optional string name = 5;
+  optional string name = 1;
 
   // Actually required. Criteria for triggering the rule.
-  optional Criteria criteria = 1;
+  optional Criteria criteria = 2;
 
   // If set to true (the default), the message will be deleted.
-  optional bool delete_message = 2  [default = true];
+  optional bool delete_message = 3 [default = true];
   // If set to true (the default), a moderator will be notified of the message
   // via modlog.
-  optional bool notify_moderator = 3 [default = true];
+  optional bool notify_moderator = 4 [default = true];
   // Optional: additional actions to take on the author of the message. Actions
   // are applied sequentially and will all be applied even if earlier actions are
   // unsuccessful.
-  repeated Action additional_actions = 4;
+  repeated Action additional_actions = 5;
 
   message Criteria {
     // All of the following criteria are applied conjunctively, meaning all of
@@ -85,13 +86,13 @@ message MessageFilterRule {
     optional bool exclude_bots = 5 [default = true];
 
     // Channel IDs where the rule does not apply.
-    repeated uint64 excluded_channels = 5;
+    repeated uint64 excluded_channels = 6;
 
     // Triggers based on the number of mentions in a given message.
-    optional MentionFilterCriteria mentions = 6;
+    optional MentionFilterCriteria mentions = 7;
 
     // Triggers based on the embeds or attachments in a given message.
-    optional EmbedFilterCriteria embeds = 7;
+    optional EmbedFilterCriteria embeds = 8;
   }
 }
 
@@ -103,14 +104,14 @@ message MentionFilterCriteria {
     // maximum_total: an upper limit uses the total raw count
     // maximum_unique: an upper limit that uses the count of unique mentions.
     optional uint32 maximum_total = 1;
-    optional uint32 maximum_unique = 1;
+    optional uint32 maximum_unique = 2;
   }
 
   // Limits that apply to any mention, and uses the total number of mentions
   // across all categories.
   optional MentionLimits any_mention = 1;
   optional MentionLimits user_mention = 2;
-  optional MentionLimits role_mention = 2;
+  optional MentionLimits role_mention = 3;
 }
 
 message EmbedFilterCriteria {
