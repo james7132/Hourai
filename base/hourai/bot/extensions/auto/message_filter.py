@@ -7,7 +7,7 @@ from hourai.bot import cogs
 from hourai.db import proto
 from hourai import config as hourai_config
 from hourai.utils import embed as embed_utils
-from hourai.utils import invite, mention
+from hourai.utils import invite, mentions
 
 
 def generalize_filter(filter_value):
