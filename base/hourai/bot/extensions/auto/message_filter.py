@@ -24,7 +24,7 @@ def make_slur_filter():
                                     'message_filter_slurs')
     components = [generalize_filter(s) for s in slurs]
     regex = f"({'|'.join(components)})"
-    logging.info("Slur Filter: {regex}")
+    logging.info(f"Slur Filter: {regex}")
     return re.compile(regex)
 
 
@@ -39,11 +39,8 @@ class MessageFilter(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        proxy = self.bot.get_guild_config(message.guild)
-        if proxy is None:
-            return
-        config = await proxy.configs.get('moderation')
-        if not config.HasField('message_filter'):
+        config = await self.bot.get_guild_config(message.guild, 'moderation')
+        if config is None or not config.HasField('message_filter'):
             return
 
         for rule in config.message_filter.rules:
@@ -112,7 +109,7 @@ class MessageFilter(cogs.BaseCog):
                             f"Message contains recognized racial slur: {word}")
                     break
 
-        if criteria.includes_discord_invite_links:
+        if criteria.includes_invite_links:
             if any(invite.get_discord_invite_codes(message.content)):
                 reasons.append("Message contains Discord invite link.")
 
