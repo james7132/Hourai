@@ -39,11 +39,8 @@ class MessageFilter(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        proxy = self.bot.get_guild_config(message.guild)
-        if proxy is None:
-            return
-        config = await proxy.configs.get('moderation')
-        if not config.HasField('message_filter'):
+        config = await self.bot.get_guild_config(message.guild, 'moderation')
+        if config is None or not config.HasField('message_filter'):
             return
 
         for rule in config.message_filter.rules:
