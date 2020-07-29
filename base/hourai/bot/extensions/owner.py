@@ -1,4 +1,5 @@
 import asyncio
+
 import collections
 import copy
 import discord
@@ -140,24 +141,34 @@ class Owner(cogs.BaseCog):
         if len(ctx.message.attachments) <= 0:
             await ctx.send('Must provide a config file!')
             return
+
+        guild = ctx.bot.get_guild(guild_id or ctx.guild.id)
+        proxy = ctx.bot.get_guild_proxy(guild)
+        if proxy is None:
+            await ctx.send(f"No such guild found: {guild_id}")
+            return
+
         config = proto.GuildConfig()
         text_format.Merge(await ctx.message.attachments[0].read(), config)
 
-        guild_id = guild_id or ctx.guild.id
-        await ctx.bot.storage.guild_configs.set(guild_id, config)
+        config = await proxy.config.get('guild')
+        await ctx.guild_proxy.config.set('guild', config)
         await ctx.send('Config successfully uploaded.')
 
     @config.command(name="dump")
     async def config_dump(self, ctx, guild_id: typing.Optional[int] = None):
         """Dumps the config for a given server in Protobuf Text Format."""
         # TODO(james7132): Make the operation atomic
-        config = proto.GuildConfig()
+        guild = ctx.bot.get_guild(guild_id or ctx.guild.id)
+        proxy = ctx.bot.get_guild_proxy(guild)
+        if proxy is None:
+            await ctx.send(f"No such guild found: {guild_id}")
+            return
 
-        guild_id = guild_id or ctx.guild.id
-
-        config = await ctx.bot.storage.guild_configs.get(guild_id)
-        output = text_format.MessageToString(config, indent=2)
-        output = await hastebin.post(ctx.bot.http_session, output)
+        config = await proxy.config.get('guild')
+        output = await hastebin.post(
+                ctx.bot.http_session,
+                text_format.MessageToString(config, indent=2))
         await ctx.send(output)
 
     @commands.command()

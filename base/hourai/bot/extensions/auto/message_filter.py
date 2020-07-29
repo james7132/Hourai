@@ -53,14 +53,17 @@ class MessageFilter(cogs.BaseCog):
         action_taken = ""
         mention_mod = False
         reasons_block = "\n```\n{'\n'.join(reasons)}\n```"
-        if rule.mention_moderator:
+        guild = message.guild
+
+        if rule.notify_moderator:
             mention_mod = True
-            action_taken  = "Bot found notable message."
+            action_taken = "Bot found notable message."
         if rule.delete_message:
-            permissions = message.channel.permissions_for(message.guild.me)
+            permissions = message.channel.permissions_for(guild.me)
             if permissions.manage_messages:
-                dm = (f"[{message.guild.name}] Your message was deleted for "
+                dm = (f"[{guild.name}] Your message was deleted for "
                       f"the following reasons: {reasons_block}")
+
                 async def delete():
                     await message.delete()
                     await message.author.send(dm)
@@ -75,20 +78,21 @@ class MessageFilter(cogs.BaseCog):
             for action_template in rule.additional_actions:
                 action = proto.Action()
                 action.CopyFrom(action_template)
-                action.guild_id = message.guild.id
+                action.guild_id = guild.id
                 action.user_id = message.author.id
                 if not action.HasField('reason'):
                     action.reason = f"Triggered message filter: '{rule.name}'"
                 actions.append(action)
-            tasks.append(self.bot.action_manaager.sequentially_execute(actions))
+            tasks.append(
+                    self.bot.action_manaager.sequentially_execute(actions))
 
         if mention_mod or action_taken:
             text = action_taken + f"\n\nReason(s):{reasons_block}"
             if mention_mod:
-                text = utils.mention_random_online_moderator(message.guild) + \
-                       text
+                _, mention_text = utils.mention_random_online_mod(guild)
+                text = mention_text + text
             embed = embed_utils.message_to_embed(message)
-            modlog = await self.bot.get_guild_proxy(message.guild).get_modlog()
+            modlog = await self.bot.get_guild_proxy(guild).get_modlog()
             tasks.append(modlog.send(content=text, embed=embed))
 
         try:
@@ -156,9 +160,9 @@ class MessageFilter(cogs.BaseCog):
         yield from check_counts("mentions", criteria.any_mention, all_mentions)
 
     def get_embed_reason(self, message, criteria):
-        embed_urls = {e.url for e in message.embedsV}
+        embed_urls = {e.url for e in message.embeds}
         attachment_urls = {a.url for a in message.attachments}
-        unique_embeds = embed_urls + attachment_urls
+        unique_embeds = embed_urls | attachment_urls
         if criteria.HasField('max_embed_count') and \
            len(unique_embeds) > criteria.max_embed_count:
             yield (f"Message has {len(unique_embeds)} embeds or attachments. "
