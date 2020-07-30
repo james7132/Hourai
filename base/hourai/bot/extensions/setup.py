@@ -93,6 +93,7 @@ class Teardown(cogs.BaseCog):
                 self.bot.dispatch('log_error', 'SQL Cleanup', error)
         session.commit()
 
+
 def setup(bot):
     bot.add_cog(Setup(bot))
     bot.add_cog(Teardown(bot))
