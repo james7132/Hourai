@@ -34,7 +34,7 @@ async def get_member_async(guild: discord.Guild, user_id: int) \
 
     members = await guild.query_members(limit=1, user_ids=[user_id],
                                         cache=True)
-    if len(members) <= 0:
+    if members is None or len(members) <= 0:
         return None
     return next(iter(member))
 

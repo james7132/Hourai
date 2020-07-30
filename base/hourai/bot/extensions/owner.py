@@ -150,8 +150,6 @@ class Owner(cogs.BaseCog):
 
         config = proto.GuildConfig()
         text_format.Merge(await ctx.message.attachments[0].read(), config)
-
-        config = await proxy.config.get('guild')
         await ctx.guild_proxy.config.set('guild', config)
         await ctx.send('Config successfully uploaded.')
 

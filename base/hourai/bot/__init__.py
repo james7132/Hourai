@@ -248,15 +248,17 @@ class Hourai(commands.AutoShardedBot):
     def get_guild_proxy(self, guild):
         try:
             return self.guild_proxies[guild.id]
+        except AttributeError:
+            return None
         except KeyError:
             if isinstance(guild, discord.Guild):
                 self.guild_proxies[guild.id] = proxies.GuildProxy(self, guild)
             return self.guild_proxies.get(guild.id)
 
-    def get_guild_config(self, guild, target_config):
+    async def get_guild_config(self, guild, target_config):
         if guild is None:
             return None
-        return self.get_guild_proxy(guild).config.get(target_config)
+        return await self.get_guild_proxy(guild).config.get(target_config)
 
     def load_extension(self, module):
         try:

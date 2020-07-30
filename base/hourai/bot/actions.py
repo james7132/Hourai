@@ -168,8 +168,11 @@ class ActionExecutor:
         history = escalation_history.UserEscalationHistory(
                 self.bot, fake.FakeSnowflake(id=action.user_id), guild)
         # TODO(james7132): Log this
+        if action.escalate.amount == 0:
+            return
         await history.apply_diff(guild.me, action.reason,
-                                 action.escalate.amount)
+                                 action.escalate.amount,
+                                 execute=action.escalate.amount > 0)
 
     async def _apply_direct_message(self, action: proto.Action) -> None:
         assert action.WhichOneof('details') == 'direct_message'

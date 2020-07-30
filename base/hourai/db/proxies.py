@@ -111,8 +111,12 @@ class InviteCache:
         if not self.guild.me.guild_permissions.manage_guild:
             return {}
         invites = await self.guild.invites()
-        if "VANITY_URL" in self.guild.features:
-            invites.append(await self.guild.vanity_invite())
+        try:
+            if "VANITY_URL" in self.guild.features:
+                invites.append(await self.guild.vanity_invite())
+        except discord.NotFound:
+            # Sometimes VANITY_URL is set but there is no invite
+            pass
         return {inv.code: inv for inv in invites}
 
     def diff(self, updated: dict) -> list:

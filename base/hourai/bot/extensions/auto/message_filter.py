@@ -8,7 +8,7 @@ from hourai.bot import cogs
 from hourai.db import proto
 from hourai import config as hourai_config
 from hourai.utils import embed as embed_utils
-from hourai.utils import invite, mentions
+from hourai.utils import invite, mentions, format
 
 
 def generalize_filter(filter_value):
@@ -39,8 +39,15 @@ class MessageFilter(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        config = await self.bot.get_guild_config(message.guild, 'moderation')
-        if config is None or not config.HasField('message_filter'):
+        await self.check_message(message)
+
+    @commands.Cog.listener()
+    async def on_raw_messsage_edit(self, payload):
+        await self.check_message(payload)
+
+    async def check_message(self, message):
+        config = await self.get_mod_config(message)
+        if config is None:
             return
 
         for rule in config.message_filter.rules:
@@ -48,25 +55,52 @@ class MessageFilter(cogs.BaseCog):
             if reasons:
                 await self.apply_rule(rule, message, reasons)
 
+    async def get_mod_config(self, message):
+        proxy = self.bot.get_guild_proxy(message.guild)
+        if proxy is None:
+            return None
+
+        if isinstance(message, discord.RawMessageUpdateEvent):
+            try:
+                channel = self.bot.get_channel(message.channel_id)
+                message = await channel.fetch_message(message.message_id)
+            except (AttributeError, discord.NotFound, discord.Forbidden):
+                return
+
+        mod_config = await proxy.config.get('moderation')
+        log_config = await proxy.config.get('logging')
+
+        has_filter = mod_config.HasField('message_filter')
+        is_bot_user = message.author == self.bot.user
+        in_modlog = log_config.modlog_channel_id == message.channel.id
+
+        if has_filter and not (in_modlog and is_bot_user):
+            return mod_config
+        return None
+
     async def apply_rule(self, rule, message, reasons):
         tasks = []
         action_taken = ""
-        mention_mod = False
-        reasons_block = "\n```\n{'\n'.join(reasons)}\n```"
+        mention_mod = rule.notify_moderator
+        reasons_block = f"\n```\n{format.vertical_list(reasons)}\n```"
         guild = message.guild
 
         if rule.notify_moderator:
-            mention_mod = True
-            action_taken = "Bot found notable message."
+            action_taken = "Message filter found notable message:"
         if rule.delete_message:
             permissions = message.channel.permissions_for(guild.me)
             if permissions.manage_messages:
+                if rule.notify_moderator:
+                    action_taken = "Message filter deleted message:"
+
                 dm = (f"[{guild.name}] Your message was deleted for "
                       f"the following reasons: {reasons_block}")
 
                 async def delete():
                     await message.delete()
-                    await message.author.send(dm)
+                    if not message.author.bot and \
+                       message.author != self.bot.user:
+                        await message.author.send(dm)
                 tasks.append(delete())
             else:
                 mention_mod = True
@@ -84,13 +118,13 @@ class MessageFilter(cogs.BaseCog):
                     action.reason = f"Triggered message filter: '{rule.name}'"
                 actions.append(action)
             tasks.append(
-                    self.bot.action_manaager.sequentially_execute(actions))
+                    self.bot.action_manager.sequentially_execute(actions))
 
         if mention_mod or action_taken:
-            text = action_taken + f"\n\nReason(s):{reasons_block}"
+            text = action_taken + reasons_block
             if mention_mod:
                 _, mention_text = utils.mention_random_online_mod(guild)
-                text = mention_text + text
+                text = mention_text + " " + text
             embed = embed_utils.message_to_embed(message)
             modlog = await self.bot.get_guild_proxy(guild).get_modlog()
             tasks.append(modlog.send(content=text, embed=embed))
