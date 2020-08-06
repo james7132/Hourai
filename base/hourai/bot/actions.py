@@ -149,7 +149,7 @@ class ActionExecutor:
         roles = [r for r in roles if r is not None]
         if action.change_role.type == proto.StatusType.APPLY:
             await member.add_roles(*roles, reason=_get_reason(action))
-        elif action.change_role.type == proto.StatusyType.UNAPPLY:
+        elif action.change_role.type == proto.StatusType.UNAPPLY:
             await member.remove_roles(*roles, reason=_get_reason(action))
         elif action.change_role.type == proto.StatusType.TOGGLE:
             role_ids = set(member._roles)
