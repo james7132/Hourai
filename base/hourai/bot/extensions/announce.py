@@ -19,7 +19,7 @@ class Announce(cogs.BaseCog):
 
     @announce.command(name='join')
     async def announce_join(self, ctx):
-        conf = await ctx.guild_proxy.config.edit('announce')
+        conf = await ctx.guild_proxy.config.get('announce')
         result = self.__toggle_channel(ctx, conf.joins)
         await ctx.guild_proxy.config.set('announce', conf)
         suffix = 'enabled' if result else 'disabled'
@@ -27,7 +27,7 @@ class Announce(cogs.BaseCog):
 
     @announce.command(name='leave')
     async def announce_leave(self, ctx):
-        conf = await ctx.guild_proxy.config.edit('announce')
+        conf = await ctx.guild_proxy.config.get('announce')
         result = self.__toggle_channel(ctx, conf.leaves)
         await ctx.guild_proxy.config.set('announce', conf)
         suffix = 'enabled' if result else 'disabled'
@@ -35,7 +35,7 @@ class Announce(cogs.BaseCog):
 
     @announce.command(name='ban')
     async def announce_ban(self, ctx):
-        conf = await ctx.guild_proxy.config.edit('announce')
+        conf = await ctx.guild_proxy.config.get('announce')
         result = self.__toggle_channel(ctx, conf.bans)
         await ctx.guild_proxy.config.set('announce', conf)
         suffix = 'enabled' if result else 'disabled'

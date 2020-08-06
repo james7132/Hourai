@@ -174,12 +174,6 @@ class ConfigCache:
         await cache.set(self.guild.id, cfg)
         self._cache[name] = cfg
 
-    async def edit(self, name, edit_func):
-        assert edit_func is not None
-        conf = await self.get(name)
-        edit_func(conf)
-        await self.set(name, conf)
-
 
 class GuildProxy:
 
