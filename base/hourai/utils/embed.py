@@ -19,14 +19,24 @@ def text_to_embed(txt, keep_end=False):
     return embed
 
 
-def message_to_embed(message):
+def _get_message_link(msg):
+    prefix = str(msg.guild.id) if msg.guild else '@me'
+    return f"https://discordapp.com/{prefix}/{msg.channel.id}/{msg.id}"
+
+
+def message_to_embed(message, include_link=False):
     if isinstance(message, int):
         return discord.Embed(
             title='ID: {}'.format(message),
             timestamp=datetime.utcnow())
+
+    description = message.content
+    if include_link:
+        description += f"\n[link]({_get_message_link(message)})"
+
     embed = discord.Embed(
         title='ID: {}'.format(message.id),
-        description=message.content,
+        description=description,
         timestamp=datetime.utcnow())
     embed.set_author(name=f"{message.author} ({message.author.id})",
                      icon_url=message.author.avatar_url)

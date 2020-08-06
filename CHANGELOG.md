@@ -6,6 +6,26 @@ code and operational changes.
 Questions regarding the bot's use? Join the public development server for Hourai
 here: https://discord.gg/UydKWHX.
 
+### BETA FEATURES
+
+Beta features are highlighted in bold and are not available to the general public
+just yet. These need to be manually enabled and configured by the bot owner(s).
+
+## v1.4.2 (TBD)
+
+ * [Automation] **Beta Feature: Customizable Message Filtering.** Supports
+   automatically removing and/or notifying moderators for potentially
+   problematic messages. Supports customizable criteria and responses, including
+   arbitrary custom actions and integration with the escalation ladder. Example
+   potential rules:
+   * Message contains slurs -> Delete, notify moderator. (Removal of
+     slurs)
+   * Message contains banned keywords -> Delete, notify moderator. (Keyword
+     filter)
+   * Message contains Discord invite -> Delete. (No solicitation rule)
+   * Message mentions more than 25 users -> Delete, notify moderator,
+     escalate user. (Anti-Ping Spam)
+
 ## v1.4.1 (07/16/2020)
 
  * [General] Added a `~remindme` command to allow users to set up reminders for
@@ -91,7 +111,7 @@ here: https://discord.gg/UydKWHX.
    deleted their accounts without actually triggering account deletion).
  * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
    all new joins. Useful during raids.
- * [Escalation] New beta feature: Escalation. A customizable way of codifying
+ * [Modedration] **Beta feature: Escalation.** A customizable way of codifying
    progressive moderation action to reduce moderation mental overhead. Full
    documentaion can be found on [the
    wiki](https://github.com/james7132/Hourai/wiki/Escalation-Ladder). Currently

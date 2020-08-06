@@ -27,9 +27,9 @@ class UserEscalationHistory:
     def __init__(self, bot, user, guild, session=None):
         self.bot = bot
         self.session = session or bot.create_storage_session()
-        self.user = user
-        self.guild = user.guild
-        self.guild_proxy = bot.get_guild_proxy(user.guild)
+        self.user_id = user.id
+        self.guild = guild
+        self.guild_proxy = bot.get_guild_proxy(guild)
 
         self.entries = list(self.__query_history())
 
@@ -120,7 +120,7 @@ class UserEscalationHistory:
     def __schedule_deescalation(self, rung, entry):
         expiration = None
         deesc = self.session.query(models.PendingDeescalation) \
-                            .get((self.user.id, self.guild.id))
+                            .get((self.user_id, self.guild.id))
         # Schedule Deescalation only if it can
         if rung is not None and rung.HasField('deescalation_period'):
             #  This will update existing deescalation entries and add ones that
@@ -129,7 +129,7 @@ class UserEscalationHistory:
                 timedelta(seconds=rung.deescalation_period)
 
             deesc = deesc or models.PendingDeescalation(
-                user_id=self.user.id,
+                user_id=self.user_id,
                 guild_id=self.guild.id
             )
             deesc.amount = -1
@@ -149,7 +149,7 @@ class UserEscalationHistory:
                         'Deescalate')
         return models.EscalationEntry(
             guild_id=self.guild.id,
-            subject_id=self.user.id,
+            subject_id=self.user_id,
             authorizer_id=authorizer.id,
             authorizer_name=authorizer_name,
             display_name=display_name,
@@ -157,13 +157,13 @@ class UserEscalationHistory:
             level_delta=level_delta)
 
     def __setup_action(self, action, reason):
-        action.user_id = self.user.id
+        action.user_id = self.user_id
         action.guild_id = self.guild.id
         action.reason = reason
 
     def __query_history(self):
         return self.session.query(models.EscalationEntry) \
                            .filter_by(guild_id=self.guild.id,
-                                      subject_id=self.user.id) \
+                                      subject_id=self.user_id) \
                            .order_by(models.EscalationEntry.timestamp) \
                            .all()

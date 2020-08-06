@@ -45,7 +45,7 @@ class RoleLogging(cogs.BaseCog):
         members = guild.fetch_members(limit=None)
         async for chunk in iterable.chunked_async(members, chunk_size=1000):
             roles = {member.id: self.create_member_roles(member)
-                     for member in chunk}
+                     for member in chunk if not member.bot}
             with self.bot.create_storage_session() as session:
                 existing = session.query(model) \
                                   .filter_by(guild_id=guild.id) \
@@ -53,7 +53,8 @@ class RoleLogging(cogs.BaseCog):
                                   .all()
 
                 for existing_roles in existing:
-                    # Only merge those posts which already exist in the database
+                    # Only merge those posts which already exist in the
+                    # database
                     session.merge(roles.pop(existing_roles.user_id))
 
                 # Only add those posts which did not exist in the database
@@ -65,6 +66,8 @@ class RoleLogging(cogs.BaseCog):
                 self._clear_empty(session)
 
     def log_member_roles(self, member):
+        if member.bot:
+            return
         member_roles = self.create_member_roles(member)
         with self.bot.create_storage_session() as session:
             id = (member.guild.id, member.id)
