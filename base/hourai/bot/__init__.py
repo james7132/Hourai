@@ -8,7 +8,7 @@ import logging
 import pkgutil
 import sys
 from discord.ext import commands
-from hourai import config, web
+from hourai import config, web, utils
 from hourai.db import storage, proxies
 from hourai.utils import fake, uvloop
 from . import actions, extensions
@@ -16,6 +16,14 @@ from .context import HouraiContext
 
 log = logging.getLogger(__name__)
 
+__old_guild_add_member = discord.Guild._add_member
+def should_cache_member(member):
+    return utils.is_moderator(member)
+
+def limit_cache_add_member(self, member):
+    if should_cache_member(member):
+        __old_guild_add_member(self, member)
+discord.Guild._add_member = limit_cache_add_member
 
 class CounterKeys(enum.Enum):
     MESSAGES_RECIEVED = 0x100             # noqa: E221
