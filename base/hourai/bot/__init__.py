@@ -242,8 +242,34 @@ class Hourai(commands.AutoShardedBot):
             err_msg = ('An unexpected error has occured and has been reported.'
                        '\nIf this happens consistently, please consider filing'
                        ' a bug:\n<https://github.com/james7132/Hourai/issues>')
-        if err_msg:
-            await ctx.send(err_msg)
+        if not err_msg:
+            return
+
+        prefix = (f"{ctx.author.mention} An error occured, and the bot does not"
+                  f" have permissions to respond in #{ctx.channel.name}. "
+                  f"Please double check the bot's permissions and try again. "
+                  f"Original error message:\n\n")
+
+        async def find_viable_channel(msg):
+            if ctx.guild is None:
+                return
+            ch = discord.utils.find(lambda ch:
+                    ch.permissions_for(ctx.guild.me).send_messages and
+                    ch.permissions_for(ctx.author).read_messages,
+                    ctx.guild.text_channels)
+            await ch.send(prefix + msg)
+
+        attempts = [
+            lambda msg: ctx.send(msg),
+            lambda msg: ctx.author.send(prefix + msg),
+            find_viable_channel,
+        ]
+
+        for attempt in attempts:
+            try:
+                attempt(err_msg)
+            except (discord.Forbidden, discord.NotFound):
+                continue
 
     def get_guild_proxy(self, guild):
         try:

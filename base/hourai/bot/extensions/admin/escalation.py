@@ -46,7 +46,8 @@ class EscalationMixin:
     async def __apply_pending_deescalation(self, session, deesc):
         guild = self.bot.get_guild(deesc.guild_id)
         if guild is not None:
-            history = escalation_history.UwerEscalationHistory(
+            history = escalation_history.UserEscalationHistory(
+                bot=self.bot,
                 user=fake.FakeSnowflake(deesc.user_id),
                 guild=guild, session=session)
             await history.apply_diff(guild.me, 'Automatic Deescalation',
