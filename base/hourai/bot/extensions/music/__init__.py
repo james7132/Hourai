@@ -44,11 +44,11 @@ async def check_is_dj(ctx):
     return True
 
 
-def get_default_channel(guild, member=None):
+def get_default_channel(guild, member_id=None):
     channels = filter(lambda ch: ch.permissions_for(guild.me).connect,
                       guild.voice_channels)
-    if member is not None:
-        channels = filter(lambda ch: member in ch.members, channels)
+    if member_id is not None:
+        channels = filter(lambda ch: member_id in ch.voice_states, channels)
     return next(channels, None)
 
 
@@ -59,7 +59,7 @@ async def get_voice_channel(ctx):
         channel = ctx.guild.get_channel(music_config.voice_channel_id)
         if isinstance(channel, discord.VoiceChannel):
             channel = None
-    return channel or get_default_channel(ctx.guild, ctx.author)
+    return channel or get_default_channel(ctx.guild, ctx.author.id)
 
 
 class Music(cogs.BaseCog):
@@ -127,8 +127,8 @@ class Music(cogs.BaseCog):
 
         # Kill the player when nobody else is in any voice channel in the guild
         def is_empty(voice_channel):
-            members = set(voice_channel.members)
-            members.remove(guild.me)
+            members = set(voice_channel.voice_states)
+            members.remove(guild.me.id)
             return len(members) <= 0
         if all(is_empty(vc) for vc in guild.voice_channels):
             await player.stop()
@@ -148,7 +148,7 @@ class Music(cogs.BaseCog):
         msg = None
         if channel is None:
             msg = 'No suitable channel for playing music found.'
-        elif ctx.author not in channel.members:
+        elif ctx.author.id not in channel.voice_states:
             msg = f'You must be in `{channel.name}` to play music.'
         await (ctx.send(msg) if msg is not None else
                player.connect(channel.id))
@@ -186,7 +186,7 @@ class Music(cogs.BaseCog):
             return
 
         if (player.voice_channel is not None and
-           ctx.author not in player.voice_channel.members):
+           ctx.author.id not in player.voice_channel.voice_states):
             channel_name = player.voice_channel.name
             await ctx.send(
                 content=f'You must be in `{channel_name}` to play music.')
@@ -344,7 +344,7 @@ class Music(cogs.BaseCog):
         assert requestor is not None
 
         channel_count = len([m for m in player.voice_channel_members
-                             if m != ctx.guild.me])
+                             if m != ctx.guild.me.id])
         vote_count = len(player.skip_votes) + 1
 
         required_votes = math.ceil(channel_count * 0.5)

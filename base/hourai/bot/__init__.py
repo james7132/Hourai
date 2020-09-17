@@ -161,6 +161,7 @@ class Hourai(commands.AutoShardedBot):
         except:
             log.exception("Failed to set up web API.")
             raise
+        log.info(f'Starting bot...')
         await super().start(*args, **kwargs)
 
     async def start_web_api(self):
@@ -181,6 +182,9 @@ class Hourai(commands.AutoShardedBot):
         if self.web_app_runner is not None:
             await self.web_app_runner.cleanup()
         await self.http_session.__aexit__(None, None, None)
+
+    async def on_guild_available(self, guild):
+        log.info(f'Guild Available: {guild.id}')
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')

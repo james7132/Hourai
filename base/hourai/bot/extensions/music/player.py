@@ -2,6 +2,7 @@ import discord
 import asyncio
 import logging
 import wavelink
+import typing
 import math
 from .queue import MusicQueue
 from . import utils
@@ -87,9 +88,9 @@ class HouraiMusicPlayer(wavelink.Player):
                      if guild.me in vc.members), None)
 
     @property
-    def voice_channel_members(self):
+    def voice_channel_members(self) -> typing.List[int]:
         channel = self.voice_channel
-        return () if channel is None else channel.members
+        return [] if channel is None else list(channel.voice_states)
 
     @property
     def entries(self):
@@ -194,9 +195,9 @@ class HouraiMusicPlayer(wavelink.Player):
     async def set_volume(self, volume):
         await super().set_volume(volume)
 
-        def set_volume(cfg):
-            cfg.volume = volume
-        await self.guild_proxy.config.edit('music', set_volume)
+        config = await self.guild_proxy.config.get('music', set_volume)
+        config.volume = volume
+        await self.guild_proxy.config.set('music', config)
 
     async def create_queue_message(self, channel):
         return await self.__run_ui(MusicQueueUI, channel)
