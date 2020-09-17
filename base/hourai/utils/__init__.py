@@ -6,6 +6,7 @@ import pytimeparse
 import random
 import re
 import time
+from discord.ext import commands
 from hourai import config
 from datetime import timedelta
 
@@ -16,7 +17,7 @@ DELETED_USER_REGEX = re.compile(r'Deleted User [0-9a-fA-F]{8}')
 _id_regex = re.compile(r'([0-9]{15,21})$')
 
 
-class MemberQuery(discord.ext.commands.IDConverter):
+class MemberQuery(commands.IDConverter):
     __slots__ = ('ctx', 'ids', 'names')
 
     def __init__(self, ctx=None):
