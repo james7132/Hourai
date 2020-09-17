@@ -18,10 +18,10 @@ log = logging.getLogger(__name__)
 
 __old_guild_add_member = discord.Guild._add_member
 def should_cache_member(member):
-    return utils.is_moderator(member)
+    return utils.is_moderator(member) or member.id == member._state.user.id
 
-def limit_cache_add_member(self, member):
-    if should_cache_member(member):
+def limit_cache_add_member(self, member, force=False):
+    if force or should_cache_member(member):
         __old_guild_add_member(self, member)
 discord.Guild._add_member = limit_cache_add_member
 

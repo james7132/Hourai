@@ -13,6 +13,115 @@ MODERATOR_PREFIX = 'mod'
 DELETED_USER_REGEX = re.compile(r'Deleted User [0-9a-fA-F]{8}')
 
 
+_id_regex = re.compile(r'([0-9]{15,21})$')
+
+
+class MemberQuery(discord.ext.commands.IDConverter):
+    __slots__ = ('ctx', 'ids', 'names')
+
+    def __init__(self, ctx=None):
+        self.ctx = ctx
+        self.ids = set()
+        self.names = set()
+        self.cached = set()
+
+    @property
+    def bot(self):
+        return self.ctx.bot
+
+    @property
+    def guild(self):
+        return self.ctx.guild
+
+    @staticmethod
+    def merge(cls, ctx, *queries):
+        query = MemberQuery(ctx)
+        query.ids.update(x for q in queries for x in q.ids)
+        query.names.update(x for q in queries for x in q.names)
+        query.cached.update(x for q in queries for x in q.cached)
+        return query
+
+    async def convert(self, ctx, argument):
+        query = MemberQuery(ctx)
+        query.add_parameter(argument)
+        return query
+
+    def add_parameter(self, param):
+        match = self._get_id_match(param) or re.match(r'<@!?([0-9]+)>$', param)
+        user_id = None
+        result = None
+        if match is None:
+            # not a mention...
+            if self.guild:
+                result = self.guild.get_member_named(param)
+            else:
+                result = self._get_from_guilds('get_member_named', param)
+        else:
+            result = self.add_id(int(match.group(1)))
+
+        if result is not None:
+            self.cached.add(result)
+        elif user_id is None:
+            self.names.add(result)
+        else:
+            self.ids.add(result)
+
+    async def add_ids(self, ids):
+        for id in ids:
+            result = self.add_id(id)
+            if result is not None:
+                self.cached.add(result)
+
+    def add_id(self, user_id):
+        if self.guild:
+            result = self.guild.get_member(user_id) or \
+                     discord.utils.get(self.ctx.message.mentions,
+                                       id=user_id)
+        else:
+            result = self._get_from_guilds('get_member', user_id)
+        return result
+
+
+    async def get_members(self):
+        if not self.ids and not self.names:
+            return list(self.cached)
+
+        members = set(self.cached)
+        await asyncio.gather(self._get_members_by_ids(members),
+                             self._get_members_by_names(members))
+        if self.guild is not None:
+            for member in members:
+                self.guild._add_member(member, force=True)
+
+        self.cached.update(members)
+        self.ids.clear()
+        self.names.clear()
+
+        return members
+
+    def _get_from_guilds(getter, argument):
+        result = None
+        for guild in self.bot.guilds:
+            result = getattr(guild, getter)(argument)
+            if result:
+                return result
+        return result
+
+    async def _get_members_by_ids(self, accumulator):
+        results = await self.guild.query_members(limit=len(self.ids),
+                                                 user_ids=self.ids,
+                                                 cache=False)
+        accumulator.update(results)
+
+    async def _get_members_by_names(self, accumulator):
+        async def query_by_name(name):
+            results = await self.guild.query_members(query=name, limit=1,
+                                                     cache=False)
+            accumulator.update(results)
+
+        await asyncio.gather(*[query_by_name(name) for name in names])
+
+
 def clamp(val, min_val, max_val):
     return max(min(val, max_val), min_val)
 
@@ -34,9 +143,10 @@ async def get_member_async(guild: discord.Guild, user_id: int) \
 
     members = await guild.query_members(limit=1, user_ids=[user_id],
                                         cache=True)
-    if members is None or len(members) <= 0:
+    if members is None or len(members) != 1:
         return None
-    return next(iter(member))
+    guild._add_member(member, force=True)
+    return next(iter(members))
 
 
 async def broadcast(channels, *args, **kwargs):
