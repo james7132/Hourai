@@ -7,6 +7,7 @@ import time
 import logging
 import pkgutil
 import sys
+from discord.state import ConnectionState
 from discord.ext import commands
 from hourai import config, web, utils
 from hourai.db import storage, proxies
@@ -16,14 +17,27 @@ from .context import HouraiContext
 
 log = logging.getLogger(__name__)
 
+# Monkeypatch Hacks
 __old_guild_add_member = discord.Guild._add_member
 def should_cache_member(member):
     return utils.is_moderator(member) or member.id == member._state.user.id
 
 def limit_cache_add_member(self, member, force=False):
-    if force or should_cache_member(member):
+    if member is not None and force or should_cache_member(member):
         __old_guild_add_member(self, member)
 discord.Guild._add_member = limit_cache_add_member
+
+__old_parse_guild_member_remove = ConnectionState.parse_guild_member_remove
+def parse_guild_member_remove(self, data):
+    __old_parse_guild_member_remove(self, data)
+    self.dispatch('raw_member_remove', data)
+ConnectionState.parse_guild_member_remove = parse_guild_member_remove
+
+__old_parse_guild_member_update = ConnectionState.parse_guild_member_update
+def parse_guild_member_update(self, data):
+    __old_parse_guild_member_update(self, data)
+    self.dispatch('raw_member_update', data)
+ConnectionState.parse_guild_member_update = parse_guild_member_update
 
 class CounterKeys(enum.Enum):
     MESSAGES_RECIEVED = 0x100             # noqa: E221

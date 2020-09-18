@@ -82,7 +82,6 @@ class MemberQuery(commands.IDConverter):
             result = self._get_from_guilds('get_member', user_id)
         return result
 
-
     async def get_members(self):
         if not self.ids and not self.names:
             return list(self.cached)
@@ -99,6 +98,16 @@ class MemberQuery(commands.IDConverter):
         self.names.clear()
 
         return members
+
+    async def get_users(self):
+        users = {id: self.bot.get_user(m.id) for m in cached}
+        ids = {id for i, u in users.items() if u is None}
+        ids.update(self.ids)
+        users = {u for u in users if u is not None}
+        users.update(await asyncio.gather(
+            *[self.bot.fetch_user(id) for id in ids]))
+        users = {u for u in users if u is not None}
+        return users
 
     def _get_from_guilds(getter, argument):
         result = None
@@ -146,8 +155,9 @@ async def get_member_async(guild: discord.Guild, user_id: int) \
                                         cache=True)
     if members is None or len(members) != 1:
         return None
+    member = next(iter(members))
     guild._add_member(member, force=True)
-    return next(iter(members))
+    return member
 
 
 async def broadcast(channels, *args, **kwargs):

@@ -2,6 +2,7 @@ import asyncio
 import discord
 import random
 from hourai.bot import cogs
+from hourai.db import models
 from discord.ext import commands
 
 
@@ -62,17 +63,28 @@ class Announce(cogs.BaseCog):
                                        choices)
 
     @commands.Cog.listener()
-    async def on_member_remove(self, member):
-        proxy = self.bot.get_guild_proxy(member.guild)
+    async def on_raw_member_remove(self, data):
+        guild = self.bot.get_guild(int(data['guild_id']))
+        if guild is None:
+            return
+        user_id = int(data['user']['id'])
+        proxy = self.bot.get_guild_proxy(guild)
         announce_config = await proxy.config.get('announce')
         if not announce_config.HasField('leaves'):
             return
-        if len(announce_config.leaves.messages) > 0:
-            choices = list(announce_config.leaves.messages)
-        else:
-            choices = [f'**{member.name}** has left the server.']
-        await self.__make_announcement(member.guild, announce_config.leaves,
-                                       choices)
+        with self.bot.create_storage_session() as session:
+            latest_name = session.query(models.Username) \
+                .filter_by(user_id=user_id) \
+                .order_by(models.Username.timestamp.desc()) \
+                .first()
+            if latest_name is None:
+                return
+            if len(announce_config.leaves.messages) > 0:
+                choices = list(announce_config.leaves.messages)
+            else:
+                choices = [f'**{latest_name.name}** has left the server.']
+            await self.__make_announcement(guild, announce_config.leaves,
+                                           choices)
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):

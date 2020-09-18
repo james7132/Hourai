@@ -54,8 +54,9 @@ class Counters(cogs.BaseCog):
             member.guild, CounterKeys.MEMBERS_JOINED)
 
     @commands.Cog.listener()
-    async def on_member_remove(self, member):
-        self.__increment_guild_counter(member.guild, CounterKeys.MEMBERS_LEFT)
+    async def on_raw_member_remove(self, data):
+        key = CounterKeys.MEMBERS_LEFT
+        self.bot.guild_counters[int(data['guild_id'])][key] += 1
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):

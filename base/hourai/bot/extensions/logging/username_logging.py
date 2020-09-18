@@ -37,10 +37,6 @@ class UsernameLogging(cogs.BaseCog):
         self.bot.loop.create_task(self.log_username_change(member))
 
     @commands.Cog.listener()
-    async def on_member_remove(self, member):
-        self.bot.loop.create_task(self.log_username_change(member))
-
-    @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
         self.bot.loop.create_task(self.log_username_change(user))
 

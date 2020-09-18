@@ -24,6 +24,15 @@ class RoleLogging(cogs.BaseCog):
         self.log_member_roles(after)
 
     @commands.Cog.listener()
+    async def on_raw_member_update(self, data):
+        if data['user'].get('bot'):
+            return
+        guild_id = data['guild_id']
+        user = data['user']
+        role_ids = [int(id) for id in data['roles']]
+        self.log_roles(guild_id, user['id'], role_ids)
+
+    @commands.Cog.listener()
     async def on_member_remove(self, member):
         self.log_member_roles(member)
 
@@ -44,7 +53,7 @@ class RoleLogging(cogs.BaseCog):
         model = models.MemberRoles
         members = guild.fetch_members(limit=None)
         async for chunk in iterable.chunked_async(members, chunk_size=1000):
-            roles = {member.id: self.create_member_roles(member)
+            roles = {member.id: self.create_roles(member)
                      for member in chunk if not member.bot}
             with self.bot.create_storage_session() as session:
                 existing = session.query(model) \
@@ -68,9 +77,12 @@ class RoleLogging(cogs.BaseCog):
     def log_member_roles(self, member):
         if member.bot:
             return
-        member_roles = self.create_member_roles(member)
+        self.log_roles(member.guild.id, member.id, member._roles)
+
+    def log_roles(self, guild_id, member_id, role_ids):
+        member_roles = self.create_member_roles(guild_id, member_id, role_ids)
         with self.bot.create_storage_session() as session:
-            id = (member.guild.id, member.id)
+            id = (guild_id, member_id)
             existing = session.query(models.MemberRoles).get(id)
 
             if len(member_roles.role_ids) <= 0:
@@ -87,7 +99,7 @@ class RoleLogging(cogs.BaseCog):
             session.commit()
 
         self.bot.logger.info(
-            f'Updated roles for user {member.id}, guild {member.guild.id}')
+            f'Updated roles for user {member_id}, guild {guild_id}')
 
     def clear_role(self, role):
         assert isinstance(role, discord.Role)
@@ -99,11 +111,13 @@ class RoleLogging(cogs.BaseCog):
             """)
             self._clear_empty(session)
 
-    def create_member_roles(self, member):
-        return models.MemberRoles(
-            guild_id=member.guild.id,
-            user_id=member.id,
-            role_ids=member._roles)
+    def create_roles(self, guild_id, member_id, role_ids):
+        return self.create_member_roles(
+                member.guild.id, member.id, member._roles)
+
+    def create_member_roles(self, guild_id, member_id, role_ids):
+        return models.MemberRoles(guild_id=guild_id, user_id=member_id,
+                                  role_ids=role_ids)
 
     def _clear_empty(self, session):
         session.execute(

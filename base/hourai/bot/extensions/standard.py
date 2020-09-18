@@ -10,7 +10,7 @@ from discord.ext import commands
 from hourai import utils
 from hourai.bot import cogs
 from hourai.db import proto, models
-from hourai.utils import embed, format, checks
+from hourai.utils import embed, format, checks, MemberQuery
 from sqlalchemy.orm.exc import NoResultFound
 
 
@@ -268,8 +268,16 @@ class Standard(cogs.BaseCog):
         await ctx.send(mention)
 
     @commands.command()
-    async def whois(self, ctx, user: typing.Union[discord.Member,
-                                                  discord.User]):
+    async def whois(self, ctx, user: typing.Union[MemberQuery, discord.User]):
+        try:
+            members = user.get_members()
+            if members:
+                user = next(iter(members))
+            else:
+                user = user.get_users()
+                user = next(iter(user))
+        except AttributeError:
+            assert isinstance(user, discord.User)
         await ctx.send(embed=embed.make_whois_embed(ctx, user))
 
 
