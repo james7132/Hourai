@@ -53,11 +53,6 @@ def make_whois_embed(ctx, user):
 
     description = []
 
-    guild_count = _get_guild_count(ctx, user)
-    if guild_count > 1:
-        count = format.bold(str(guild_count))
-        description.append(f'Seen on {count} servers.')
-
     usernames = _get_extra_usernames(ctx, user)
     if len(usernames) > 0:
         output = reversed([_to_username_line(un) for un in usernames])
@@ -111,13 +106,6 @@ def _to_username_line(username):
     if username.discriminator is not None:
         user_string = f'{username.name}#{username.discriminator:0>4d}'
     return f'{date_string} {user_string}'
-
-
-def _get_guild_count(ctx, user):
-    # FIXME: This may be broken when fetch_offline_members is set to False
-    # FIXME: This will not work when the bot grows larger than one process.
-    return sum(1 if g.get_member(user.id) is not None else 0
-               for g in ctx.bot.guilds)
 
 
 def _get_extra_usernames(ctx, user):
