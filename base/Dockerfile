@@ -1,12 +1,11 @@
 FROM python:3.8-alpine as base
 
 FROM base as builder
-RUN apk add --no-cache \
-  git protobuf gcc make libffi-dev build-base postgresql-dev \
-  && mkdir /app
-COPY requirements.txt /
-RUN pip install --prefix /install -r /requirements.txt
-COPY . /app
+WORKDIR /app
+RUN apk add --no-cache git protobuf gcc make libffi-dev build-base postgresql-dev
+COPY requirements.txt .
+RUN pip install --prefix /install -r requirements.txt
+COPY . .
 RUN protoc $(find /app -type f -regex ".*\.proto") \
   --proto_path=/app \
   --python_out=/app
