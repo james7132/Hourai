@@ -18,12 +18,6 @@ class RoleLogging(cogs.BaseCog):
         self.log_member_roles(member)
 
     @commands.Cog.listener()
-    async def on_member_update(self, before, after):
-        if before._roles == after._roles:
-            return
-        self.log_member_roles(after)
-
-    @commands.Cog.listener()
     async def on_raw_member_update(self, data):
         if data['user'].get('bot'):
             return
@@ -111,7 +105,7 @@ class RoleLogging(cogs.BaseCog):
             """)
             self._clear_empty(session)
 
-    def create_roles(self, guild_id, member_id, role_ids):
+    def create_roles(self, member):
         return self.create_member_roles(
                 member.guild.id, member.id, member._roles)
 
