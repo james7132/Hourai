@@ -139,6 +139,7 @@ class Username(Base):
 
 
 Index("idx_username_user_id", Username.user_id)
+UniqueConstraint(Username.user_id, Username.name, Username.discriminator, name="idx_unique_username")
 
 
 class Alias(Base):
