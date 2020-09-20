@@ -85,7 +85,7 @@ class HouraiMusicPlayer(wavelink.Player):
                       f" Code: {event.code} \"{event.reason}\"")
             if self.current and event.code in (4015, 4009, 4006):
                 await self.connect(self.channel_id)
-                await self.play(self.current)
+                await self.play(self.current, start=self.position)
                 log.info(f"Voice websocket reconnected to channel "
                          f"{channel_idV}.")
             else:
