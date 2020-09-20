@@ -8,7 +8,7 @@ from .queue import MusicQueue
 from . import utils
 from hourai import utils as hourai_utils
 from hourai.utils import embed
-from wavelink.eqs import Equalizer
+from wavelink import eqs
 
 log = logging.getLogger('hourai.music.player')
 
@@ -55,7 +55,7 @@ class HouraiMusicPlayer(wavelink.Player):
     async def __init_player(self) -> None:
         await self.bot.wait_until_ready()
 
-        await self.set_eq(Equalizer.flat())
+        await self.set_eq(eqs.Equalizer.flat())
         config = await self.guild_proxy.config.get('music')
         await self.set_volume(config.volume)
 
@@ -80,6 +80,16 @@ class HouraiMusicPlayer(wavelink.Player):
             log.error(f"Error while playing Track {event.track} in guild "
                       f"{self.guild_id}: {event.error}")
             await self.play_next()
+        elif isinstance(event, wavelink.events.WebsocketClosed):
+            log.error(f"Voice websocket closed for guild {self.guild_id}."
+                      f" Code: {event.code} \"{event.reason}\"")
+            if self.current and event.code in (4015, 4009, 4006):
+                await self.connect(self.channel_id)
+                await self.play(self.current)
+                log.info(f"Voice websocket reconnected to channel "
+                         f"{channel_idV}.")
+            else:
+                await self.disconnect()
         else:
             log.warn('Unhandled Lavalink Event: {event}')
 
