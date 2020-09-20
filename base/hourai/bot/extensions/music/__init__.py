@@ -185,6 +185,10 @@ class Music(cogs.BaseCog):
             await self._play_paused(ctx, player)
             return
 
+        # Strip embed suppression from links
+        if query.startswith('<') and query.endswith('>'):
+            query = query[1:-1]
+
         if (player.voice_channel is not None and
            ctx.author.id not in player.voice_channel.voice_states):
             channel_name = player.voice_channel.name
