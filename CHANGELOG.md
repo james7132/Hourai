@@ -25,6 +25,9 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
    * Message contains Discord invite -> Delete. (No solicitation rule)
    * Message mentions more than 25 users -> Delete, notify moderator,
      escalate user. (Anti-Ping Spam)
+ * [Music Bot] Fixed the music bot stopping whenever Discord resets the voice
+   websocket connection. The bot will properly resume playing music when this
+   happens.
 
 ## v1.4.1 (07/16/2020)
 
