@@ -52,27 +52,36 @@ class HouraiMusicPlayer(wavelink.Player):
                 channel = None
         return channel or self.get_default_channel()
 
-    async def __init_player(self):
+    async def __init_player(self) -> None:
         await self.bot.wait_until_ready()
 
         await self.set_eq(Equalizer.flat())
         config = await self.guild_proxy.config.get('music')
         await self.set_volume(config.volume)
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         await super().disconnect()
         self.current = None
         self._requestor_id = None
         self.skip_votes.clear()
 
-    async def hook(self, event):
+    async def hook(self, event) -> None:
         if isinstance(event, wavelink.events.TrackEnd):
             if event.reason in ('FINISHED', 'LOAD_FAILED'):
                 await asyncio.sleep(POST_TRACK_WAIT)
                 await self.play_next()
+        elif isinstance(event, wavelink.events.TrackStart):
+            log.info('Started playing {event} in guild {self.guild_id}')
+        elif isinstance(event, wavelink.events.TrackStuck):
+            log.error(f"Track '{event.track}' got stuck in guild "
+                      f"{self.guild_id}. Threshold {event.threshold}")
+            await self.play_next()
         elif isinstance(event, wavelink.events.TrackException):
             log.error(f"Error while playing Track {event.track} in guild "
                       f"{self.guild_id}: {event.error}")
+            await self.play_next()
+        else:
+            log.warn('Unhandled Lavalink Event: {event}')
 
     @property
     def guild(self):
@@ -85,7 +94,7 @@ class HouraiMusicPlayer(wavelink.Player):
             return None
         # Get the first voice channel where the bot user is in, default to None
         return next((vc for vc in guild.voice_channels
-                     if guild.me in vc.members), None)
+                     if guild.me.id in vc.voice_states), None)
 
     @property
     def voice_channel_members(self) -> typing.List[int]:
