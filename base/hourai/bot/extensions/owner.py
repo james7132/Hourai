@@ -245,7 +245,7 @@ class Owner(cogs.BaseCog):
             counters['Total Members'] += guild.member_count
             counters['Loaded Members'] += len(guild.members)
             counters['Messages'] += guild_counts[CounterKeys.MESSAGES_RECIEVED]
-            if any(guild.me in vc.members for vc in guild.voice_channels):
+            if any(guild.me.id in vc.voice_states for vc in guild.voice_channels):
                 counters['Music'] += 1
         return counters
 
