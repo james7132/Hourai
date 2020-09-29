@@ -1,8 +1,8 @@
 import discord
-import praw
+import asyncpraw
 import logging
 from urllib.parse import urljoin
-from prawcore import exceptions
+from asyncprawcore import exceptions
 from .types import FeedScanResult, Broadcast, Scanner
 from datetime import datetime, timezone
 from hourai.utils import format
@@ -15,16 +15,16 @@ class RedditScanner(Scanner):
     def __init__(self, cog):
         log.debug("Starting reddit client.")
         conf = cog.bot.get_config_value('reddit')
-        self.client = praw.Reddit(**conf._asdict())
+        self.client = asyncpraw.Reddit(**conf._asdict())
         super().__init__(cog, 'REDDIT')
 
     def get_config_value(self, *args, **kwargs):
         return self.bot.get_config_value(*args, **kwargs)
 
-    def get_result(self, feed):
+    async def get_result(self, feed):
         try:
             last_updated = feed.last_updated
-            subreddit = self.client.subreddit(feed.source)
+            subreddit = await self.client.subreddit(feed.source)
             posts, feed.last_updated = self.make_posts(subreddit.new(),
                                                        feed.last_updated)
 
@@ -34,11 +34,11 @@ class RedditScanner(Scanner):
         except exceptions.NotFound:
             pass
 
-    def make_posts(self, submissions, last_updated):
+    async def make_posts(self, submissions, last_updated):
         last_updated_unix = last_updated.replace(tzinfo=timezone.utc) \
                                         .timestamp()
         posts = []
-        for submission in submissions:
+        async for submission in submissions:
             if submission.created_utc <= last_updated_unix:
                 break
             sub_name = submission.subreddit.name

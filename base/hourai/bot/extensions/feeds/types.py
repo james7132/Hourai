@@ -39,33 +39,29 @@ class Scanner(ABC):
     def __init__(self, cog, feed_type):
         self.bot = cog.bot
         self.feed_type = feed_type
-        self._stop_event = threading.Event()
-        self.fetcher_thread = threading.Thread(target=self.run, args=())
-        self.fetcher_thread.start()
 
-    def run(self):
+    async def run(self):
         type_name = type(self).__name__
-        log.info(f'{type_name} initialized. Waiting for bot to be ready.')
-        self.bot.spin_wait_until_ready()
-        log.info(f'{type_name} started.')
-        while not self.stopped():
-            with self.bot.create_storage_session() as session:
-                for feed in self.get_feeds(session):
-                    channels = list(feed.get_channels(self.bot))
-                    if len(channels) <= 0:
-                        continue
-                    # log.info(f'Scanning: {feed.type.name}, {feed.source}..')
-                    try:
-                        result = self.get_result(feed)
-                        self._publish(session, result, feed)
-                    except Exception:
-                        log.exception('Failure while fetching feeds:')
-                    if self.stopped():
-                        break
-        log.info(f'{type(self).__name__}: Stopping.')
+        await self.bot.wait_until_ready()
+        log.info(f'Scanning {type_name}...')
+
+        async def scan_feed(feed, session):
+            channels = list(feed.get_channels(self.bot))
+            if len(channels) <= 0:
+                return
+
+            try:
+                result = await self.get_result(feed)
+                await self._publish(session, result, feed)
+            except Exception:
+                log.exception('Failure while fetching feeds:')
+
+        with self.bot.create_storage_session() as session:
+            feeds = self.get_feeds(session)
+            await asyncio.gather(*[scan_feed(feed, session) for feed in feeds])
 
     @abstractmethod
-    def get_result(self, feed):
+    async def get_result(self, feed):
         raise NotImplementedError
 
     def get_feeds(self, session):
@@ -74,23 +70,10 @@ class Scanner(ABC):
                        .options(joinedload(models.Feed.channels))
         return list(query)
 
-    def _publish(self, session, result, feed):
+    async def _publish(self, session, result, feed):
         if result is None or len(result.posts) <= 0:
             return
-
-        async def callback():
-            await result.push(self.bot)
-            if result.is_updated:
-                session.add(feed)
-                session.commit()
-        future = asyncio.run_coroutine_threadsafe(callback(), self.bot.loop)
-        # Wait for it to publish
-        future.result()
-
-    def close(self):
-        self._stop_event.set()
-        self.fetcher_thread.join()
-
-    def stopped(self):
-
-        return self._stop_event.is_set()
+        await result.push(self.bot)
+        if result.is_updated:
+            session.add(feed)
+            session.commit()

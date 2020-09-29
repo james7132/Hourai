@@ -1,5 +1,5 @@
 # Core packages
-discord.py==1.4.1
+discord.py==1.5.0
 aiohttp==3.6.2
 uvloop==0.14.0
 psycopg2==2.8.6
@@ -26,4 +26,4 @@ dblpy==0.4.0
 wavelink==0.9.6
 
 # API Wrappers for feeds and external services
-praw==7.1.0
+asyncpraw==7.1.0
