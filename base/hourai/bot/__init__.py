@@ -124,6 +124,7 @@ class Hourai(commands.AutoShardedBot):
                 roles=False),
             'intents': discord.Intents(
                 bans=True,
+                guilds=True,
                 invites=True,
                 members=True,
                 messages=True,
