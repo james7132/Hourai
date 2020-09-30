@@ -118,9 +118,22 @@ class Hourai(commands.AutoShardedBot):
             'activity': discord.Game(self.config.activity),
             'help_command': HouraiHelpCommand(),
             'fetch_offline_members': False,
-            'allowed_mentions':
-                  discord.AllowedMentions(everyone=False, users=True,
-                                          roles=False)
+            'allowed_mentions': discord.AllowedMentions(
+                everyone=False,
+                users=True,
+                roles=False),
+            'intents': discord.Intents(
+                bans=True,
+                invites=True,
+                members=True,
+                messages=True,
+                presences=True,
+                reactions=True,
+                typing=True,
+                voice_states=True,
+                emojis=False,
+                integrations=False,
+                webhooks=False),
         }
         for key, value, in defaults.items():
             kwargs.setdefault(key,value)
