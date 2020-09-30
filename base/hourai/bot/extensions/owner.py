@@ -199,7 +199,7 @@ class Owner(cogs.BaseCog):
         table.set_cols_valign(["t"] + ["i"] * (len(columns) - 1))
         table.header(columns)
         for key in sorted(keys):
-            runtime = counters['events_total_runtime'][key]
+            runtime = counters['event_total_runtime'][key]
             run_count = counters['events_run'][key]
             avg_runtime = runtime / run_count if run_count else "N/A"
             table.add_row([key,
