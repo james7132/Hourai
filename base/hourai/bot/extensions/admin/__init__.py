@@ -106,8 +106,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx,
-                  members: commands.Greedy[typing.Union[utils.MemberQuery, int]],
+    async def ban(self, ctx, members: commands.Greedy[utils.MemberQuery],
                   *, reason: str = None):
         """Bans all specified users from the server.
 
@@ -122,19 +121,19 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Ban Members (User and Bot)
         """
+        query = await utils.MemberQuery.merge(ctx, members)
+        targets = {m.id: m for m in query.cached}
+        targets.update({member_id: fake.FakeSnowflake(id=member_id)
+                        for member_id in query.ids})
+        query.ids.clear()
+
+        if query.names:
+            results = await utils.MemberQuery.get_members()
+            targets.update({m.id: m for m in results})
+
         reason = create_reason(ctx, "Banned", reason)
-
-        def _to_user(member):
-            if isinstance(member, int):
-                return fake.FakeSnowflake(id=member)
-            return member
-
-        def ban_member(m):
-            return ctx.guild.ban(m, delete_message_days=0, reason=reason)
-
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
-        await self._admin_action(ctx, (_to_user(mem) for mem in members),
-                                 ban_member)
+        await self._admin_action(ctx, targets,
+            lambda m: ctx.guild.ban(m, delete_message_days=0, reason=reason))
 
     @commands.command(name="softban")
     @commands.guild_only()
@@ -265,7 +264,8 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Move Members (User and Bot)
         """
         query = utils.MemberQuery.merge(ctx)
-        query.add_ids(id for id in src.voice_states.keys())
+        for id in src.voice_states.keys():
+            query.add_id(id)
         members = await query.get_members()
         await self._admin_action(ctx, members, lambda m: m.move_to(dst))
 

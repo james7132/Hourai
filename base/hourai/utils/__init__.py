@@ -14,9 +14,6 @@ MODERATOR_PREFIX = 'mod'
 DELETED_USER_REGEX = re.compile(r'Deleted User [0-9a-fA-F]{8}')
 
 
-_id_regex = re.compile(r'([0-9]{15,21})$')
-
-
 class MemberQuery(commands.IDConverter):
     __slots__ = ('ctx', 'ids', 'names')
 
@@ -49,37 +46,46 @@ class MemberQuery(commands.IDConverter):
 
     def add_parameter(self, param):
         match = self._get_id_match(param) or re.match(r'<@!?([0-9]+)>$', param)
-        user_id = None
-        result = None
-        if match is None:
-            # not a mention...
-            if self.guild:
-                result = self.guild.get_member_named(param)
-            else:
-                result = self._get_from_guilds('get_member_named', param)
+        if match is not None:
+            self.add_id(int(match.group(1)))
         else:
-            result = self.add_id(int(match.group(1)))
+            self.add_name(param)
 
-        if result is not None:
-            self.cached.add(result)
-        elif user_id is None:
-            self.names.add(result)
-        else:
-            self.ids.add(result)
-
-    async def add_ids(self, ids):
-        for id in ids:
-            result = self.add_id(id)
-            if result is not None:
-                self.cached.add(result)
-
-    def add_id(self, user_id):
+    def add_id(self, user_id: int) -> discord.Member:
+        """Adds an ID to the query. If a corresponding member is in the bot's
+        cache it will bypass the query entirely and use the cached valeus.
+        """
         if self.guild:
             result = self.guild.get_member(user_id) or \
                      discord.utils.get(self.ctx.message.mentions,
                                        id=user_id)
         else:
             result = self._get_from_guilds('get_member', user_id)
+
+        if result is not None:
+            self.cached.add(result)
+        else:
+            self.ids.add(user_id)
+
+        return result
+
+    def add_name(self, name: str) -> discord.Member:
+        """Adds a username to the query. If a corresponding member is in the bot's
+        cache it will bypass the query entirely and use the cached valeus.
+
+        This supports both normal username queries and also
+        "username#discriminator" combinations.
+        """
+        if self.guild:
+            result = self.guild.get_member_named(param)
+        else:
+            result = self._get_from_guilds('get_member_named', param)
+
+        if result is not None:
+            self.cached.add(result)
+        else:
+            self.names.add(name)
+
         return result
 
     async def get_members(self):
@@ -87,16 +93,17 @@ class MemberQuery(commands.IDConverter):
             return list(self.cached)
 
         members = set(self.cached)
-        await asyncio.gather(self._get_members_by_ids(members),
-                             self._get_members_by_names(members))
         if self.guild is not None:
+            await asyncio.gather(self._get_members_by_ids(members),
+                                 self._get_members_by_names(members))
             for member in members:
                 self.guild._add_member(member, force=True)
 
-        self.cached.update(members)
-        self.ids.clear()
-        self.names.clear()
+        for member in members:
+            self.ids.discard(member.id)
+            self.names.discard(member.name)
 
+        self.cached.update(members)
         return members
 
     async def get_users(self):
@@ -118,6 +125,7 @@ class MemberQuery(commands.IDConverter):
         return result
 
     async def _get_members_by_ids(self, accumulator):
+        # TODO(james7132): This doesn't support queries with over 100 members.
         results = await self.guild.query_members(limit=len(self.ids),
                                                  user_ids=self.ids,
                                                  cache=False)
@@ -125,9 +133,21 @@ class MemberQuery(commands.IDConverter):
 
     async def _get_members_by_names(self, accumulator):
         async def query_by_name(name):
-            results = await self.guild.query_members(query=name, limit=1,
-                                                     cache=False)
-            accumulator.update(results)
+            parts = name.split('#')
+            query = parts[0]
+            # TODO(james7132): This doesn't support queries with over 100
+            # matching members.
+            results = await self.guild.query_members(query=query, cache=False)
+
+            results = [m for m in results if m.name == parts[0]]
+            if len(parts) > 1:
+                # For handling name#0000 style queries
+                results = [m for m in results if str(m.discriminator) == parts[1]]
+
+            # Only take one result per name to avoid providing all members with
+            # the same username
+            if results:
+                accumulator.add(results[0])
 
         await asyncio.gather(*[query_by_name(name) for name in names])
 
