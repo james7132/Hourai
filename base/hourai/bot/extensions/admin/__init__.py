@@ -121,7 +121,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Ban Members (User and Bot)
         """
-        query = await utils.MemberQuery.merge(ctx, members)
+        query = utils.MemberQuery.merge(ctx, members)
         targets = {m.id: m for m in query.cached}
         targets.update({member_id: fake.FakeSnowflake(id=member_id)
                         for member_id in query.ids})

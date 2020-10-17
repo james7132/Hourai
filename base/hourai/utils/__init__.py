@@ -42,6 +42,10 @@ class MemberQuery(commands.IDConverter):
     async def convert(self, ctx, argument):
         query = MemberQuery(ctx)
         query.add_parameter(argument)
+
+        if not query.ids or not query.names or not query.cached:
+            return discord.errors.MemberNotFound(argument)
+
         return query
 
     def add_parameter(self, param):

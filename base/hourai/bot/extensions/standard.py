@@ -268,16 +268,18 @@ class Standard(cogs.BaseCog):
         await ctx.send(mention)
 
     @commands.command()
-    async def whois(self, ctx, user: typing.Union[MemberQuery, discord.User]):
+    async def whois(self, ctx, user: MemberQuery):
         try:
-            members = user.get_members()
+            members = await user.get_members()
             if members:
                 user = next(iter(members))
             else:
-                user = user.get_users()
+                user = await user.get_users()
                 user = next(iter(user))
         except AttributeError:
             assert isinstance(user, discord.User)
+        except StopIteration:
+            return
         await ctx.send(embed=embed.make_whois_embed(ctx, user))
 
 
