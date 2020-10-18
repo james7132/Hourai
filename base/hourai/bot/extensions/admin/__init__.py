@@ -98,7 +98,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Kick Members (User and Bot)
         """
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         reason = create_reason(ctx, "Kicked", reason)
         await self._admin_action(ctx, members, lambda m: m.kick(reason=reason))
 
@@ -121,7 +121,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Ban Members (User and Bot)
         """
-        query = utils.MemberQuery.merge(ctx, members)
+        query = utils.MemberQuery.merge(ctx, *members)
         targets = {m.id: m for m in query.cached}
         targets.update({member_id: fake.FakeSnowflake(id=member_id)
                         for member_id in query.ids})
@@ -132,7 +132,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             targets.update({m.id: m for m in results})
 
         reason = create_reason(ctx, "Banned", reason)
-        await self._admin_action(ctx, targets,
+        await self._admin_action(ctx, targets.values(),
             lambda m: ctx.guild.ban(m, delete_message_days=0, reason=reason))
 
     @commands.command(name="softban")
@@ -158,7 +158,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         async def _softban(member):
             await member.ban(delete_message_days=7, reason=reason)
             await member.guild.unban(member)
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members, _softban)
 
     @commands.command(name="mute")
@@ -180,7 +180,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Mute Members (User and Bot)
         """
         reason = create_reason(ctx, "Muted", reason)
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members,
                 lambda m: m.edit(mute=True, reason=reason))
 
@@ -199,7 +199,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Mute Members (User and Bot)
         """
         reason = create_reason(ctx, "Muted", reason)
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members,
                 lambda m: m.edit(mute=False, reason=reason))
 
@@ -222,7 +222,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Deafen Members (User and Bot)
         """
         reason = create_reason(ctx, "Deafened", reason)
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members,
                 lambda m: m.edit(deafen=True, reason=reason))
 
@@ -244,7 +244,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Deafen Members (User and Bot)
         """
         reason = create_reason(ctx, "Undeafened", reason)
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members,
                                  lambda m: m.edit(deafen=False, reason=reason))
 
@@ -278,7 +278,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Manage Nicknames (User and Bot)
         """
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members, lambda m: m.edit(nick=name))
 
     # -------------------------------------------------------------------------
@@ -317,7 +317,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Role added by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -345,7 +345,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Role removed by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -522,7 +522,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp Ban by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -549,7 +549,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp mute by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
@@ -575,7 +575,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp deafen by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -608,7 +608,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -636,7 +636,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
+        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -700,12 +700,8 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Messages over 14 days old will not be deleted.
         Requires: Manage Messages (User and Bot)
         """
-        members = await utils.MemberQuery.merge(ctx, members).get_members()
-        members = set(members)
-
-        def msg_filter(m):
-            return m.author in members
-        count = await self._prune(ctx, predicate=msg_filter)
+        members = set(await utils.MemberQuery.merge(ctx, *members).get_members())
+        count = await self._prune(ctx, predicate=lambda m: m.author in members)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
@@ -793,7 +789,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         count = await self._prune(ctx, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
-
 
 def setup(bot):
     bot.add_cog(Admin(bot))

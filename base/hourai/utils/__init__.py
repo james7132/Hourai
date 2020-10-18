@@ -18,6 +18,7 @@ class MemberQuery(commands.IDConverter):
     __slots__ = ('ctx', 'ids', 'names')
 
     def __init__(self, ctx=None):
+        super().__init__()
         self.ctx = ctx
         self.ids = set()
         self.names = set()
@@ -32,18 +33,19 @@ class MemberQuery(commands.IDConverter):
         return self.ctx.guild
 
     @staticmethod
-    def merge(cls, ctx, *queries):
+    def merge(ctx, *queries):
         query = MemberQuery(ctx)
-        query.ids.update(x for q in queries for x in q.ids)
-        query.names.update(x for q in queries for x in q.names)
-        query.cached.update(x for q in queries for x in q.cached)
+        for subquery in queries:
+            query.ids.update(subquery.ids)
+            query.names.update(subquery.names)
+            query.cached.update(subquery.cached)
         return query
 
     async def convert(self, ctx, argument):
         query = MemberQuery(ctx)
         query.add_parameter(argument)
 
-        if not query.ids or not query.names or not query.cached:
+        if not query.ids and not query.names and not query.cached:
             return discord.errors.MemberNotFound(argument)
 
         return query
@@ -80,10 +82,13 @@ class MemberQuery(commands.IDConverter):
         This supports both normal username queries and also
         "username#discriminator" combinations.
         """
+        if len(name) > 32:
+            return None
+
         if self.guild:
-            result = self.guild.get_member_named(param)
+            result = self.guild.get_member_named(name)
         else:
-            result = self._get_from_guilds('get_member_named', param)
+            result = self._get_from_guilds('get_member_named', name)
 
         if result is not None:
             self.cached.add(result)
@@ -129,9 +134,12 @@ class MemberQuery(commands.IDConverter):
         return result
 
     async def _get_members_by_ids(self, accumulator):
+        if not self.ids:
+            return
+
         # TODO(james7132): This doesn't support queries with over 100 members.
         results = await self.guild.query_members(limit=len(self.ids),
-                                                 user_ids=self.ids,
+                                                 user_ids=list(self.ids),
                                                  cache=False)
         accumulator.update(results)
 
@@ -139,6 +147,7 @@ class MemberQuery(commands.IDConverter):
         async def query_by_name(name):
             parts = name.split('#')
             query = parts[0]
+
             # TODO(james7132): This doesn't support queries with over 100
             # matching members.
             results = await self.guild.query_members(query=query, cache=False)
@@ -153,7 +162,7 @@ class MemberQuery(commands.IDConverter):
             if results:
                 accumulator.add(results[0])
 
-        await asyncio.gather(*[query_by_name(name) for name in names])
+        await asyncio.gather(*[query_by_name(name) for name in self.names])
 
 
 def clamp(val, min_val, max_val):

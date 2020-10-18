@@ -153,10 +153,11 @@ class Validation(cogs.BaseCog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_guild_available(self, guild):
-        if not guild.me.guild_permissions.manage_guild:
-            return
-        await self.bot.get_guild_proxy(guild).invites.refresh()
+    async def on_ready(self):
+        for guild in self.bot.guilds:
+            if not guild.me.guild_permissions.manage_guild:
+                return
+            await self.bot.get_guild_proxy(guild).invites.refresh()
 
     @commands.Cog.listener()
     async def on_invite_create(self, invite):
