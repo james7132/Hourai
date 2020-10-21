@@ -116,7 +116,7 @@ class MemberQuery(commands.IDConverter):
         return members
 
     async def get_users(self):
-        users = {id: self.bot.get_user(m.id) for m in cached}
+        users = {id: self.bot.get_user(m.id) for m in self.cached}
         ids = {id for i, u in users.items() if u is None}
         ids.update(self.ids)
         users = {u for u in users if u is not None}

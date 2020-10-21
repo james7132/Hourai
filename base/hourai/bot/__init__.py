@@ -178,7 +178,9 @@ class Hourai(commands.AutoShardedBot):
         self.bot_counters['event_total_runtime'][event_name] += runtime
 
     def run(self, *args, **kwargs):
-        uvloop.try_install()
+        if self.config.use_uv_loop:
+            log.info('Trying to enable uvloop...')
+            uvloop.try_install()
         super().run(*args, **kwargs)
 
     async def start(self, *args, **kwargs):

@@ -3,6 +3,7 @@ local env(suffix) = {
   command_prefix: "~",
   activity: "Use ~help, https://hourai.gg",
   list_directory: "/opt/lists",
+  use_uv_loop: true,
 
   local databases = {
     local database_params = {

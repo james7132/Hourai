@@ -102,6 +102,7 @@ def __make_configuration_template():
         "disabled_extensions": [""],
 
         "list_directory": "",
+        "use_uv_loop": True,
 
         "web": {
             "port": 0
