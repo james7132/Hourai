@@ -220,7 +220,7 @@ class ActionExecutor:
         guild = self.__get_guild(action)
         if guild is None:
             return None
-        return utils.get_member_async(guild, action.user_id)
+        return self.bot.get_member_async(guild, action.user_id)
 
 
 def _invert_ban(self, action: proto.Action) -> proto.Action:

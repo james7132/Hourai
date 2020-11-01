@@ -161,7 +161,7 @@ class EscalationMixin:
             level = max(-1, level + entry.level_delta)
 
             authorizer_name = entry.authorizer_name
-            authorizer = await utils.get_member_async(
+            authorizer = await self.bot.get_member_async(
                     history.guild, entry.authorizer_id)
             if authorizer is not None:
                 authorizer_name = \

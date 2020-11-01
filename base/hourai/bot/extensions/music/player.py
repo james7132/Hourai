@@ -118,7 +118,7 @@ class HouraiMusicPlayer(wavelink.Player):
     async def get_current_requestor(self):
         if self._requestor_id is None or self.guild is None:
             return None
-        return await hourai_utils.get_member_async(self.guild,
+        return await self.bot.get_member_async(self.guild,
                                                    self._requestor_id)
 
     @property

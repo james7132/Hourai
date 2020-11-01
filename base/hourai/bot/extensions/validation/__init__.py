@@ -418,7 +418,7 @@ class Validation(cogs.BaseCog):
 
         try:
             target_id = int(embed.footer.text, 16)
-            target = await utils.get_member_async(guild, target_id)
+            target = await self.bot.get_member_async(guild, target_id)
             if target is None:
                 log.info(f'Member not found: {target_id}')
                 return
@@ -494,7 +494,7 @@ class Validation(cogs.BaseCog):
         user = ban_info.user
         # FIXME(james7132): This will not scale to multiple processes/nodes.
         members = await asyncio.gather(
-                *[utils.get_member_async(guild, user.id)
+                *[self.bot.get_member_async(guild, user.id)
                   for guild in self.bot.guilds])
         guild_proxies = [self.bot.get_guild_proxy(member.guild)
                          for member in members if member is not None]

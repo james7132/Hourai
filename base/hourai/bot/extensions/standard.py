@@ -268,7 +268,8 @@ class Standard(cogs.BaseCog):
         await ctx.send(mention)
 
     @commands.command()
-    async def whois(self, ctx, user: typing.Union[Member, User]):
+    async def whois(self, ctx,
+                    user: typing.Union[discord.Member, discord.User]):
         """ Provides detailed information about a user. """
         await ctx.send(embed=embed.make_whois_embed(ctx, user))
 
