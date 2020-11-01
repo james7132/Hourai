@@ -84,7 +84,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx, members: commands.Greedy[utils.MemberQuery],
+    async def kick(self, ctx, members: commands.Greedy[discord.Member],
                    *, reason: str = None):
         """Kicks all specified users.
 
@@ -98,7 +98,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Kick Members (User and Bot)
         """
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         reason = create_reason(ctx, "Kicked", reason)
         await self._admin_action(ctx, members, lambda m: m.kick(reason=reason))
 
@@ -106,7 +105,8 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx, members: commands.Greedy[utils.MemberQuery],
+    async def ban(self, ctx,
+                  members: commands.Greedy[discord.Member],
                   *, reason: str = None):
         """Bans all specified users from the server.
 
@@ -121,25 +121,22 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Ban Members (User and Bot)
         """
-        query = utils.MemberQuery.merge(ctx, *members)
-        targets = {m.id: m for m in query.cached}
-        targets.update({member_id: fake.FakeSnowflake(id=member_id)
-                        for member_id in query.ids})
-        query.ids.clear()
-
-        if query.names:
-            results = await utils.MemberQuery.get_members()
-            targets.update({m.id: m for m in results})
+        targets = set()
+        for member in members:
+            if isinstance(member, discord.Member):
+                targets.add(member)
+            if isinstance(member, int):
+                targets.add(fake.FakeSnowflake(id=member))
 
         reason = create_reason(ctx, "Banned", reason)
-        await self._admin_action(ctx, targets.values(),
+        await self._admin_action(ctx, targets,
             lambda m: ctx.guild.ban(m, delete_message_days=0, reason=reason))
 
     @commands.command(name="softban")
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def softban(self, ctx, members: commands.Greedy[utils.MemberQuery],
+    async def softban(self, ctx, members: commands.Greedy[discord.Member],
                       *, reason: str = None):
         """Bans then unbans all specified users from the server.
 
@@ -158,14 +155,13 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         async def _softban(member):
             await member.ban(delete_message_days=7, reason=reason)
             await member.guild.unban(member)
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members, _softban)
 
     @commands.command(name="mute")
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def mute(self, ctx, members: commands.Greedy[utils.MemberQuery],
+    async def mute(self, ctx, members: commands.Greedy[discord.Member],
                    *, reason: str = None):
         """Server mutes all specified users.
 
@@ -180,7 +176,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Mute Members (User and Bot)
         """
         reason = create_reason(ctx, "Muted", reason)
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members,
                 lambda m: m.edit(mute=True, reason=reason))
 
@@ -188,7 +183,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
-    async def unmute(self, ctx, members: commands.Greedy[utils.MemberQuery],
+    async def unmute(self, ctx, members: commands.Greedy[discord.Member],
                      *, reason: str = None):
         """Server unmutes all specified users.
 
@@ -199,7 +194,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Mute Members (User and Bot)
         """
         reason = create_reason(ctx, "Muted", reason)
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members,
                 lambda m: m.edit(mute=False, reason=reason))
 
@@ -207,7 +201,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(deafen_members=True)
     @commands.bot_has_permissions(deafen_members=True)
-    async def deafen(self, ctx, members: commands.Greedy[utils.MemberQuery],
+    async def deafen(self, ctx, members: commands.Greedy[discord.Member],
                      *, reason: str = None):
         """Deafens all specified users.
 
@@ -222,7 +216,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Deafen Members (User and Bot)
         """
         reason = create_reason(ctx, "Deafened", reason)
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members,
                 lambda m: m.edit(deafen=True, reason=reason))
 
@@ -230,7 +223,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.guild_only()
     @commands.has_permissions(deafen_members=True)
     @commands.bot_has_permissions(deafen_members=True)
-    async def undeafen(self, ctx, members: commands.Greedy[utils.MemberQuery],
+    async def undeafen(self, ctx, members: commands.Greedy[discord.Member],
                        *, reason: str = None):
         """Server undeafens all specified users.
 
@@ -244,7 +237,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Deafen Members (User and Bot)
         """
         reason = create_reason(ctx, "Undeafened", reason)
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members,
                                  lambda m: m.edit(deafen=False, reason=reason))
 
@@ -256,6 +248,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
                    src: discord.VoiceChannel,
                    dst: discord.VoiceChannel):
         """Moves all members in one voice channel to another.
+        Only supports moving up to 100 members at once.
 
         Examples:
           ~move General AFK
@@ -263,22 +256,20 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Move Members (User and Bot)
         """
-        query = utils.MemberQuery.merge(ctx)
-        for id in src.voice_states.keys():
-            query.add_id(id)
-        members = await query.get_members()
+        ids = list(src.voice_states.keys())
+        limit = min(len(ids), 100)
+        members = await ctx.guild.query_members(limit=limit, user_ids=ids)
         await self._admin_action(ctx, members, lambda m: m.move_to(dst))
 
     @commands.command(name="nickname")
     @commands.guild_only()
     @commands.has_permissions(manage_nicknames=True)
     @commands.bot_has_permissions(manage_nicknames=True)
-    async def nickname(self, ctx, name: str, *members: utils.MemberQuery):
+    async def nickname(self, ctx, name: str, *members: discord.Member):
         """Nicknames all specified users.
 
         Requires Manage Nicknames (User and Bot)
         """
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await self._admin_action(ctx, members, lambda m: m.edit(nick=name))
 
     # -------------------------------------------------------------------------
@@ -300,7 +291,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def role_add(self, ctx, role: discord.Role,
-                       *members: utils.MemberQuery):
+                       *members: discord.Member):
         """Adds a role to server members.
 
         Examples:
@@ -317,7 +308,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Role added by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -328,7 +318,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def role_remove(self, ctx, role: discord.Role,
-                          *members: utils.MemberQuery):
+                          *members: discord.Member):
         """Removes a role to server members.
 
         Examples:
@@ -345,7 +335,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Role removed by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -506,7 +495,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def temp_ban(self, ctx, duration: utils.human_timedelta,
-                       *members: utils.MemberQuery):
+                       *members: discord.Member):
         """Temporarily bans all specified users from the server.
 
         Examples:
@@ -522,7 +511,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp Ban by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -533,7 +521,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
     async def temp_mute(self, ctx, duration: utils.human_timedelta,
-                        *members: utils.MemberQuery):
+                        *members: discord.Member):
         """Temporarily server mutes all specified users.
 
         Examples:
@@ -549,7 +537,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp mute by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
@@ -559,7 +546,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.has_permissions(mute_members=True)
     @commands.bot_has_permissions(mute_members=True)
     async def temp_deafen(self, ctx, duration: utils.human_timedelta,
-                          *members: utils.MemberQuery):
+                          *members: discord.Member):
         """Temporarily server deafen all specified users.
 
         Examples:
@@ -575,7 +562,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp deafen by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -591,7 +577,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def temp_role_add(self, ctx, duration: utils.human_timedelta,
-                            role: discord.Role, *members: utils.MemberQuery):
+                            role: discord.Role, *members: discord.Member):
         """Temporarily add a role to all specified users.
 
         Examples:
@@ -608,7 +594,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -619,7 +604,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)
     async def temp_role_remove(self, ctx, duration: utils.human_timedelta,
-                               role: discord.Role, *members: utils.MemberQuery):
+                               role: discord.Role, *members: discord.Member):
         """Temporarily removes a role to all specified users.
 
         Examples:
@@ -636,7 +621,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Temp role by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
-        members = await utils.MemberQuery.merge(ctx, *members).get_members()
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -693,14 +677,14 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @prune.command(name="user")
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def prune_user(self, ctx, *members: utils.MemberQuery):
+    async def prune_user(self, ctx, *members: discord.Member):
         """Prunes messages in the current channel that belong to specific users.
 
         Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
         Requires: Manage Messages (User and Bot)
         """
-        members = set(await utils.MemberQuery.merge(ctx, *members).get_members())
+        members = set(members)
         count = await self._prune(ctx, predicate=lambda m: m.author in members)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)

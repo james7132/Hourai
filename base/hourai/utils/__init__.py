@@ -14,157 +14,6 @@ MODERATOR_PREFIX = 'mod'
 DELETED_USER_REGEX = re.compile(r'Deleted User [0-9a-fA-F]{8}')
 
 
-class MemberQuery(commands.IDConverter):
-    __slots__ = ('ctx', 'ids', 'names')
-
-    def __init__(self, ctx=None):
-        super().__init__()
-        self.ctx = ctx
-        self.ids = set()
-        self.names = set()
-        self.cached = set()
-
-    @property
-    def bot(self):
-        return self.ctx.bot
-
-    @property
-    def guild(self):
-        return self.ctx.guild
-
-    @staticmethod
-    def merge(ctx, *queries):
-        query = MemberQuery(ctx)
-        for subquery in queries:
-            query.ids.update(subquery.ids)
-            query.names.update(subquery.names)
-            query.cached.update(subquery.cached)
-        return query
-
-    async def convert(self, ctx, argument):
-        query = MemberQuery(ctx)
-        query.add_parameter(argument)
-
-        if not query.ids and not query.names and not query.cached:
-            return discord.errors.MemberNotFound(argument)
-
-        return query
-
-    def add_parameter(self, param):
-        match = self._get_id_match(param) or re.match(r'<@!?([0-9]+)>$', param)
-        if match is not None:
-            self.add_id(int(match.group(1)))
-        else:
-            self.add_name(param)
-
-    def add_id(self, user_id: int) -> discord.Member:
-        """Adds an ID to the query. If a corresponding member is in the bot's
-        cache it will bypass the query entirely and use the cached valeus.
-        """
-        if self.guild:
-            result = self.guild.get_member(user_id) or \
-                     discord.utils.get(self.ctx.message.mentions,
-                                       id=user_id)
-        else:
-            result = self._get_from_guilds('get_member', user_id)
-
-        if result is not None:
-            self.cached.add(result)
-        else:
-            self.ids.add(user_id)
-
-        return result
-
-    def add_name(self, name: str) -> discord.Member:
-        """Adds a username to the query. If a corresponding member is in the bot's
-        cache it will bypass the query entirely and use the cached valeus.
-
-        This supports both normal username queries and also
-        "username#discriminator" combinations.
-        """
-        if len(name) > 32:
-            return None
-
-        if self.guild:
-            result = self.guild.get_member_named(name)
-        else:
-            result = self._get_from_guilds('get_member_named', name)
-
-        if result is not None:
-            self.cached.add(result)
-        else:
-            self.names.add(name)
-
-        return result
-
-    async def get_members(self):
-        if not self.ids and not self.names:
-            return list(self.cached)
-
-        members = set(self.cached)
-        if self.guild is not None:
-            await asyncio.gather(self._get_members_by_ids(members),
-                                 self._get_members_by_names(members))
-            for member in members:
-                self.guild._add_member(member, force=True)
-
-        for member in members:
-            self.ids.discard(member.id)
-            self.names.discard(member.name)
-
-        self.cached.update(members)
-        return members
-
-    async def get_users(self):
-        users = {id: self.bot.get_user(m.id) for m in self.cached}
-        ids = {id for i, u in users.items() if u is None}
-        ids.update(self.ids)
-        users = {u for u in users if u is not None}
-        users.update(await asyncio.gather(
-            *[self.bot.fetch_user(id) for id in ids]))
-        users = {u for u in users if u is not None}
-        return users
-
-    def _get_from_guilds(getter, argument):
-        result = None
-        for guild in self.bot.guilds:
-            result = getattr(guild, getter)(argument)
-            if result:
-                return result
-        return result
-
-    async def _get_members_by_ids(self, accumulator):
-        if not self.ids:
-            return
-
-        # TODO(james7132): This doesn't support queries with over 100 members.
-        results = await self.guild.query_members(limit=len(self.ids),
-                                                 user_ids=list(self.ids),
-                                                 cache=False)
-        accumulator.update(results)
-
-    async def _get_members_by_names(self, accumulator):
-        async def query_by_name(name):
-            parts = name.split('#')
-            query = parts[0]
-
-            # TODO(james7132): This doesn't support queries with over 100
-            # matching members.
-            results = await self.guild.query_members(query=query, cache=False)
-
-            results = [m for m in results if m.name == parts[0]]
-            if len(parts) > 1:
-                # For handling name#0000 style queries
-                results = [m for m in results if str(m.discriminator) == parts[1]]
-
-            # Only take one result per name to avoid providing all members with
-            # the same username
-            if results:
-                accumulator.add(results[0])
-
-        await asyncio.gather(*[query_by_name(name) for name in self.names])
-
-
 def clamp(val, min_val, max_val):
     return max(min(val, max_val), min_val)
 
@@ -184,11 +33,22 @@ async def get_member_async(guild: discord.Guild, user_id: int) \
     if member:
         return member
 
-    members = await guild.query_members(limit=1, user_ids=[user_id],
-                                        cache=True)
-    if members is None or len(members) != 1:
-        return None
-    member = next(iter(members))
+    ws = bot._get_websocket(shard_id=guild.shard_id)
+    cache = guild._state._member_cache_flags.joined
+    if ws.is_ratelimited():
+        # If we're being rate limited on the WS, then fall back to using the HTTP API
+        # So we don't have to wait ~60 seconds for the query to finish
+        try:
+            member = await guild.fetch_member(user_id)
+        except discord.HTTPException:
+            return None
+    else:
+        members = await guild.query_members(limit=1, user_ids=[user_id],
+                                            cache=True)
+        if members is None or len(members) != 1:
+            return None
+        member = next(iter(members))
+
     guild._add_member(member, force=True)
     return member
 
