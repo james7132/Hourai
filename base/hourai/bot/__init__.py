@@ -160,7 +160,7 @@ class Hourai(commands.AutoShardedBot):
         self.bot_counters['events_dispatched'][event] += 1
         super().dispatch(event, *args, **kwargs)
 
-    async def get_member_async(guild: discord.Guild, user_id: int) \
+    async def get_member_async(self, guild: discord.Guild, user_id: int) \
             -> discord.Member:
         member = guild.get_member(user_id)
         if member:
@@ -169,8 +169,9 @@ class Hourai(commands.AutoShardedBot):
         ws = self._get_websocket(shard_id=guild.shard_id)
         cache = guild._state._member_cache_flags.joined
         if ws.is_ratelimited():
-            # If we're being rate limited on the WS, then fall back to using the HTTP API
-            # So we don't have to wait ~60 seconds for the query to finish
+            # If we're being rate limited on the WS, then fall back to using the
+            # HTTP API so we don't have to wait ~60 seconds for the query to
+            # finish
             try:
                 member = await guild.fetch_member(user_id)
             except discord.HTTPException:
