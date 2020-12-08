@@ -113,6 +113,7 @@ class Standard(cogs.BaseCog):
             await ctx.send(
                 "Cannot schedule reminders more than 1 year in advance!",
                 delete_after=90)
+            return
 
         action = proto.Action()
         action.user_id = ctx.author.id
