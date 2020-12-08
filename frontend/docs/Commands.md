@@ -29,6 +29,8 @@ user must have the specified Discord permissions.
 |`~tag <tag>`|None|Fetches a tag, a snippet of saved text.|
 |`~tag set <tag> <response>`|Moderator|Sets a tag.|
 |`~tag list`|None|Lists all of the tags in the server.|
+|`~remindme <duration> <reminder>`|None|Schedules Hourai to send the user as a DM
+in the future. Time uses shorthand (i.e. 2d for 2 days into the future).|
 
 ## Moderation Commands
 
