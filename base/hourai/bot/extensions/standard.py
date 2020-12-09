@@ -155,12 +155,13 @@ class Standard(cogs.BaseCog):
     async def serverinfo(self, ctx):
         """Displays detailed information about the server."""
         guild = ctx.guild
-        owner = guild.owner
+        owner = guild.owner or (await ctx.bot.fetch_user(guild.owner_id))
         msg_embed = discord.Embed(title=f'{guild.name} ({guild.id})',
                                   description=guild.description)
         msg_embed.set_thumbnail(url=guild.icon_url)
-        msg_embed.add_field(name='Owner',
-                            value=f'{owner.name}#{owner.discriminator}')
+        if owner is not None:
+            msg_embed.add_field(name='Owner',
+                                value=f'{owner.name}#{owner.discriminator}')
         msg_embed.add_field(name='Members', value=str(guild.member_count))
         embed._add_time_field(msg_embed, 'Created On', guild.created_at,
                               datetime.utcnow())

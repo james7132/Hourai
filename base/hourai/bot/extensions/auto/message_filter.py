@@ -157,7 +157,7 @@ class MessageFilter(cogs.BaseCog):
         exclude_criteria = (
             # Exclude the owner of the bot and the owner of the server.
             await self.bot.is_owner(message.author),
-            message.guild.owner == message.author,
+            message.guild.owner_id == message.author.id,
             # Exclude moderators and bots if configured.
             criteria.exclude_moderators and utils.is_moderator(message.author),
             criteria.exclude_bots and message.author.bot,

@@ -28,6 +28,10 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
  * [Music Bot] Fixed the music bot stopping whenever Discord resets the voice
    websocket connection. The bot will properly resume playing music when this
    happens.
+ * [General] Fixed issue with `~remindme` allowing reminders more than 1 year in
+   the future. Added missing `~remindme` documentation to the website.
+ * [General] Fixed several crashes that failed if the owner of a server had their
+   account deleted.
 
 ## v1.4.1 (07/16/2020)
 
