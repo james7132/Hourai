@@ -236,7 +236,7 @@ class Owner(cogs.BaseCog):
     @commands.command()
     async def migrate(self, ctx):
         """Runs the latest migration for guild configs."""
-        await citx.bot.wait_until_ready()
+        await ctx.bot.wait_until_ready()
 
         async def update_guild(guild):
             proxy = ctx.bot.get_guild_proxy(guild)
