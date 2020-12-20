@@ -55,13 +55,13 @@ async def check_role_manager(ctx, *targets):
         if not can_change_role(ctx.author, target):
             await ctx.send(
                 f'{ctx.author.mention}, you are not allowed to manage '
-                f'`{role.name}`.', delete_after=DELETE_WAIT_DURATION)
+                f'`{target.name}`.', delete_after=DELETE_WAIT_DURATION)
             return False
 
         if not can_change_role(ctx.guild.me, target):
             await ctx.send(
                 f'{ctx.guild.me.mention} is not allowed to manage '
-                f'`{role.name}`.', delete_after=DELETE_WAIT_DURATION)
+                f'`{target.name}`.', delete_after=DELETE_WAIT_DURATION)
             return False
 
     return True
@@ -387,7 +387,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         ~role drop.
         Requires Manage Roles (User and Bot)
         """
-        if not (await check_role_manager(ctx, role)):
+        if not (await check_role_manager(ctx, *roles)):
             return
 
         storage = ctx.bot.storage.role_configs
@@ -415,7 +415,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         ~role drop.
         Requires Manage Roles (User and Bot)
         """
-        if not (await check_role_manager(ctx, role)):
+        if not (await check_role_manager(ctx, *roles)):
             return
 
         storage = ctx.bot.storage.role_configs

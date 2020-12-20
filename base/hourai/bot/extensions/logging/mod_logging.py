@@ -30,17 +30,17 @@ class ModLogging(cogs.BaseCog):
         proxy = self.bot.get_guild_proxy(before.guild)
         config = (await proxy.config.get('logging')).edited_messages
         channel = before.guild.get_channel(config.output_channel_id)
-        if not should_log(payload.channel_id, config) or \
-           channel is None or msg.author.bot:
+        if not should_log(before.channel.id, config) or \
+           channel is None or before.author.bot:
             return
-        content = (f'Message by {msg.author.mention} edited in '
-                   f'{msg.channel.mention}.')
+        content = (f'Message by {before.author.mention} edited in '
+                   f'{before.channel.mention}.')
         embed = embed_utils.message_to_embed(before)
         embed.description = None
         embed.color = discord.Color.dark_orange()
         embed.add_field(name="Before", value=before.content)
         embed.add_field(name="After", value=after.content)
-        await modlog.send(content=content, embed=embed)
+        await channel.send(content=content, embed=embed)
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload):
@@ -65,7 +65,7 @@ class ModLogging(cogs.BaseCog):
                 attachments = (attach.url for attach in msg.attachments)
                 field = format.vertical_list(attachments)
                 embed.add_field(name='Attachments', value=field)
-        await modlog.send(content=content, embed=embed)
+        await channel.send(content=content, embed=embed)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
