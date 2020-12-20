@@ -25,11 +25,9 @@ message LoggingConfig {
   // Required. The channel to make modlog messages to.
   optional uint64 modlog_channel_id = 1;
 
-  // Optional: If set to true, deleted messages are logged to the modlog channel.
-  // DEPRECARTED: Use deleted_messages instead.
-  optional bool log_deleted_messages = 2 [deprecated = true];
-
   optional MessageLoggingConfig deleted_messages = 3;
+
+  reserved 2;
 }
 
 message MessageLoggingConfig {

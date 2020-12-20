@@ -233,27 +233,6 @@ class Owner(cogs.BaseCog):
         output.append(f'discord.py: {discord.__version__}')
         await ctx.send(format.multiline_code(format.vertical_list(output)))
 
-    @commands.command()
-    async def migrate(self, ctx):
-        """Runs the latest migration for guild configs."""
-        await ctx.bot.wait_until_ready()
-
-        async def update_guild(guild):
-            proxy = ctx.bot.get_guild_proxy(guild)
-            config = await proxy.config.get('logging')
-            if config.log_deleted_messages and config.modlog_channel_id:
-                config.deleted_messages.enabled = True
-                config.deleted_messages.output_channel_id = \
-                    config.modlog_channel_id
-            else:
-                return
-            await proxy.config.set('logging', config)
-
-        async with ctx.typing():
-            await asyncio.gather(*[update_guild(g) for g in ctx.bot.guilds])
-
-        await ctx.send('Migration complete!')
-
     @staticmethod
     def get_shard_stats(ctx, shard_id):
         counters = collections.Counter()

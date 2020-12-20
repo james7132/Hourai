@@ -19,25 +19,23 @@ class ModLogging(cogs.BaseCog):
         if guild is None:
             return
         proxy = self.bot.get_guild_proxy(guild)
-        logging_config = await proxy.config.get('logging')
-        if logging_config is None or not logging_config.log_deleted_messages:
+        config = (await proxy.config.get('logging')).delete_messages
+        channel = guild.get_channel(config.output_channel_id)
+        if not config.enabled or channel is None:
             return
-        content = 'Message deleted in <#{}>.'.format(payload.channel_id)
-        modlog = await proxy.get_modlog()
+        content = f'Message deleted in <#{payload.channel_id}>.'
         msg = payload.cached_message
         embed = embed_utils.message_to_embed(msg or payload.message_id)
         embed.color = discord.Color.dark_red()
-        if msg is None:
-            await modlog.send(content=content, embed=embed)
-            return
-        elif msg.author.bot:
-            return
-        content = 'Message by {} deleted in {}.'.format(
-            msg.author.mention, msg.channel.mention)
-        if len(msg.attachments) > 0:
-            attachments = (attach.url for attach in msg.attachments)
-            field = format.vertical_list(attachments)
-            embed.add_field(name='Attachments', value=field)
+        if msg is not None:
+            if msg.author.bot:
+                return
+            content = (f'Message by {msg.author.mention} deleted in '
+                       f'{msg.channel.mention}.')
+            if len(msg.attachments) > 0:
+                attachments = (attach.url for attach in msg.attachments)
+                field = format.vertical_list(attachments)
+                embed.add_field(name='Attachments', value=field)
         await modlog.send(content=content, embed=embed)
 
     @commands.Cog.listener()
@@ -46,13 +44,13 @@ class ModLogging(cogs.BaseCog):
         if guild is None:
             return
         proxy = self.bot.get_guild_proxy(guild)
-        logging_config = await proxy.config.get('logging')
-        if logging_config is None or not logging_config.log_deleted_messages:
+        config = (await proxy.config.get('logging')).delete_messages
+        channel = guild.get_channel(config.output_channel_id)
+        if config.deleted_messages.enabled or channel is None:
             return
-        content = '{} messages bulk deleted in <#{}>.'.format(
-            len(payload.message_ids), payload.channel_id)
-        modlog = await proxy.get_modlog()
-        await modlog.send(content=content)
+        content = (f'{len(payload.message_ids)} messages bulk deleted in '
+                   f'<#{payload.channel_id}>.')
+        await channel.send(content=content)
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
