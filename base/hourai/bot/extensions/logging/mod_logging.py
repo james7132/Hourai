@@ -5,6 +5,16 @@ from hourai.utils import embed as embed_utils
 from hourai.utils import format, success, checks
 
 
+def should_log(channel_id, config):
+    if not config.enabled:
+        return False
+    if channel_id in config.channel_filter.denylist:
+        return False
+    if len(config.channel_filter.allowlist) > 0:
+        return channel_id in config.channel_filter.allowlist
+    return True
+
+
 class ModLogging(cogs.BaseCog):
     """ Cog for logging Discord and bot events to a servers' modlog channels.
     """
@@ -12,15 +22,6 @@ class ModLogging(cogs.BaseCog):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-
-    def should_log(self, channel_id, config):
-        if not config.enabled:
-            return False
-        if channel_id in config.channel_filter.denylist:
-            return False
-        if len(config.channel_filter.allowlist) > 0:
-            return channel_id in config.channel_filter.allowlist
-        return True
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
