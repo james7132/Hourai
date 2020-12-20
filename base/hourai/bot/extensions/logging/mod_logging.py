@@ -28,7 +28,7 @@ class ModLogging(cogs.BaseCog):
             return
         proxy = self.bot.get_guild_proxy(before.guild)
         config = (await proxy.config.get('logging')).edited_messages
-        channel = guild.get_channel(config.output_channel_id)
+        channel = before.guild.get_channel(config.output_channel_id)
         if not should_log(payload.channel_id, config) or \
            channel is None or msg.author.bot:
             return
@@ -47,7 +47,7 @@ class ModLogging(cogs.BaseCog):
         if guild is None:
             return
         proxy = self.bot.get_guild_proxy(guild)
-        config = (await proxy.config.get('logging')).delete_messages
+        config = (await proxy.config.get('logging')).deleted_messages
         channel = guild.get_channel(config.output_channel_id)
         if not should_log(payload.channel_id, config) or channel is None:
             return
@@ -72,7 +72,7 @@ class ModLogging(cogs.BaseCog):
         if guild is None:
             return
         proxy = self.bot.get_guild_proxy(guild)
-        config = (await proxy.config.get('logging')).delete_messages
+        config = (await proxy.config.get('logging')).deleted_messages
         channel = guild.get_channel(config.output_channel_id)
         if not should_log(payload.channel_id, config) or channel is None:
             return
