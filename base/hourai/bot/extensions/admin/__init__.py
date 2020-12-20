@@ -326,7 +326,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         To temporarily add a role to a user, see ~help temp role add.
         Requires Manage Roles (User and Bot)
         """
-        if not check_role_manager(ctx, role):
+        if not (await check_role_manager(ctx, role)):
             return
 
         def make_action(member):
@@ -356,7 +356,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         To temporarily remove a role to a user, see ~help temp role remove.
         Requires Manage Roles (User and Bot)
         """
-        if not check_role_manager(ctx, role):
+        if not (await check_role_manager(ctx, role)):
             return
 
         def make_action(member):
@@ -387,7 +387,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         ~role drop.
         Requires Manage Roles (User and Bot)
         """
-        if not check_role_manager(ctx, *roles):
+        if not (await check_role_manager(ctx, role)):
             return
 
         storage = ctx.bot.storage.role_configs
@@ -415,7 +415,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         ~role drop.
         Requires Manage Roles (User and Bot)
         """
-        if not check_role_manager(ctx, *roles):
+        if not (await check_role_manager(ctx, role)):
             return
 
         storage = ctx.bot.storage.role_configs
@@ -593,7 +593,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Manage Roles (User and Bot)
         """
-        if not check_role_manager(ctx, role):
+        if not (await check_role_manager(ctx, role)):
             return
 
         def make_action(member):
@@ -623,7 +623,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Manage Roles (User and Bot)
         """
-        if not check_role_manager(ctx, role):
+        if not (await check_role_manager(ctx, role)):
             return
 
         def make_action(member):
