@@ -35,6 +35,13 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
  * [Moderation] Tightened permissions checks on role related commands to ensure
    the bot does not allow users to manage roles they normally do not have access
    to.
+ * [Logging] Added function to log edited messages. Use `~log edited` to
+   enable/disable logging of
+ * [Logging] Logging of deleted/edited messages can be separated from the
+   existing modlog channel. Defaults to the channel `~log edited/deleted` is used
+   in.
+ * [Logging] **Beta Feature**: Added support for ignoring channels when logging
+   deleted an edited messages.
 
 ## v1.4.1 (07/16/2020)
 

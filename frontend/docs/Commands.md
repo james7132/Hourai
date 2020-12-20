@@ -70,6 +70,7 @@ these options will be configurable from the control panel.
 |:------|:----------|:----------|
 |`~setmodlog <channel>`|Manage Guild (User)|Sets the server's modlog to the specified channel.|
 |`~log deleted`|Manage Guild (User)|Toggles whehter deleted messages are logged to the server's modlog.|
+|`~log edited`|Manage Guild (User)|Toggles whehter edited messages are logged to the server's modlog.|
 
 ## Feed Commands
 

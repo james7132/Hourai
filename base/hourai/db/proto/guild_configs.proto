@@ -26,6 +26,7 @@ message LoggingConfig {
   optional uint64 modlog_channel_id = 1;
 
   optional MessageLoggingConfig deleted_messages = 3;
+  optional MessageLoggingConfig edited_messages = 4;
 
   reserved 2;
 }
