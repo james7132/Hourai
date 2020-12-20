@@ -26,9 +26,16 @@ message LoggingConfig {
   optional uint64 modlog_channel_id = 1;
 
   // Optional: If set to true, deleted messages are logged to the modlog channel.
-  optional bool log_deleted_messages = 2;
-  // Optional: If set to true, edited messages are logged to the modlog channel.
-  // optional bool log_edited_messages = 2;
+  // DEPRECARTED: Use deleted_messages instead.
+  optional bool log_deleted_messages = 2 [deprecated = true];
+
+  optional MessageLoggingConfig deleted_messages = 3;
+}
+
+message MessageLoggingConfig {
+  optional bool enabled = 1;
+  optional uint64 output_channel_id = 2;
+  optional IdFilter channel_filter = 3;
 }
 
 // ------------------------------------------------------------------------------

@@ -6,3 +6,8 @@ message FilterSettings {
   repeated string blacklist = 1;
   repeated string whitelist = 2;
 }
+
+message IdFilter {
+  repeated uint64 allowlist = 1;
+  repeated uint64 denylist = 2;
+}

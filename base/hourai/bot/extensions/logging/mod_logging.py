@@ -63,7 +63,10 @@ class ModLogging(cogs.BaseCog):
     @log.command(name='deleted')
     async def log_deleted(self, ctx):
         config = await ctx.guild_proxy.config.get('logging')
-        config.log_deleted_messages = not config.log_deleted_messages
-        change = ('enabled' if config.log_deleted_messages else 'disabled.')
+        config.deleted_messages.enabled = not config.deleted_messages.enabled
+        config.deleted_messages.output_channel_id = ctx.channel.id
+        change = ('enabled' if config.deleted_messages.enabled else 'disabled.')
         await ctx.guild_proxy.config.set('logging', config)
-        await success(f'Logging of deleted messages has been {change}')
+        await success(ctx,
+            f'Logging of deleted messages has been {change} '
+            f'in {ctx.channel.mention}.')
