@@ -13,6 +13,15 @@ class ModLogging(cogs.BaseCog):
         super().__init__()
         self.bot = bot
 
+    def should_log(self, channel_id, config):
+        if not config.enabled:
+            return False
+        if channel_id in config.channel_filter.denylist:
+            return False
+        if len(config.channel_filter.allowlist) > 0:
+            return channel_id in config.channel_filter.allowlist
+        return True
+
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload):
         guild = self.bot.get_guild(payload.guild_id or 0)
@@ -21,7 +30,7 @@ class ModLogging(cogs.BaseCog):
         proxy = self.bot.get_guild_proxy(guild)
         config = (await proxy.config.get('logging')).delete_messages
         channel = guild.get_channel(config.output_channel_id)
-        if not config.enabled or channel is None:
+        if not should_log(payload.channel_id, config) or channel is None:
             return
         content = f'Message deleted in <#{payload.channel_id}>.'
         msg = payload.cached_message
@@ -46,7 +55,7 @@ class ModLogging(cogs.BaseCog):
         proxy = self.bot.get_guild_proxy(guild)
         config = (await proxy.config.get('logging')).delete_messages
         channel = guild.get_channel(config.output_channel_id)
-        if config.deleted_messages.enabled or channel is None:
+        if not should_log(payload.channel_id, config) or channel is None:
             return
         content = (f'{len(payload.message_ids)} messages bulk deleted in '
                    f'<#{payload.channel_id}>.')
