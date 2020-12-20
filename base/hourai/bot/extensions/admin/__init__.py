@@ -42,6 +42,31 @@ def create_reason(ctx, action, reason):
     return f"{reason_prefix} for: {reason}" if reason else reason_prefix
 
 
+def can_change_role(member, target):
+    if member.guild.owner_id == member.id:
+        return True
+    if not member.guild_permissions.manage_roles:
+        return False
+    return any(role > target for role in member.roles)
+
+
+async def check_role_manager(ctx, *targets):
+    for target in targets:
+        if not can_change_role(ctx.author, target):
+            await ctx.send(
+                f'{ctx.author.mention}, you are not allowed to manage '
+                f'`{role.name}`.', delete_after=DELETE_WAIT_DURATION)
+            return False
+
+        if not can_change_role(ctx.guild.me, target):
+            await ctx.send(
+                f'{ctx.guild.me.mention} is not allowed to manage '
+                f'`{role.name}`.', delete_after=DELETE_WAIT_DURATION)
+            return False
+
+    return True
+
+
 class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
     def __init__(self, bot):
@@ -301,6 +326,9 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         To temporarily add a role to a user, see ~help temp role add.
         Requires Manage Roles (User and Bot)
         """
+        if not check_role_manager(ctx, role):
+            return
+
         def make_action(member):
             action = create_action(member)
             action.change_role.type = proto.StatusType.APPLY
@@ -328,6 +356,9 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         To temporarily remove a role to a user, see ~help temp role remove.
         Requires Manage Roles (User and Bot)
         """
+        if not check_role_manager(ctx, role):
+            return
+
         def make_action(member):
             action = create_action(member)
             action.change_role.type = proto.StatusType.UNAPPLY
@@ -335,6 +366,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             action.reason = (f'Role removed by {ctx.author.name}.\n' +
                              ctx.message.jump_url)
             return action
+
         await ctx.bot.action_manager.execute_all(
             make_action(m) for m in members)
         # TODO(james7132): Have this reflect the results of the actions
@@ -355,19 +387,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         ~role drop.
         Requires Manage Roles (User and Bot)
         """
-
-        async def _check_highest_role(member):
-            top_role = member.top_role
-            for role in roles:
-                if role > top_role:
-                    msg = (f'Cannot allow self serve of "{role.name}". Role is'
-                           f' higher than {member.mention}\'s highest role.')
-                    await ctx.send(msg, delete_after=DELETE_WAIT_DURATION)
-                    return True
-            return False
-
-        if ((await _check_highest_role(ctx.guild.me)) or
-                (await _check_highest_role(ctx.author))):
+        if not check_role_manager(ctx, *roles):
             return
 
         storage = ctx.bot.storage.role_configs
@@ -395,20 +415,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         ~role drop.
         Requires Manage Roles (User and Bot)
         """
-
-        async def _check_highest_role(member):
-            highest_role = max(member.roles)
-            for role in roles:
-                if role > highest_role:
-                    msg = (f'Cannot disallow self serve of "{role.name}". Role'
-                           f' is higher than {member.mention}\'s highest '
-                           f'role.')
-                    await ctx.send(msg, delete_after=DELETE_WAIT_DURATION)
-                    return True
-            return False
-
-        if ((await _check_highest_role(ctx.guild.me)) or
-                (await _check_highest_role(ctx.author))):
+        if not check_role_manager(ctx, *roles):
             return
 
         storage = ctx.bot.storage.role_configs
@@ -586,6 +593,9 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Manage Roles (User and Bot)
         """
+        if not check_role_manager(ctx, role):
+            return
+
         def make_action(member):
             action = create_action(member)
             action.change_role.type = proto.StatusType.APPLY
@@ -613,6 +623,9 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Manage Roles (User and Bot)
         """
+        if not check_role_manager(ctx, role):
+            return
+
         def make_action(member):
             action = create_action(member)
             action.change_role.type = proto.StatusType.UNAPPLY

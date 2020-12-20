@@ -32,6 +32,9 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
    the future. Added missing `~remindme` documentation to the website.
  * [General] Fixed several crashes that failed if the owner of a server had their
    account deleted.
+ * [Moderation] Tightened permissions checks on role related commands to ensure
+   the bot does not allow users to manage roles they normally do not have access
+   to.
 
 ## v1.4.1 (07/16/2020)
 
