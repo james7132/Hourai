@@ -379,6 +379,15 @@ class Validation(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        if not member.pending:
+            await self.on_join(member)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        if before.pending and not after.pending:
+            await self.on_join(after)
+
+    async def on_join(self, member):
         config = await self.bot.get_guild_config(member.guild, 'validation')
         if config is None or not config.enabled:
             return

@@ -51,6 +51,15 @@ class Announce(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        if not member.pending:
+            await self.announce_join(member)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        if before.pending and not after.pending:
+            await self.announce_join(after)
+
+    async def announce_join(self, member):
         proxy = self.bot.get_guild_proxy(member.guild)
         announce_config = await proxy.config.get('announce')
         if not announce_config.HasField('joins'):

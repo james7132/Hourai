@@ -70,7 +70,13 @@ class Auto(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        await self.user_event(member.guild, member, 'on_join')
+        if member.pending:
+            await self.user_event(member.guild, member, 'on_join')
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        if before.pending and not after.pending:
+            await self.user_event(after.guild, after, 'on_join')
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):

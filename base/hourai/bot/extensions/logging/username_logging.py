@@ -21,16 +21,13 @@ class UsernameLogging(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_user_update(self, before, after):
-        if before.name == after.name:
-            return
-        assert before.id == after.id
-        self.bot.loop.create_task(self.log_username_change(after))
+        if before.name != after.name:
+            self.bot.loop.create_task(self.log_username_change(after))
 
     @commands.Cog.listener()
     async def on_message(self, msg):
         if msg.webhook_id is not None:
-            return
-        self.bot.loop.create_task(self.log_username_change(msg.author))
+            self.bot.loop.create_task(self.log_username_change(msg.author))
 
     @commands.Cog.listener()
     async def on_member_join(self, member):

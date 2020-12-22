@@ -20,7 +20,13 @@ log = logging.getLogger(__name__)
 # Monkeypatch Hacks
 __old_guild_add_member = discord.Guild._add_member
 def should_cache_member(member):
-    return utils.is_moderator(member) or member.id == member._state.user.id
+    # Cache if the member is:
+    # - A moderator
+    # - Is the bot user
+    # - Is a member pending verification
+    return utils.is_moderator(member) or \
+            member.id == member._state.user.id or \
+            member.pending
 
 def limit_cache_add_member(self, member, force=False):
     if member is not None and force or should_cache_member(member):
@@ -165,10 +171,7 @@ class Hourai(commands.AutoShardedBot):
         member = guild.get_member(user_id)
         if member:
             return member
-
-        ws = self._get_websocket(shard_id=guild.shard_id)
-        cache = guild._state._member_cache_flags.joined
-        if ws.is_ratelimited():
+        elif self.get_shard(guild.shard_id).is_ws_ratelimited():
             # If we're being rate limited on the WS, then fall back to using the
             # HTTP API so we don't have to wait ~60 seconds for the query to
             # finish

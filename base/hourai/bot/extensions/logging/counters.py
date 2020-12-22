@@ -50,8 +50,16 @@ class Counters(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        self.__increment_guild_counter(
-            member.guild, CounterKeys.MEMBERS_JOINED)
+        if not member.pending:
+            await self.on_join(member)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        if before.pending and not after.pending:
+            await self.on_join(after)
+
+    async def on_join(self, member):
+        self.__increment_guild_counter(member.guild, CounterKeys.MEMBERS_JOINED)
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, data):
