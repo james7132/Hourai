@@ -42,23 +42,15 @@ def create_reason(ctx, action, reason):
     return f"{reason_prefix} for: {reason}" if reason else reason_prefix
 
 
-def can_change_role(member, target):
-    if member.guild.owner_id == member.id:
-        return True
-    if not member.guild_permissions.manage_roles:
-        return False
-    return any(role > target for role in member.roles)
-
-
 async def check_role_manager(ctx, *targets):
     for target in targets:
-        if not can_change_role(ctx.author, target):
+        if not utils.can_change_role(ctx.author, target):
             await ctx.send(
                 f'{ctx.author.mention}, you are not allowed to manage '
                 f'`{target.name}`.', delete_after=DELETE_WAIT_DURATION)
             return False
 
-        if not can_change_role(ctx.guild.me, target):
+        if not utils.can_change_role(ctx.guild.me, target):
             await ctx.send(
                 f'{ctx.guild.me.mention} is not allowed to manage '
                 f'`{target.name}`.', delete_after=DELETE_WAIT_DURATION)

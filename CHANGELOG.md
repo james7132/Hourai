@@ -35,6 +35,13 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
  * [Moderation] Tightened permissions checks on role related commands to ensure
    the bot does not allow users to manage roles they normally do not have access
    to.
+ * [Moderation] **Beta Feature**: Added support for restoring roles to users upon
+   rejoining servers. Useful for giving users back their roles or keeping
+   punishment roles applied.
+   * Enabled/disabled on a per-role basis.
+   * Ignores the validation role if validation is enabled on the server.
+   * Currently does not have a timeout to rejoin the server, but may have one
+     introduced in the future.
  * [Logging] Added function to log edited messages. Use `~log edited` to
    enable/disable logging of
  * [Logging] Logging of deleted/edited messages can be separated from the

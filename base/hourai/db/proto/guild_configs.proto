@@ -229,8 +229,8 @@ message RoleConfig {
 
 message RoleSettings {
   // Bitfield:
-  //  0 - Self-Serve
-  //  1 - DJ role
-  //  2 - Moderator
-  optional uint64 permissions = 1;
+  //  0 - DJ role
+  //  1 - Moderator
+  //  2 - Restorable
+  optional uint64 flags = 1;
 }

@@ -18,6 +18,14 @@ def clamp(val, min_val, max_val):
     return max(min(val, max_val), min_val)
 
 
+def can_change_role(member, target):
+    if member.guild.owner_id == member.id:
+        return True
+    if not member.guild_permissions.manage_roles:
+        return False
+    return any(role > target for role in member.roles)
+
+
 async def get_user_async(bot: discord.Client, user_id: int) \
         -> discord.User:
     try:
