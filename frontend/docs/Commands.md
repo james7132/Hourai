@@ -51,6 +51,15 @@ without leaving a lasting ban.|
 |`~nickname <nickname> <user(s)>`|Manage Nicknames|Changes the nicknames of all provided users to a specified name. Must be shorter than 32 characters.|
 |`~role add <role> <user(s)>`|Manage Roles|Adds a role to all provided users.|
 |`~role remove <role> <user(s)>`|Manage Roles|Removes a role to all provided users.|
+|`~prune <count>`|Manage Messages|Deletes the last `count` messages. Defaults to 100.\*|
+|`~prune user <user(s)>`|Manage Messages|Deletes all messages from the specified
+users in the last 100 messages.\*|
+|`~prune embed <count>`|Manage Messages|Deletes all messages with an embed, attachment, image, or video in the last `count` messages. Defaults to 100.\*|
+|`~prune bot <count>`|Manage Messages|Deletes all messages from a bot in the last `count` messages. Defaults to 100.\*|
+|`~prune mine <count>`|None|Deletes all messages from the command user in the last `count` messages. Defaults to 100.\*|
+|`~prune mention <count>`|Manage Messages|Deletes all messages that mentions a user or role in the last `count` messages. Defaults to 100.\*|
+|`~prune match <pattern>`|Manage Messages|Deletes all messages that match a specific pattern in the last 100 messages.\*|
+|`~prune match <pattern>`|Manage Messages|Deletes all messages that match a specific pattern in the last 100 messages.\*|
 |`~temp ban <time> <user(s)>`|Ban Members|Temporarily bans a user from the server. The bot will automatically undo it when time is up.|
 |`~temp mute <time> <user(s)>`|Mute Members|Temporarily mutes all provided users. The bot will automatically undo it when time is up.|
 |`~temp unmute <time> <user(s)>`|Mute Members| Temporarily unmutes all provided users. The bot will automatically undo it when time is up.|
@@ -60,6 +69,8 @@ without leaving a lasting ban.|
 |`~temp role remove <time> <role> <user(s)>`|Deafen Members|Temporarily removes a role to all provided users. The bot will automatically undo it when time is up.|
 |`~escalate <reason> <user(s)>`|Escalate Members|Escalates all provided user in accordance with the server's confiugred escalation ladder.|
 |`~escalate history <user>`|None|Shows the escalation history for a given user.|
+
+\* - Prune commands cannot delete messages older than 14 days.
 
 ## Logging Commands
 
