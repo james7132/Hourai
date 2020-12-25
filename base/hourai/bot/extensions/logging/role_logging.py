@@ -35,7 +35,7 @@ class RoleLogging(cogs.BaseCog):
                     (member.guild.id, member.id))
             if member_roles is None:
                 return
-            for role_id in member_role.role_ids:
+            for role_id in member_roles.role_ids:
                 settings = config.settings.get(role_id)
                 role = member.guild.get_role(role_id)
                 if role is None or settings is None:
