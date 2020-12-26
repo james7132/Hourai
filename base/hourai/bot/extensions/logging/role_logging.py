@@ -29,7 +29,7 @@ class RoleLogging(cogs.BaseCog):
     async def restore_roles(self, member: discord.Member):
         roles = list()
         proxy = self.bot.get_guild_proxy(member.guild)
-        config = proxy.config.get('role')
+        config = await proxy.config.get('role')
         with self.bot.create_storage_session() as session:
             member_roles = session.query(models.MemberRoles).get(
                     (member.guild.id, member.id))
@@ -45,7 +45,7 @@ class RoleLogging(cogs.BaseCog):
                     roles.add(role)
 
         # Exclude the validation role if validation is enabled.
-        validation_config = proxy.config.get('validation')
+        validation_config = await proxy.config.get('validation')
         if validation_config.enabled:
             roles.discard(member.guild.get_role(validation_config.role_id))
 
