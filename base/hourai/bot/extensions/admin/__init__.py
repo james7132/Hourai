@@ -123,7 +123,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def ban(self, ctx,
-                  members: commands.Greedy[discord.Member],
+                  members: commands.Greedy[typing.Union[int, discord.Member]],
                   *, reason: str = None):
         """Bans all specified users from the server.
 
