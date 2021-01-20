@@ -37,7 +37,7 @@ class NameMatchRejector(Validator):
         for filter_name, regex in member_names.items():
             if re.search(regex, field_value):
                 ctx.add_rejection_reason(
-                    self.prefix + f'Matches: `{filter_name}`')
+                    self.prefix + f"Matches: '{filter_name}'")
 
     def _split_name(self, name):
         split_name = split_camel_case(name)
