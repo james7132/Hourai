@@ -101,7 +101,12 @@ class ValidationContext:
     async def send_modlog_message(self):
         """Sends verification log to a the guild's modlog."""
         modlog = await self.guild_proxy.get_modlog()
-        online_mod, mention = utils.mention_random_online_mod(self.guild)
+        allowed_mention = []
+        mention = None
+        # Only ping a mod if enabled and failed approval
+        if self.guild_config.ping_moderator_on_fail and not self.approved:
+            online_mod, mention = utils.mention_random_online_mod(self.guild)
+            allowed_mention.append(online_mod)
         return await self.send_log_message(
             modlog, ping_target=mention, allowed_mentions=[online_mod])
 

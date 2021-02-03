@@ -181,6 +181,9 @@ message ValidationConfig {
   // Optional: If set, accounts under the age, in seconds, will be rejected.
   optional uint64 minimum_account_age = 4 [default = 2592000];
 
+  // If true (the default), pings a moderator upon failing to verify a new join.
+  optional bool ping_moderator_on_fail = 8 [default = true];
+
   // Optional: aspect specific configurations. If not set, the default values are
   // used.
   optional AvatarValidationConfig avatar = 5;
