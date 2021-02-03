@@ -1,4 +1,5 @@
 import asyncio
+import io
 import discord
 import functools
 import inspect
@@ -16,6 +17,10 @@ DELETED_USER_REGEX = re.compile(r'Deleted User [0-9a-fA-F]{8}')
 
 def clamp(val, min_val, max_val):
     return max(min(val, max_val), min_val)
+
+
+def str_to_discord_file(data):
+    return discord.File(fp=io.BytesIO(data))
 
 
 def can_change_role(member, target):

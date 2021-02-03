@@ -108,7 +108,7 @@ class ValidationContext:
             online_mod, mention = utils.mention_random_online_mod(self.guild)
             allowed_mention.append(online_mod)
         return await self.send_log_message(
-            modlog, ping_target=mention, allowed_mentions=[online_mod])
+            modlog, ping_target=mention, allowed_mentions=allowed_mentions)
 
     async def send_log_message(self, messageable, ping_target=None,
                                allowed_mentions=False, include_invite=True):

@@ -164,10 +164,9 @@ class Owner(cogs.BaseCog):
             return
 
         config = await proxy.config.get('guild')
-        output = await hastebin.post(
-                ctx.bot.http_session,
-                text_format.MessageToString(config, indent=2))
-        await ctx.send(output)
+        output = text_format.MessageToString(config, indent=2)
+        filename = f"{ctx.guild.name.replace(' ', '_')}.pbtxt"
+        await ctx.send(file=utils.str_to_discord_file(output, name=filename))
 
     @commands.command()
     async def extractids(self, ctx, *, input_str: str):
