@@ -19,8 +19,8 @@ def clamp(val, min_val, max_val):
     return max(min(val, max_val), min_val)
 
 
-def str_to_discord_file(data):
-    return discord.File(fp=io.BytesIO(data))
+def str_to_discord_file(data, *args, **kwargs):
+    return discord.File(fp=io.StringIO(data), *args, **kwargs)
 
 
 def can_change_role(member, target):

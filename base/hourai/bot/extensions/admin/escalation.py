@@ -129,7 +129,8 @@ class EscalationMixin:
         await ctx.send("\n".join(lines))
 
     @escalate.command(name='history')
-    async def escalate_history(self, ctx, user: discord.Member):
+    async def escalate_history(self, ctx,
+                               user: typing.Union[discord.Member, int]):
         """Deesclates a user and applies the appropriate moderation action.
 
         A history of escalation events can be seen with ~escalate history.
@@ -139,10 +140,12 @@ class EscalationMixin:
         For more information:
         https://github.com/james7132/Hourai/wiki/Escalation-Ladder
         """
+        user = fake.FakeSnowflake(user) if isinstance(user, int) else user
+        name = str(user)
         history = escalation_history.UserEscalationHistory(
             self.bot, user, ctx.guild)
 
-        comps = [f"**Escalation History for {user.mention}**"]
+        comps = [f"**Escalation History for {name}**"]
         comps.append(await self.__build_escalation_history_table(history))
         await ctx.send(format.vertical_list(comps))
 

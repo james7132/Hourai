@@ -166,7 +166,8 @@ class Owner(cogs.BaseCog):
         config = await proxy.config.get('guild')
         output = text_format.MessageToString(config, indent=2)
         filename = f"{ctx.guild.name.replace(' ', '_')}.pbtxt"
-        await ctx.send(file=utils.str_to_discord_file(output, name=filename))
+        await ctx.send(
+                file=utils.str_to_discord_file(output, filename=filename))
 
     @commands.command()
     async def extractids(self, ctx, *, input_str: str):
