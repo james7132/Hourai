@@ -317,7 +317,7 @@ class Hourai(commands.AutoShardedBot):
             return
 
         prefix = (f"{ctx.author.mention} An error occured, and the bot does not"
-                  f" have permissions to respond in #{ctx.channel.name}. "
+                  f" have permissions to respond in this channel. "
                   f"Please double check the bot's permissions and try again. "
                   f"Original error message:\n\n")
 

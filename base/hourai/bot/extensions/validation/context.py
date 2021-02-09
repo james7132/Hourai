@@ -70,7 +70,7 @@ class ValidationContext:
 
     async def get_join_invite(self):
         if not self.guild.me.guild_permissions.manage_guild:
-            return None
+            return None, False
         cache = self.guild_proxy.invites
         invites = await cache.fetch()
         diff = cache.diff(invites)

@@ -141,8 +141,8 @@ class EscalationMixin:
         For more information:
         https://github.com/james7132/Hourai/wiki/Escalation-Ladder
         """
-        user = fake.FakeSnowflake(user) if isinstance(user, int) else user
         name = str(user)
+        user = fake.FakeSnowflake(user) if isinstance(user, int) else user
         history = escalation_history.UserEscalationHistory(
             self.bot, user, ctx.guild)
 
