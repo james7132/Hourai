@@ -2,6 +2,7 @@ import asyncio
 import discord
 import logging
 import texttable
+import typing
 from datetime import datetime
 from discord.ext import commands, tasks
 from hourai import utils
