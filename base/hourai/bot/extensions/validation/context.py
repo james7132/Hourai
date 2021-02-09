@@ -76,8 +76,8 @@ class ValidationContext:
         diff = cache.diff(invites)
         cache.update(invites)
         if len(diff) != 1:
-            return None
-        return diff[0]
+            return None, False
+        return diff[0], diff[0] == cache.vanity_invite
 
     async def apply_role(self):
         if self.approved and self.role and self.role not in self.member.roles:
@@ -110,7 +110,7 @@ class ValidationContext:
         return await self.send_log_message(
             modlog, ping_target=mention, allowed_mentions=allowed_mentions)
 
-    async def send_log_message(self, messageable, ping_target=None,
+    async def send_log_message(self, messageable, ping_target='',
                                allowed_mentions=False, include_invite=True):
         """Sends verification log to a given messagable target.
 
@@ -121,21 +121,23 @@ class ValidationContext:
         message = []
         if self.approved:
             message.append(f"Verified user: {member.mention} ({member.id}).")
-        elif ping_target is not None:
-            message.append(f"{ping_target}. "
-                           f"User {member.mention} ({member.id}) requires "
-                           f"manual verification.")
         else:
-            message.append(f"User {member.mention} ({member.id}) requires "
-                           f"manual verification.")
+            message.append(f"{ping_target}. User {member.mention} ({member.id})"
+                           f" requires manual verification.")
 
         if include_invite:
-            invite = await self.get_join_invite()
+            invite, vanity = await self.get_join_invite()
             if invite is not None:
-                inviter = invite.inviter or "vanity URL"
+                inviter = ''
+                if vanity:
+                    inviter = "vanity URL"
+                elif invite.inviter is not None:
+                    inviter = str(invite.inviter)
+                if inviter:
+                    inviter = f"**{inviter}** using"
                 message.append(
-                    f"Joined via **{inviter}** using invite "
-                    f"**{invite.code}** (**{invite.uses}** uses)")
+                    f"Joined via {inviter} invite **{invite.code}** "
+                    f"(**{invite.uses}** uses)")
 
         if len(self.approval_reasons) > 0:
             message += [
@@ -147,7 +149,6 @@ class ValidationContext:
                 "Rejected for the following reasons:",
                 f"```{format.bullet_list(self.rejection_reasons)}```"
             ]
-
 
         ctx = await self.bot.get_automated_context(content='', author=member)
         async with ctx:

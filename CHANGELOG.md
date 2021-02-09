@@ -44,6 +44,9 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
      introduced in the future.
  * [Logging] Added function to log edited messages. Use `~log edited` to
    enable/disable logging of
+ * [Validation] Fixed a modlog error where validation results will say that the
+   a user joined via a vanity URL when the creator of the real invite link has
+   deleted their Discord account.
  * [Logging] Logging of deleted/edited messages can be separated from the
    existing modlog channel. Defaults to the channel `~log edited/deleted` is used
    in.

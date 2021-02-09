@@ -97,11 +97,12 @@ DEFAULT_TYPES = {
 class InviteCache:
 
     """An in-memory cache of the invites for a given guild"""
-    __slots__ = ('guild', '_cache')
+    __slots__ = ('guild', '_cache', 'vanity_invite')
 
     def __init__(self, guild):
         assert guild is not None
         self.guild = guild
+        self.vanity_invite = None
         self._cache = {}
 
     async def fetch(self) -> dict:
@@ -115,10 +116,13 @@ class InviteCache:
 
         try:
             if "VANITY_URL" in self.guild.features:
-                invites.append(await self.guild.vanity_invite())
+                self.vanity_invite = await self.guild.vanity_invite()
+                invites.append(self.vanity_invite)
+            else:
+                self.vanity_invite = None
         except discord.NotFound:
             # Sometimes VANITY_URL is set but there is no invite
-            pass
+            self.vanity_invite = None
 
         return {inv.code: inv for inv in invites}
 
