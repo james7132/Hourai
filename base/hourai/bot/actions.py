@@ -37,7 +37,7 @@ class ActionScheduler:
         self.bot = bot
 
     def schedule(self, timestamp: int,
-                *actions: typing.Iterable[proto.Action]) -> None:
+                 *actions: typing.Iterable[proto.Action]) -> None:
         """Schedules an action to be done in the future."""
         session = self.bot.create_storage_session()
         with session:
@@ -62,13 +62,14 @@ class ActionExecutor:
     def __init__(self, bot):
         self.bot = bot
 
-    async def sequentially_execute(self,
-            actions: typing.Iterable[proto.Action]) -> None:
+    async def sequentially_execute(self, actions:
+                                   typing.Iterable[proto.Action]) -> None:
         """Executes multiple actions sequentially."""
         for action in actions:
             await self.execute(action)
 
-    async def execute_all(self, actions: typing.Iterable[proto.Action]) -> None:
+    async def execute_all(self, actions:
+                          typing.Iterable[proto.Action]) -> None:
         """Executes multiple actions in parallel."""
         return await asyncio.gather(*[self.execute(a) for a in actions])
 
@@ -109,9 +110,8 @@ class ActionExecutor:
         assert action.HasField('user_id')
         user = fake.FakeSnowflake(id=action.user_id)
         if action.ban.type != proto.BanMember.UNBAN:
-            await guild.ban(user,
-                    reason=_get_reason(action),
-                    delete_message_days=action.ban.delete_message_days)
+            await guild.ban(user, reason=_get_reason(action),
+                            delete_message_days=action.ban.delete_message_days)
         if action.ban.type != proto.BanMember.BAN:
             await guild.unban(user, reason=_get_reason(action))
 
@@ -216,7 +216,8 @@ class ActionExecutor:
 
     def __get_member(self, action: proto.Action) -> discord.Member:
         assert action.HasField('user_id')
-        # FIXME: This will not work once the bot is larger than a single process.
+        # FIXME: This will not work once the bot is larger than a single
+        # process.
         guild = self.__get_guild(action)
         if guild is None:
             return None

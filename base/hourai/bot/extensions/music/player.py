@@ -6,7 +6,6 @@ import typing
 import math
 from .queue import MusicQueue
 from . import utils
-from hourai import utils as hourai_utils
 from hourai.utils import embed
 from wavelink import eqs
 
@@ -87,7 +86,7 @@ class HouraiMusicPlayer(wavelink.Player):
                 await self.connect(self.channel_id)
                 await self.play(self.current, start=self.position)
                 log.info(f"Voice websocket reconnected to channel "
-                         f"{channel_idV}.")
+                         f"{self.channel_id}.")
             else:
                 await self.disconnect()
         else:
@@ -119,7 +118,7 @@ class HouraiMusicPlayer(wavelink.Player):
         if self._requestor_id is None or self.guild is None:
             return None
         return await self.bot.get_member_async(self.guild,
-                                                   self._requestor_id)
+                                               self._requestor_id)
 
     @property
     def is_playing(self):
@@ -142,7 +141,7 @@ class HouraiMusicPlayer(wavelink.Player):
 
         requestor_id, song = await self.queue.get()
         if not song:
-            #TODO(james7132): Log an error here.
+            # TODO(james7132): Log an error here.
             return
 
         if not self.is_connected:
@@ -326,7 +325,8 @@ class MusicQueueUI(MusicNowPlayingUI):
             idx += 1
         ui_embed.description = '\n'.join(elem)
         if page_count > 1:
-            ui_embed.set_footer(text=f'Page {self.current_page + 1}/{page_count}')
+            ui_embed.set_footer(text=f'Page {self.current_page + 1}/'
+                                     f'{page_count}')
         self.iterations_left -= 1
         if self.iterations_left <= 0:
             await self.stop()

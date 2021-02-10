@@ -1,8 +1,6 @@
 import asyncio
 from discord.ext import tasks
 from hourai.bot import cogs
-from hourai.db import models
-from sqlalchemy.orm import joinedload
 from .reddit import RedditScanner
 
 

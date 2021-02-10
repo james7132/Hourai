@@ -5,7 +5,6 @@ import texttable
 import typing
 from datetime import datetime
 from discord.ext import commands, tasks
-from hourai import utils
 from hourai.db import escalation_history, models
 from hourai.utils import fake, checks, format
 

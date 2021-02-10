@@ -28,7 +28,7 @@ class OwnerLogging(cogs.BaseCog):
     async def send_error(self, error, msg=''):
         trace_str = self._get_traceback(error)
         trace_str = await hastebin.str_or_hastebin_link(self.bot, trace_str)
-        await self.send_log(f"`{msg}`\n" +format.multiline_code(trace_str))
+        await self.send_log(f"`{msg}`\n{format.multiline_code(trace_str)}")
 
     @commands.Cog.listener()
     async def on_ready(self):

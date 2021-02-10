@@ -115,7 +115,8 @@ class Music(cogs.BaseCog):
            ctx.channel in channels):
             return True
         return commands.CheckFailure(
-                message=f'Music commands can only be used in these channel(s): '
+                message=f'Music commands can only be used in these '
+                        f'channel(s): '
                         f'{", ".join(ch.mention for ch in channels)}')
 
     @commands.Cog.listener()
@@ -177,7 +178,7 @@ class Music(cogs.BaseCog):
           ~play
           ~play despacito
           ~play https://www.youtube.com/watch?v=kJQP7kiw5Fk
-          ~play https://www.youtube.com/playlist?list=PLNCRTSKrIMvuoD5D1FIR5kJ1jhwVVU5Ka
+          ~play https://www.youtube.com/playlist?list=PLNCRTSKrIMvuoD5D1FIR5kJ1
           ~play https://soundcloud.com/kungfu-cthulhu/gabenhardstyle
         """
         player = self.get_player(ctx.guild)

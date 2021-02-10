@@ -95,11 +95,11 @@ class ModLogging(cogs.BaseCog):
         config = await ctx.guild_proxy.config.get('logging')
         config.deleted_messages.enabled = not config.deleted_messages.enabled
         config.deleted_messages.output_channel_id = ctx.channel.id
-        change = ('enabled' if config.deleted_messages.enabled else 'disabled.')
+        change = ('enabled' if config.deleted_messages.enabled
+                  else 'disabled.')
         await ctx.guild_proxy.config.set('logging', config)
-        await success(ctx,
-            f'Logging of deleted messages has been {change} '
-            f'in {ctx.channel.mention}.')
+        await success(ctx, f'Logging of deleted messages has been {change} '
+                      f'in {ctx.channel.mention}.')
 
     @log.command(name='edited')
     async def log_edited(self, ctx):
@@ -111,6 +111,5 @@ class ModLogging(cogs.BaseCog):
         config.edited_messages.output_channel_id = ctx.channel.id
         change = ('enabled' if config.edited_messages.enabled else 'disabled.')
         await ctx.guild_proxy.config.set('logging', config)
-        await success(ctx,
-            f'Logging of edited messages has been {change} '
-            f'in {ctx.channel.mention}.')
+        await success(ctx, f'Logging of edited messages has been {change} '
+                      f'in {ctx.channel.mention}.')

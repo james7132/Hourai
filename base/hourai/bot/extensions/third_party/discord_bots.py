@@ -14,4 +14,4 @@ class DiscordBots(ThirdPartyListingBase):
     def create_guild_count_payload(self) -> dict:
         # FIXME: This will not work when shards are split over multiple
         # processes/machines
-        return { "guildCount": len(self.bot.guilds) }
+        return {"guildCount": len(self.bot.guilds)}

@@ -52,14 +52,14 @@ class Announce(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_member_join(self, member):
         if not member.pending:
-            await self.announce_join(member)
+            await self.send_announce_join(member)
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
         if before.pending and not after.pending:
-            await self.announce_join(after)
+            await self.send_announce_join(after)
 
-    async def announce_join(self, member):
+    async def send_announce_join(self, member):
         proxy = self.bot.get_guild_proxy(member.guild)
         announce_config = await proxy.config.get('announce')
         if not announce_config.HasField('joins'):
@@ -117,11 +117,14 @@ class Announce(cogs.BaseCog):
         if before.channel == after.channel:
             return
         elif before.channel is None:
-            choices = [f'**{member.display_name}** joined **{after.channel.name}**.']
+            choices = [f'**{member.display_name}** joined '
+                       f'**{after.channel.name}**.']
         elif after.channel is None:
-            choices = [f'**{member.display_name}** left **{before.channel.name}**.']
+            choices = [f'**{member.display_name}** left '
+                       f'**{before.channel.name}**.']
         else:
-            choices = [f'**{member.display_name}** moved to **{after.channel.name}**'
+            choices = [f'**{member.display_name}** moved to '
+                       f'**{after.channel.name}**'
                        f' from **{before.channel.name}**.']
         await self.__make_announcement(member.guild, announce_config.voice,
                                        choices)

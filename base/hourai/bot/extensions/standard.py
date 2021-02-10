@@ -180,14 +180,13 @@ class Standard(cogs.BaseCog):
     async def tag(self, ctx, *, tag: str):
         """Allows tagging text for later retreival.
 
-        If used without a subcomand, it will search the tag database for the tag
-        requested.
+        If used without a subcomand, it will search the tag database for the
+        tag requested.
         """
         db_tag = ctx.session.query(models.Tag).get(
                 (ctx.guild.id, tag.casefold()))
-
-        response = db_tag.response if db_tag else f"Tag `{tag}` does not exist."
-        await ctx.send(response)
+        await ctx.send(db_tag.response if db_tag else
+                       f"Tag `{tag}` does not exist.")
 
     @tag.command(name="set")
     @commands.guild_only()

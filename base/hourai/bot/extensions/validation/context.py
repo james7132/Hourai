@@ -122,8 +122,8 @@ class ValidationContext:
         if self.approved:
             message.append(f"Verified user: {member.mention} ({member.id}).")
         else:
-            message.append(f"{ping_target}. User {member.mention} ({member.id})"
-                           f" requires manual verification.")
+            message.append(f"{ping_target}. User {member.mention} "
+                           f"({member.id}) requires manual verification.")
 
         if include_invite:
             invite, vanity = await self.get_join_invite()
@@ -154,4 +154,4 @@ class ValidationContext:
         async with ctx:
             return await messageable.send(
                 content="\n".join(message),
-                embed= embed.make_whois_embed(ctx, member))
+                embed=embed.make_whois_embed(ctx, member))

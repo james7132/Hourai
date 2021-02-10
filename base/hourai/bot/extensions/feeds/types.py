@@ -1,5 +1,4 @@
 import logging
-import threading
 import asyncio
 from abc import abstractmethod, ABC
 from collections import namedtuple

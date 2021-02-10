@@ -19,6 +19,8 @@ log = logging.getLogger(__name__)
 
 # Monkeypatch Hacks
 __old_guild_add_member = discord.Guild._add_member
+
+
 def should_cache_member(member):
     # Cache if the member is:
     # - A moderator
@@ -28,22 +30,32 @@ def should_cache_member(member):
             member.id == member._state.user.id or \
             member.pending
 
+
 def limit_cache_add_member(self, member, force=False):
     if member is not None and force or should_cache_member(member):
         __old_guild_add_member(self, member)
-discord.Guild._add_member = limit_cache_add_member
 
+
+discord.Guild._add_member = limit_cache_add_member
 __old_parse_guild_member_remove = ConnectionState.parse_guild_member_remove
+
+
 def parse_guild_member_remove(self, data):
     __old_parse_guild_member_remove(self, data)
     self.dispatch('raw_member_remove', data)
-ConnectionState.parse_guild_member_remove = parse_guild_member_remove
 
+
+ConnectionState.parse_guild_member_remove = parse_guild_member_remove
 __old_parse_guild_member_update = ConnectionState.parse_guild_member_update
+
+
 def parse_guild_member_update(self, data):
     __old_parse_guild_member_update(self, data)
     self.dispatch('raw_member_update', data)
+
+
 ConnectionState.parse_guild_member_update = parse_guild_member_update
+
 
 class CounterKeys(enum.Enum):
     MESSAGES_RECIEVED = 0x100             # noqa: E221
@@ -118,7 +130,7 @@ class Hourai(commands.AutoShardedBot):
                 '"config" must be specified when initialzing Hourai.')
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
 
-        defaults = {
+        kwargs = {
             'description': self.config.description,
             'command_prefix': self.config.command_prefix,
             'activity': discord.Game(self.config.activity),
@@ -141,9 +153,8 @@ class Hourai(commands.AutoShardedBot):
                 emojis=False,
                 integrations=False,
                 webhooks=False),
+            **kwargs
         }
-        for key, value, in defaults.items():
-            kwargs.setdefault(key,value)
 
         super().__init__(*args, **kwargs)
         self.http_session = aiohttp.ClientSession(loop=self.loop)
@@ -172,9 +183,9 @@ class Hourai(commands.AutoShardedBot):
         if member:
             return member
         elif self.get_shard(guild.shard_id).is_ws_ratelimited():
-            # If we're being rate limited on the WS, then fall back to using the
-            # HTTP API so we don't have to wait ~60 seconds for the query to
-            # finish
+            # If we're being rate limited on the WS, then fall back to using
+            # the HTTP API so we don't have to wait ~60 seconds for the query
+            # to finish
             try:
                 member = await guild.fetch_member(user_id)
             except discord.HTTPException:
@@ -217,10 +228,10 @@ class Hourai(commands.AutoShardedBot):
             await self.storage.init()
             await self.http_session.__aenter__()
             await self.start_web_api()
-        except:
+        except Exception:
             log.exception("Failed to set up web API.")
             raise
-        log.info(f'Starting bot...')
+        log.info('Starting bot...')
         await super().start(*args, **kwargs)
 
     async def start_web_api(self):
@@ -316,19 +327,19 @@ class Hourai(commands.AutoShardedBot):
         if not err_msg:
             return
 
-        prefix = (f"{ctx.author.mention} An error occured, and the bot does not"
-                  f" have permissions to respond in this channel. "
-                  f"Please double check the bot's permissions and try again. "
+        prefix = (f"{ctx.author.mention} An error occured, and the bot does "
+                  f"not have permissions to respond in this channel. Please "
+                  f"double check the bot's permissions and try again. "
                   f"Original error message:\n\n")
 
         async def find_viable_channel(msg):
             if ctx.guild is None:
                 return
-            ch = discord.utils.find(lambda ch:
-                    ch.permissions_for(ctx.guild.me).send_messages and
-                    ch.permissions_for(ctx.author).read_messages,
-                    ctx.guild.text_channels)
-            await ch.send(prefix + msg)
+            for channel in ctx.guild.text_channels:
+                if channel.permissions_for(ctx.guild.me).send_messages and \
+                   channel.permissions_for(ctx.author).read_messages:
+                    await channel.send(prefix + msg)
+                    return
 
         attempts = [
             lambda msg: ctx.send(msg),

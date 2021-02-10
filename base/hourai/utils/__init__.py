@@ -7,9 +7,9 @@ import pytimeparse
 import random
 import re
 import time
-from discord.ext import commands
 from hourai import config
 from datetime import timedelta
+
 
 MODERATOR_PREFIX = 'mod'
 DELETED_USER_REGEX = re.compile(r'Deleted User [0-9a-fA-F]{8}')
@@ -38,6 +38,7 @@ async def get_user_async(bot: discord.Client, user_id: int) \
         return user or (await bot.fetch_user(user_id))
     except discord.NotFound:
         return None
+
 
 async def broadcast(channels, *args, **kwargs):
     """

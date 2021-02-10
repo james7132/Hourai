@@ -51,7 +51,8 @@ class StringFilterRejector(Validator):
     """A general validator that rejects users that have a field that matches
     a set of predefined list of regexes.
     """
-    __slots__ = ("filters", "prefix", "match_func", "subfield", "use_transforms")
+    __slots__ = ("filters", "prefix", "match_func", "subfield",
+                 "use_transforms")
 
     def __init__(self, *, prefix, filters, full_match=False, subfield=None,
                  use_transforms=True):
@@ -203,7 +204,7 @@ class BannedUsernameRejector(Validator):
                 for banned_username in matches.all():
                     transformed = transform(banned_username.name)
                     normalized = self._normalize(transformed)
-                    if not normalized in normalized_usernames:
+                    if normalized not in normalized_usernames:
                         continue
                     ban_reason = ban_reasons.get(banned_username.user_id)
                     reason = (f"Exact username match with banned user: "

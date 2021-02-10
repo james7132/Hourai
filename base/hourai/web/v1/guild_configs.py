@@ -65,7 +65,7 @@ def add_routes(app, **kwargs):
     if storage is None:
         log.warning('[Web] No storage found. Skipping guild config routes.')
         return
-    route = '/guild/{guild_id:\d+}'
+    route = r'/guild/{guild_id:\d+}'
 
     routes = __make_routes(
             route, lambda formatter: guild_config_view(

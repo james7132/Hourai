@@ -17,7 +17,7 @@ def passthrough_view(app, path, method='get', post_process_fn=None):
             raise web.HTTPUnauthorized('"Authorization" header must be set.')
 
         endpoint = f"https://discord.com/api/v6{path}"
-        params = { "headers": { "Authorization": auth_header } }
+        params = {"headers": {"Authorization": auth_header}}
         session = request.app['session']
 
         start_time = time.time()
@@ -78,7 +78,8 @@ def add_routes(app, **kwargs):
                     has_bot=True,
                     member_count=bot_guild.member_count,
                     roles=serialize_all(bot_guild.roles, props),
-                    text_channels=serialize_all(bot_guild.text_channels, props),
+                    text_channels=serialize_all(bot_guild.text_channels,
+                                                props),
                     voice_channels=serialize_all(
                         bot_guild.voice_channels, props),
                     config=json_format.MessageToDict(config))

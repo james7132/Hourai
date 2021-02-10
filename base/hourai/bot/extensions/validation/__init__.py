@@ -38,8 +38,9 @@ VALIDATORS = (
     # ---------------------------------------------------------------
     # Suspicion Level Validators
     #     Validators here are mostly for suspicious characteristics.
-    #     These are designed with a high-recall, low precision methdology. False positives from these are more likely.
-    #     These are low severity checks.
+    #     These are designed with a high-recall, low precision methdology.
+    #     False positives from these are more likely.  These are low severity
+    #     checks.
     # -----------------------------------------------------------------
 
     # New user accounts are commonly used for alts of banned users.
@@ -104,13 +105,7 @@ VALIDATORS = (
 
     # Filter potentially long usernames that use wide unicode characters that
     # may be disruptive or spammy to other members.
-    # TODO(james7132): Reenable this
-    # rejectors.StringFilterRejector(
-        # prefix='Username contains wide unicode characters which may be '
-               # 'disruptive to others. ',
-        # subfield=lambda m: (m.member.display_name,),
-        # use_transforms=False,
-        # filters=load_list('wide_characters')),
+    # TODO(james7132): Reenable wide unicode character filter
 
     # -----------------------------------------------------------------
     # Malicious Level Validators
@@ -281,7 +276,7 @@ class Validation(cogs.BaseCog):
         await ctx.send(
             f'Lockdown enabled. Will be automatically lifted at {expiration}')
 
-    @validation_lockdown.command(name='lockdown')
+    @validation_lockdown.command(name='lift')
     async def validation_lockdown_lift(self, ctx, time: utils.human_timedelta):
         """Lifts a lockdown from the server. See "~help validation lockdown" for
         more information.
@@ -331,7 +326,7 @@ class Validation(cogs.BaseCog):
     @validation.command(name="propagate")
     @commands.bot_has_permissions(manage_roles=True)
     async def validation_propagate(self, ctx):
-        config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
+        config = await ctx.guild_proxy.config.get('validation')
         if config is None or not config.HasField('role_id'):
             await ctx.send('No validation config was found. Please run '
                            '`~valdiation setup`')
@@ -369,11 +364,10 @@ class Validation(cogs.BaseCog):
             members_with_role = [m for m in ctx.guild.members
                                  if role in m.roles]
             if (member_count == 0 or
-                    float(len(members_with_role)) / float(member_count) > 0.99):
+               float(len(members_with_role)) / float(member_count) > 0.99):
                 lookback = int(PURGE_LOOKBACK.total_seconds())
                 config.kick_unvalidated_users_after = lookback
-                await ctx.bot.storage.validation_configs.set(
-                    ctx.guild.id, config)
+                await ctx.guild_proxy.config.set('validation', config)
                 await msg.edit(content='Propagation conplete!')
                 return
 
@@ -459,7 +453,8 @@ class Validation(cogs.BaseCog):
             await modlog.send(
                 f'{APPROVE_REACTION} **{user}** manually verified **{target}**'
                 f' via reaction.')
-            log.info(f'Verified user {target} manually via reaction from {user}')
+            log.info(f'Verified user {target} manually via reaction from '
+                     f'{user}')
         except discord.Forbidden:
             await modlog.send(
                 f'{APPROVE_REACTION} Attempted')
@@ -476,8 +471,8 @@ class Validation(cogs.BaseCog):
             log.info(f'Kicked user {target} manually via reaction from {user}')
         except discord.Forbidden:
             await modlog.send(
-                f'{KICK_REACTION} Attempted to kick {target.mention} and failed'
-                f'. Bot does not have **Kick Members** permission.')
+                f'{KICK_REACTION} Attempted to kick {target.mention} and '
+                f'failed. Bot does not have **Kick Members** permission.')
 
     async def ban_member_by_reaction(self, guild, user, target):
         proxy = self.bot.get_guild_proxy(guild)

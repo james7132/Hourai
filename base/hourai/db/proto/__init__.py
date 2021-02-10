@@ -1,5 +1,3 @@
-import enum
-import discord
 from discord.flags import BaseFlags, flag_value, fill_with_flags
 from .action_pb2 import *  # noqa
 from .auto_config_pb2 import *  # noqa
@@ -14,7 +12,7 @@ def get_field(msg, field):
 
 
 @fill_with_flags()
-class RoleFlags(discord.flags.BaseFlags):
+class RoleFlags(BaseFlags):
     __slots__ = ()
 
     def __init__(self, flags=0, **kwargs):

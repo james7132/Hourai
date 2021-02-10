@@ -18,7 +18,7 @@ class GuildSpecific_TheGap(GuildSpecificCog):
     BIG_SERVER_SIZE = 250
 
     def __init__(self, bot, *, guilds):
-        super().__init__( bot, guilds=guilds)
+        super().__init__(bot, guilds=guilds)
         self.banned_guilds = set(config.load_list(bot.config,
                                                   "gap_banned_servers"))
 

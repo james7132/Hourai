@@ -127,8 +127,9 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
                   *, reason: str = None):
         """Bans all specified users from the server.
 
-        Can be used with user ID(s) to ban users outside the server. An optional
-        reason can be specified, which will be logged to the audit log.
+        Can be used with user ID(s) to ban users outside the server. An
+        optional reason can be specified, which will be logged to the audit
+        log.
 
         Examples:
           ~ban @bob
@@ -138,16 +139,13 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
         Requires Ban Members (User and Bot)
         """
-        targets = set()
-        for member in members:
-            if isinstance(member, discord.Member):
-                targets.add(member)
-            if isinstance(member, int):
-                targets.add(fake.FakeSnowflake(id=member))
-
         reason = create_reason(ctx, "Banned", reason)
-        await self._admin_action(ctx, targets,
-            lambda m: ctx.guild.ban(m, delete_message_days=0, reason=reason))
+
+        def _ban(member):
+            if isinstance(member, int):
+                member = fake.FakeSnowflake(id=member)
+            return ctx.guild.ban(member, delete_message_days=0, reason=reason)
+        await self._admin_action(ctx, members, _ban)
 
     @commands.command(name="softban")
     @commands.guild_only()
@@ -169,6 +167,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Kick Members (User), Ban Members (Bot)
         """
         reason = create_reason(ctx, "Softbanned", reason)
+
         async def _softban(member):
             await member.ban(delete_message_days=7, reason=reason)
             await member.guild.unban(member)
@@ -193,8 +192,10 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Mute Members (User and Bot)
         """
         reason = create_reason(ctx, "Muted", reason)
-        await self._admin_action(ctx, members,
-                lambda m: m.edit(mute=True, reason=reason))
+
+        def _mute(member):
+            return member.edit(mute=True, reason=reason)
+        await self._admin_action(ctx, members, _mute)
 
     @commands.command(name="unmute")
     @commands.guild_only()
@@ -211,8 +212,10 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Mute Members (User and Bot)
         """
         reason = create_reason(ctx, "Muted", reason)
-        await self._admin_action(ctx, members,
-                lambda m: m.edit(mute=False, reason=reason))
+
+        def _unmute(member):
+            return member.edit(mute=False, reason=reason)
+        await self._admin_action(ctx, members, _unmute)
 
     @commands.command(name="deafen")
     @commands.guild_only()
@@ -233,8 +236,10 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Deafen Members (User and Bot)
         """
         reason = create_reason(ctx, "Deafened", reason)
-        await self._admin_action(ctx, members,
-                lambda m: m.edit(deafen=True, reason=reason))
+
+        def _deafen(member):
+            return member.edit(deafen=True, reason=reason)
+        await self._admin_action(ctx, members, _deafen)
 
     @commands.command(name="undeafen")
     @commands.guild_only()
@@ -254,8 +259,10 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         Requires Deafen Members (User and Bot)
         """
         reason = create_reason(ctx, "Undeafened", reason)
-        await self._admin_action(ctx, members,
-                                 lambda m: m.edit(deafen=False, reason=reason))
+
+        def _undeafen(member):
+            return member.edit(deafen=False, reason=reason)
+        await self._admin_action(ctx, members, _undeafen)
 
     @commands.command(name="move")
     @commands.guild_only()
@@ -441,7 +448,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         top_role = ctx.guild.me.top_role
         for role in roles:
             if role >= top_role:
-                await ctx.send(f"`{role.name}` is higher than Hourai's highest.",
+                await ctx.send(f"`{role.name}` is higher than bot's highest.",
                                delete_after=DELETE_WAIT_DURATION)
                 return
             if role.id not in role_ids:
@@ -778,6 +785,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         count = await self._prune(ctx, predicate=msg_filter)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
+
 
 def setup(bot):
     bot.add_cog(Admin(bot))

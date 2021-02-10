@@ -10,7 +10,8 @@ log = logging.getLogger(__name__)
 def add_routes(app, **kwargs):
     bot = app.get("bot")
     if bot is None:
-        log.warning('[Web] No bot provided, bot status endpoints not included.')
+        log.warning('[Web] No bot provided, bot status endpoints not '
+                    'included.')
         return
 
     class BotStatus(web.View):
@@ -33,7 +34,8 @@ def add_routes(app, **kwargs):
                 guild_counts = bot.guild_counters[guild.id]
                 counters['guilds'] += 1
                 counters['members'] += guild.member_count
-                counters['messages'] += guild_counts[CounterKeys.MESSAGES_RECIEVED]
+                counters['messages'] += guild_counts[
+                        CounterKeys.MESSAGES_RECIEVED]
                 if any(guild.me in vc.members for vc in guild.voice_channels):
                     counters['music'] += 1
             return counters
