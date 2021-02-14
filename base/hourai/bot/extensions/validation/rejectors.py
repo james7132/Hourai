@@ -169,17 +169,19 @@ class BannedUsernameRejector(Validator):
         if not ctx.guild.me.guild_permissions.ban_members:
             return
         bans = await ctx.bot.storage.bans.get_guild_bans(ctx.guild.id)
-        self.__check_usernames(ctx, bans)
         self.__check_avatars(ctx, bans)
+        await self.__check_usernames(ctx, bans)
 
-    def __check_avatars(self, ctx, bans):
+    async def __check_avatars(self, ctx, bans):
         avatar = ctx.member.avatar
         if avatar is None:
             return
         for ban in bans:
             if not ban.HasField('avatar') or avatar != ban.avatar:
                 continue
-            reason = (f"Exact avatar match with banned user: {str(ban.user)} "
+            user = await ctx.fetch_user(ban.user_id)
+            assert user is not None
+            reason = (f"Exact avatar match with banned user: {user} "
                       f"({ban.user_id})")
             if ban.HasField('reason'):
                 reason += f" Ban Reason: {ban.reason}"
