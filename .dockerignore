@@ -9,5 +9,6 @@ Dockerfile
 web/
 venv/
 config/
+logger/Cargo.lock
 logger/target/
 node_modules/

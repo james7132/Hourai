@@ -119,7 +119,7 @@ impl<T: protobuf::Message + CachedGuildConfig + Send> Cacheable for T {
             .await?;
         let proto = if let Some(payload) = response {
             let decomp = decompress_payload(&payload[..])?;
-            protobuf::parse_from_bytes::<Self>(&decomp[..])?
+            Self::parse_from_bytes(&decomp[..])?
         } else {
             // If nothing has been found, return the default value for the type.
             Self::new()
