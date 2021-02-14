@@ -2,10 +2,11 @@
 .dockerignore
 .gitignore
 .git/
-venv/
 *.md
-Dockerfile
 *_test.py
 *.sqlite
+Dockerfile
 web/
+venv/
 config/
+node_modules/

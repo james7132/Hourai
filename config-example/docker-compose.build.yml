@@ -1,6 +1,10 @@
 version: "3.8"
 services:
   hourai:
-    build: ../base
+    build:
+      context: ../
+      dockerfile: ../base/Dockerfile
   nginx:
-    build: ../frontend
+    build:
+      context: ../
+      dockerfile: ../frontend/Dockerfile

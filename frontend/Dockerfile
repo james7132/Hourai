@@ -1,8 +1,8 @@
 FROM node:14.3.0-alpine as builder
 WORKDIR /app
-COPY package*.json ./
+COPY frontend/package*.json ./
 RUN npm install
-COPY . .
+COPY ./frontend .
 RUN npm run build
 
 FROM nginx:alpine as production-stage

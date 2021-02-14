@@ -1,6 +1,0 @@
-/*.yml
-.dockerignore
-.gitignore
-node_modules/
-*.md
-Dockerfile

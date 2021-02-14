@@ -3,9 +3,10 @@ FROM python:3.8-alpine as base
 FROM base as builder
 WORKDIR /app
 RUN apk add --no-cache git protobuf gcc make libffi-dev build-base postgresql-dev
-COPY requirements.txt .
+COPY base/requirements.txt .
 RUN pip install --prefix /install -r requirements.txt
-COPY . .
+COPY base/ .
+COPY proto/ ./hourai/db/proto
 RUN protoc $(find /app -type f -regex ".*\.proto") \
   --proto_path=/app \
   --python_out=/app
