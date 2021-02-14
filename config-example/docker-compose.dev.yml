@@ -1,7 +1,9 @@
 version: "3.8"
 services:
   hourai:
-    build: ../base
+    build:
+      context: ../
+      dockerfile: ../base
     container_name: hourai
     command: python launcher.py run bot
     restart: unless-stopped
@@ -17,6 +19,21 @@ services:
       - postgres
       - redis
       - lavalink
+  logger:
+    build:
+      context: ../
+      dockerfile: ../logger/Dockerfile
+    container_name: logger
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=prod
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
+    depends_on:
+      - postgres
+      - redis
   frontend-dev:
     image: node:14.3.0
     container_name: frontend-dev

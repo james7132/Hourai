@@ -4,6 +4,10 @@ services:
     build:
       context: ../
       dockerfile: ../base/Dockerfile
+  logger:
+    build:
+      context: ../
+      dockerfile: ../logger/Dockerfile
   nginx:
     build:
       context: ../

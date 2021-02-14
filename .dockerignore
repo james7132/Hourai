@@ -9,4 +9,5 @@ Dockerfile
 web/
 venv/
 config/
+logger/target/
 node_modules/

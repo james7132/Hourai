@@ -17,6 +17,19 @@ services:
       - postgres
       - redis
       - lavalink
+  logger:
+    image: james7132/hourai:logger
+    container_name: logger
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=prod
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
+    depends_on:
+      - postgres
+      - redis
   nginx:
     image: james7132/hourai:latest-frontend
     container_name: nginx
