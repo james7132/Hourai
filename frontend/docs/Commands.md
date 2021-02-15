@@ -105,6 +105,21 @@ All of the commands in this module require the following permissions:
 |`~announce ban`|Manage Guild (User)|Starts/stops the bot from announcing bans from the server in the current channel.|
 |`~announce voice`|Manage Guild (User)|Starts/stops the bot from announcing joining/leaving/moving users within voice channels in the current channel.|
 
+## Validation Commands
+
+These commands control validation, a system for running background checks on new
+joins into a server. For more detailed information, please see
+[Validation](Validation.md).
+
+|Command|Permissions|Description|
+|:------|:----------|:----------|
+|`~validation setup <Role>`|Moderator|Sets up validation.|
+|`~validation propagate`|Moderator| Starts/stops the bot from announcing users leaving from the server in the current channel.|
+|`~validation verify <user>`|Moderator|Runs validation checks on a member who has already joined the server.|
+|`~validation lockdown <timerange>`|Moderator|Temporarily forces all new joins to
+be manually verified. Good for countering raids.|
+|`~validation disable`|Moderator|Disables verification on the server.|
+
 ## Music Commands
 
 !> If a text channel is configured for the music features (default: #music-bot),

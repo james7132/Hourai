@@ -310,7 +310,6 @@ class Validation(cogs.BaseCog):
     @validation.command(name="setup")
     async def validation_setup(self, ctx, role: discord.Role = None):
         config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
-        config = config or proto.ValidationConfig()
         config.enabled = True
         if role is not None:
             config.role_id = role.id
@@ -318,6 +317,14 @@ class Validation(cogs.BaseCog):
         await ctx.send('Validation configuration complete! Please run '
                        '`~validation propagate` to'
                        ' complete setup.')
+
+    @validation.command(name="disable")
+    async def validation_disable(self, ctx):
+        config = await ctx.guild_proxy.config.get(ctx.guild.id)
+        config.enabled = False
+        await ctx.guild_proxy.config.set(ctx.guild.id, config)
+        await ctx.send('Validation disabled. To reenable, rerun `~validation '
+                       'setup`.')
 
     @validation.command(name="propagate")
     @commands.bot_has_permissions(manage_roles=True)

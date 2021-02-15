@@ -160,6 +160,11 @@ to be manual until the time passes. This lockdown is either lifted as the time
 expires, or manually via `~validation lockdown lift`. This can be useful when
 the server is being raided.
 
+## Disabling Validation
+If the feature is no longer necessary, use `~validation disable` to disable
+validation. To reenable it, rerun `~validation setup <role>` as if you were
+setting up validation from scratch.
+
 ## Appendix: Verification Criteria
 
 It was originally planned to have these criteria configurable, but for now it's

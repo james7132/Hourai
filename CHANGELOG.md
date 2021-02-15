@@ -43,7 +43,12 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
    * Currently does not have a timeout to rejoin the server, but may have one
      introduced in the future.
  * [Logging] Added function to log edited messages. Use `~log edited` to
-   enable/disable logging of
+   enable/disable logging of edited messages.
+ * [Validation] `~validation` commands have been documented on the documentation
+   site.
+ * [Validation] `~validation lockdown` now persists between bot restarts.
+ * [Validation] Added `~validation disable` for servers that wish to disable
+   validation.
  * [Validation] Fixed a modlog error where validation results will say that the
    a user joined via a vanity URL when the creator of the real invite link has
    deleted their Discord account.
