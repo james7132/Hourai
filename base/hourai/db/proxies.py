@@ -1,5 +1,5 @@
 import discord
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 from discord import flags
 from hourai import utils
@@ -184,7 +184,7 @@ class ConfigCache:
 
 class GuildProxy:
 
-    __slots__ = ('bot', 'guild', 'config', 'invites', '_lockdown_expiration')
+    __slots__ = ('bot', 'guild', 'config', 'invites')
 
     def __init__(self, bot, guild):
         self.bot = bot
@@ -193,20 +193,29 @@ class GuildProxy:
         self.config = ConfigCache(self.storage, guild)
 
         # Ephemeral state associated with a Discord guild. Lost on bot restart.
-        self._lockdown_expiration = None
         self.invites = InviteCache(guild)
 
     @property
     def storage(self):
         return self.bot.storage
 
-    @property
-    def is_locked_down(self):
-        return self._lockdown_expiration is not None and \
-               datetime.utcnow() < self._lockdown_expiration
+    async def is_locked_down(self):
+        config = await self.config.get('validation')
+        if not config.HasField('lockdown_expiration'):
+            return False
+        expiration = datetime.from_timestamp(config.lockdown_expiration)
+        return datetime.utcnow() > expiration
 
-    def set_lockdown(self, state, expiration=datetime.max):
-        self._lockdown_expiration = None if not state else expiration
+    async def set_lockdown(self, expiration=datetime.max):
+        config = await self.config.get('validation')
+        config.lockdown_expiration = expiration.replace(tzinfo=timezone.utc) \
+                                               .timestamp()
+        await self.config.set('validation', config)
+
+    async def clear_lockdown(self):
+        config = await self.config.get('validation')
+        config.ClearField('lockdown_expiration')
+        await self.config.set('validation', config)
 
     async def get_role_permissions(self, role: discord.Role) -> Permissions:
         config = await self.config.get('role')

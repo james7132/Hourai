@@ -184,6 +184,10 @@ message ValidationConfig {
   // If true (the default), pings a moderator upon failing to verify a new join.
   optional bool ping_moderator_on_fail = 8 [default = true];
 
+  // Unix time for lifting a lockdown. If the time has already passed or if it's
+  // not present, the server is no longer under lockdown.
+  optional uint64 lockdown_expiration = 9;
+
   // Optional: aspect specific configurations. If not set, the default values are
   // used.
   optional AvatarValidationConfig avatar = 5;

@@ -263,16 +263,12 @@ class Validation(cogs.BaseCog):
         validation is enabled. See "~help validation setup" for more
         information. A lockdown can be lifted via "~valdiation lockdown lift".
 
-        Warning: this is currently non-persistent. If the bot is restarted
-        while a lockdown is in place, it will be lifted without warning.
-
         Example Usage:
         ~validation lockdown 30m
         ~validation lockdown 1h
         ~validation lockdown 1d
         """
-        expiration = datetime.utcnow() + time
-        ctx.guild_proxy.set_lockdown(True, expiration=expiration)
+        await ctx.guild_proxy.set_lockdown(datetime.utcnow() + time)
         await ctx.send(
             f'Lockdown enabled. Will be automatically lifted at {expiration}')
 
@@ -287,7 +283,7 @@ class Validation(cogs.BaseCog):
         Example Usage:
         ~validation lockdown lift
         """
-        ctx.guild_proxy.set_lockdown(False)
+        await ctx.guild_proxy.clear_lockdown(False)
         await ctx.send('Lockdown disabled.')
 
     @validation.command(name='verify')
