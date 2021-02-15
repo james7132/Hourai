@@ -169,8 +169,8 @@ class BannedUsernameRejector(Validator):
         if not ctx.guild.me.guild_permissions.ban_members:
             return
         bans = await ctx.bot.storage.bans.get_guild_bans(ctx.guild.id)
-        self.__check_avatars(ctx, bans)
-        await self.__check_usernames(ctx, bans)
+        await self.__check_avatars(ctx, bans)
+        self.__check_usernames(ctx, bans)
 
     async def __check_avatars(self, ctx, bans):
         avatar = ctx.member.avatar

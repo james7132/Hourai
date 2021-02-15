@@ -268,7 +268,8 @@ class Validation(cogs.BaseCog):
         ~validation lockdown 1h
         ~validation lockdown 1d
         """
-        await ctx.guild_proxy.set_lockdown(datetime.utcnow() + time)
+        expiration = datetime.utcnow() + time
+        await ctx.guild_proxy.set_lockdown(expiration)
         await ctx.send(
             f'Lockdown enabled. Will be automatically lifted at {expiration}')
 

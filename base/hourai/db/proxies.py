@@ -203,13 +203,13 @@ class GuildProxy:
         config = await self.config.get('validation')
         if not config.HasField('lockdown_expiration'):
             return False
-        expiration = datetime.from_timestamp(config.lockdown_expiration)
+        expiration = datetime.fromtimestamp(config.lockdown_expiration)
         return datetime.utcnow() > expiration
 
     async def set_lockdown(self, expiration=datetime.max):
         config = await self.config.get('validation')
-        config.lockdown_expiration = expiration.replace(tzinfo=timezone.utc) \
-                                               .timestamp()
+        config.lockdown_expiration = \
+                int(expiration.replace(tzinfo=timezone.utc).timestamp())
         await self.config.set('validation', config)
 
     async def clear_lockdown(self):
