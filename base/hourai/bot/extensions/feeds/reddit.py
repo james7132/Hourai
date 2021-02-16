@@ -25,8 +25,8 @@ class RedditScanner(Scanner):
         try:
             last_updated = feed.last_updated
             subreddit = await self.client.subreddit(feed.source)
-            posts, feed.last_updated = self.make_posts(subreddit.new(),
-                                                       feed.last_updated)
+            posts, feed.last_updated = \
+                    await self.make_posts(subreddit.new(), feed.last_updated)
 
             return FeedScanResult.from_feed(
                 feed, posts=posts,
@@ -41,7 +41,7 @@ class RedditScanner(Scanner):
         async for submission in submissions:
             if submission.created_utc <= last_updated_unix:
                 break
-            sub_name = submission.subreddit.name
+            sub_name = submission.subreddit.display_name
             log.debug(f'New reddit post in {sub_name}: {submission.name}')
             posts.append(Broadcast(
                 content=f'Post in /r/{submission.subreddit.display_name}:',
