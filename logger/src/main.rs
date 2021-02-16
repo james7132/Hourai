@@ -12,7 +12,7 @@ mod proto {
 }
 
 const DEFAULT_ENV: &'static str = "dev";
-const CONFIG_DIR: &'static str = "/config";
+const CONFIG_DIR: &'static str = "/etc/hourai";
 
 fn get_config_path() -> Box<Path> {
     let execution_env: String = match env::var("HOURAI_ENV") {

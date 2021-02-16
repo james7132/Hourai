@@ -8,9 +8,11 @@ RUN cargo install --path . --verbose
 
 # Copy the statically-linked binary into a scratch container.
 FROM alpine
-RUN apk --update --no-cache add jsonnet
+RUN apk --update --no-cache add jsonnet && \
+    mkdir /etc/hourai && \
+    chown 969:969 /etc/hourai
 USER 969
 ENV HOURAI_CONFIG=/opt/hourai.jsonnet
 ENV HOURAI_ENV=dev
 COPY --from=build /home/rust/.cargo/bin/hourai .
-CMD ["jsonnet -m /config ${HOURAI_CONFIG} && /hourai"]
+CMD ["jsonnet -m /etc/hourai ${HOURAI_CONFIG} && /hourai"]
