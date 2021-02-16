@@ -93,11 +93,11 @@ class HouraiConnectionState(discord.state.AutoShardedConnectionState):
         return guild
 
     def parse_guild_member_remove(self, data):
-        super().parse_guild_member_remove(self, data)
+        super().parse_guild_member_remove(data)
         self.dispatch('raw_member_remove', data)
 
     def parse_guild_member_update(self, data):
-        super().parse_guild_member_update(self, data)
+        super().parse_guild_member_update(data)
         self.dispatch('raw_member_update', data)
 
 

@@ -1,9 +1,14 @@
+import logging
 import discord
 from datetime import datetime, timezone
 from typing import List
 from discord import flags
 from hourai import utils
+from hourai.db import proto
 from hourai.utils.fake import FakeContextManager
+
+
+logger = logging.getLogger(__name__)
 
 
 @flags.fill_with_flags()
@@ -151,7 +156,7 @@ class HouraiGuild(discord.Guild):
 
     def __init__(self, *, data, state):
         super().__init__(data=data, state=state)
-        self.config = None
+        self.config = proto.GuildConfig()
 
         # Ephemeral state associated with a Discord guild. Lost on bot restart.
         self.invites = InviteCache(super())
@@ -171,16 +176,17 @@ class HouraiGuild(discord.Guild):
     def is_locked_down(self):
         if not self.config.validation.HasField('lockdown_expiration'):
             return False
-        expiration = datetime.fromtimestamp(self.config.lockdown_expiration)
+        expiration = datetime.fromtimestamp(
+                self.config.validation.lockdown_expiration)
         return datetime.utcnow() <= expiration
 
     @property
-    async def validation_role(self):
+    def validation_role(self):
         if not self.config.validation.HasField('role_id'):
             return None
         return self.get_role(self.config.validation.role_id)
 
-    def should_cache_member(member):
+    def should_cache_member(self, member):
         # Cache if the member is:
         # - A moderator
         # - Is the bot user
@@ -198,9 +204,14 @@ class HouraiGuild(discord.Guild):
 
     async def refresh_config(self):
         self.config = await self.storage.guild_configs.get(self.id)
+        logger.info(f'Loaded config for guild {self.id}')
 
     async def flush_config(self):
-        await self.storage.guild_configs.set(self.id, self.config)
+        if self.unavailable:
+            await self.refresh_config()
+        else:
+            await self.storage.guild_configs.set(self.id, self.config)
+            logger.info(f'Saved config for guild {self.id}')
 
     async def set_lockdown(self, expiration=datetime.max):
         self.config.lockdown_expiration = \
