@@ -98,8 +98,6 @@ class Hourai(commands.AutoShardedBot):
         # Counters
         self.bot_counters = collections.defaultdict(collections.Counter)
         self.guild_counters = collections.defaultdict(collections.Counter)
-        self.channel_counters = collections.defaultdict(collections.Counter)
-        self.user_counters = collections.defaultdict(collections.Counter)
 
         self.web_app_runner = None
 
