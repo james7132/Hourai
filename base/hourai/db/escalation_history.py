@@ -28,8 +28,7 @@ class UserEscalationHistory:
         self.bot = bot
         self.session = session or bot.create_storage_session()
         self.user_id = user.id
-        self.guild = guild
-        self.guild_proxy = bot.get_guild_proxy(guild)
+        self.guild = bot.get_guild_proxy(guild)
 
         self.entries = list(self.__query_history())
 
@@ -64,7 +63,7 @@ class UserEscalationHistory:
 
         Sets the level of a given user. Cannot be set to a negative value.
         """
-        config = await self.guild_proxy.config.get('moderation')
+        config = self.guild.config.moderation
         if reason is None or len(reason) <= 0:
             raise EscalationException('A reason MUST be provided.')
         elif len(config.escalation_ladder.rung) <= 0:
@@ -104,8 +103,7 @@ class UserEscalationHistory:
     async def __send_modlog_result(self, result, diff):
         try:
             reasons = set(a.reason for a in result.entry.action.action)
-            modlog = await self.guild_proxy.get_modlog()
-            await modlog.send(''.join([
+            await self.guild.get_modlog().send(''.join([
                 ':arrow_up:' if diff > 0 else ':arrow_down:',
                 f'**<@{result.entry.authorizer_id}> ',
                 'escalated' if diff > 0 else 'deescalated',

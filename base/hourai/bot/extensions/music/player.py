@@ -27,7 +27,7 @@ class HouraiMusicPlayer(wavelink.Player):
         super().__init__(bot, guild_id, node)
 
         self.queue = MusicQueue()
-        self.guild_proxy = self.bot.get_guild_proxy(self.guild)
+        self.guild = self.bot.get_guild_proxy(self.guild)
 
         self.current = None
         self._requestor_id = None
@@ -43,7 +43,7 @@ class HouraiMusicPlayer(wavelink.Player):
                 self.guild.voice_channels)
 
     async def get_voice_channel(self):
-        music_config = await self.guild_proxy.config.get('music')
+        music_config = self.guild.config.music
         channel = None
         if music_config.HasField('voice_channel_id'):
             channel = self.guild.get_channel(music_config.voice_channel_id)
@@ -55,7 +55,7 @@ class HouraiMusicPlayer(wavelink.Player):
         await self.bot.wait_until_ready()
 
         await self.set_eq(eqs.Equalizer.flat())
-        config = await self.guild_proxy.config.get('music')
+        config = self.guild.config.music
         await self.set_volume(config.volume)
 
     async def disconnect(self) -> None:
@@ -213,9 +213,9 @@ class HouraiMusicPlayer(wavelink.Player):
     async def set_volume(self, volume):
         await super().set_volume(volume)
 
-        config = await self.guild_proxy.config.get('music')
+        config = self.guild.config.music
         config.volume = volume
-        await self.guild_proxy.config.set('music', config)
+        await self.guild.flush_config()
 
     async def create_queue_message(self, channel):
         return await self.__run_ui(MusicQueueUI, channel)

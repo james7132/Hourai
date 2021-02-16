@@ -68,9 +68,8 @@ class Owner(cogs.BaseCog):
     async def broadcast(self, ctx, *, message: str):
         """Broadcasts a message to all modlogs that Hourai is in."""
         async def broadcast_msg(guild):
-            modlog = await ctx.bot.get_guild_proxy(guild).get_modlog()
-            await modlog.send(content=f"<@{guild.owner_id}>" +
-                              '. **Announcement:**\n' + message)
+            msg = f"<@{guild.owner_id}>. **Announcement:**\n{message}"
+            await ctx.guild.get_modlog().send(content=msg)
 
         await asyncio.gather(*[
             broadcast_msg(guild) for guild in ctx.bot.guilds])
@@ -142,29 +141,30 @@ class Owner(cogs.BaseCog):
             await ctx.send('Must provide a config file!')
             return
 
-        guild = ctx.bot.get_guild(guild_id or ctx.guild.id)
-        proxy = ctx.bot.get_guild_proxy(guild)
+        guild_id = guild_id or ctx.guild.id
+        proxy = ctx.bot.get_guild_proxy(guild_id)
         if proxy is None:
             await ctx.send(f"No such guild found: {guild_id}")
             return
 
         config = proto.GuildConfig()
         text_format.Merge(await ctx.message.attachments[0].read(), config)
-        await ctx.guild_proxy.config.set('guild', config)
+        proxy.config = config
+        await proxy.flush_config()
         await ctx.send('Config successfully uploaded.')
 
     @config.command(name="dump")
     async def config_dump(self, ctx, guild_id: typing.Optional[int] = None):
         """Dumps the config for a given server in Protobuf Text Format."""
         # TODO(james7132): Make the operation atomic
-        guild = ctx.bot.get_guild(guild_id or ctx.guild.id)
-        proxy = ctx.bot.get_guild_proxy(guild)
+        guild_id = guild_id or ctx.guild.id
+        proxy = ctx.bot.get_guild_proxy(guild_id)
         if proxy is None:
             await ctx.send(f"No such guild found: {guild_id}")
             return
 
-        config = await proxy.config.get('guild')
-        output = text_format.MessageToString(config, indent=2)
+        await proxy.refresh_config()
+        output = text_format.MessageToString(proxy.config, indent=2)
         filename = f"{ctx.guild.name.replace(' ', '_')}.pbtxt"
         await ctx.send(
                 file=utils.str_to_discord_file(output, filename=filename))

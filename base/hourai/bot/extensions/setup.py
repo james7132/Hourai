@@ -37,10 +37,10 @@ class Setup(cogs.BaseCog):
 
     async def __setup_modlog(self, session, guild):
         proxy = self.bot.get_guild_proxy(guild)
-        config = await proxy.config.get('logging')
+        config = proxy.config.logging
 
         # Only configure this if it isn't set
-        if config is not None and config.HasField('modlog_channel_id'):
+        if config.HasField('modlog_channel_id'):
             return
 
         modlog_channel = discord.utils.find(
@@ -74,24 +74,18 @@ class Teardown(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         with self.bot.create_storage_session() as session:
-            await asyncio.gather(
-                session.guild_configs.clear(guild.id),
-                self.__clear_sql(session, guild)
-            )
+            tables = (models.MemberRoles, models.Tag,
+                      models.PendingDeescalation, models.Channel, models.Alias)
+            queries = (session.query(table).filter_by(guild_id=guild.id)
+                       for table in tables)
 
-    async def __clear_sql(self, session, guild):
-        tables = (models.MemberRoles, models.Tag, models.PendingDeescalation,
-                  models.Channel, models.Alias)
-        queries = (session.query(table).filter_by(guild_id=guild.id)
-                   for table in tables)
-
-        for query in queries:
-            try:
-                query.delete()
-            except Exception as error:
-                # TODO(james7132) Handle the error
-                self.bot.dispatch('log_error', 'SQL Cleanup', error)
-        session.commit()
+            for query in queries:
+                try:
+                    query.delete()
+                except Exception as error:
+                    # TODO(james7132) Handle the error
+                    self.bot.dispatch('log_error', 'SQL Cleanup', error)
+            session.commit()
 
 
 def setup(bot):

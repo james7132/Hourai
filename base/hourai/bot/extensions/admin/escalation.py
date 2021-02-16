@@ -12,11 +12,10 @@ from hourai.utils import fake, checks, format
 log = logging.getLogger(__name__)
 
 
-async def require_escalation_config(ctx):
-    if ctx.guild_proxy is None:
+def require_escalation_config(ctx):
+    if ctx.guild is None:
         raise commands.NoPrivateMessage()
-    cfg = await ctx.guild_proxy.config.get('moderation')
-    if not cfg.HasField('escalation_ladder'):
+    if not ctx.guild.config.moderation.HasField('escalation_ladder'):
         raise commands.CheckFailure(
             message="No escalation ladder has been configured for this server."
                     " Please configure one before running this command.")

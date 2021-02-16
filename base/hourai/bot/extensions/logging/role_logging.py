@@ -30,7 +30,7 @@ class RoleLogging(cogs.BaseCog):
     async def restore_roles(self, member: discord.Member):
         roles = set()
         proxy = self.bot.get_guild_proxy(member.guild)
-        config = await proxy.config.get('role')
+        config = proxy.config.role
         with self.bot.create_storage_session() as session:
             member_roles = session.query(models.MemberRoles).get(
                     (member.guild.id, member.id))

@@ -17,24 +17,15 @@ class ValidationContext:
 
         self.bot = bot
         self.member = member
-        self.guild_config = guild_config
-        self.role = None
-        if guild_config.role_id:
-            self.role = member.guild.get_role(guild_config.role_id)
+        self.guild = self.bot.get_guild_proxy(member.guild)
+        self.config = self.guild.config.validation
+        self.role = self.guild.get_validation_role()
 
         self.approved = True
         self.approval_reasons = []
         self.rejection_reasons = []
 
         self._usernames = None
-
-    @property
-    def guild(self):
-        return self.member.guild
-
-    @property
-    def guild_proxy(self):
-        return self.bot.get_guild_proxy(self.guild)
 
     @property
     def usernames(self):
@@ -71,8 +62,7 @@ class ValidationContext:
     async def get_join_invite(self):
         if not self.guild.me.guild_permissions.manage_guild:
             return None, False
-        cache = self.guild_proxy.invites
-        invites = await cache.fetch()
+        invites = await self.guild.invites.fetch()
         diff = cache.diff(invites)
         cache.update(invites)
         if len(diff) != 1:
@@ -84,8 +74,7 @@ class ValidationContext:
             try:
                 await self.member.add_roles(self.role)
             except discord.Forbidden:
-                modlog = await self.guild_proxy.get_modlog()
-                await modlog.send(
+                await self.guild.get_modlog().send(
                     f'Verified {self.member.mention}, but bot is missing '
                     f' permissions to give them the role')
 
@@ -100,11 +89,11 @@ class ValidationContext:
 
     async def send_modlog_message(self):
         """Sends verification log to a the guild's modlog."""
-        modlog = await self.guild_proxy.get_modlog()
+        modlog = self.guild.get_modlog()
         allowed_mentions = []
         mention = None
         # Only ping a mod if enabled and failed approval
-        if self.guild_config.ping_moderator_on_fail and not self.approved:
+        if self.config.ping_moderator_on_fail and not self.approved:
             online_mod, mention = utils.mention_random_online_mod(self.guild)
             allowed_mentions.append(online_mod)
         return await self.send_log_message(

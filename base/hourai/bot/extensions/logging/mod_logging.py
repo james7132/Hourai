@@ -28,7 +28,7 @@ class ModLogging(cogs.BaseCog):
         if before.guild is None:
             return
         proxy = self.bot.get_guild_proxy(before.guild)
-        config = (await proxy.config.get('logging')).edited_messages
+        config = proxy.config.logging.edited_messages
         channel = before.guild.get_channel(config.output_channel_id)
         if not should_log(before.channel.id, config) or \
            channel is None or before.author.bot:
@@ -48,7 +48,7 @@ class ModLogging(cogs.BaseCog):
         if guild is None:
             return
         proxy = self.bot.get_guild_proxy(guild)
-        config = (await proxy.config.get('logging')).deleted_messages
+        config = proxy.config.logging.deleted_messages
         channel = guild.get_channel(config.output_channel_id)
         if not should_log(payload.channel_id, config) or channel is None:
             return
@@ -73,7 +73,7 @@ class ModLogging(cogs.BaseCog):
         if guild is None:
             return
         proxy = self.bot.get_guild_proxy(guild)
-        config = (await proxy.config.get('logging')).deleted_messages
+        config = proxy.config.logging.deleted_messages
         channel = guild.get_channel(config.output_channel_id)
         if not should_log(payload.channel_id, config) or channel is None:
             return
@@ -92,12 +92,12 @@ class ModLogging(cogs.BaseCog):
         """ Enables/disables logging of deleted messages in the current
         channel.
         """
-        config = await ctx.guild_proxy.config.get('logging')
+        config = ctx.guild.config.logging
         config.deleted_messages.enabled = not config.deleted_messages.enabled
         config.deleted_messages.output_channel_id = ctx.channel.id
         change = ('enabled' if config.deleted_messages.enabled
                   else 'disabled.')
-        await ctx.guild_proxy.config.set('logging', config)
+        await ctx.guild.flush_config()
         await success(ctx, f'Logging of deleted messages has been {change} '
                       f'in {ctx.channel.mention}.')
 
@@ -106,10 +106,10 @@ class ModLogging(cogs.BaseCog):
         """ Enables/disables logging of edited messages in the current
         channel.
         """
-        config = await ctx.guild_proxy.config.get('logging')
+        config = ctx.guild.config.logging
         config.edited_messages.enabled = not config.edited_messages.enabled
         config.edited_messages.output_channel_id = ctx.channel.id
         change = ('enabled' if config.edited_messages.enabled else 'disabled.')
-        await ctx.guild_proxy.config.set('logging', config)
+        await ctx.guild.flush_config()
         await success(ctx, f'Logging of edited messages has been {change} '
                       f'in {ctx.channel.mention}.')

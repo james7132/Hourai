@@ -20,7 +20,7 @@ async def get_dj_roles(ctx):
     """Gets the corresponding DJ role for a guild. Returns none if the role is
     not found or if no role has been configured.
     """
-    music_config = await ctx.guild_proxy.config.get('music')
+    music_config = ctx.guild.config.music
     roles = [ctx.guild.get_role(role_id)
              for role_id in music_config.dj_role_id]
     return set(role for role in roles if role is not None)
@@ -53,7 +53,7 @@ def get_default_channel(guild, member_id=None):
 
 
 async def get_voice_channel(ctx):
-    music_config = await ctx.guild_proxy.config.get('music')
+    music_config = ctx.guild.config.music
     channel = None
     if music_config.HasField('voice_channel_id'):
         channel = ctx.guild.get_channel(music_config.voice_channel_id)
@@ -104,7 +104,7 @@ class Music(cogs.BaseCog):
     async def cog_check(self, ctx):
         if ctx.guild is None:
             raise commands.NoPrivateMessage()
-        music_config = await ctx.guild_proxy.config.get('music')
+        music_config = ctx.guild.config.music
         if music_config is None:
             return True
         # If a specific text channel is required

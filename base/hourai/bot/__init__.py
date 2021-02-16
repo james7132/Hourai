@@ -255,6 +255,10 @@ class Hourai(commands.AutoShardedBot):
 
     async def on_guild_available(self, guild):
         log.info(f'Guild Available: {guild.id}')
+        if guild.id not in self.guild_proxies:
+            proxy = proxies.GuildProxy(self, guild)
+            await proxy.refresh_config()
+            self.guild_proxies[guild.id] = proxy
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')
@@ -265,10 +269,10 @@ class Hourai(commands.AutoShardedBot):
         await self.process_commands(message)
 
     async def on_guild_remove(self, guild):
-        try:
+        proxy = self.guild_proxies.get(guild.id)
+        if proxy is not None:
+            await proxy.destroy()
             del self.guild_proxies[guild.id]
-        except KeyError:
-            pass
 
     async def get_prefix(self, message):
         if isinstance(message, fake.FakeMessage):
@@ -355,18 +359,9 @@ class Hourai(commands.AutoShardedBot):
 
     def get_guild_proxy(self, guild):
         try:
-            return self.guild_proxies[guild.id]
-        except AttributeError:
-            return None
-        except KeyError:
-            if isinstance(guild, discord.Guild):
-                self.guild_proxies[guild.id] = proxies.GuildProxy(self, guild)
             return self.guild_proxies.get(guild.id)
-
-    async def get_guild_config(self, guild, target_config):
-        if guild is None:
-            return None
-        return await self.get_guild_proxy(guild).config.get(target_config)
+        except AttributeError:
+            return self.guild_proxies.get(guild)
 
     def load_extension(self, module):
         try:

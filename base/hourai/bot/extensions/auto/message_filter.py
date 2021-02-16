@@ -67,12 +67,9 @@ class MessageFilter(cogs.BaseCog):
             except (AttributeError, discord.NotFound, discord.Forbidden):
                 return
 
-        mod_config = await proxy.config.get('moderation')
-        log_config = await proxy.config.get('logging')
-
-        has_filter = mod_config.HasField('message_filter')
+        has_filter = proxy.config.moderation.HasField('message_filter')
         is_bot_user = message.author == self.bot.user
-        in_modlog = log_config.modlog_channel_id == message.channel.id
+        in_modlog = proxy.config.logging.modlog_channel_id == message.channel.id
 
         if has_filter and not (in_modlog and is_bot_user):
             return mod_config
@@ -83,7 +80,7 @@ class MessageFilter(cogs.BaseCog):
         action_taken = ""
         mention_mod = rule.notify_moderator
         reasons_block = f"\n```\n{format.vertical_list(reasons)}\n```"
-        guild = message.guild
+        guild = self.bot.get_guild_proxy(message.guild)
 
         if rule.notify_moderator:
             action_taken = "Message filter found notable message:"
@@ -126,8 +123,7 @@ class MessageFilter(cogs.BaseCog):
                 _, mention_text = utils.mention_random_online_mod(guild)
                 text = mention_text + " " + text
             embed = embed_utils.message_to_embed(message)
-            modlog = await self.bot.get_guild_proxy(guild).get_modlog()
-            tasks.append(modlog.send(content=text, embed=embed))
+            tasks.append(guild.get_modlog().send(content=text, embed=embed))
 
         try:
             await asyncio.gather(*tasks)

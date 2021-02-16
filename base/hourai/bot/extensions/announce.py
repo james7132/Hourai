@@ -20,25 +20,25 @@ class Announce(cogs.BaseCog):
 
     @announce.command(name='join')
     async def announce_join(self, ctx):
-        conf = await ctx.guild_proxy.config.get('announce')
+        conf = ctx.guild.config.announce
         result = self.__toggle_channel(ctx, conf.joins)
-        await ctx.guild_proxy.config.set('announce', conf)
+        await ctx.guild.flush_config()
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Join messages {suffix}")
 
     @announce.command(name='leave')
     async def announce_leave(self, ctx):
-        conf = await ctx.guild_proxy.config.get('announce')
+        conf = ctx.guild.config.announce
         result = self.__toggle_channel(ctx, conf.leaves)
-        await ctx.guild_proxy.config.set('announce', conf)
+        await ctx.guild.flush_config()
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Leave  messages {suffix}")
 
     @announce.command(name='ban')
     async def announce_ban(self, ctx):
-        conf = await ctx.guild_proxy.config.get('announce')
+        conf = ctx.guild.config.announce
         result = self.__toggle_channel(ctx, conf.bans)
-        await ctx.guild_proxy.config.set('announce', conf)
+        await ctx.guild.flush_config()
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Ban messages {suffix}")
 
@@ -61,7 +61,7 @@ class Announce(cogs.BaseCog):
 
     async def send_announce_join(self, member):
         proxy = self.bot.get_guild_proxy(member.guild)
-        announce_config = await proxy.config.get('announce')
+        announce_config = proxy.config.announce
         if not announce_config.HasField('joins'):
             return
         if len(announce_config.joins.messages) > 0:
@@ -78,7 +78,7 @@ class Announce(cogs.BaseCog):
             return
         user_id = int(data['user']['id'])
         proxy = self.bot.get_guild_proxy(guild)
-        announce_config = await proxy.config.get('announce')
+        announce_config = proxy.config.announce
         if not announce_config.HasField('leaves'):
             return
         with self.bot.create_storage_session() as session:
@@ -98,7 +98,7 @@ class Announce(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
         proxy = self.bot.get_guild_proxy(guild)
-        announce_config = await proxy.config.get('announce')
+        announce_config = proxy.config.announce
         if not announce_config.HasField('bans'):
             return
         if len(announce_config.bans.messages) > 0:
@@ -110,7 +110,7 @@ class Announce(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         proxy = self.bot.get_guild_proxy(member.guild)
-        announce_config = await proxy.config.get('announce')
+        announce_config = proxy.config.announce
         if not announce_config.HasField('voice'):
             return
         assert not (before.channel is None and after.channel is None)

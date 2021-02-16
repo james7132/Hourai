@@ -25,6 +25,7 @@ class HouraiContext(commands.Context):
         self.parent = attrs.pop('parent', None)
         self.depth = attrs.pop('depth', 1)
         super().__init__(**attrs)
+        self.guild = self.bot.get_guild_proxy(self.guild)
         self.session = self.bot.create_storage_session()
 
     async def __aenter__(self) -> HouraiContext:
@@ -37,10 +38,6 @@ class HouraiContext(commands.Context):
     def substitute_content(self, repeats: int = 20) -> str:
         return self.REPLACER.substitute(self.content, context=self,
                                         repeats=repeats)
-
-    @property
-    def guild_proxy(self):
-        return self.bot.get_guild_proxy(self.guild)
 
     @property
     def is_automated(self) -> bool:

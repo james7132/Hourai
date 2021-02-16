@@ -211,7 +211,7 @@ class Validation(cogs.BaseCog):
     async def setmodlog(self, ctx, channel: discord.TextChannel = None):
         # TODO(jame7132): Update this so it's in a different cog.
         channel = channel or ctx.channel
-        await ctx.guild_proxy.set_modlog_channel(channel)
+        await ctx.guild.set_modlog_channel(channel)
         await ctx.send(":thumbsup: Set {}'s modlog to {}.".format(
             ctx.guild.name,
             channel.mention if channel is not None else 'None'))
@@ -235,14 +235,13 @@ class Validation(cogs.BaseCog):
         ~validation purge 1h
         ~validation purge 1d
         """
-        role = await ctx.guild_proxy.get_validation_role()
+        role = ctx.guild.get_validation_role()
         if role is None:
             await ctx.send('No role has been configured. '
                            'Please configure and propogate a role first.')
         check_time = datetime.utcnow()
         async with ctx.typing():
-            count = await self.purge_guild(ctx.guild_proxy,
-                                           check_time - lookback,
+            count = await self.purge_guild(ctx.guild, check_time - lookback,
                                            dry_run=True)
         await ctx.send(
             f'Doing this will purge {count} users from the server.\n'
@@ -250,7 +249,7 @@ class Validation(cogs.BaseCog):
         continue_purge = await utils.wait_for_confirmation(ctx)
         if continue_purge:
             async with ctx.typing():
-                await self.purge_guild(ctx.guild_proxy, check_time - lookback,
+                await self.purge_guild(ctx.guild, check_time - lookback,
                                        dry_run=False)
             await ctx.send(f'Purged {count} unverified users from the server.')
         else:
@@ -269,7 +268,7 @@ class Validation(cogs.BaseCog):
         ~validation lockdown 1d
         """
         expiration = datetime.utcnow() + time
-        await ctx.guild_proxy.set_lockdown(expiration)
+        await ctx.guild.set_lockdown(expiration)
         await ctx.send(
             f'Lockdown enabled. Will be automatically lifted at {expiration}')
 
@@ -284,7 +283,7 @@ class Validation(cogs.BaseCog):
         Example Usage:
         ~validation lockdown lift
         """
-        await ctx.guild_proxy.clear_lockdown(False)
+        await ctx.guild.clear_lockdown(False)
         await ctx.send('Lockdown disabled.')
 
     @validation.command(name='verify')
@@ -298,8 +297,8 @@ class Validation(cogs.BaseCog):
         ~validation verify @Bob
         ~validation verify Alice
         """
-        config = await self.bot.get_guild_config(member.guild, 'validation')
-        if config is None or not config.enabled:
+        config = ctx.guild.config.validation
+        if not config.enabled:
             await ctx.send('Validation has not been setup. Please see '
                            '`~help validation` for more details.')
             return
@@ -321,17 +320,17 @@ class Validation(cogs.BaseCog):
 
     @validation.command(name="disable")
     async def validation_disable(self, ctx):
-        config = await ctx.guild_proxy.config.get(ctx.guild.id)
+        config = ctx.guild.config.validation
         config.enabled = False
-        await ctx.guild_proxy.config.set(ctx.guild.id, config)
+        await ctx.guild.flush_config()
         await ctx.send('Validation disabled. To reenable, rerun `~validation '
                        'setup`.')
 
     @validation.command(name="propagate")
     @commands.bot_has_permissions(manage_roles=True)
     async def validation_propagate(self, ctx):
-        config = await ctx.guild_proxy.config.get('validation')
-        if config is None or not config.HasField('role_id'):
+        config = ctx.guild.config.validation
+        if not config.HasField('role_id'):
             await ctx.send('No validation config was found. Please run '
                            '`~valdiation setup`')
             return
@@ -371,7 +370,7 @@ class Validation(cogs.BaseCog):
                float(len(members_with_role)) / float(member_count) > 0.99):
                 lookback = int(PURGE_LOOKBACK.total_seconds())
                 config.kick_unvalidated_users_after = lookback
-                await ctx.guild_proxy.config.set('validation', config)
+                await ctx.guild.flush_config()
                 await msg.edit(content='Propagation conplete!')
                 return
 
@@ -386,7 +385,8 @@ class Validation(cogs.BaseCog):
             await self.on_join(after)
 
     async def on_join(self, member):
-        config = await self.bot.get_guild_config(member.guild, 'validation')
+        proxy = self.bot.get_guild_proxy(member.guild)
+        config = proxy.config.validation
         if config is None or not config.enabled:
             return
 
@@ -408,7 +408,8 @@ class Validation(cogs.BaseCog):
            payload.emoji.name not in MODLOG_REACTIONS:
             return None
         channel = guild.get_channel(payload.channel_id)
-        logging_config = await self.bot.get_guild_config(guild, 'logging')
+        proxy = self.bot.get_guild_proxy(guild)
+        logging_config = proxy.config.logging
         if channel is None or logging_config.modlog_channel_id != channel.id:
             return None
         return await channel.fetch_message(payload.message_id)
@@ -449,8 +450,8 @@ class Validation(cogs.BaseCog):
 
     async def approve_member_by_reaction(self, guild, user, target):
         proxy = self.bot.get_guild_proxy(guild)
-        modlog = await proxy.get_modlog()
-        config = await proxy.config.get('validation')
+        modlog = proxy.get_modlog()
+        config = proxy.config.validation
         ctx = ValidationContext(self.bot, target, config)
         try:
             await self.verify_member(ctx)
@@ -465,7 +466,7 @@ class Validation(cogs.BaseCog):
 
     async def kick_member_by_reaction(self, guild, user, target):
         proxy = self.bot.get_guild_proxy(guild)
-        modlog = await proxy.get_modlog()
+        modlog = proxy.get_modlog()
         try:
             await target.kick(reason=(f'Failed verification.'
                                       f' Manually kicked by {user}.'))
@@ -480,7 +481,7 @@ class Validation(cogs.BaseCog):
 
     async def ban_member_by_reaction(self, guild, user, target):
         proxy = self.bot.get_guild_proxy(guild)
-        modlog = await proxy.get_modlog()
+        modlog = proxy.get_modlog()
         try:
             await target.ban(reason=(f'Failed verification.'
                                      f' Manually banned by {user}.'))
@@ -504,8 +505,8 @@ class Validation(cogs.BaseCog):
         members = await asyncio.gather(
                 *[self.bot.get_member_async(guild, user.id)
                   for guild in self.bot.guilds])
-        guild_proxies = [self.bot.get_guild_proxy(member.guild)
-                         for member in members if member is not None]
+        proxies = [self.bot.get_guild_proxy(member.guild)
+                   for member in members if member is not None]
 
         contents = None
         if ban_info.reason is None:
@@ -516,11 +517,8 @@ class Validation(cogs.BaseCog):
                         f"from another server for the following reason: "
                         f"`{ban_info.reason}`.")
 
-        async def report(proxy):
-            modlog = await proxy.get_modlog()
-            await modlog.send(contents)
-
-        await asyncio.gather(*[report(proxy) for proxy in guild_proxies])
+        await asyncio.gather(*[proxy.get_modlog().send(contents)
+                               for proxy in proxies])
 
 
 def setup(bot):
