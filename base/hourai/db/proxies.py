@@ -204,7 +204,7 @@ class GuildProxy:
         if not config.HasField('lockdown_expiration'):
             return False
         expiration = datetime.fromtimestamp(config.lockdown_expiration)
-        return datetime.utcnow() > expiration
+        return datetime.utcnow() <= expiration
 
     async def set_lockdown(self, expiration=datetime.max):
         config = await self.config.get('validation')
