@@ -15,7 +15,9 @@ from hourai.utils import fake, uvloop
 from . import actions, extensions
 from .context import HouraiContext
 
+
 log = logging.getLogger(__name__)
+
 
 # Monkeypatch Hacks
 __old_guild_add_member = discord.Guild._add_member
@@ -37,24 +39,6 @@ def limit_cache_add_member(self, member, force=False):
 
 
 discord.Guild._add_member = limit_cache_add_member
-__old_parse_guild_member_remove = ConnectionState.parse_guild_member_remove
-
-
-def parse_guild_member_remove(self, data):
-    __old_parse_guild_member_remove(self, data)
-    self.dispatch('raw_member_remove', data)
-
-
-ConnectionState.parse_guild_member_remove = parse_guild_member_remove
-__old_parse_guild_member_update = ConnectionState.parse_guild_member_update
-
-
-def parse_guild_member_update(self, data):
-    __old_parse_guild_member_update(self, data)
-    self.dispatch('raw_member_update', data)
-
-
-ConnectionState.parse_guild_member_update = parse_guild_member_update
 
 
 class CounterKeys(enum.Enum):
@@ -119,6 +103,20 @@ class AliasInterpreter(CommandInterpreter):
     pass
 
 
+class HouraiConnectionState(discord.state.AutoShardedConnectionState):
+
+    def _add_guild(self, guild):
+        self._guilds[guild.id] = proxies.GuildProxy(self, guild)
+
+    def parse_guild_member_remove(self, data):
+        super().parse_guild_member_remove(self, data)
+        self.dispatch('raw_member_remove', data)
+
+    def parse_guild_member_update(self, data):
+        super().parse_guild_member_update(self, data)
+        self.dispatch('raw_member_update', data)
+
+
 class Hourai(commands.AutoShardedBot):
 
     def __init__(self, *args, **kwargs):
@@ -160,8 +158,6 @@ class Hourai(commands.AutoShardedBot):
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)
 
-        self.guild_proxies = {}
-
         # Counters
         self.bot_counters = collections.defaultdict(collections.Counter)
         self.guild_counters = collections.defaultdict(collections.Counter)
@@ -169,6 +165,12 @@ class Hourai(commands.AutoShardedBot):
         self.user_counters = collections.defaultdict(collections.Counter)
 
         self.web_app_runner = None
+
+    def _get_state(self, **options):
+        return HouraiConnectionState(
+                dispatch=self.dispatch, handlers=self._handlers,
+                syncer=self._syncer, hooks=self._hooks, http=self.http,
+                loop=self.loop, **options)
 
     def create_storage_session(self):
         return self.storage.create_session()
@@ -255,10 +257,7 @@ class Hourai(commands.AutoShardedBot):
 
     async def on_guild_available(self, guild):
         log.info(f'Guild Available: {guild.id}')
-        if guild.id not in self.guild_proxies:
-            proxy = proxies.GuildProxy(self, guild)
-            await proxy.refresh_config()
-            self.guild_proxies[guild.id] = proxy
+        await guild.refresh_config()
 
     async def on_ready(self):
         log.info(f'Bot Ready: {self.user.name} ({self.user.id})')
@@ -269,10 +268,7 @@ class Hourai(commands.AutoShardedBot):
         await self.process_commands(message)
 
     async def on_guild_remove(self, guild):
-        proxy = self.guild_proxies.get(guild.id)
-        if proxy is not None:
-            await proxy.destroy()
-            del self.guild_proxies[guild.id]
+        await guild.destroy()
 
     async def get_prefix(self, message):
         if isinstance(message, fake.FakeMessage):
@@ -359,9 +355,9 @@ class Hourai(commands.AutoShardedBot):
 
     def get_guild_proxy(self, guild):
         try:
-            return self.guild_proxies.get(guild.id)
+            return self.get_guild(guild.id)
         except AttributeError:
-            return self.guild_proxies.get(guild)
+            return self.get_guild(guild)
 
     def load_extension(self, module):
         try:
