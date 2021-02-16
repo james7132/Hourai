@@ -12,7 +12,6 @@ unidecode==1.1.1
 
 # Configuration management
 jsonnet==0.16.0
-Click==7.1.2
 
 # Utility requirements
 humanize==2.6.0
