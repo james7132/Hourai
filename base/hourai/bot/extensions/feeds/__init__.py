@@ -9,6 +9,7 @@ class Feeds(cogs.BaseCog):
     def __init__(self, bot):
         self.bot = bot
         self.scanners = (RedditScanner(self),)
+        self.scan_all_feeds.start()
 
     def cog_unload(self):
         self.scan_all_feeds.cancel()
