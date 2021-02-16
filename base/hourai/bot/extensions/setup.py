@@ -52,7 +52,7 @@ class Setup(cogs.BaseCog):
                 f'channel for guild: {guild.id}')
             return
 
-        await proxy.set_modlog_channel(modlog_channel)
+        await guild.set_modlog_channel(modlog_channel)
 
         log.info(
             f'Automatic Setup: Set modlog for guild {guild.id} to channel '

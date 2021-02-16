@@ -493,7 +493,7 @@ class Validation(cogs.BaseCog):
         members = await asyncio.gather(
                 *[self.bot.get_member_async(guild, user.id)
                   for guild in self.bot.guilds])
-        guild = [member.guild for member in members if member is not None]
+        guilds = [member.guild for member in members if member is not None]
 
         contents = None
         if ban_info.reason is None:
@@ -504,8 +504,7 @@ class Validation(cogs.BaseCog):
                         f"from another server for the following reason: "
                         f"`{ban_info.reason}`.")
 
-        await asyncio.gather(*[guild.modlog.send(contents)
-                               for proxy in proxies])
+        await asyncio.gather(*[guild.modlog.send(contents) for guild in guilds])
 
 
 def setup(bot):
