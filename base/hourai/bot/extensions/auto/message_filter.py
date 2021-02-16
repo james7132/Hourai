@@ -65,14 +65,15 @@ class MessageFilter(cogs.BaseCog):
                 channel = self.bot.get_channel(message.channel_id)
                 message = await channel.fetch_message(message.message_id)
             except (AttributeError, discord.NotFound, discord.Forbidden):
-                return
+                return None
 
         has_filter = guild.config.moderation.HasField('message_filter')
         is_bot_user = message.author == self.bot.user
-        in_modlog = guild.config.logging.modlog_channel_id == message.channel.id
+        in_modlog = (guild.config.logging.modlog_channel_id ==
+                     message.channel.id)
 
         if has_filter and not (in_modlog and is_bot_user):
-            return mod_config
+            return guild.config.moderation
         return None
 
     async def apply_rule(self, rule, message, reasons):

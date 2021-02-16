@@ -71,7 +71,8 @@ class ValidationContext:
     async def get_join_invite(self):
         if not self.guild.me.guild_permissions.manage_guild:
             return None, False
-        invites = await self.guild.invites.fetch()
+        cache = self.guild.invites
+        invites = await cache.fetch()
         diff = cache.diff(invites)
         cache.update(invites)
         if len(diff) != 1:
@@ -105,7 +106,7 @@ class ValidationContext:
             online_mod, mention = utils.mention_random_online_mod(self.guild)
             allowed_mentions.append(online_mod)
         return await self.send_log_message(
-            guild.modlog, ping_target=mention,
+            self.guild.modlog, ping_target=mention,
             allowed_mentions=allowed_mentions)
 
     async def send_log_message(self, messageable, ping_target='',

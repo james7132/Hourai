@@ -7,9 +7,8 @@ import time
 import logging
 import pkgutil
 import sys
-from discord.state import ConnectionState
 from discord.ext import commands
-from hourai import config, web, utils
+from hourai import config, web
 from hourai.db import storage
 from hourai.utils import fake, uvloop
 from . import actions, extensions
@@ -154,8 +153,8 @@ class Hourai(commands.AutoShardedBot):
     def _get_state(self, **options):
         return HouraiConnectionState(
                 storage=self.storage, dispatch=self.dispatch,
-                handlers=self._handlers, syncer=self._syncer, hooks=self._hooks,
-                http=self.http, loop=self.loop, **options)
+                handlers=self._handlers, syncer=self._syncer,
+                hooks=self._hooks, http=self.http, loop=self.loop, **options)
 
     def create_storage_session(self):
         return self.storage.create_session()

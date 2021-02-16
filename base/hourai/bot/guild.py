@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from typing import List
 from discord import flags
 from hourai import utils
-from hourai.db import proto
 from hourai.utils.fake import FakeContextManager
 
 
@@ -166,20 +165,20 @@ class HouraiGuild(discord.Guild):
         """Creates a discord.abc.Messageable compatible object corresponding to
         the server's modlog.
         """
-        return ModlogMessageable(self.base, self.config.logging)
+        return ModlogMessageable(self, self.config.logging)
 
     @property
     def is_locked_down(self):
         if not self.config.validation.HasField('lockdown_expiration'):
             return False
-        expiration = datetime.fromtimestamp(config.lockdown_expiration)
+        expiration = datetime.fromtimestamp(self.config.lockdown_expiration)
         return datetime.utcnow() <= expiration
 
     @property
     async def validation_role(self):
-        if self.config.validation.HasField('role_id'):
+        if not self.config.validation.HasField('role_id'):
             return None
-        return self.base.get_role(self.config.validation.role_id)
+        return self.get_role(self.config.validation.role_id)
 
     def should_cache_member(member):
         # Cache if the member is:
@@ -191,17 +190,17 @@ class HouraiGuild(discord.Guild):
                 member.pending
 
     def _add_member(self, member, force=False):
-        if member is not None and force or should_cache_member(member):
+        if member is not None and force or self.should_cache_member(member):
             super()._add_member(member)
 
     async def destroy(self):
-        await self.storage.guild_configs.clear(self.base.id)
+        await self.storage.guild_configs.clear(self.id)
 
     async def refresh_config(self):
-        self.config = await self.storage.guild_configs.get(self.base.id)
+        self.config = await self.storage.guild_configs.get(self.id)
 
     async def flush_config(self):
-        await self.storage.guild_configs.set(self.base.id, self.config)
+        await self.storage.guild_configs.set(self.id, self.config)
 
     async def set_lockdown(self, expiration=datetime.max):
         self.config.lockdown_expiration = \
@@ -209,7 +208,7 @@ class HouraiGuild(discord.Guild):
         await self.flush_config()
 
     async def clear_lockdown(self):
-        config.ClearField('lockdown_expiration')
+        self.config.ClearField('lockdown_expiration')
         await self.flush_config()
 
     def get_role_permissions(self, role: discord.Role) -> Permissions:
@@ -224,19 +223,19 @@ class HouraiGuild(discord.Guild):
 
     def find_moderators(self) -> List[discord.Member]:
         settings = self.config.role.settings
-        perms = (Permissions(settings[role.id].permissions)
-                 for role in self.roles)
-        mod_roles = [role for role, perm in zip(roles, perms)
-                     if perm.moderator]
+        mod_roles = (self.get_role(role_id)
+                     for role_id, setting in settings.items()
+                     if Permissions(settings.permissions).moderator)
+        mod_roles = [role for role in mod_roles if role is not None]
         if not mod_roles:
-            return utils.find_moderator(self.base)
+            return utils.find_moderator(self)
         return list(utils.all_with_roles(self.members, mod_roles))
 
     async def set_modlog_channel(self, channel):
         """Sets the modlog channel to a certain channel. If channel is none, it
         clears it from the config.
         """
-        assert channel is None or channel.guild == self.base
+        assert channel is None or channel.guild.id == self.id
         if channel is None:
             self.config.logging.ClearField('modlog_channel_id')
         else:

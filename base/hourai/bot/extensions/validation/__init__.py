@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 from hourai import utils
 from hourai import config as hourai_config
 from hourai.bot import cogs
-from hourai.db import proto
 from hourai.utils import checks, iterable
 
 log = logging.getLogger(__name__)
@@ -504,7 +503,8 @@ class Validation(cogs.BaseCog):
                         f"from another server for the following reason: "
                         f"`{ban_info.reason}`.")
 
-        await asyncio.gather(*[guild.modlog.send(contents) for guild in guilds])
+        await asyncio.gather(*[guild.modlog.send(contents)
+                               for guild in guilds])
 
 
 def setup(bot):
