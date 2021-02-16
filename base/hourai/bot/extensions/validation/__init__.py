@@ -163,8 +163,7 @@ class Validation(cogs.BaseCog):
         invite.guild.invites.remove(invite)
 
     async def purge_guild(self, guild, cutoff_time, dry_run=True):
-        role = guild.get_validation_role()
-
+        role = guild.validation_role
         if role is None or not guild.me.guild_permissions.kick_members:
             return
 
@@ -234,8 +233,7 @@ class Validation(cogs.BaseCog):
         ~validation purge 1h
         ~validation purge 1d
         """
-        role = ctx.guild.get_validation_role()
-        if role is None:
+        if ctx.guild.validation_role is None:
             await ctx.send('No role has been configured. '
                            'Please configure and propogate a role first.')
         check_time = datetime.utcnow()
@@ -446,45 +444,41 @@ class Validation(cogs.BaseCog):
             await func(guild, user, target)
 
     async def approve_member_by_reaction(self, guild, user, target):
-        modlog = guild.get_modlog()
-        config = proxy.config.validation
-        ctx = ValidationContext(self.bot, target, config)
+        ctx = ValidationContext(self.bot, target, guild.config.validation)
         try:
             await self.verify_member(ctx)
-            await modlog.send(
+            await guild.modlog.send(
                 f'{APPROVE_REACTION} **{user}** manually verified **{target}**'
                 f' via reaction.')
             log.info(f'Verified user {target} manually via reaction from '
                      f'{user}')
         except discord.Forbidden:
-            await modlog.send(
+            await guild.modlog.send(
                 f'{APPROVE_REACTION} Attempted')
 
     async def kick_member_by_reaction(self, guild, user, target):
-        modlog = guild.get_modlog()
         try:
             await target.kick(reason=(f'Failed verification.'
                                       f' Manually kicked by {user}.'))
-            await modlog.send(
+            await guild.modlog.send(
                 f'{KICK_REACTION} **{user}** kicked **{target}**'
                 f' via reaction during manual verification.')
             log.info(f'Kicked user {target} manually via reaction from {user}')
         except discord.Forbidden:
-            await modlog.send(
+            await guild.modlog.send(
                 f'{KICK_REACTION} Attempted to kick {target.mention} and '
                 f'failed. Bot does not have **Kick Members** permission.')
 
     async def ban_member_by_reaction(self, guild, user, target):
-        modlog = guild.get_modlog()
         try:
             await target.ban(reason=(f'Failed verification.'
                                      f' Manually banned by {user}.'))
-            await modlog.send(
+            await guild.modlog.send(
                 f'{BAN_REACTION} **{user}** ban **{target}**'
                 f' via reaction during manual verification.')
             log.info(f'Banned user {target} manually via reaction from {user}')
         except discord.Forbidden:
-            await modlog.send(
+            await guild.modlog.send(
                 f'{BAN_REACTION} Attempted to ban {target.mention} and failed'
                 f'. Bot does not have **Ban Members** permission.')
 
@@ -510,7 +504,7 @@ class Validation(cogs.BaseCog):
                         f"from another server for the following reason: "
                         f"`{ban_info.reason}`.")
 
-        await asyncio.gather(*[guild.get_modlog().send(contents)
+        await asyncio.gather(*[guild.modlog.send(contents)
                                for proxy in proxies])
 
 

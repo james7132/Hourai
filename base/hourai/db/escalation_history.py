@@ -103,7 +103,7 @@ class UserEscalationHistory:
     async def __send_modlog_result(self, result, diff):
         try:
             reasons = set(a.reason for a in result.entry.action.action)
-            await self.guild.get_modlog().send(''.join([
+            await self.guild.modlog.send(''.join([
                 ':arrow_up:' if diff > 0 else ':arrow_down:',
                 f'**<@{result.entry.authorizer_id}> ',
                 'escalated' if diff > 0 else 'deescalated',

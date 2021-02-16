@@ -77,8 +77,7 @@ class ModlogMessageable():
         return self.__get_modlog_channel().history()
 
     def __get_modlog_channel(self):
-        if self.config is None or \
-                not self.config.HasField('modlog_channel_id'):
+        if not self.config.HasField('modlog_channel_id'):
             return None
         return self.guild.get_channel(self.config.modlog_channel_id)
 
@@ -162,6 +161,26 @@ class HouraiGuild(discord.Guild):
     def storage(self):
         return self._state.storage
 
+    @property
+    def modlog(self):
+        """Creates a discord.abc.Messageable compatible object corresponding to
+        the server's modlog.
+        """
+        return ModlogMessageable(self.base, self.config.logging)
+
+    @property
+    def is_locked_down(self):
+        if not self.config.validation.HasField('lockdown_expiration'):
+            return False
+        expiration = datetime.fromtimestamp(config.lockdown_expiration)
+        return datetime.utcnow() <= expiration
+
+    @property
+    async def validation_role(self):
+        if self.config.validation.HasField('role_id'):
+            return None
+        return self.base.get_role(self.config.validation.role_id)
+
     def should_cache_member(member):
         # Cache if the member is:
         # - A moderator
@@ -183,13 +202,6 @@ class HouraiGuild(discord.Guild):
 
     async def flush_config(self):
         await self.storage.guild_configs.set(self.base.id, self.config)
-
-    @property
-    def is_locked_down(self):
-        if not self.config.HasField('lockdown_expiration'):
-            return False
-        expiration = datetime.fromtimestamp(config.lockdown_expiration)
-        return datetime.utcnow() <= expiration
 
     async def set_lockdown(self, expiration=datetime.max):
         self.config.lockdown_expiration = \
@@ -219,22 +231,6 @@ class HouraiGuild(discord.Guild):
         if not mod_roles:
             return utils.find_moderator(self.base)
         return list(utils.all_with_roles(self.members, mod_roles))
-
-    def get_modlog(self):
-        """Creates a discord.abc.Messageable compatible object corresponding to
-        the server's modlog.
-        """
-        return ModlogMessageable(self.base, self.config.logging)
-
-    async def get_validation_role(self):
-        if self.config.validation.HasField('role_id'):
-            return None
-        return self.base.get_role(self.config.validation.role_id)
-
-    def get_modlog_channel(self):
-        if self.config.logging.HasField('modlog_channel_id'):
-            return None
-        return self.base.get_channel(config.modlog_channel_id)
 
     async def set_modlog_channel(self, channel):
         """Sets the modlog channel to a certain channel. If channel is none, it

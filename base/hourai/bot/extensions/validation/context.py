@@ -34,7 +34,7 @@ class ValidationContext:
 
     @property
     def role(self):
-        return self.guild.get_validation_role()
+        return self.guild.validation_role
 
     @property
     def usernames(self):
@@ -83,7 +83,7 @@ class ValidationContext:
             try:
                 await self.member.add_roles(self.role)
             except discord.Forbidden:
-                await self.guild.get_modlog().send(
+                await self.guild.modlog.send(
                     f'Verified {self.member.mention}, but bot is missing '
                     f' permissions to give them the role')
 
@@ -98,7 +98,6 @@ class ValidationContext:
 
     async def send_modlog_message(self):
         """Sends verification log to a the guild's modlog."""
-        modlog = self.guild.get_modlog()
         allowed_mentions = []
         mention = None
         # Only ping a mod if enabled and failed approval
@@ -106,7 +105,8 @@ class ValidationContext:
             online_mod, mention = utils.mention_random_online_mod(self.guild)
             allowed_mentions.append(online_mod)
         return await self.send_log_message(
-            modlog, ping_target=mention, allowed_mentions=allowed_mentions)
+            guild.modlog, ping_target=mention,
+            allowed_mentions=allowed_mentions)
 
     async def send_log_message(self, messageable, ping_target='',
                                allowed_mentions=False, include_invite=True):

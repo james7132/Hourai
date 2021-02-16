@@ -126,7 +126,7 @@ class MessageFilter(cogs.BaseCog):
                 _, mention_text = utils.mention_random_online_mod(guild)
                 text = mention_text + " " + text
             embed = embed_utils.message_to_embed(message)
-            tasks.append(guild.get_modlog().send(content=text, embed=embed))
+            tasks.append(guild.modlog.send(content=text, embed=embed))
 
         try:
             await asyncio.gather(*tasks)
