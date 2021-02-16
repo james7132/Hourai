@@ -17,15 +17,24 @@ class ValidationContext:
 
         self.bot = bot
         self.member = member
-        self.guild = self.bot.get_guild_proxy(member.guild)
-        self.config = self.guild.config.validation
-        self.role = self.guild.get_validation_role()
 
         self.approved = True
         self.approval_reasons = []
         self.rejection_reasons = []
 
         self._usernames = None
+
+    @property
+    def guild(self):
+        return self.member.guild
+
+    @property
+    def config(self):
+        return self.guild.config.validation
+
+    @property
+    def role(self):
+        return self.guild.get_validation_role()
 
     @property
     def usernames(self):

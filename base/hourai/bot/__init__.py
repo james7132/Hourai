@@ -10,35 +10,14 @@ import sys
 from discord.state import ConnectionState
 from discord.ext import commands
 from hourai import config, web, utils
-from hourai.db import storage, proxies
+from hourai.db import storage
 from hourai.utils import fake, uvloop
 from . import actions, extensions
 from .context import HouraiContext
+from .guild import HouraiGuild
 
 
 log = logging.getLogger(__name__)
-
-
-# Monkeypatch Hacks
-__old_guild_add_member = discord.Guild._add_member
-
-
-def should_cache_member(member):
-    # Cache if the member is:
-    # - A moderator
-    # - Is the bot user
-    # - Is a member pending verification
-    return utils.is_moderator(member) or \
-            member.id == member._state.user.id or \
-            member.pending
-
-
-def limit_cache_add_member(self, member, force=False):
-    if member is not None and force or should_cache_member(member):
-        __old_guild_add_member(self, member)
-
-
-discord.Guild._add_member = limit_cache_add_member
 
 
 class CounterKeys(enum.Enum):
@@ -105,8 +84,14 @@ class AliasInterpreter(CommandInterpreter):
 
 class HouraiConnectionState(discord.state.AutoShardedConnectionState):
 
-    def _add_guild(self, guild):
-        self._guilds[guild.id] = proxies.GuildProxy(self, guild)
+    def __init__(self, *args, **kwargs):
+        self.storage = kwargs.pop('storage')
+        super().__init__(*args, **kwargs)
+
+    def _add_guild_from_data(self, guild):
+        guild = HouraiGuild(data=guild, state=self)
+        self._add_guild(guild)
+        return guild
 
     def parse_guild_member_remove(self, data):
         super().parse_guild_member_remove(self, data)
@@ -168,9 +153,9 @@ class Hourai(commands.AutoShardedBot):
 
     def _get_state(self, **options):
         return HouraiConnectionState(
-                dispatch=self.dispatch, handlers=self._handlers,
-                syncer=self._syncer, hooks=self._hooks, http=self.http,
-                loop=self.loop, **options)
+                storage=self.storage, dispatch=self.dispatch,
+                handlers=self._handlers, syncer=self._syncer, hooks=self._hooks,
+                http=self.http, loop=self.loop, **options)
 
     def create_storage_session(self):
         return self.storage.create_session()
@@ -352,12 +337,6 @@ class Hourai(commands.AutoShardedBot):
                 attempt(err_msg)
             except (discord.Forbidden, discord.NotFound):
                 continue
-
-    def get_guild_proxy(self, guild):
-        try:
-            return self.get_guild(guild.id)
-        except AttributeError:
-            return self.get_guild(guild)
 
     def load_extension(self, module):
         try:

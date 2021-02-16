@@ -27,7 +27,7 @@ class HouraiMusicPlayer(wavelink.Player):
         super().__init__(bot, guild_id, node)
 
         self.queue = MusicQueue()
-        self.guild = self.bot.get_guild_proxy(self.guild)
+        self.guild = self.bot.get_guild(guild_id)
 
         self.current = None
         self._requestor_id = None

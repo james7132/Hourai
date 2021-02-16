@@ -29,33 +29,31 @@ class RoleLogging(cogs.BaseCog):
 
     async def restore_roles(self, member: discord.Member):
         roles = set()
-        proxy = self.bot.get_guild_proxy(member.guild)
-        config = proxy.config.role
+        guild = member.guild
+        config = guild.config.role
         with self.bot.create_storage_session() as session:
             member_roles = session.query(models.MemberRoles).get(
-                    (member.guild.id, member.id))
+                    (guild.id, member.id))
             if member_roles is None:
                 return
             for role_id in member_roles.role_ids:
                 settings = config.settings.get(role_id)
-                role = member.guild.get_role(role_id)
+                role = guild.get_role(role_id)
                 if role is None or settings is None:
                     continue
                 if proto.RoleFlags(settings.flags).restorable and \
-                   utils.can_manage_role(member.guild.me, role):
+                   utils.can_manage_role(guild.me, role):
                     roles.add(role)
 
         # Exclude the validation role if validation is enabled.
-        validation_config = await proxy.config.get('validation')
-        if validation_config.enabled:
-            roles.discard(member.guild.get_role(validation_config.role_id))
+        if guild.config.validation.enabled:
+            roles.discard(guild.get_role(validation_config.role_id))
 
         if len(roles) > 0:
             await member.add_roles(
                     *roles, reason="Restoring roles upon rejoining.")
             self.bot.logger.info(
-                f'Restored roles for member {member.id} in guild '
-                f'{member.guild.id}')
+                f'Restored roles for member {member.id} in guild {guild.id}')
 
     @commands.Cog.listener()
     async def on_raw_member_update(self, data):

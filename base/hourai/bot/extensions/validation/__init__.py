@@ -152,19 +152,18 @@ class Validation(cogs.BaseCog):
         for guild in self.bot.guilds:
             if not guild.me.guild_permissions.manage_guild:
                 return
-            await self.bot.get_guild_proxy(guild).invites.refresh()
+            await guild.invites.refresh()
 
     @commands.Cog.listener()
     async def on_invite_create(self, invite):
-        self.bot.get_guild_proxy(invite.guild).invites.add(invite)
+        invite.guild.invites.add(invite)
 
     @commands.Cog.listener()
     async def on_invite_delete(self, invite):
-        self.bot.get_guild_proxy(invite.guild).invites.remove(invite)
+        invite.guild.invites.remove(invite)
 
-    async def purge_guild(self, proxy, cutoff_time, dry_run=True):
-        guild = proxy.guild
-        role = await proxy.get_validation_role()
+    async def purge_guild(self, guild, cutoff_time, dry_run=True):
+        role = guild.get_validation_role()
 
         if role is None or not guild.me.guild_permissions.kick_members:
             return
@@ -385,8 +384,7 @@ class Validation(cogs.BaseCog):
             await self.on_join(after)
 
     async def on_join(self, member):
-        proxy = self.bot.get_guild_proxy(member.guild)
-        config = proxy.config.validation
+        config = member.guild.config.validation
         if config is None or not config.enabled:
             return
 
@@ -408,8 +406,7 @@ class Validation(cogs.BaseCog):
            payload.emoji.name not in MODLOG_REACTIONS:
             return None
         channel = guild.get_channel(payload.channel_id)
-        proxy = self.bot.get_guild_proxy(guild)
-        logging_config = proxy.config.logging
+        logging_config = guild.config.logging
         if channel is None or logging_config.modlog_channel_id != channel.id:
             return None
         return await channel.fetch_message(payload.message_id)
@@ -449,8 +446,7 @@ class Validation(cogs.BaseCog):
             await func(guild, user, target)
 
     async def approve_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.get_guild_proxy(guild)
-        modlog = proxy.get_modlog()
+        modlog = guild.get_modlog()
         config = proxy.config.validation
         ctx = ValidationContext(self.bot, target, config)
         try:
@@ -465,8 +461,7 @@ class Validation(cogs.BaseCog):
                 f'{APPROVE_REACTION} Attempted')
 
     async def kick_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.get_guild_proxy(guild)
-        modlog = proxy.get_modlog()
+        modlog = guild.get_modlog()
         try:
             await target.kick(reason=(f'Failed verification.'
                                       f' Manually kicked by {user}.'))
@@ -480,8 +475,7 @@ class Validation(cogs.BaseCog):
                 f'failed. Bot does not have **Kick Members** permission.')
 
     async def ban_member_by_reaction(self, guild, user, target):
-        proxy = self.bot.get_guild_proxy(guild)
-        modlog = proxy.get_modlog()
+        modlog = guild.get_modlog()
         try:
             await target.ban(reason=(f'Failed verification.'
                                      f' Manually banned by {user}.'))
@@ -505,8 +499,7 @@ class Validation(cogs.BaseCog):
         members = await asyncio.gather(
                 *[self.bot.get_member_async(guild, user.id)
                   for guild in self.bot.guilds])
-        proxies = [self.bot.get_guild_proxy(member.guild)
-                   for member in members if member is not None]
+        guild = [member.guild for member in members if member is not None]
 
         contents = None
         if ban_info.reason is None:
@@ -517,7 +510,7 @@ class Validation(cogs.BaseCog):
                         f"from another server for the following reason: "
                         f"`{ban_info.reason}`.")
 
-        await asyncio.gather(*[proxy.get_modlog().send(contents)
+        await asyncio.gather(*[guild.get_modlog().send(contents)
                                for proxy in proxies])
 
 

@@ -26,9 +26,9 @@ class UserEscalationHistory:
 
     def __init__(self, bot, user, guild, session=None):
         self.bot = bot
+        self.guild = guild
         self.session = session or bot.create_storage_session()
         self.user_id = user.id
-        self.guild = bot.get_guild_proxy(guild)
 
         self.entries = list(self.__query_history())
 

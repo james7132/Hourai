@@ -142,15 +142,15 @@ class Owner(cogs.BaseCog):
             return
 
         guild_id = guild_id or ctx.guild.id
-        proxy = ctx.bot.get_guild_proxy(guild_id)
-        if proxy is None:
+        guild = ctx.bot.get_guild(guild_id)
+        if guild is None:
             await ctx.send(f"No such guild found: {guild_id}")
             return
 
         config = proto.GuildConfig()
         text_format.Merge(await ctx.message.attachments[0].read(), config)
-        proxy.config = config
-        await proxy.flush_config()
+        guild.config = config
+        await guild.flush_config()
         await ctx.send('Config successfully uploaded.')
 
     @config.command(name="dump")
@@ -158,13 +158,13 @@ class Owner(cogs.BaseCog):
         """Dumps the config for a given server in Protobuf Text Format."""
         # TODO(james7132): Make the operation atomic
         guild_id = guild_id or ctx.guild.id
-        proxy = ctx.bot.get_guild_proxy(guild_id)
-        if proxy is None:
+        guild = ctx.bot.get_guild(guild_id)
+        if guild is None:
             await ctx.send(f"No such guild found: {guild_id}")
             return
 
-        await proxy.refresh_config()
-        output = text_format.MessageToString(proxy.config, indent=2)
+        await guild.refresh_config()
+        output = text_format.MessageToString(guild.config, indent=2)
         filename = f"{ctx.guild.name.replace(' ', '_')}.pbtxt"
         await ctx.send(
                 file=utils.str_to_discord_file(output, filename=filename))

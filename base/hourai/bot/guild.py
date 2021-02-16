@@ -86,11 +86,11 @@ class ModlogMessageable():
 class InviteCache:
 
     """An in-memory cache of the invites for a given guild"""
-    __slots__ = ('guild', '_cache', 'vanity_invite')
+    __slots__ = ('_guild', '_cache', 'vanity_invite')
 
     def __init__(self, guild):
         assert guild is not None
-        self.guild = guild
+        self._guild = guild
         self.vanity_invite = None
         self._cache = {}
 
@@ -98,14 +98,14 @@ class InviteCache:
         """Fetches the remote state of all invites in the guild. This includes
         the vanity invite, if available.
         """
-        if not self.guild.me.guild_permissions.manage_guild:
+        if not self._guild.me.guild_permissions.manage_guild:
             return {}
 
-        invites = await self.guild.invites()
+        invites = await self._guild.invites()
 
         try:
-            if "VANITY_URL" in self.guild.features:
-                self.vanity_invite = await self.guild.vanity_invite()
+            if "VANITY_URL" in self._guild.features:
+                self.vanity_invite = await self._guild.vanity_invite()
                 invites.append(self.vanity_invite)
             else:
                 self.vanity_invite = None
@@ -147,25 +147,33 @@ class InviteCache:
             pass
 
 
-class GuildProxy:
+class HouraiGuild(discord.Guild):
 
-    __slots__ = ('bot', 'base', 'config', 'invites')
+    __slots__ = ('config', 'invites')
 
-    def __init__(self, bot, guild, config=None):
-        self.bot = bot
-        self.base = guild
-
-        self.config = config or proto.GuildConfig()
+    def __init__(self, *, data, state):
+        super().__init__(data=data, state=state)
+        self.config = None
 
         # Ephemeral state associated with a Discord guild. Lost on bot restart.
-        self.invites = InviteCache(guild)
-
-    def __getattr__(self, attr):
-        return getattr(self.base, attr)
+        self.invites = InviteCache(super())
 
     @property
     def storage(self):
-        return self.bot.storage
+        return self._state.storage
+
+    def should_cache_member(member):
+        # Cache if the member is:
+        # - A moderator
+        # - Is the bot user
+        # - Is a member pending verification
+        return utils.is_moderator(member) or \
+                member.id == member._state.user.id or \
+                member.pending
+
+    def _add_member(self, member, force=False):
+        if member is not None and force or should_cache_member(member):
+            super()._add_member(member)
 
     async def destroy(self):
         await self.storage.guild_configs.clear(self.base.id)

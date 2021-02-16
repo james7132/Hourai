@@ -25,11 +25,11 @@ class ModLogging(cogs.BaseCog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        if before.guild is None:
+        guild = before.guild
+        if guild is None:
             return
-        proxy = self.bot.get_guild_proxy(before.guild)
-        config = proxy.config.logging.edited_messages
-        channel = before.guild.get_channel(config.output_channel_id)
+        config = guild.config.logging.edited_messages
+        channel = guild.get_channel(config.output_channel_id)
         if not should_log(before.channel.id, config) or \
            channel is None or before.author.bot:
             return
@@ -47,8 +47,7 @@ class ModLogging(cogs.BaseCog):
         guild = self.bot.get_guild(payload.guild_id or 0)
         if guild is None:
             return
-        proxy = self.bot.get_guild_proxy(guild)
-        config = proxy.config.logging.deleted_messages
+        config = guild.config.logging.deleted_messages
         channel = guild.get_channel(config.output_channel_id)
         if not should_log(payload.channel_id, config) or channel is None:
             return
@@ -72,8 +71,7 @@ class ModLogging(cogs.BaseCog):
         guild = self.bot.get_guild(payload.guild_id or 0)
         if guild is None:
             return
-        proxy = self.bot.get_guild_proxy(guild)
-        config = proxy.config.logging.deleted_messages
+        config = guild.config.logging.deleted_messages
         channel = guild.get_channel(config.output_channel_id)
         if not should_log(payload.channel_id, config) or channel is None:
             return

@@ -25,7 +25,6 @@ class HouraiContext(commands.Context):
         self.parent = attrs.pop('parent', None)
         self.depth = attrs.pop('depth', 1)
         super().__init__(**attrs)
-        self.guild = self.bot.get_guild_proxy(self.guild)
         self.session = self.bot.create_storage_session()
 
     async def __aenter__(self) -> HouraiContext:

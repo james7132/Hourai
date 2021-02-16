@@ -56,8 +56,8 @@ class MessageFilter(cogs.BaseCog):
                 await self.apply_rule(rule, message, reasons)
 
     async def get_mod_config(self, message):
-        proxy = self.bot.get_guild_proxy(message.guild)
-        if proxy is None:
+        guild = message.guild
+        if guild is None:
             return None
 
         if isinstance(message, discord.RawMessageUpdateEvent):
@@ -67,20 +67,23 @@ class MessageFilter(cogs.BaseCog):
             except (AttributeError, discord.NotFound, discord.Forbidden):
                 return
 
-        has_filter = proxy.config.moderation.HasField('message_filter')
+        has_filter = guild.config.moderation.HasField('message_filter')
         is_bot_user = message.author == self.bot.user
-        in_modlog = proxy.config.logging.modlog_channel_id == message.channel.id
+        in_modlog = guild.config.logging.modlog_channel_id == message.channel.id
 
         if has_filter and not (in_modlog and is_bot_user):
             return mod_config
         return None
 
     async def apply_rule(self, rule, message, reasons):
+        if message.guild is None:
+            return
+
         tasks = []
         action_taken = ""
         mention_mod = rule.notify_moderator
         reasons_block = f"\n```\n{format.vertical_list(reasons)}\n```"
-        guild = self.bot.get_guild_proxy(message.guild)
+        guild = message.guild
 
         if rule.notify_moderator:
             action_taken = "Message filter found notable message:"
