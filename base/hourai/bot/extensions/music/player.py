@@ -27,7 +27,6 @@ class HouraiMusicPlayer(wavelink.Player):
         super().__init__(bot, guild_id, node)
 
         self.queue = MusicQueue()
-        self.guild = self.bot.get_guild(guild_id)
 
         self.current = None
         self._requestor_id = None
@@ -70,7 +69,7 @@ class HouraiMusicPlayer(wavelink.Player):
                 await asyncio.sleep(POST_TRACK_WAIT)
                 await self.play_next()
         elif isinstance(event, wavelink.events.TrackStart):
-            log.info('Started playing {event} in guild {self.guild_id}')
+            log.info(f'Started playing {event} in guild {self.guild_id}')
         elif isinstance(event, wavelink.events.TrackStuck):
             log.error(f"Track '{event.track}' got stuck in guild "
                       f"{self.guild_id}. Threshold {event.threshold}")
