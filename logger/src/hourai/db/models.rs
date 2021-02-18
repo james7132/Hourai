@@ -1,5 +1,6 @@
 use twilight_model::id::*;
-use tracing::{debug, info};
+use sqlx::prelude::*;
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct UnixTimestamp {
@@ -33,28 +34,25 @@ impl MemberRoles {
     /// Logs a set of member role IDs
     pub async fn log(&self, executor: &sqlx::PgPool) -> sqlx::Result<()> {
         let query = if self.role_ids.len() != 0 {
-            let roles = self
+            let roles: Vec<i64> = self
                 .role_ids
                 .iter()
-                .map(|id| id.to_string())
-                .collect::<Vec<String>>()
-                .join(", ");
-            format!(
-                "INSERT INTO member_roles (guild_id, user_id, role_ids)
-                 VALUES ({user_id}, {guild_id}, {{{role_ids}}})
-                 ON CONFLICT ON CONSTRAINT member_roles_pkey
-                 DO UPDATE SET role_ids = {{{role_ids}}}",
-                user_id = self.user_id, guild_id = self.guild_id, role_ids = roles
-            )
+                .map(|id| id.0 as i64)
+                .collect();
+            sqlx::query("INSERT INTO member_roles (guild_id, user_id, role_ids)
+                         VALUES ($1, $2, $3)
+                         ON CONFLICT ON CONSTRAINT member_roles_pkey
+                         DO UPDATE SET role_ids = $3")
+                .bind(self.user_id.0 as i64)
+                .bind(self.guild_id.0 as i64)
+                .bind(roles)
         } else {
-            format!(
-                "DELETE FROM member_roles WHERE guild_id = {} AND user_id = {};",
-                self.guild_id, self.user_id
-            )
+            sqlx::query("DELETE FROM member_roles WHERE guild_id = $1 AND user_id = $2")
+                .bind(self.user_id.0 as i64)
+                .bind(self.guild_id.0 as i64)
         };
 
-        debug!("Member role query: {}", query);
-        sqlx::query(query.as_ref()).execute(executor).await?;
+        query.execute(executor).await?;
 
         info!("Updated roles for member {}, guild {}", self.user_id, self.guild_id);
         return Ok(());
