@@ -11,6 +11,9 @@ mod proto {
 
 pub use self::models::*;
 
+pub struct Storage {
+}
+
 /// The sum type of all errors that might result from fetching
 #[derive(Debug)]
 pub enum StorageError {
