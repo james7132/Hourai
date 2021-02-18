@@ -1,5 +1,4 @@
 use twilight_model::id::*;
-use sqlx::prelude::*;
 use tracing::info;
 
 #[derive(Debug, Clone)]
@@ -53,8 +52,33 @@ impl MemberRoles {
         };
 
         query.execute(executor).await?;
-
         info!("Updated roles for member {}, guild {}", self.user_id, self.guild_id);
+        return Ok(());
+    }
+
+    /// Clears all of the records for a server
+    pub async fn clear_guild(guild_id: GuildId, executor: &sqlx::PgPool) -> sqlx::Result<()> {
+        sqlx::query("DELETE FROM member_roles WHERE guild_id = $1")
+            .bind(guild_id.0 as i64)
+            .execute(executor)
+            .await?;
+
+        info!("Cleared stored roles for guild {}", guild_id);
+        return Ok(());
+    }
+
+    /// Deletes all record of a single role from the database
+    pub async fn clear_role(guild_id: GuildId, role_id: RoleId, executor: &sqlx::PgPool)
+            -> sqlx::Result<()> {
+        sqlx::query("UPDATE member_roles
+                     SET role_ids = array_remove(role_ids, $1)
+                     WHERE guild_id = $2")
+            .bind(role_id.0 as i64)
+            .bind(guild_id.0 as i64)
+            .execute(executor)
+            .await?;
+
+        info!("Cleared role {} from guild {}", role_id, guild_id);
         return Ok(());
     }
 }

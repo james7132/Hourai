@@ -3,28 +3,17 @@ mod event_handler;
 mod utils;
 
 use futures::StreamExt;
-use twilight_gateway::{Cluster, Intents, EventTypeFlags};
+use twilight_gateway::{Cluster, Intents};
 use twilight_gateway::cluster::{ClusterStartError, ShardScheme};
 
 use crate::config::HouraiConfig;
 pub use self::event_handler::EventHandler;
 
-const BOT_INTENTS: Intents =
-    Intents::from_bits_truncate(
-        Intents::all().bits() &
-        // TODO(james7132): Find a way to enable GUILD_PRESENCES without
-        // blowing up the memory usage.
-        !Intents::GUILD_PRESENCES.bits() &
-        !Intents::GUILD_MESSAGE_TYPING.bits() &
-        !Intents::GUILD_INTEGRATIONS.bits()  &
-        !Intents::GUILD_WEBHOOKS.bits()  &
-        !Intents::DIRECT_MESSAGE_TYPING.bits()  &
-        !Intents::DIRECT_MESSAGE_REACTIONS.bits());
-
-const BOT_EVENTS : EventTypeFlags =
-    EventTypeFlags::from_bits_truncate(
-        EventTypeFlags::MEMBER_UPDATE.bits() |
-        EventTypeFlags::MESSAGE_CREATE.bits());
+// TODO(james7132): Find a way to enable GUILD_PRESENCES without
+// blowing up the memory usage.
+const BOT_INTENTS: Intents = Intents::from_bits_truncate(
+    Intents::GUILDS.bits() |
+    Intents::GUILD_MEMBERS.bits());
 
 #[derive(Clone)]
 pub struct Client {
@@ -46,6 +35,7 @@ impl Client {
         })
     }
 
+    #[inline]
     pub fn http_client(&self) -> &twilight_http::Client {
         return &self.gateway.config().http_client();
     }
@@ -53,10 +43,10 @@ impl Client {
     pub async fn run(&self) {
         self.gateway.up().await;
 
-        let mut events = self.gateway.some_events(BOT_EVENTS);
-        while let Some((shard_id, evt)) = events.next().await {
+        let mut events = self.gateway.some_events(EventHandler::BOT_EVENTS);
+        while let Some((_, evt)) = events.next().await {
             self.standby.process(&evt);
-            self.event_handler.consume_event(shard_id, evt);
+            self.event_handler.consume_event(evt);
         }
 
         self.gateway.down();

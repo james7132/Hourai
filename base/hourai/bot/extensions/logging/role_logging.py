@@ -56,25 +56,8 @@ class RoleLogging(cogs.BaseCog):
                 f'Restored roles for member {member.id} in guild {guild.id}')
 
     @commands.Cog.listener()
-    async def on_raw_member_update(self, data):
-        if data['user'].get('bot'):
-            return
-        guild_id = data['guild_id']
-        user = data['user']
-        role_ids = [int(id) for id in data['roles']]
-        self.log_roles(guild_id, user['id'], role_ids)
-
-    @commands.Cog.listener()
-    async def on_member_remove(self, member):
-        self.log_member_roles(member)
-
-    @commands.Cog.listener()
     async def on_guild_join(self, guild):
         await self.log_guild_roles(guild)
-
-    @commands.Cog.listener()
-    async def on_guild_role_delete(self, role):
-        self.clear_role(role)
 
     async def log_all_guilds(self):
         # FIXME: This will not scale to multiple processes/machines.
@@ -104,7 +87,6 @@ class RoleLogging(cogs.BaseCog):
                          if len(value.role_ids) > 0}
                 session.add_all(roles.values())
                 session.commit()
-                self._clear_empty(session)
 
     def log_member_roles(self, member):
         if member.bot:
@@ -133,16 +115,6 @@ class RoleLogging(cogs.BaseCog):
         self.bot.logger.info(
             f'Updated roles for user {member_id}, guild {guild_id}')
 
-    def clear_role(self, role):
-        assert isinstance(role, discord.Role)
-        with self.bot.create_storage_session() as session:
-            session.execute(f"""
-            UPDATE member_roles
-            SET role_ids = array_remove(role_ids, {role.id})
-            WHERE guild_id = {role.guild.id}
-            """)
-            self._clear_empty(session)
-
     def create_roles(self, member):
         return self.create_member_roles(
                 member.guild.id, member.id, member._roles)
@@ -150,7 +122,3 @@ class RoleLogging(cogs.BaseCog):
     def create_member_roles(self, guild_id, member_id, role_ids):
         return models.MemberRoles(guild_id=guild_id, user_id=member_id,
                                   role_ids=role_ids)
-
-    def _clear_empty(self, session):
-        session.execute(
-            "DELETE FROM member_roles WHERE cardinality(role_ids) = 0")
