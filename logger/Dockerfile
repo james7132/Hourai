@@ -3,7 +3,6 @@ COPY logger/Cargo.* ./
 RUN mkdir .cargo/ && cargo vendor > .cargo/config
 COPY logger/ .
 COPY proto/ ./src/hourai/db/proto/
-RUN cargo build --release --verbose
 RUN cargo install --path . --verbose
 
 # Copy the statically-linked binary into a scratch container.

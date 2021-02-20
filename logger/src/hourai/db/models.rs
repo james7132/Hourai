@@ -1,17 +1,57 @@
 use twilight_model::id::*;
+use twilight_model::user::User;
 use tracing::{info, error};
 
-#[derive(Debug, Clone)]
-pub struct UnixTimestamp {
-    timestamp: std::time::Instant,
+pub type SqlDatabase = sqlx::Postgres;
+pub type SqlQuery<'a> =
+    sqlx::query::Query<'a, SqlDatabase,
+                       <SqlDatabase as sqlx::database::HasArguments<'a>>::Arguments>;
+
+fn get_unix_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .expect("It's past 01/01/1970. This should be a positive value.")
+        .as_millis() as u64
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Username {
     user_id: UserId,
-    timestamp: UnixTimestamp,
+    timestamp: u64,
     name: String,
-    discriminator: u16,
+    discriminator: Option<u32>,
+}
+
+impl Username {
+
+    pub fn new(user: &User) -> Self {
+        Self {
+            user_id: user.id,
+            timestamp: get_unix_millis(),
+            name: user.name.clone(),
+            discriminator: Some(user.discriminator.parse::<u32>()
+                .expect("Discriminator isn't a number"))
+        }
+    }
+
+    pub fn insert(&self) -> SqlQuery {
+        sqlx::query("INSERT INTO usernames (user_id, timestamp, name, discriminator)
+                     VALUES ($1, $2, $3, $4)
+                     ON CONFLICT ON CONSTRAINT idx_unique_username
+                     DO NOTHING")
+             .bind(self.user_id.0 as i64)
+             .bind(self.timestamp as i64)
+             .bind(self.name.clone())
+             .bind(self.discriminator)
+    }
+
+    pub async fn log<'a>(&self, executor: impl sqlx::Executor<'a, Database=SqlDatabase>) -> () {
+        if let Err(err) = self.insert().execute(executor).await {
+            error!("Failed to log username for {}: {:?}", self.user_id, err);
+        } else {
+            info!("Logged username for user {}", self.user_id);
+        }
+    }
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -22,6 +62,7 @@ pub struct MemberRoles {
 }
 
 impl MemberRoles {
+
     pub fn new(guild_id: GuildId, user_id: UserId, role_ids: &Vec<RoleId>) -> MemberRoles {
         return MemberRoles {
             guild_id: guild_id,
@@ -30,9 +71,8 @@ impl MemberRoles {
         };
     }
 
-    /// Logs a set of member role IDs
-    pub async fn log(&self, executor: &sqlx::PgPool) -> () {
-        let query = if self.role_ids.len() != 0 {
+    pub fn insert(&self) -> SqlQuery {
+        if self.role_ids.len() != 0 {
             let roles: Vec<i64> = self
                 .role_ids
                 .iter()
@@ -49,9 +89,12 @@ impl MemberRoles {
             sqlx::query("DELETE FROM member_roles WHERE guild_id = $1 AND user_id = $2")
                 .bind(self.user_id.0 as i64)
                 .bind(self.guild_id.0 as i64)
-        };
+        }
+    }
 
-        if let Err(err) = query.execute(executor).await {
+    /// Logs a set of member role IDs
+    pub async fn log(&self, executor: &sqlx::PgPool) -> () {
+        if let Err(err) = self.insert().execute(executor).await {
             error!("Failed to log roles for member {}, guild {}: {:?}",
                    self.user_id, self.guild_id, err);
         } else {
