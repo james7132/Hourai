@@ -309,6 +309,8 @@ class Validation(cogs.BaseCog):
         config.enabled = True
         if role is not None:
             config.role_id = role.id
+        else:
+            config.ClearField('role_id')
         await ctx.bot.storage.validation_configs.set(ctx.guild.id, config)
         await ctx.send('Validation configuration complete! Please run '
                        '`~validation propagate` to'
