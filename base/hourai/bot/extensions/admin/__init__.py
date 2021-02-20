@@ -27,8 +27,7 @@ async def batch_do(members, func):
             result = "Bot has insufficient permissions."
         except Exception as e:
             result = str(e)
-        identifier = member.name if hasattr(member, 'name') else member.id
-        return f"{identifier}: {result}"
+        return f"{member}: {result}"
     results = await asyncio.gather(*[_do(member) for member in members])
     return dict(zip(members, results))
 
