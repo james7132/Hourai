@@ -23,7 +23,7 @@ def str_to_discord_file(data, *args, **kwargs):
     return discord.File(fp=io.StringIO(data), *args, **kwargs)
 
 
-def can_change_role(member, target):
+def can_manage_role(member, target):
     if member.guild.owner_id == member.id:
         return True
     if not member.guild_permissions.manage_roles:
