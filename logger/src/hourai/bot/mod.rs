@@ -19,7 +19,7 @@ use tracing::{info, debug, error};
 // blowing up the memory usage.
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits() |
-    Intents::GUILDS_BANS.bits() |
+    Intents::GUILD_BANS.bits() |
     Intents::GUILD_MEMBERS.bits());
 
 const BOT_EVENTS : EventTypeFlags =
@@ -85,12 +85,12 @@ impl Client {
         (guild_id.0 >> 22) % total_shards
     }
 
-    pub async fn chunk_guild(&self, guild_id: GuildId) {
+    pub async fn chunk_guild(&self, guild_id: GuildId) -> Result<(), ClusterSendError> {
         debug!("Chunking guild: {}", guild_id);
         let request = RequestGuildMembers::builder(guild_id).query(String::new(), None);
         let payload = serde_json::to_string(&request)
             .expect("Could not serialize valid input");
-        self.gateway.send(self.shard_id(guild_id), Message::Text(payload)).await?;
+        self.gateway.send(self.shard_id(guild_id), Message::Text(payload)).await
     }
 
     async fn consume_event(self, event: Event) -> () {
@@ -107,32 +107,36 @@ impl Client {
                     self.on_guild_leave(*evt).await;
                 }
             },
-            Event::MemberAdd(evt) => {self.on_member_add(evt).await;},
+            Event::MemberAdd(evt) => {self.on_member_add(*evt).await;},
             Event::MemberChunk(evt) => {self.on_member_chunk(evt).await;},
             Event::MemberRemove(evt) => {self.on_member_remove(evt).await;},
             Event::MemberUpdate(evt) => {self.on_member_update(*evt).await;},
             Event::RoleDelete(evt) => self.on_role_delete(evt).await,
-            _ => panic!("Unexpected event type: {:?}", event),
+            _ => error!("Unexpected event type: {:?}", event),
         };
     }
 
     async fn on_ban_add(self, evt: BanAdd) -> () {
         // TODO(james7132): Log ban here
+        let user_id = evt.user.id;
         if let Err(err) = self.log_users(vec![evt.user]).await {
-            error!("Error while logging user {}: {:?}", evt.user.id, err);
+            error!("Error while logging user {}: {:?}", user_id, err);
         }
     }
 
-    async fn on_ban_add(self, evt: BanRemove) -> () {
+    async fn on_ban_remove(self, evt: BanRemove) -> () {
         // TODO(james7132): Log ban here
+        let user_id = evt.user.id;
         if let Err(err) = self.log_users(vec![evt.user]).await {
-            error!("Error while logging user {}: {:?}", evt.user.id, err);
+            error!("Error while logging user {}: {:?}", user_id, err);
         }
     }
 
     async fn on_member_add(self, evt: MemberAdd) -> () {
+        let guild_id = evt.guild_id;
+        let user_id = evt.0.user.id;
         if let Err(err) = self.log_members(vec![evt.0]).await {
-            error!("Error while logging members of guild {}: {:?}", evt.guild_id, err);
+            error!("Error while logging member of guild {}: {:?}", guild_id, err);
         }
     }
 
@@ -143,8 +147,9 @@ impl Client {
     }
 
     async fn on_member_remove(self, evt: MemberRemove) -> () {
-        if let Err(err) = self.log_user(evt.user).await {
-            error!("Error while logging user {}: {:?}", evt.user.id, err);
+        let user_id = evt.user.id;
+        if let Err(err) = self.log_users(vec![evt.user]).await {
+            error!("Error while logging user {}: {:?}", user_id, err);
         }
     }
 

@@ -36,6 +36,7 @@ class Broadcast(namedtuple('BroadcastBase', ['content', 'embed'])):
 class Scanner(ABC):
 
     def __init__(self, cog, feed_type):
+        self.cog = cog
         self.bot = cog.bot
         self.feed_type = feed_type
 
