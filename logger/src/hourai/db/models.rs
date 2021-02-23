@@ -52,6 +52,7 @@ impl Username {
             info!("Logged username for user {}", self.user_id);
         }
     }
+
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
