@@ -174,12 +174,12 @@ impl Client {
     }
 
     async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
-        db::MemberRoles::clear_guild(evt.id, &self.sql).await;
+        db::Member::clear_guild(evt.id, &self.sql).await;
         Ok(())
     }
 
     async fn on_role_delete(self, evt: RoleDelete) -> Result<()> {
-        db::MemberRoles::clear_role(evt.guild_id, evt.role_id, &self.sql).await;
+        db::Member::clear_role(evt.guild_id, evt.role_id, &self.sql).await;
         Ok(())
     }
 
@@ -189,10 +189,14 @@ impl Client {
         }
 
         let mut txn = self.sql.begin().await?;
-        db::MemberRoles::new(evt.guild_id, evt.user.id, &evt.roles)
-            .insert()
-            .execute(&mut txn)
-            .await?;
+        db::Member {
+            guild_id: evt.guild_id,
+            user_id: evt.user.id,
+            role_ids: evt.roles,
+            nickname: evt.nick
+        }.insert()
+         .execute(&mut txn)
+         .await?;
         db::Username::new(&evt.user)
             .insert()
             .execute(&mut txn)
@@ -218,7 +222,7 @@ impl Client {
         let mut txn = self.sql.begin().await?;
         for member in members {
             if !member.user.bot {
-                db::MemberRoles::new(member.guild_id, member.user.id, &member.roles)
+                db::Member::from(&member)
                     .insert()
                     .execute(&mut txn)
                     .await?;

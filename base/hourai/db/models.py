@@ -100,12 +100,13 @@ class PendingDeescalation(Base):
     entry = relationship("EscalationEntry", backref="pending_deescalation")
 
 
-class MemberRoles(Base):
-    __tablename__ = 'member_roles'
+class Member(Base):
+    __tablename__ = 'members'
 
     guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
     user_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
     role_ids = Column(postgresql.ARRAY(types.BigInteger), nullable=False)
+    nickname = Column(types.String(32), nullable=True)
 
 
 class Username(Base):
@@ -113,7 +114,7 @@ class Username(Base):
 
     user_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
     timestamp = Column(UnixTimestamp, primary_key=True)
-    name = Column(types.String(255), nullable=False)
+    name = Column(types.String(32), nullable=False)
     discriminator = Column(types.Integer)
 
     def __str__(self):

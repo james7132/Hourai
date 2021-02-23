@@ -73,7 +73,7 @@ class Teardown(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         with self.bot.create_storage_session() as session:
-            tables = (models.MemberRoles, models.Tag,
+            tables = (models.Member, models.Tag,
                       models.PendingDeescalation, models.Channel, models.Alias)
             queries = (session.query(table).filter_by(guild_id=guild.id)
                        for table in tables)

@@ -30,7 +30,7 @@ class RoleLogging(cogs.BaseCog):
         guild = member.guild
         config = guild.config.role
         with self.bot.create_storage_session() as session:
-            member_roles = session.query(models.MemberRoles).get(
+            member_roles = session.query(models.Member).get(
                     (guild.id, member.id))
             if member_roles is None:
                 return
