@@ -1,8 +1,6 @@
 import asyncio
 import collections
 import functools
-import time
-import logging
 from abc import abstractmethod, ABC
 from hourai import utils
 from coders import IdentityCoder

@@ -1,4 +1,6 @@
 import asyncio
+import asyncpraw
+import asyncprawcore
 from discord.ext import tasks, commands
 from hourai.bot import cogs
 from hourai.db import models
@@ -10,7 +12,7 @@ class Feeds(cogs.BaseCog):
     def __init__(self, bot):
         self.bot = bot
 
-        log.debug("Starting reddit client.")
+        self.bot.logger.debug("Starting reddit client.")
         conf = bot.get_config_value('reddit')
         self.reddit_client = asyncpraw.Reddit(**conf._asdict())
 
@@ -68,7 +70,7 @@ class Feeds(cogs.BaseCog):
         seen_subs = {f.source for f in feeds}
         for sub in subreddits:
             if sub not in seen_subs:
-                feed = model.Feed(_type="REDDIT", source=sub)
+                feed = models.Feed(_type="REDDIT", source=sub)
                 feeds.add(feed)
                 ctx.session.add(feed)
 
@@ -107,7 +109,7 @@ class Feeds(cogs.BaseCog):
         await ctx.send(f"Removed feed for `/r/{subreddit}` from this channel")
 
     @reddit.command(name="list")
-    async def reddit_remove(self, ctx):
+    async def reddit_list(self, ctx):
         """Lists all of the subreddits that feed into this channel"""
         channel = ctx.session.query(models.Channel).get(ctx.channel.id)
         if channel is None:

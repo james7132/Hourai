@@ -3,7 +3,6 @@ from discord.ext import commands
 from hourai import utils
 from hourai.bot import cogs
 from hourai.db import models, proto
-from hourai.utils import iterable
 
 
 class RoleLogging(cogs.BaseCog):
