@@ -1,4 +1,5 @@
 use crate::hourai::db;
+use crate::error::Result;
 use crate::config::HouraiConfig;
 use futures::stream::{StreamExt};
 use twilight_model::{
@@ -85,93 +86,104 @@ impl Client {
         (guild_id.0 >> 22) % total_shards
     }
 
-    pub async fn chunk_guild(&self, guild_id: GuildId) -> Result<(), ClusterSendError> {
+    pub async fn chunk_guild(&self, guild_id: GuildId) -> Result<()> {
         debug!("Chunking guild: {}", guild_id);
         let request = RequestGuildMembers::builder(guild_id).query(String::new(), None);
         let payload = serde_json::to_string(&request)
             .expect("Could not serialize valid input");
-        self.gateway.send(self.shard_id(guild_id), Message::Text(payload)).await
+        self.gateway.send(self.shard_id(guild_id), Message::Text(payload)).await?;
+        Ok(())
     }
 
     async fn consume_event(self, event: Event) -> () {
-        match event {
-            Event::BanAdd(evt) => {self.on_ban_add(evt).await;},
-            Event::BanRemove(evt) => {self.on_ban_remove(evt).await;},
+        let kind = event.kind();
+        let result = match event.clone() {
+            Event::BanAdd(evt) => self.on_ban_add(evt).await,
+            Event::BanRemove(evt) => self.on_ban_remove(evt).await,
             Event::GuildCreate(evt) => {
-                if !evt.0.unavailable {
-                    self.on_guild_join(*evt).await;
+                if evt.0.unavailable {
+                    self.on_guild_join(*evt).await
+                } else {
+                    self.on_guild_available(*evt).await
                 }
             },
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
-                    self.on_guild_leave(*evt).await;
+                    self.on_guild_leave(*evt).await
+                } else {
+                    self.on_guild_unavailable(*evt).await
                 }
             },
-            Event::MemberAdd(evt) => {self.on_member_add(*evt).await;},
-            Event::MemberChunk(evt) => {self.on_member_chunk(evt).await;},
-            Event::MemberRemove(evt) => {self.on_member_remove(evt).await;},
-            Event::MemberUpdate(evt) => {self.on_member_update(*evt).await;},
+            Event::MemberAdd(evt) => self.on_member_add(*evt).await,
+            Event::MemberChunk(evt) => self.on_member_chunk(evt).await,
+            Event::MemberRemove(evt) => self.on_member_remove(evt).await,
+            Event::MemberUpdate(evt) => self.on_member_update(*evt).await,
             Event::RoleDelete(evt) => self.on_role_delete(evt).await,
-            _ => error!("Unexpected event type: {:?}", event),
+            _ => {
+                error!("Unexpected event type: {:?}", event);
+                Ok(())
+            },
         };
+
+        if let Err(err) = result {
+            error!("Error while running event with {:?}: {:?}", kind, err);
+        }
     }
 
-    async fn on_ban_add(self, evt: BanAdd) -> () {
+    async fn on_ban_add(self, evt: BanAdd) -> Result<()> {
         // TODO(james7132): Log ban here
-        let user_id = evt.user.id;
-        if let Err(err) = self.log_users(vec![evt.user]).await {
-            error!("Error while logging user {}: {:?}", user_id, err);
-        }
+        self.log_users(vec![evt.user]).await?;
+        Ok(())
     }
 
-    async fn on_ban_remove(self, evt: BanRemove) -> () {
+    async fn on_ban_remove(self, evt: BanRemove) -> Result<()> {
         // TODO(james7132): Log ban here
-        let user_id = evt.user.id;
-        if let Err(err) = self.log_users(vec![evt.user]).await {
-            error!("Error while logging user {}: {:?}", user_id, err);
-        }
+        self.log_users(vec![evt.user]).await?;
+        Ok(())
     }
 
-    async fn on_member_add(self, evt: MemberAdd) -> () {
-        let guild_id = evt.guild_id;
-        let user_id = evt.0.user.id;
-        if let Err(err) = self.log_members(vec![evt.0]).await {
-            error!("Error while logging member of guild {}: {:?}", guild_id, err);
-        }
+    async fn on_member_add(self, evt: MemberAdd) -> Result<()> {
+        self.log_members(vec![evt.0]).await?;
+        Ok(())
     }
 
-    async fn on_member_chunk(self, evt: MemberChunk) -> () {
-        if let Err(err) = self.log_members(evt.members).await {
-            error!("Error while logging members of guild {}: {:?}", evt.guild_id, err);
-        }
+    async fn on_member_chunk(self, evt: MemberChunk) -> Result<()> {
+        self.log_members(evt.members).await?;
+        Ok(())
     }
 
-    async fn on_member_remove(self, evt: MemberRemove) -> () {
-        let user_id = evt.user.id;
-        if let Err(err) = self.log_users(vec![evt.user]).await {
-            error!("Error while logging user {}: {:?}", user_id, err);
-        }
+    async fn on_member_remove(self, evt: MemberRemove) -> Result<()> {
+        self.log_users(vec![evt.user]).await?;
+        Ok(())
     }
 
-    async fn on_guild_available(self, evt: GuildCreate) {
+    async fn on_guild_available(self, evt: GuildCreate) -> Result<()> {
         info!("Guild Available: {}", evt.0.id);
-        self.chunk_guild(evt.0.id).await;
+        self.chunk_guild(evt.0.id).await?;
+        Ok(())
     }
 
-    async fn on_guild_join(self, evt: GuildCreate) -> () {
+    async fn on_guild_unavailable(self, evt: GuildDelete) -> Result<()> {
+        Ok(())
+    }
+
+    async fn on_guild_join(self, evt: GuildCreate) -> Result<()> {
         info!("Joined Guild: {}", evt.0.id);
-        self.chunk_guild(evt.0.id).await;
+        self.chunk_guild(evt.0.id).await?;
+        Ok(())
     }
 
-    async fn on_guild_leave(self, evt: GuildDelete) -> () {
+    async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
         db::MemberRoles::clear_guild(evt.id, &self.sql).await;
+        Ok(())
     }
 
-    async fn on_role_delete(self, evt: RoleDelete) -> () {
+    async fn on_role_delete(self, evt: RoleDelete) -> Result<()> {
         db::MemberRoles::clear_role(evt.guild_id, evt.role_id, &self.sql).await;
+        Ok(())
     }
 
-    async fn on_member_update(self, evt: MemberUpdate) -> Result<(), sqlx::Error> {
+    async fn on_member_update(self, evt: MemberUpdate) -> Result<()> {
         if evt.user.bot {
             return Ok(());
         }
@@ -185,15 +197,10 @@ impl Client {
             .insert()
             .execute(&mut txn)
             .await?;
-        if let Err(err) = txn.commit().await {
-            error!("Failed to log member data {}: {:?}", evt.user.id, err);
-            Err(err)
-        } else {
-            Ok(())
-        }
+        Ok(txn.commit().await?)
     }
 
-    async fn log_users(&self, users: Vec<User>) -> Result<(), sqlx::Error> {
+    async fn log_users(&self, users: Vec<User>) -> Result<()> {
         let mut txn = self.sql.begin().await?;
         for user in users {
             if !user.bot {
@@ -207,7 +214,7 @@ impl Client {
         Ok(())
     }
 
-    async fn log_members(&self, members: Vec<Member>) -> Result<(), sqlx::Error> {
+    async fn log_members(&self, members: Vec<Member>) -> Result<()> {
         let mut txn = self.sql.begin().await?;
         for member in members {
             if !member.user.bot {

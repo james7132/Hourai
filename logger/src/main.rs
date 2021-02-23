@@ -1,4 +1,7 @@
+#[deny(unused_must_use)]
+
 mod config;
+mod error;
 mod hourai;
 
 use crate::hourai::Hourai;
@@ -6,11 +9,6 @@ use tracing::debug;
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
-
-// Include the auto-generated protos as a module
-mod proto {
-    include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
-}
 
 const DEFAULT_ENV: &'static str = "dev";
 

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
+use crate::error::Result;
 use byteorder::{BigEndian, ByteOrder};
-use crate::hourai::db;
 use crate::hourai::db::proto::auto_config::*;
 use crate::hourai::db::proto::guild_configs::*;
 use mobc_redis::redis::aio::ConnectionLike;
@@ -60,7 +60,7 @@ impl ToRedisArgs for CacheKey8 {
     }
 }
 
-fn compress_payload(payload: &[u8]) -> std::io::Result<Vec<u8>> {
+fn compress_payload(payload: &[u8]) -> Result<Vec<u8>> {
     let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::new(6));
     encoder.write_all(&payload)?;
     let mut output = encoder.finish()?;
@@ -74,7 +74,7 @@ fn compress_payload(payload: &[u8]) -> std::io::Result<Vec<u8>> {
     return Ok(output);
 }
 
-fn decompress_payload(payload: &[u8]) -> std::io::Result<Vec<u8>> {
+fn decompress_payload(payload: &[u8]) -> Result<Vec<u8>> {
     if payload.len() <= 0 {
         return Ok(payload.to_vec());
     }
@@ -94,11 +94,11 @@ fn decompress_payload(payload: &[u8]) -> std::io::Result<Vec<u8>> {
 #[async_trait]
 pub trait Cacheable: Sized {
     type Key;
-    async fn get<I, C>(connection: &mut C, key: I) -> db::Result<Option<Self>>
+    async fn get<I, C>(connection: &mut C, key: I) -> Result<Option<Self>>
     where
         I: Into<Self::Key> + Send,
         C: ConnectionLike + Send;
-    async fn set<I, C>(connection: &mut C, key: I, value: &Self) -> db::Result<()>
+    async fn set<I, C>(connection: &mut C, key: I, value: &Self) -> Result<()>
     where
         I: Into<Self::Key> + Send,
         C: ConnectionLike + Send;
@@ -108,7 +108,7 @@ pub trait Cacheable: Sized {
 impl<T: protobuf::Message + CachedGuildConfig + Send> Cacheable for T {
     type Key = GuildId;
 
-    async fn get<I, C>(connection: &mut C, key: I) -> db::Result<Option<Self>>
+    async fn get<I, C>(connection: &mut C, key: I) -> Result<Option<Self>>
     where
         I: Into<GuildId> + Send,
         C: ConnectionLike + Send,
@@ -127,7 +127,7 @@ impl<T: protobuf::Message + CachedGuildConfig + Send> Cacheable for T {
         return Ok(Some(proto));
     }
 
-    async fn set<I, C>(connection: &mut C, key: I, value: &Self) -> db::Result<()>
+    async fn set<I, C>(connection: &mut C, key: I, value: &Self) -> Result<()>
     where
         I: Into<GuildId> + Send,
         C: ConnectionLike + Send,
