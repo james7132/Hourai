@@ -15,7 +15,6 @@ walkdir = "2.3.1"
 protobuf-codegen-pure = "2.18.0"
 
 [profile.release]
-panic = "abort"
 opt-level = 3
 lto = true
 
