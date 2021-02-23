@@ -13,10 +13,11 @@ log = logging.getLogger('hourai.reddit')
 class RedditScanner(Scanner):
 
     def __init__(self, cog):
-        log.debug("Starting reddit client.")
-        conf = cog.bot.get_config_value('reddit')
-        self.client = asyncpraw.Reddit(**conf._asdict())
         super().__init__(cog, 'REDDIT')
+
+    @property
+    def client(self):
+        return self.cog.reddit_client
 
     def get_config_value(self, *args, **kwargs):
         return self.bot.get_config_value(*args, **kwargs)

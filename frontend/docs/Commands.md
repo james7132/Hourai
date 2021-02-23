@@ -104,6 +104,9 @@ All of the commands in this module require the following permissions:
 |`~announce leave`|Manage Guild (User)| Starts/stops the bot from announcing users leaving from the server in the current channel.|
 |`~announce ban`|Manage Guild (User)|Starts/stops the bot from announcing bans from the server in the current channel.|
 |`~announce voice`|Manage Guild (User)|Starts/stops the bot from announcing joining/leaving/moving users within voice channels in the current channel.|
+|`~reddit add <subreddit>`|Manage Guild (User)|Adds a subreddit feed to the current channel|
+|`~reddit remove <subreddit>`|Manage Guild (User)|Removes a subreddit feed from the current channel|
+|`~reddit list`|None|Lists all of the subreddits that have feed in the current channel.|
 
 ## Validation Commands
 
