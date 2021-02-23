@@ -56,56 +56,43 @@ impl Username {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
-pub struct MemberRoles {
-    guild_id: GuildId,
-    user_id: UserId,
-    role_ids: Vec<RoleId>,
+pub struct Member {
+    pub guild_id: GuildId,
+    pub user_id: UserId,
+    pub role_ids: Vec<RoleId>,
+    pub nickname: Option<String>,
 }
 
-impl MemberRoles {
+impl Member {
 
-    pub fn new(guild_id: GuildId, user_id: UserId, role_ids: &Vec<RoleId>) -> MemberRoles {
-        return MemberRoles {
-            guild_id: guild_id,
-            user_id: user_id,
-            role_ids: role_ids.to_vec()
-        };
-    }
-
-    pub fn insert(&self) -> SqlQuery {
-        if self.role_ids.len() != 0 {
-            let roles: Vec<i64> = self
-                .role_ids
-                .iter()
-                .map(|id| id.0 as i64)
-                .collect();
-            sqlx::query("INSERT INTO member_roles (guild_id, user_id, role_ids)
-                         VALUES ($1, $2, $3)
-                         ON CONFLICT ON CONSTRAINT member_roles_pkey
-                         DO UPDATE SET role_ids = $3")
-                .bind(self.user_id.0 as i64)
-                .bind(self.guild_id.0 as i64)
-                .bind(roles)
-        } else {
-            sqlx::query("DELETE FROM member_roles WHERE guild_id = $1 AND user_id = $2")
-                .bind(self.user_id.0 as i64)
-                .bind(self.guild_id.0 as i64)
+    pub fn from(member: &twilight_model::guild::member::Member) -> Self {
+        Self {
+            guild_id: member.guild_id,
+            user_id: member.user.id,
+            role_ids: member.roles.clone(),
+            nickname: member.nick.clone()
         }
     }
 
-    /// Logs a set of member role IDs
-    pub async fn log(&self, executor: &sqlx::PgPool) -> () {
-        if let Err(err) = self.insert().execute(executor).await {
-            error!("Failed to log roles for member {}, guild {}: {:?}",
-                   self.user_id, self.guild_id, err);
-        } else {
-            info!("Updated roles for member {}, guild {}", self.user_id, self.guild_id);
-        }
+    pub fn insert<'a>(self) -> SqlQuery<'a> {
+        let roles: Vec<i64> = self
+            .role_ids
+            .into_iter()
+            .map(|id| id.0 as i64)
+            .collect();
+        sqlx::query("INSERT INTO members (guild_id, user_id, role_ids, nickname)
+                     VALUES ($1, $2, $3, $4)
+                     ON CONFLICT ON CONSTRAINT members_pkey
+                     DO UPDATE SET role_ids = $3, nickname = $4")
+            .bind(self.user_id.0 as i64)
+            .bind(self.guild_id.0 as i64)
+            .bind(roles)
+            .bind(self.nickname)
     }
 
     /// Clears all of the records for a server
     pub async fn clear_guild(guild_id: GuildId, executor: &sqlx::PgPool) -> () {
-        let result = sqlx::query("DELETE FROM member_roles WHERE guild_id = $1")
+        let result = sqlx::query("DELETE FROM members WHERE guild_id = $1")
                           .bind(guild_id.0 as i64)
                           .execute(executor)
                           .await;
@@ -118,7 +105,7 @@ impl MemberRoles {
 
     /// Deletes all record of a single role from the database
     pub async fn clear_role(guild_id: GuildId, role_id: RoleId, executor: &sqlx::PgPool) -> () {
-        let result = sqlx::query("UPDATE member_roles
+        let result = sqlx::query("UPDATE members
                                   SET role_ids = array_remove(role_ids, $1)
                                   WHERE guild_id = $2")
                           .bind(role_id.0 as i64)
