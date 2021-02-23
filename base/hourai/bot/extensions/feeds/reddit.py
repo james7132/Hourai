@@ -31,7 +31,7 @@ class RedditScanner(Scanner):
             return FeedScanResult.from_feed(
                 feed, posts=posts,
                 is_updated=feed.last_updated > last_updated)
-        except exceptions.NotFound:
+        except (exceptions.NotFound, exceptions.Forbidden):
             pass
 
     async def make_posts(self, submissions, last_updated):
