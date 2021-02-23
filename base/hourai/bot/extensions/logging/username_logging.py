@@ -20,26 +20,9 @@ class UsernameLogging(cogs.BaseCog):
         self.pending_ids = None
 
     @commands.Cog.listener()
-    async def on_user_update(self, before, after):
-        if before.name != after.name:
-            self.bot.loop.create_task(self.log_username_change(after))
-
-    @commands.Cog.listener()
     async def on_message(self, msg):
         if msg.webhook_id is not None:
             self.bot.loop.create_task(self.log_username_change(msg.author))
-
-    @commands.Cog.listener()
-    async def on_member_join(self, member):
-        self.bot.loop.create_task(self.log_username_change(member))
-
-    @commands.Cog.listener()
-    async def on_member_ban(self, guild, user):
-        self.bot.loop.create_task(self.log_username_change(user))
-
-    @commands.Cog.listener()
-    async def on_member_unban(self, guild, user):
-        self.bot.loop.create_task(self.log_username_change(user))
 
     @commands.Cog.listener()
     async def on_group_join(self, group, user):
@@ -48,13 +31,6 @@ class UsernameLogging(cogs.BaseCog):
     @commands.Cog.listener()
     async def on_group_remove(self, group, user):
         self.bot.loop.create_task(self.log_username_change(user))
-
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        members = guild.fetch_members(limit=None)
-        async for chunk in iterable.chunked_async(members, chunk_size=10):
-            await asyncio.gather(
-                *[self.log_username_change(user) for user in chunk])
 
     @commands.command()
     @commands.is_owner()

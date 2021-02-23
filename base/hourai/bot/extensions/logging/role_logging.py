@@ -25,7 +25,6 @@ class RoleLogging(cogs.BaseCog):
 
     async def on_join(self, member: discord.Member):
         await self.restore_roles(member)
-        self.log_member_roles(member)
 
     async def restore_roles(self, member: discord.Member):
         roles = set()
@@ -54,71 +53,3 @@ class RoleLogging(cogs.BaseCog):
                     *roles, reason="Restoring roles upon rejoining.")
             self.bot.logger.info(
                 f'Restored roles for member {member.id} in guild {guild.id}')
-
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        await self.log_guild_roles(guild)
-
-    async def log_all_guilds(self):
-        # FIXME: This will not scale to multiple processes/machines.
-        for guild in self.bot.guilds:
-            await self.log_guild_roles(guild)
-
-    async def log_guild_roles(self, guild):
-        model = models.MemberRoles
-        members = guild.fetch_members(limit=None)
-        async for chunk in iterable.chunked_async(members, chunk_size=1000):
-            roles = {member.id: self.create_roles(member)
-                     for member in chunk if not member.bot}
-            with self.bot.create_storage_session() as session:
-                existing = session.query(model) \
-                                  .filter_by(guild_id=guild.id) \
-                                  .filter(model.user_id.in_(roles.keys())) \
-                                  .all()
-
-                for existing_roles in existing:
-                    # Only merge those posts which already exist in the
-                    # database
-                    session.merge(roles.pop(existing_roles.user_id))
-
-                # Only add those posts which did not exist in the database
-                # with roles
-                roles = {key: value for key, value in roles.items()
-                         if len(value.role_ids) > 0}
-                session.add_all(roles.values())
-                session.commit()
-
-    def log_member_roles(self, member):
-        if member.bot:
-            return
-        self.log_roles(member.guild.id, member.id, member._roles)
-
-    def log_roles(self, guild_id, member_id, role_ids):
-        member_roles = self.create_member_roles(guild_id, member_id, role_ids)
-        with self.bot.create_storage_session() as session:
-            id = (guild_id, member_id)
-            existing = session.query(models.MemberRoles).get(id)
-
-            if len(member_roles.role_ids) <= 0:
-                if existing:
-                    session.delete(existing)
-                else:
-                    return
-            else:
-                if existing:
-                    session.merge(member_roles)
-                else:
-                    session.add(member_roles)
-
-            session.commit()
-
-        self.bot.logger.info(
-            f'Updated roles for user {member_id}, guild {guild_id}')
-
-    def create_roles(self, member):
-        return self.create_member_roles(
-                member.guild.id, member.id, member._roles)
-
-    def create_member_roles(self, guild_id, member_id, role_ids):
-        return models.MemberRoles(guild_id=guild_id, user_id=member_id,
-                                  role_ids=role_ids)
