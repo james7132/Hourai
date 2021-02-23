@@ -214,7 +214,7 @@ class HouraiGuild(discord.Guild):
             logger.info(f'Saved config for guild {self.id}')
 
     async def set_lockdown(self, expiration=datetime.max):
-        self.config.lockdown_expiration = \
+        self.config.validation.lockdown_expiration = \
                 int(expiration.replace(tzinfo=timezone.utc).timestamp())
         await self.flush_config()
 
