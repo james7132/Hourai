@@ -72,8 +72,8 @@ class Feeds(cogs.BaseCog):
         now = datetime.utcnow()
         for sub in subreddits:
             feed = seen_subs.get(sub, models.Feed(_type="REDDIT",
-                                                   source=sub,
-                                                   last_updated=now))
+                                                  source=sub,
+                                                  last_updated=now))
             if feed not in channel.feeds:
                 channel.feeds.append(feed)
 

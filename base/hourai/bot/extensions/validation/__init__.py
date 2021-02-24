@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from hourai import utils
 from hourai import config as hourai_config
 from hourai.bot import cogs
-from hourai.utils import checks, iterable
+from hourai.utils import checks
 
 log = logging.getLogger(__name__)
 
@@ -341,6 +341,7 @@ class Validation(cogs.BaseCog):
 
         msg = await ctx.send('Propagating validation role...!')
         last_update = float('-inf')
+        total_processed = 0
         async for member in ctx.guild.fetch_members(limit=None):
             total_processed += 1
             if role not in member.roles:
