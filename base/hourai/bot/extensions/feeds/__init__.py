@@ -1,6 +1,7 @@
 import asyncio
 import asyncpraw
 import asyncprawcore
+from datetime import datetime
 from discord.ext import tasks, commands
 from hourai.bot import cogs
 from hourai.db import models
@@ -65,17 +66,16 @@ class Feeds(cogs.BaseCog):
 
         feeds = ctx.session.query(models.Feed) \
                    .filter_by(_type="REDDIT") \
-                   .filter(models.Feed.source._in(subreddits)) \
+                   .filter(models.Feed.source.in_(subreddits)) \
                    .all()
-        seen_subs = {f.source for f in feeds}
+        seen_subs = {f.source: f for f in feeds}
+        now = datetime.utcnow()
         for sub in subreddits:
-            if sub not in seen_subs:
-                feed = models.Feed(_type="REDDIT", source=sub)
-                feeds.add(feed)
-                ctx.session.add(feed)
-
-        for feed in feeds:
-            channel.feeds.add(feed)
+            feed = seen_subs.get(sub, models.Feed(_type="REDDIT",
+                                                   source=sub,
+                                                   last_updated=now))
+            if feed not in channel.feeds:
+                channel.feeds.append(feed)
 
         ctx.session.commit()
         await ctx.send(f"Set up feed for `/r/{subreddit}` in this channel")
@@ -99,11 +99,13 @@ class Feeds(cogs.BaseCog):
 
         feeds = ctx.session.query(models.Feed) \
                    .filter_by(_type="REDDIT") \
-                   .filter(models.Feed.source._in(subreddits)) \
+                   .filter(models.Feed.source.in_(subreddits)) \
                    .all()
 
         for feed in feeds:
-            channel.feeds.remvoe(feed)
+            channel.feeds.remove(feed)
+            if len(feed.channels) <= 0:
+                ctx.session.delete(feed)
 
         ctx.session.commit()
         await ctx.send(f"Removed feed for `/r/{subreddit}` from this channel")

@@ -234,7 +234,7 @@ class Validation(cogs.BaseCog):
         """
         if ctx.guild.validation_role is None:
             await ctx.send('No role has been configured. '
-                           'Please configure and propogate a role first.')
+                           'Please configure and propagate a role first.')
         check_time = datetime.utcnow()
         async with ctx.typing():
             count = await self.purge_guild(ctx.guild, check_time - lookback,
@@ -269,7 +269,7 @@ class Validation(cogs.BaseCog):
             f'Lockdown enabled. Will be automatically lifted at {expiration}')
 
     @validation_lockdown.command(name='lift')
-    async def validation_lockdown_lift(self, ctx, time: utils.human_timedelta):
+    async def validation_lockdown_lift(self, ctx):
         """Lifts a lockdown from the server. See "~help validation lockdown" for
         more information.
 
@@ -279,7 +279,7 @@ class Validation(cogs.BaseCog):
         Example Usage:
         ~validation lockdown lift
         """
-        await ctx.guild.clear_lockdown(False)
+        await ctx.guild.clear_lockdown()
         await ctx.send('Lockdown disabled.')
 
     @validation.command(name='verify')
@@ -305,21 +305,20 @@ class Validation(cogs.BaseCog):
 
     @validation.command(name="setup")
     async def validation_setup(self, ctx, role: discord.Role = None):
-        config = await ctx.bot.storage.validation_configs.get(ctx.guild.id)
+        config = ctx.guild.config.validation
         config.enabled = True
         if role is not None:
             config.role_id = role.id
         else:
             config.ClearField('role_id')
-        await ctx.bot.storage.validation_configs.set(ctx.guild.id, config)
+        await ctx.guild.flush_config()
         await ctx.send('Validation configuration complete! Please run '
                        '`~validation propagate` to'
                        ' complete setup.')
 
     @validation.command(name="disable")
     async def validation_disable(self, ctx):
-        config = ctx.guild.config.validation
-        config.enabled = False
+        ctx.guild.config.validation = False
         await ctx.guild.flush_config()
         await ctx.send('Validation disabled. To reenable, rerun `~validation '
                        'setup`.')
@@ -332,45 +331,25 @@ class Validation(cogs.BaseCog):
             await ctx.send('No validation config was found. Please run '
                            '`~valdiation setup`')
             return
-        msg = await ctx.send('Propagating validation role...!')
+
         role = ctx.guild.get_role(config.role_id)
         if role is None:
             await ctx.send("Verification role not found.")
             config.ClearField('kick_unvalidated_users_after')
-            await ctx.bot.storage.validation_configs.set(ctx.guild.id, config)
+            await ctx.guild.flush_config()
             return
 
-        members = await ctx.guild.fetch_members(limit=None).flatten()
-        while True:
-            filtered_members = [m for m in members if role not in m.roles]
-            member_count = len(filtered_members)
-            total_processed = 0
-
-            async def add_role(member, role):
-                if role in member.roles:
-                    return
-                try:
-                    validation_ctx = ValidationContext(ctx.bot, member, config)
-                    await validation_ctx.validate_member(VALIDATORS)
-                    await self.verify_member(validation_ctx)
-                except (discord.errors.Forbidden, discord.errors.NotFound):
-                    # If members leave mid propogation, it 404s
-                    pass
-            for chunk in iterable.chunked(filtered_members, BATCH_SIZE):
-                await asyncio.gather(*[add_role(mem, role) for mem in chunk])
-                total_processed += len(chunk)
-                progress = f'{total_processed}/{member_count}'
-                await msg.edit(content=f'Propagation Ongoing ({progress})...')
-
-            members_with_role = [m for m in ctx.guild.members
-                                 if role in m.roles]
-            if (member_count == 0 or
-               float(len(members_with_role)) / float(member_count) > 0.99):
-                lookback = int(PURGE_LOOKBACK.total_seconds())
-                config.kick_unvalidated_users_after = lookback
-                await ctx.guild.flush_config()
-                await msg.edit(content='Propagation conplete!')
-                return
+        msg = await ctx.send('Propagating validation role...!')
+        last_update = float('-inf')
+        async for member in ctx.guild.fetch_members(limit=None):
+            total_processed += 1
+            if role not in member.roles:
+                await self.member.add_roles(role)
+            if total_processed > last_update + 10:
+                await msg.edit(
+                    content=f'Propagation Ongoing ({total_processed} done)...')
+                last_update = total_processed
+        await msg.edit(content='Propagation conplete!')
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
