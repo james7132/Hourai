@@ -34,8 +34,7 @@ class BanStorage:
         self._guild_key_coder = coders.IntCoder().prefixed(guild_prefix)
         self._user_key_coder = coders.IntCoder().prefixed(user_prefix)
 
-        self._guild_value_coder = coders.ProtobufCoder(proto.BanInfo) \
-                                        .compressed()
+        self._guild_value_coder = coders.ProtobufCoder(proto.BanInfo)
         self._id_coder = coders.IntCoder()
 
     @property
