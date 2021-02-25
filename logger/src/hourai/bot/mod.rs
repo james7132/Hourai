@@ -10,19 +10,20 @@ use twilight_model::{
     gateway::payload::*,
 };
 use twilight_gateway::{
-    Intents, Event, EventType, EventTypeFlags,
+    Intents, Event, EventTypeFlags,
     shard::raw_message::Message,
     cluster::*,
 };
 use twilight_cache_inmemory::{InMemoryCache, ResourceType};
 use tracing::{info, debug, error};
-use std::sync::Arc;
 
 // TODO(james7132): Find a way to enable GUILD_PRESENCES without
 // blowing up the memory usage.
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
+    Intents::DIRECT_MESSAGES.bits() |
     Intents::GUILDS.bits() |
     Intents::GUILD_BANS.bits() |
+    Intents::GUILD_MESSAGES.bits() |
     Intents::GUILD_MEMBERS.bits());
 
 const BOT_EVENTS : EventTypeFlags =
@@ -40,8 +41,9 @@ const BOT_EVENTS : EventTypeFlags =
 
 const CACHED_RESOURCES: ResourceType =
     ResourceType::from_bits_truncate(
+        ResourceType::ROLE.bits() |
         ResourceType::GUILD.bits() |
-        ResourceType::ROLE.bits());
+        ResourceType::USER_CURRENT.bits());
 
 #[derive(Clone)]
 pub struct Client {
@@ -217,18 +219,17 @@ impl Client {
             info!("Guild Available: {}", guild.id);
         }
 
-        if guild.member_count == Some(guild.members.len() as u64) {
-            self.log_members(&guild.members).await?;
-        } else {
-            self.chunk_guild(guild.id).await?;
-        }
+        self.chunk_guild(guild.id).await?;
+        self.log_members(&guild.members).await?;
 
         let bot_id = self.cache.current_user().unwrap().id;
         let perms = self.fetch_guild_permissions(guild.id, bot_id).await?;
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             let bans = self.http_client().bans(guild.id).await?;
+            debug!("Fetched {} bans from guild {}", bans.len(), guild.id);
             let mut txn = self.sql.begin().await?;
+            db::Ban::clear_guild(guild.id).execute(&mut txn).await?;
             for ban in bans {
                 db::Ban::from(guild.id, ban).insert().execute(&mut txn).await?;
             }
@@ -286,19 +287,17 @@ impl Client {
     }
 
     async fn log_members(&self, members: &Vec<Member>) -> Result<()> {
-        let my_id = self.cache.current_user().map(|u| u.id);
+        let my_id = self.cache.current_user().unwrap().id;
         let mut txn = self.sql.begin().await?;
         for member in members {
-            if !member.user.bot || my_id == Some(member.user.id) {
-                db::Member::from(&member)
-                    .insert()
-                    .execute(&mut txn)
-                    .await?;
-                db::Username::new(&member.user)
-                    .insert()
-                    .execute(&mut txn)
-                    .await?;
-            }
+            db::Member::from(&member)
+                .insert()
+                .execute(&mut txn)
+                .await?;
+            db::Username::new(&member.user)
+                .insert()
+                .execute(&mut txn)
+                .await?;
         }
         txn.commit().await?;
         Ok(())

@@ -75,10 +75,10 @@ impl Ban {
     pub fn insert<'a>(self) -> SqlQuery<'a> {
         sqlx::query("INSERT INTO bans (guild_id, user_id, reason, avatar)
                      VALUES ($1, $2, $3, $4)
-                     ON CONFLICT ON CONSTRAINT members_pkey
+                     ON CONFLICT ON CONSTRAINT bans_pkey
                      DO UPDATE SET reason = excluded.reason, avatar = excluded.avatar")
-            .bind(self.user_id)
             .bind(self.guild_id)
+            .bind(self.user_id)
             .bind(self.reason)
             .bind(self.avatar)
     }
@@ -141,15 +141,15 @@ impl Member {
         sqlx::query("INSERT INTO members (guild_id, user_id, role_ids, nickname)
                      VALUES ($1, $2, $3, $4)
                      ON CONFLICT ON CONSTRAINT members_pkey
-                     DO UPDATE SET role_ids = $3, nickname = $4")
-            .bind(self.user_id)
+                     DO UPDATE SET role_ids = excluded.role_ids, nickname = excluded.nickname")
             .bind(self.guild_id)
+            .bind(self.user_id)
             .bind(self.role_ids)
             .bind(self.nickname)
     }
 
     pub fn fetch<'a>(guild_id: GuildId, user_id: UserId) -> SqlQueryAs<'a, Self> {
-        sqlx::query_as("SELECT FROM members WHERE guild_id = $1 AND user_id = $2")
+        sqlx::query_as("SELECT * FROM members WHERE guild_id = $1 AND user_id = $2")
              .bind(guild_id.0 as i64)
              .bind(user_id.0 as i64)
     }
