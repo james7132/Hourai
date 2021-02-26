@@ -22,8 +22,8 @@ fn get_unix_millis() -> u64 {
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Username {
-    user_id: UserId,
-    timestamp: u64,
+    user_id: i64,
+    timestamp: i64,
     name: String,
     discriminator: Option<u32>,
 }
@@ -32,8 +32,8 @@ impl Username {
 
     pub fn new(user: &User) -> Self {
         Self {
-            user_id: user.id,
-            timestamp: get_unix_millis(),
+            user_id: user.id.0 as i64,
+            timestamp: get_unix_millis() as i64,
             name: user.name.clone(),
             discriminator: Some(user.discriminator.parse::<u32>()
                 .expect("Discriminator isn't a number"))
@@ -45,10 +45,27 @@ impl Username {
                      VALUES ($1, $2, $3, $4)
                      ON CONFLICT ON CONSTRAINT idx_unique_username
                      DO NOTHING")
-             .bind(self.user_id.0 as i64)
-             .bind(self.timestamp as i64)
+             .bind(self.user_id)
+             .bind(self.timestamp)
              .bind(self.name.clone())
              .bind(self.discriminator)
+    }
+
+    pub fn bulk_insert<'a>(usernames: Vec<Self>) -> SqlQuery<'a> {
+        let user_ids: Vec<i64> = usernames.iter().map(|u| u.user_id).collect();
+        let timestamps: Vec<i64> = usernames.iter().map(|u| u.timestamp).collect();
+        let names: Vec<String> = usernames.iter().map(|u| u.name.clone()).collect();
+        let discriminator: Vec<Option<u32>> = usernames.iter().map(|u| u.discriminator.clone())
+                                                       .collect();
+        sqlx::query("INSERT INTO usernames (user_id, timestamp, name, discriminator)
+                     SELECT * FROM UNNEST ($1, $2, $3, $4)
+                     AS t(user_id, timestamp, name, discriminator)
+                     ON CONFLICT ON CONSTRAINT idx_unique_username
+                     DO NOTHING")
+             .bind(user_ids)
+             .bind(timestamps)
+             .bind(names)
+             .bind(discriminator)
     }
 
 }
@@ -81,6 +98,22 @@ impl Ban {
             .bind(self.user_id)
             .bind(self.reason)
             .bind(self.avatar)
+    }
+
+    pub fn bulk_insert<'a>(bans: Vec<Self>) -> SqlQuery<'a> {
+        let guild_ids: Vec<i64> = bans.iter().map(|b| b.guild_id).collect();
+        let user_ids: Vec<i64> = bans.iter().map(|b| b.user_id).collect();
+        let reasons: Vec<Option<String>> = bans.iter().map(|b| b.reason.clone()).collect();
+        let avatars: Vec<Option<String>> = bans.iter().map(|b| b.avatar.clone()).collect();
+        sqlx::query("INSERT INTO bans (guild_id, user_id, reason, avatar)
+                     SELECT * FROM UNNEST ($1, $2, $3, $4)
+                     AS t(guild_id, user_id, reason, avatar)
+                     ON CONFLICT ON CONSTRAINT bans_pkey
+                     DO UPDATE SET reason = excluded.reason, avatar = excluded.avatar")
+            .bind(guild_ids)
+            .bind(user_ids)
+            .bind(reasons)
+            .bind(avatars)
     }
 
     pub fn clear_ban<'a>(guild_id: GuildId, user_id: UserId) -> SqlQuery<'a> {

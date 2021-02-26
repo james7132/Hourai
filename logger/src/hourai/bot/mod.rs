@@ -37,6 +37,8 @@ const BOT_EVENTS : EventTypeFlags =
         EventTypeFlags::MEMBER_UPDATE.bits() |
         EventTypeFlags::GUILD_CREATE.bits() |
         EventTypeFlags::GUILD_DELETE.bits() |
+        EventTypeFlags::ROLE_CREATE.bits() |
+        EventTypeFlags::ROLE_UPDATE.bits() |
         EventTypeFlags::ROLE_DELETE.bits());
 
 const CACHED_RESOURCES: ResourceType =
@@ -72,6 +74,10 @@ impl Client {
 
     fn http_client(&self) -> &twilight_http::Client {
         return &self.gateway.config().http_client();
+    }
+
+    fn user_id(&self) -> UserId {
+        self.cache.current_user().unwrap().id
     }
 
     pub async fn run(&self) {
@@ -138,7 +144,7 @@ impl Client {
     async fn consume_event(self, event: Event) -> () {
         let kind = event.kind();
         let result = match event.clone() {
-            Event::Ready(evt) => Ok(()),
+            Event::Ready(_) => Ok(()),
             Event::BanAdd(evt) => self.on_ban_add(evt).await,
             Event::BanRemove(evt) => self.on_ban_remove(evt).await,
             Event::GuildCreate(evt) => self.on_guild_create(*evt).await,
@@ -153,8 +159,8 @@ impl Client {
             Event::MemberChunk(evt) => self.on_member_chunk(evt).await,
             Event::MemberRemove(evt) => self.on_member_remove(evt).await,
             Event::MemberUpdate(evt) => self.on_member_update(*evt).await,
-            Event::RoleCreate(evt) => Ok(()),
-            Event::RoleUpdate(evt) => Ok(()),
+            Event::RoleCreate(_) => Ok(()),
+            Event::RoleUpdate(_) => Ok(()),
             Event::RoleDelete(evt) => self.on_role_delete(evt).await,
             _ => {
                 error!("Unexpected event type: {:?}", event);
@@ -170,9 +176,7 @@ impl Client {
     async fn on_ban_add(self, evt: BanAdd) -> Result<()> {
         self.log_users(vec![evt.user.clone()]).await?;
 
-        let bot_id = self.cache.current_user().unwrap().id;
-        let perms = self.fetch_guild_permissions(evt.guild_id, bot_id).await?;
-
+        let perms = self.fetch_guild_permissions(evt.guild_id, self.user_id()).await?;
         if perms.contains(Permissions::BAN_MEMBERS) {
             if let Some(ban) = self.http_client().ban(evt.guild_id, evt.user.id).await? {
                 db::Ban::from(evt.guild_id, ban)
@@ -221,20 +225,8 @@ impl Client {
 
         self.chunk_guild(guild.id).await?;
         self.log_members(&guild.members).await?;
+        self.refresh_bans(guild.id).await?;
 
-        let bot_id = self.cache.current_user().unwrap().id;
-        let perms = self.fetch_guild_permissions(guild.id, bot_id).await?;
-
-        if perms.contains(Permissions::BAN_MEMBERS) {
-            let bans = self.http_client().bans(guild.id).await?;
-            debug!("Fetched {} bans from guild {}", bans.len(), guild.id);
-            let mut txn = self.sql.begin().await?;
-            db::Ban::clear_guild(guild.id).execute(&mut txn).await?;
-            for ban in bans {
-                db::Ban::from(guild.id, ban).insert().execute(&mut txn).await?;
-            }
-            txn.commit().await?;
-        }
         Ok(())
     }
 
@@ -245,6 +237,13 @@ impl Client {
     }
 
     async fn on_role_delete(self, evt: RoleDelete) -> Result<()> {
+        let member = db::Member::fetch(evt.guild_id, self.user_id())
+                                .fetch_one(&self.sql)
+                                .await?;
+        if member.role_ids.contains(&(evt.role_id.0 as i64)) {
+            self.refresh_bans(evt.guild_id).await?;
+        }
+
         db::Member::clear_role(evt.guild_id, evt.role_id)
             .execute(&self.sql)
             .await?;
@@ -269,35 +268,42 @@ impl Client {
             .insert()
             .execute(&mut txn)
             .await?;
-        Ok(txn.commit().await?)
-    }
-
-    async fn log_users(&self, users: Vec<User>) -> Result<()> {
-        let mut txn = self.sql.begin().await?;
-        for user in users {
-            if !user.bot {
-                db::Username::new(&user)
-                    .insert()
-                    .execute(&mut txn)
-                    .await?;
-            }
-        }
         txn.commit().await?;
         Ok(())
     }
 
+    async fn log_users(&self, users: Vec<User>) -> Result<()> {
+        let usernames = users.iter().map(|u| db::Username::new(u)).collect();
+        db::Username::bulk_insert(usernames).execute(&self.sql).await?;
+        Ok(())
+    }
+
     async fn log_members(&self, members: &Vec<Member>) -> Result<()> {
-        let my_id = self.cache.current_user().unwrap().id;
+        let usernames = members.iter().map(|m| db::Username::new(&m.user)).collect();
+
         let mut txn = self.sql.begin().await?;
+        db::Username::bulk_insert(usernames).execute(&mut txn).await?;
         for member in members {
             db::Member::from(&member)
                 .insert()
                 .execute(&mut txn)
                 .await?;
-            db::Username::new(&member.user)
-                .insert()
-                .execute(&mut txn)
-                .await?;
+        }
+        txn.commit().await?;
+        Ok(())
+    }
+
+    async fn refresh_bans(&self, guild_id: GuildId) -> Result<()> {
+        let perms = self.fetch_guild_permissions(guild_id, self.user_id()).await?;
+
+        let mut txn = self.sql.begin().await?;
+        db::Ban::clear_guild(guild_id).execute(&mut txn).await?;
+        if perms.contains(Permissions::ADMINISTRATOR | Permissions::BAN_MEMBERS) {
+            let bans: Vec<db::Ban> = self.http_client().bans(guild_id).await?
+                                         .into_iter().map(|b| db::Ban::from(guild_id, b))
+                                         .collect();
+            debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
+            db::Ban::bulk_insert(bans).execute(&mut txn).await?;
         }
         txn.commit().await?;
         Ok(())
