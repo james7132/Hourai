@@ -1,6 +1,9 @@
+mod cache;
+
 use crate::hourai::db;
 use crate::error::Result;
 use crate::config::HouraiConfig;
+use self::cache::{InMemoryCache, ResourceType};
 use futures::stream::StreamExt;
 use twilight_model::{
     id::*,
@@ -10,11 +13,10 @@ use twilight_model::{
     gateway::{payload::*, presence::*},
 };
 use twilight_gateway::{
-    Intents, Event, EventTypeFlags,
+    Intents, Event, EventType, EventTypeFlags,
     shard::raw_message::Message,
     cluster::*,
 };
-use twilight_cache_inmemory::{InMemoryCache, ResourceType};
 use tracing::{info, debug, error};
 
 // TODO(james7132): Find a way to enable GUILD_PRESENCES without
@@ -100,7 +102,9 @@ impl Client {
         while let Some((_, evt)) = events.next().await {
             self.cache.update(&evt);
             self.standby.process(&evt);
-            tokio::spawn(self.clone().consume_event(evt));
+            if evt.kind() != EventType::PresenceUpdate {
+                tokio::spawn(self.clone().consume_event(evt));
+            }
         }
 
         info!("Shutting down gateway...");
@@ -172,7 +176,6 @@ impl Client {
             Event::MemberChunk(evt) => self.on_member_chunk(evt).await,
             Event::MemberRemove(evt) => self.on_member_remove(evt).await,
             Event::MemberUpdate(evt) => self.on_member_update(*evt).await,
-            Event::PresenceUpdate(evt) => self.on_presence_update(*evt).await,
             Event::RoleCreate(_) => Ok(()),
             Event::RoleUpdate(_) => Ok(()),
             Event::RoleDelete(evt) => self.on_role_delete(evt).await,
@@ -216,25 +219,6 @@ impl Client {
 
     async fn on_member_chunk(self, evt: MemberChunk) -> Result<()> {
         self.log_members(&evt.members).await?;
-
-        let mut online: Vec<UserId> = Vec::new();
-        let mut offline: Vec<UserId> = Vec::new();
-        for presence in evt.presences {
-            let id = get_user_id(presence.user);
-            if presence.status == Status::Online {
-                online.push(id);
-            } else {
-                offline.push(id);
-            }
-        }
-
-        let mut conn = self.redis.get().await?;
-        db::OnlineStatus::set_online_mult(evt.guild_id, online, true)
-            .query_async(&mut conn as &mut mobc_redis::redis::aio::Connection)
-            .await?;
-        db::OnlineStatus::set_online_mult(evt.guild_id, offline, true)
-            .query_async(&mut conn as &mut mobc_redis::redis::aio::Connection)
-            .await?;
         Ok(())
     }
 
@@ -308,15 +292,6 @@ impl Client {
             .execute(&mut txn)
             .await?;
         txn.commit().await?;
-        Ok(())
-    }
-
-    async fn on_presence_update(self, evt: PresenceUpdate) -> Result<()> {
-        let mut conn = self.redis.get().await?;
-        db::OnlineStatus::set_online(evt.guild_id, get_user_id(evt.user),
-                                     evt.status == Status::Online)
-                         .query_async(&mut conn as &mut mobc_redis::redis::aio::Connection)
-                         .await?;
         Ok(())
     }
 

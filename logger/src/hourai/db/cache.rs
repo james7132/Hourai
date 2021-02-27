@@ -72,31 +72,6 @@ impl OnlineStatus {
         CacheKey8(CachePrefix::OnlineStatuses, guild_id.0)
     }
 
-    pub fn set_online(guild_id: GuildId, user_id: UserId, online: bool) -> redis::Cmd {
-        let key = Self::key(guild_id);
-        let value = Id8(user_id.0);
-        if online {
-            redis::Cmd::sadd(key, value)
-        } else {
-            redis::Cmd::srem(key, value)
-        }
-    }
-
-    pub fn set_online_mult(
-        guild_id: GuildId,
-        user_ids: impl IntoIterator<Item=UserId>,
-        online: bool) -> redis::Cmd
-    {
-        let key = Self::key(guild_id);
-        let values: Vec<Id8> = user_ids.into_iter().map(|id| Id8(id.0)).collect();
-
-        if online {
-            redis::Cmd::sadd(key, values)
-        } else {
-            redis::Cmd::srem(key, values)
-        }
-    }
-
     pub fn clear_guild(guild_id: GuildId) -> redis::Cmd {
         redis::Cmd::del(Self::key(guild_id))
     }
