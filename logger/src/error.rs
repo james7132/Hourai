@@ -7,7 +7,7 @@ pub enum Error {
     #[error("SQL error {:?}", .0)]
     Sql(#[from] sqlx::Error),
     #[error("Redis error: {:?}", .0)]
-    Redis(#[from] mobc_redis::redis::RedisError),
+    Redis(#[from] mobc::Error<mobc_redis::redis::RedisError>),
     #[error("Protobuf error: {:?}", .0)]
     Protobuf(#[from] protobuf::ProtobufError),
     #[error("IO error: {:?}", .0)]
@@ -20,6 +20,12 @@ pub enum Error {
     DiscordHttpError(#[from] twilight_http::Error),
     #[error("Cache error: {:?}", .0)]
     CacheError(#[from] CacheNotFound)
+}
+
+impl From<mobc_redis::redis::RedisError> for Error {
+    fn from(err: mobc_redis::redis::RedisError) -> Self {
+        Self::Redis(mobc::Error::Inner(err))
+    }
 }
 
 #[derive(ErrorTrait, Debug)]

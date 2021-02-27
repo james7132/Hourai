@@ -9,7 +9,7 @@ use mobc_redis::redis;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::io::prelude::*;
-use twilight_model::id::GuildId;
+use twilight_model::id::*;
 
 /// The single byte compression mode header for values stored in Redis.
 #[repr(u8)]
@@ -30,33 +30,75 @@ enum CachePrefix {
     GuildConfigs = 1_u8,
     /// BanInfo Protobufs stored
     Bans = 2_u8,
+    /// Online statuses
+    OnlineStatuses = 3_u8,
 }
 
 /// A prefixed key schema for 64-bit integer keys. Implements ToRedisArgs, so its generically
 /// usable as an argument to direct Redis calls.
 #[derive(Copy, Clone)]
-pub struct CacheKey8 {
-    prefix: CachePrefix,
-    id: u64,
-}
-
-impl CacheKey8 {
-    fn new(prefix: CachePrefix, id: impl Into<u64>) -> CacheKey8 {
-        return CacheKey8 {
-            prefix: prefix,
-            id: id.into(),
-        };
-    }
-}
+struct CacheKey8(CachePrefix, u64);
 
 impl ToRedisArgs for CacheKey8 {
     fn write_redis_args<W: ?Sized>(&self, out: &mut W)
     where
         W: RedisWrite,
     {
-        let mut key_enc = [self.prefix as u8; 9];
-        BigEndian::write_u64(&mut key_enc[1..9], self.id);
+        let mut key_enc = [self.0 as u8; 9];
+        BigEndian::write_u64(&mut key_enc[1..9], self.1);
         out.write_arg(&key_enc[..]);
+    }
+}
+
+struct Id8(u64);
+
+impl ToRedisArgs for Id8 {
+    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
+    where
+        W: RedisWrite,
+    {
+        let mut key_enc = [8 as u8; 8];
+        BigEndian::write_u64(&mut key_enc[0..8], self.0);
+        out.write_arg(&key_enc[..]);
+    }
+}
+
+pub struct Protobuf<M: protobuf::Message>(M);
+
+pub struct OnlineStatus;
+
+impl OnlineStatus {
+    fn key(guild_id: GuildId) -> CacheKey8 {
+        CacheKey8(CachePrefix::OnlineStatuses, guild_id.0)
+    }
+
+    pub fn set_online(guild_id: GuildId, user_id: UserId, online: bool) -> redis::Cmd {
+        let key = Self::key(guild_id);
+        let value = Id8(user_id.0);
+        if online {
+            redis::Cmd::sadd(key, value)
+        } else {
+            redis::Cmd::srem(key, value)
+        }
+    }
+
+    pub fn set_online_mult(
+        guild_id: GuildId,
+        user_ids: impl IntoIterator<Item=UserId>,
+        online: bool) -> redis::Cmd
+    {
+        let key = Self::key(guild_id);
+        let values: Vec<Id8> = user_ids.into_iter().map(|id| Id8(id.0)).collect();
+
+        if online {
+            redis::Cmd::sadd(key, values)
+        } else {
+            redis::Cmd::srem(key, values)
+        }
+    }
+
+    pub fn clear_guild(guild_id: GuildId) -> redis::Cmd {
+        redis::Cmd::del(Self::key(guild_id))
     }
 }
 
@@ -113,7 +155,7 @@ impl<T: protobuf::Message + CachedGuildConfig + Send> Cacheable for T {
         I: Into<GuildId> + Send,
         C: ConnectionLike + Send,
     {
-        let key = CacheKey8::new(CachePrefix::GuildConfigs, key.into().0);
+        let key = CacheKey8(CachePrefix::GuildConfigs, key.into().0);
         let response: Option<Vec<u8>> = redis::Cmd::hget(key, Self::SUBKEY)
             .query_async(connection)
             .await?;
@@ -135,7 +177,7 @@ impl<T: protobuf::Message + CachedGuildConfig + Send> Cacheable for T {
         let mut proto_enc: Vec<u8> = Vec::new();
         value.write_to_vec(&mut proto_enc)?;
         let compressed = compress_payload(&proto_enc[..])?;
-        let key = CacheKey8::new(CachePrefix::GuildConfigs, key.into().0);
+        let key = CacheKey8(CachePrefix::GuildConfigs, key.into().0);
         redis::Cmd::hset(key, Self::SUBKEY, compressed)
             .query_async(connection)
             .await?;

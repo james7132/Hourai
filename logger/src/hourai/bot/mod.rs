@@ -7,7 +7,7 @@ use twilight_model::{
     user::User,
     guild::Permissions,
     guild::member::Member,
-    gateway::payload::*,
+    gateway::{payload::*, presence::*},
 };
 use twilight_gateway::{
     Intents, Event, EventTypeFlags,
@@ -24,7 +24,8 @@ const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits() |
     Intents::GUILD_BANS.bits() |
     Intents::GUILD_MESSAGES.bits() |
-    Intents::GUILD_MEMBERS.bits());
+    Intents::GUILD_MEMBERS.bits() |
+    Intents::GUILD_PRESENCES.bits());
 
 const BOT_EVENTS : EventTypeFlags =
     EventTypeFlags::from_bits_truncate(
@@ -37,6 +38,7 @@ const BOT_EVENTS : EventTypeFlags =
         EventTypeFlags::MEMBER_UPDATE.bits() |
         EventTypeFlags::GUILD_CREATE.bits() |
         EventTypeFlags::GUILD_DELETE.bits() |
+        EventTypeFlags::PRESENCE_UPDATE.bits() |
         EventTypeFlags::ROLE_CREATE.bits() |
         EventTypeFlags::ROLE_UPDATE.bits() |
         EventTypeFlags::ROLE_DELETE.bits());
@@ -47,12 +49,20 @@ const CACHED_RESOURCES: ResourceType =
         ResourceType::GUILD.bits() |
         ResourceType::USER_CURRENT.bits());
 
+fn get_user_id(user: UserOrId) -> UserId {
+    match user {
+        UserOrId::User(user) => user.id,
+        UserOrId::UserId { id } => id,
+    }
+}
+
 #[derive(Clone)]
 pub struct Client {
     pub gateway: Cluster,
     pub standby: twilight_standby::Standby,
     pub cache: InMemoryCache,
     pub sql: sqlx::PgPool,
+    pub redis: db::RedisPool,
 }
 
 impl Client {
@@ -68,7 +78,8 @@ impl Client {
                 .resource_types(CACHED_RESOURCES)
                 .build(),
             standby: twilight_standby::Standby::new(),
-            sql: db::create_pg_pool(&config).await.expect("Failed to initialize PostgresSQL")
+            sql: db::create_pg_pool(&config).await.expect("Failed to initialize PostgresSQL"),
+            redis: db::create_redis_pool(&config).expect("Failed to initialize Redis"),
         })
     }
 
@@ -106,7 +117,9 @@ impl Client {
 
     pub async fn chunk_guild(&self, guild_id: GuildId) -> Result<()> {
         debug!("Chunking guild: {}", guild_id);
-        let request = RequestGuildMembers::builder(guild_id).query(String::new(), None);
+        let request = RequestGuildMembers::builder(guild_id)
+            .presences(true)
+            .query(String::new(), None);
         let payload = serde_json::to_string(&request)
             .expect("Could not serialize valid input");
         self.gateway.send(self.shard_id(guild_id), Message::Text(payload)).await?;
@@ -143,7 +156,7 @@ impl Client {
 
     async fn consume_event(self, event: Event) -> () {
         let kind = event.kind();
-        let result = match event.clone() {
+        let result = match event {
             Event::Ready(_) => Ok(()),
             Event::BanAdd(evt) => self.on_ban_add(evt).await,
             Event::BanRemove(evt) => self.on_ban_remove(evt).await,
@@ -159,6 +172,7 @@ impl Client {
             Event::MemberChunk(evt) => self.on_member_chunk(evt).await,
             Event::MemberRemove(evt) => self.on_member_remove(evt).await,
             Event::MemberUpdate(evt) => self.on_member_update(*evt).await,
+            Event::PresenceUpdate(evt) => self.on_presence_update(*evt).await,
             Event::RoleCreate(_) => Ok(()),
             Event::RoleUpdate(_) => Ok(()),
             Event::RoleDelete(evt) => self.on_role_delete(evt).await,
@@ -202,6 +216,25 @@ impl Client {
 
     async fn on_member_chunk(self, evt: MemberChunk) -> Result<()> {
         self.log_members(&evt.members).await?;
+
+        let mut online: Vec<UserId> = Vec::new();
+        let mut offline: Vec<UserId> = Vec::new();
+        for presence in evt.presences {
+            let id = get_user_id(presence.user);
+            if presence.status == Status::Online {
+                online.push(id);
+            } else {
+                offline.push(id);
+            }
+        }
+
+        let mut conn = self.redis.get().await?;
+        db::OnlineStatus::set_online_mult(evt.guild_id, online, true)
+            .query_async(&mut conn as &mut mobc_redis::redis::aio::Connection)
+            .await?;
+        db::OnlineStatus::set_online_mult(evt.guild_id, offline, true)
+            .query_async(&mut conn as &mut mobc_redis::redis::aio::Connection)
+            .await?;
         Ok(())
     }
 
@@ -223,6 +256,12 @@ impl Client {
             info!("Guild Available: {}", guild.id);
         }
 
+        {
+            let mut conn = self.redis.get().await?;
+            db::OnlineStatus::clear_guild(guild.id)
+                .query_async(&mut conn as &mut mobc_redis::redis::aio::Connection)
+                .await?;
+        }
         self.chunk_guild(guild.id).await?;
         self.log_members(&guild.members).await?;
         self.refresh_bans(guild.id).await?;
@@ -269,6 +308,15 @@ impl Client {
             .execute(&mut txn)
             .await?;
         txn.commit().await?;
+        Ok(())
+    }
+
+    async fn on_presence_update(self, evt: PresenceUpdate) -> Result<()> {
+        let mut conn = self.redis.get().await?;
+        db::OnlineStatus::set_online(evt.guild_id, get_user_id(evt.user),
+                                     evt.status == Status::Online)
+                         .query_async(&mut conn as &mut mobc_redis::redis::aio::Connection)
+                         .await?;
         Ok(())
     }
 
