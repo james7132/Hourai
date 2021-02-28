@@ -1,5 +1,4 @@
 import discord
-import asyncpraw
 import logging
 from urllib.parse import urljoin
 from asyncprawcore import exceptions
@@ -26,9 +25,8 @@ class RedditScanner(Scanner):
         try:
             last_updated = feed.last_updated
             subreddit = await self.client.subreddit(feed.source)
-            posts, feed.last_updated = \
-                    await self.make_posts(subreddit.new(), feed.last_updated)
-
+            posts, feed.last_updated = await self.make_posts(subreddit.new(),
+                                                             feed.last_updated)
             return FeedScanResult.from_feed(
                 feed, posts=posts,
                 is_updated=feed.last_updated > last_updated)

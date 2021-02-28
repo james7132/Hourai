@@ -7,6 +7,7 @@ mod proto {
 }
 
 pub use self::models::*;
+pub use self::cache::*;
 use crate::error::Result;
 use crate::config::HouraiConfig;
 use mobc_redis::{redis, RedisConnectionManager};

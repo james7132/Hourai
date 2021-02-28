@@ -30,6 +30,17 @@ services:
     depends_on:
       - postgres
       - redis
+      - http-proxy
+  http-proxy:
+    image: twilightrs/http-proxy
+    container_name: http-proxy
+    restart: unless-stopped
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=warn
+      - HOST=0.0.0.0
+      - PORT=80
+      - DISCORD_TOKEN=""
   nginx:
     image: james7132/hourai:latest-frontend
     container_name: nginx

@@ -45,6 +45,7 @@ local env(suffix) = {
       client_id: error "Must override client_id",
       client_secret: error "Must override client_secret",
       bot_token: error "Must override bot_token.",
+      proxy: null
   },
 
   reddit: {
@@ -99,6 +100,7 @@ local env(suffix) = {
       client_secret: "ddDa",
       redirect_uri: "http://localhost:8080/login",
       bot_token: "ddDa",
+      proxy: "http://http-proxy/"
     },
 
     logging: {

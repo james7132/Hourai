@@ -43,13 +43,13 @@ def create_reason(ctx, action, reason):
 
 async def check_role_manager(ctx, *targets):
     for target in targets:
-        if not utils.can_change_role(ctx.author, target):
+        if not utils.can_manage_role(ctx.author, target):
             await ctx.send(
                 f'{ctx.author.mention}, you are not allowed to manage '
                 f'`{target.name}`.', delete_after=DELETE_WAIT_DURATION)
             return False
 
-        if not utils.can_change_role(ctx.guild.me, target):
+        if not utils.can_manage_role(ctx.guild.me, target):
             await ctx.send(
                 f'{ctx.guild.me.mention} is not allowed to manage '
                 f'`{target.name}`.', delete_after=DELETE_WAIT_DURATION)
