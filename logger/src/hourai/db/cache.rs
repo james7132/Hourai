@@ -30,8 +30,6 @@ enum CachePrefix {
     GuildConfigs = 1_u8,
     /// BanInfo Protobufs stored
     Bans = 2_u8,
-    /// Online statuses
-    OnlineStatuses = 3_u8,
 }
 
 /// A prefixed key schema for 64-bit integer keys. Implements ToRedisArgs, so its generically
@@ -60,20 +58,6 @@ impl ToRedisArgs for Id8 {
         let mut key_enc = [8 as u8; 8];
         BigEndian::write_u64(&mut key_enc[0..8], self.0);
         out.write_arg(&key_enc[..]);
-    }
-}
-
-pub struct Protobuf<M: protobuf::Message>(M);
-
-pub struct OnlineStatus;
-
-impl OnlineStatus {
-    fn key(guild_id: GuildId) -> CacheKey8 {
-        CacheKey8(CachePrefix::OnlineStatuses, guild_id.0)
-    }
-
-    pub fn clear_guild(guild_id: GuildId) -> redis::Cmd {
-        redis::Cmd::del(Self::key(guild_id))
     }
 }
 

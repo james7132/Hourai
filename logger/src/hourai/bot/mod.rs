@@ -39,6 +39,7 @@ const BOT_EVENTS : EventTypeFlags =
         EventTypeFlags::MEMBER_REMOVE.bits() |
         EventTypeFlags::MEMBER_UPDATE.bits() |
         EventTypeFlags::GUILD_CREATE.bits() |
+        EventTypeFlags::GUILD_UPDATE.bits() |
         EventTypeFlags::GUILD_DELETE.bits() |
         EventTypeFlags::PRESENCE_UPDATE.bits() |
         EventTypeFlags::ROLE_CREATE.bits() |
@@ -49,6 +50,7 @@ const CACHED_RESOURCES: ResourceType =
     ResourceType::from_bits_truncate(
         ResourceType::ROLE.bits() |
         ResourceType::GUILD.bits() |
+        ResourceType::PRESENCE.bits() |
         ResourceType::USER_CURRENT.bits());
 
 fn get_user_id(user: UserOrId) -> UserId {
@@ -165,6 +167,7 @@ impl Client {
             Event::BanAdd(evt) => self.on_ban_add(evt).await,
             Event::BanRemove(evt) => self.on_ban_remove(evt).await,
             Event::GuildCreate(evt) => self.on_guild_create(*evt).await,
+            Event::GuildUpdate(evt) => Ok(()),
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
                     self.on_guild_leave(*evt).await
@@ -240,14 +243,7 @@ impl Client {
             info!("Guild Available: {}", guild.id);
         }
 
-        {
-            let mut conn = self.redis.get().await?;
-            db::OnlineStatus::clear_guild(guild.id)
-                .query_async(&mut conn as &mut mobc_redis::redis::aio::Connection)
-                .await?;
-        }
         self.chunk_guild(guild.id).await?;
-        self.log_members(&guild.members).await?;
         self.refresh_bans(guild.id).await?;
 
         Ok(())
@@ -331,5 +327,6 @@ impl Client {
         txn.commit().await?;
         Ok(())
     }
+
 
 }

@@ -20,7 +20,7 @@ use std::{
 };
 use twilight_model::{
     channel::{Group, GuildChannel, PrivateChannel},
-    gateway::presence::{Presence, UserOrId},
+    gateway::presence::{Presence, Status, UserOrId},
     guild::{Emoji, Guild, Member, PartialMember, Role},
     id::{ChannelId, EmojiId, GuildId, MessageId, RoleId, UserId},
     user::{CurrentUser, User},
@@ -97,7 +97,7 @@ struct InMemoryCacheRef {
     guild_roles: DashMap<GuildId, HashSet<RoleId>>,
     members: DashMap<(GuildId, UserId), Arc<CachedMember>>,
     messages: DashMap<ChannelId, BTreeMap<MessageId, Arc<CachedMessage>>>,
-    presences: DashMap<(GuildId, UserId), Arc<CachedPresence>>,
+    presences: DashSet<(GuildId, UserId)>,
     roles: DashMap<RoleId, GuildItem<Role>>,
     unavailable_guilds: DashSet<GuildId>,
     users: DashMap<UserId, (Arc<User>, BTreeSet<GuildId>)>,
@@ -342,11 +342,8 @@ impl InMemoryCache {
     /// This is an O(1) operation. This requires the [`GUILD_PRESENCES`] intent.
     ///
     /// [`GUILD_PRESENCES`]: ::twilight_model::gateway::Intents::GUILD_PRESENCES
-    pub fn presence(&self, guild_id: GuildId, user_id: UserId) -> Option<Arc<CachedPresence>> {
-        self.0
-            .presences
-            .get(&(guild_id, user_id))
-            .map(|r| Arc::clone(r.value()))
+    pub fn presence(&self, guild_id: GuildId, user_id: UserId) -> bool {
+        self.0.presences.contains(&(guild_id, user_id))
     }
 
     /// Gets a private channel by ID.
@@ -686,18 +683,15 @@ impl InMemoryCache {
         }
     }
 
-    fn cache_presence(&self, guild_id: GuildId, presence: Presence) -> Arc<CachedPresence> {
+    fn cache_presence(&self, guild_id: GuildId, presence: Presence) -> bool {
         let k = (guild_id, presence_user_id(&presence));
-
-        match self.0.presences.get(&k) {
-            Some(p) if **p == presence => return Arc::clone(&p),
-            Some(_) | None => {}
+        let online = presence.status == Status::Online;
+        if online {
+            self.0.presences.insert(k);
+        } else {
+            self.0.presences.remove(&k);
         }
-        let cached = Arc::new(CachedPresence::from(&presence));
-
-        self.0.presences.insert(k, Arc::clone(&cached));
-
-        cached
+        online
     }
 
     fn cache_private_channel(&self, private_channel: PrivateChannel) -> Arc<PrivateChannel> {
