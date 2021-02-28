@@ -37,6 +37,7 @@ pub struct DiscordConfig {
     pub client_id: String,
     pub client_secret: String,
     pub bot_token: String,
+    pub proxy: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

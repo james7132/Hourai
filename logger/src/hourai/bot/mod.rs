@@ -73,9 +73,22 @@ impl Client {
 
     pub async fn new(config: &HouraiConfig)
         -> std::result::Result<Self, ClusterStartError> {
+
+        // Use the twilight HTTP proxy when configured
+        let http_client = if let Some(proxy) = config.discord.proxy.clone() {
+            twilight_http::Client::builder()
+                .token(&config.discord.bot_token)
+                .proxy(proxy, true)
+                .ratelimiter(None)
+                .build()
+        } else {
+            twilight_http::Client::new(&config.discord.bot_token)
+        };
+
         Ok(Self {
             gateway: Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
                 .shard_scheme(ShardScheme::Auto)
+                .http_client(http_client)
                 .build()
                 .await?,
             cache: InMemoryCache::builder()
