@@ -154,10 +154,19 @@ impl Client {
         guild_id: GuildId,
         user_id: UserId
     ) -> Result<Permissions> {
-        let member = db::Member::fetch(guild_id, user_id)
+        let local_member = db::Member::fetch(guild_id, user_id)
                                 .fetch_one(&self.sql)
-                                .await?;
-        Ok(self.guild_permissions(guild_id, member.role_ids()))
+                                .await;
+        if let Ok(member) = local_member {
+            Ok(self.guild_permissions(guild_id, member.role_ids()))
+        } else {
+            let roles = self.http_client()
+                .guild_member(guild_id, user_id)
+                .await?
+                .into_iter()
+                .flat_map(|m| m.roles);
+            Ok(self.guild_permissions(guild_id, roles))
+        }
     }
 
     async fn consume_event(self, event: Event) -> () {
