@@ -117,7 +117,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         reason = create_reason(ctx, "Kicked", reason)
         await self._admin_action(ctx, members, lambda m: m.kick(reason=reason))
 
-    @commands.command(name="ban")
+    @commands.group(name="ban")
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -145,6 +145,41 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
                 member = fake.FakeSnowflake(id=member)
             return ctx.guild.ban(member, delete_message_days=0, reason=reason)
         await self._admin_action(ctx, members, _ban)
+
+    @ban.command(name="clean")
+    async def ban_clean(self, ctx, *, reason: str = None):
+        """Unbans all deleted users the server to clean up the banlist.
+
+        This only unbans users that are assured to be deleted. Discord's
+        servers will be queried to ensure the user is deleted before they're
+        unbanned.
+
+        Requires Ban Members (User and Bot)
+        """
+        msg = await ctx.send(content="Cleaning bans...")
+        bans = await ctx.guild.bans()
+        deleted_bans = [utils.is_deleted_user(b.user) for b in bans]
+
+        async def clean_ban(ban):
+            try:
+                await ctx.bot.fetch_user(ban.user.id)
+            except discord.NotFound:
+                reason = f"Ban cleaned by {ctx.author}. Deleted user."
+                await ctx.guild.unban(ban.user, reason=reason)
+                return 1
+            except Exception:
+                pass
+            return 0
+
+        async with ctx.typing():
+            tasks = [clean_ban(b) for b in deleted_bans]
+            count = sum(await asyncio.gather(*tasks))
+
+        try:
+            await msg.edit(
+                    f"Cleaned **{count}** deleted users from the banlist")
+        except discord.NotFound:
+            pass
 
     @commands.command(name="softban")
     @commands.guild_only()
