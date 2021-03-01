@@ -16,7 +16,7 @@ services:
     depends_on:
       - postgres
       - redis
-      - lavalink
+      - andesite
   logger:
     image: james7132/hourai:logger
     container_name: logger
@@ -75,12 +75,12 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
-  lavalink:
-    image: fredboat/lavalink:master
+  andesite:
+    image: natanbc/andesite:latest
     restart: unless-stopped
-    container_name: lavalink
+    container_name: andesite
     volumes:
-      - ./lavalink.yml:/opt/Lavalink/application.yml
+      - ./andesite.conf:/andesite/application.conf
     expose:
       - 2333
 volumes:
@@ -90,4 +90,5 @@ volumes:
     name: "redis-data"
 networks:
   default:
+
     name: "hourai"

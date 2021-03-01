@@ -33,9 +33,9 @@ local env(suffix) = {
   music: {
     nodes: [{
       identifier: "ddDa",
-      host: "lavalink",
+      host: "andesite",
       port: 2333,
-      rest_uri: "http://lavalink",
+      rest_uri: "http://andesite",
       region: "europe",
       password: "ddDa",
     }],
