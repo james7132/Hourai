@@ -150,8 +150,9 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     async def ban_clean(self, ctx, *, reason: str = None):
         """Unbans all deleted users the server to clean up the banlist.
 
-        This only unbans users that are assured to be deleted. Discord's servers
-        will be queried to ensure the user is deleted before they're unbanned.
+        This only unbans users that are assured to be deleted. Discord's
+        servers will be queried to ensure the user is deleted before they're
+        unbanned.
 
         Requires Ban Members (User and Bot)
         """
@@ -159,19 +160,20 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         bans = await ctx.guild.bans()
         deleted_bans = [utils.is_deleted_user(b.user) for b in bans]
 
-        count = 0
         async def clean_ban(ban):
             try:
                 await ctx.bot.fetch_user(ban.user.id)
             except discord.NotFound:
                 reason = f"Ban cleaned by {ctx.author}. Deleted user."
                 await ctx.guild.unban(ban.user, reason=reason)
-                count += 1
+                return 1
             except Exception:
                 pass
+            return 0
 
         async with ctx.typing():
-            await asyncio.gather(*[clean_ban(b) for b in deleted_bans])
+            tasks = [clean_ban(b) for b in deleted_bans]
+            count = sum(await asyncio.gather(*tasks))
 
         try:
             await msg.edit(
