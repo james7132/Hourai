@@ -41,6 +41,7 @@ be written into the audit log when provided.
 |:------|:----------|:----------|
 |`~kick <user(s)> <reason>`|Kick Members|Kicks all provided users from the serverr.|
 |`~ban <user(s)> <reason>`|Ban Members|Bans all provided users from the server.  Can be used with user IDs to ban users outside of the server.|
+|`~ban clean`|Ban Members|Cleans up the server's banlist and removes all deleted users from it.|
 |`~softban <user(s)> <reason>`|Kick Members (User), Ban Members (Bot)|Bans then unbans a user from the server, deleteing the last 7 days of messages from them
 without leaving a lasting ban.|
 |`~mute <user(s)> <reason>`|Mute Members|Server mutes all provided users.|
