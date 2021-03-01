@@ -146,7 +146,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
             return ctx.guild.ban(member, delete_message_days=0, reason=reason)
         await self._admin_action(ctx, members, _ban)
 
-    @ban.command(name="ban")
+    @ban.command(name="clean")
     async def ban_clean(self, ctx, *, reason: str = None):
         """Unbans all deleted users the server to clean up the banlist.
 
