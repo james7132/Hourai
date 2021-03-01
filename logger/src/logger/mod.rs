@@ -1,9 +1,7 @@
-mod cache;
-
-use crate::hourai::db;
+use crate::{init, db};
 use crate::error::Result;
 use crate::config::HouraiConfig;
-use self::cache::{InMemoryCache, ResourceType};
+use crate::cache::{InMemoryCache, ResourceType};
 use futures::stream::StreamExt;
 use twilight_model::{
     id::*,
@@ -14,13 +12,10 @@ use twilight_model::{
 };
 use twilight_gateway::{
     Intents, Event, EventType, EventTypeFlags,
-    shard::raw_message::Message,
     cluster::*,
 };
 use tracing::{info, debug, error};
 
-// TODO(james7132): Find a way to enable GUILD_PRESENCES without
-// blowing up the memory usage.
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::DIRECT_MESSAGES.bits() |
     Intents::GUILDS.bits() |
@@ -60,8 +55,12 @@ fn get_user_id(user: UserOrId) -> UserId {
     }
 }
 
+pub async fn run(config: HouraiConfig) {
+    Client::new(&config).await.run().await;
+}
+
 #[derive(Clone)]
-pub struct Client {
+struct Client {
     pub http_client: twilight_http::Client,
     pub gateway: Cluster,
     pub standby: twilight_standby::Standby,
@@ -72,34 +71,24 @@ pub struct Client {
 
 impl Client {
 
-    pub async fn new(config: &HouraiConfig)
-        -> std::result::Result<Self, ClusterStartError> {
+    pub async fn new(config: &HouraiConfig) -> Self {
+        let http_client = init::create_http_client(config);
 
-        // Use the twilight HTTP proxy when configured
-        let http_client = if let Some(proxy) = config.discord.proxy.clone() {
-            twilight_http::Client::builder()
-                .token(&config.discord.bot_token)
-                .proxy(proxy, true)
-                .ratelimiter(None)
-                .build()
-        } else {
-            twilight_http::Client::new(&config.discord.bot_token)
-        };
-
-        Ok(Self {
+        Self {
             http_client: http_client.clone(),
             gateway: Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
                 .shard_scheme(ShardScheme::Auto)
                 .http_client(http_client)
                 .build()
-                .await?,
+                .await
+                .expect("Failed to connect to the Discord gateway"),
             cache: InMemoryCache::builder()
                 .resource_types(CACHED_RESOURCES)
                 .build(),
             standby: twilight_standby::Standby::new(),
-            sql: db::create_pg_pool(&config).await.expect("Failed to initialize PostgresSQL"),
-            redis: db::create_redis_pool(&config).expect("Failed to initialize Redis"),
-        })
+            sql: init::create_pg_pool(&config).await,
+            redis: init::create_redis_pool(&config),
+        }
     }
 
     fn user_id(&self) -> UserId {
@@ -137,9 +126,7 @@ impl Client {
         let request = RequestGuildMembers::builder(guild_id)
             .presences(true)
             .query(String::new(), None);
-        let payload = serde_json::to_string(&request)
-            .expect("Could not serialize valid input");
-        self.gateway.send(self.shard_id(guild_id), Message::Text(payload)).await?;
+        self.gateway.command(self.shard_id(guild_id), &request).await?;
         Ok(())
     }
 
@@ -230,8 +217,10 @@ impl Client {
     }
 
     async fn on_ban_remove(self, evt: BanRemove) -> Result<()> {
-        self.log_users(vec![evt.user.clone()]).await?;
-        db::Ban::clear_ban(evt.guild_id, evt.user.id).execute(&self.sql).await?;
+        futures::join!(
+            self.log_users(vec![evt.user.clone()]),
+            db::Ban::clear_ban(evt.guild_id, evt.user.id).execute(&self.sql)
+        );
         Ok(())
     }
 
@@ -263,15 +252,20 @@ impl Client {
             info!("Guild Available: {}", guild.id);
         }
 
-        self.chunk_guild(guild.id).await?;
-        self.refresh_bans(guild.id).await?;
+        futures::join!(
+            self.chunk_guild(guild.id),
+            self.refresh_bans(guild.id),
+        );
 
         Ok(())
     }
 
     async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
-        db::Member::clear_guild(evt.id).execute(&self.sql).await?;
-        db::Ban::clear_guild(evt.id).execute(&self.sql).await?;
+        info!("Left guild {}", evt.id);
+        futures::join!(
+            db::Member::clear_guild(evt.id).execute(&self.sql),
+            db::Ban::clear_guild(evt.id).execute(&self.sql)
+        );
         Ok(())
     }
 
@@ -338,6 +332,7 @@ impl Client {
         let mut txn = self.sql.begin().await?;
         db::Ban::clear_guild(guild_id).execute(&mut txn).await?;
         if perms.contains(Permissions::ADMINISTRATOR | Permissions::BAN_MEMBERS) {
+            debug!("Fetching bans from guild {}", guild_id);
             let bans: Vec<db::Ban> = self.http_client.bans(guild_id).await?
                                          .into_iter().map(|b| db::Ban::from(guild_id, b))
                                          .collect();
@@ -347,6 +342,5 @@ impl Client {
         txn.commit().await?;
         Ok(())
     }
-
 
 }

@@ -1,14 +1,21 @@
 #[deny(unused_must_use)]
 
+mod cache;
 mod config;
+mod db;
 mod error;
-mod hourai;
+mod init;
+mod logger;
 
-use crate::hourai::Hourai;
-use tracing::debug;
+// Include the auto-generated protos as a module
+mod proto {
+    include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
+}
+
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
+use tracing::{debug, info};
 
 const DEFAULT_ENV: &'static str = "dev";
 
@@ -35,6 +42,12 @@ async fn main() {
 
     let config = config::load_config(get_config_path().as_ref());
     debug!("Loaded Config: {:?}", config);
-    let mut hourai = Hourai::new(config).await;
-    hourai.run().await;
+
+    #[cfg(feature="logger")]
+    info!("Enabled module: logger");
+
+    futures::join!(
+        #[cfg(feature="logger")]
+        logger::run(config.clone()),
+    );
 }

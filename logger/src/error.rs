@@ -15,7 +15,7 @@ pub enum Error {
     #[error("JSON error: {:?}", .0)]
     Json(#[from] serde_json::Error),
     #[error("Discord Gateway error: {:?}", .0)]
-    DiscordGatewayError(#[from] twilight_gateway::cluster::ClusterSendError),
+    DiscordGatewayError(#[from] twilight_gateway::cluster::ClusterCommandError),
     #[error("Discord HTTP error: {:?}", .0)]
     DiscordHttpError(#[from] twilight_http::Error),
     #[error("Cache error: {:?}", .0)]

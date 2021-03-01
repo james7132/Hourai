@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use crate::error::Result;
 use byteorder::{BigEndian, ByteOrder};
-use crate::hourai::db::proto::auto_config::*;
-use crate::hourai::db::proto::guild_configs::*;
+use crate::proto::auto_config::*;
+use crate::proto::guild_configs::*;
 use mobc_redis::redis::aio::ConnectionLike;
 use mobc_redis::redis::{RedisWrite, ToRedisArgs};
 use mobc_redis::redis;
