@@ -288,20 +288,18 @@ impl Client {
             return Ok(());
         }
 
-        let mut txn = self.sql.begin().await?;
         db::Member {
             guild_id: evt.guild_id.0 as i64,
             user_id: evt.user.id.0 as i64,
             role_ids: evt.roles.iter().map(|id| id.0 as i64).collect(),
             nickname: evt.nick
         }.insert()
-         .execute(&mut txn)
+         .execute(&self.sql)
          .await?;
         db::Username::new(&evt.user)
             .insert()
-            .execute(&mut txn)
+            .execute(&self.sql)
             .await?;
-        txn.commit().await?;
         Ok(())
     }
 
@@ -314,8 +312,8 @@ impl Client {
     async fn log_members(&self, members: &Vec<Member>) -> Result<()> {
         let usernames = members.iter().map(|m| db::Username::new(&m.user)).collect();
 
+        db::Username::bulk_insert(usernames).execute(&self.sql).await?;
         let mut txn = self.sql.begin().await?;
-        db::Username::bulk_insert(usernames).execute(&mut txn).await?;
         for member in members {
             db::Member::from(&member)
                 .insert()

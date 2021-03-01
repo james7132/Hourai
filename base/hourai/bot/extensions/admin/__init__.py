@@ -117,7 +117,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         reason = create_reason(ctx, "Kicked", reason)
         await self._admin_action(ctx, members, lambda m: m.kick(reason=reason))
 
-    @commands.group(name="ban")
+    @commands.group(name="ban", invoke_without_subcommand=True)
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -147,7 +147,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         await self._admin_action(ctx, members, _ban)
 
     @ban.command(name="clean")
-    async def ban_clean(self, ctx, *, reason: str = None):
+    async def ban_clean(self, ctx):
         """Unbans all deleted users the server to clean up the banlist.
 
         This only unbans users that are assured to be deleted. Discord's
