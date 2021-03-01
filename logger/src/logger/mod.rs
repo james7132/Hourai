@@ -130,35 +130,6 @@ impl Client {
         Ok(())
     }
 
-    pub fn guild_permissions<T>(
-        &self,
-        guild_id: GuildId,
-        user_id: UserId,
-        role_ids: T) -> Permissions
-        where T: Iterator<Item=RoleId>
-    {
-        // The owner has all permissions.
-        if let Some(guild) = self.cache.guild(guild_id) {
-            if guild.owner_id == user_id {
-                return Permissions::all();
-            }
-        }
-
-        // The everyone role ID is the same as the guild ID.
-        let everyone_perms = self.cache.role(RoleId(guild_id.0))
-            .map(|role| role.permissions)
-            .unwrap_or(Permissions::empty());
-        let perms = role_ids
-                        .map(|id| self.cache.role(id))
-                        .filter_map(|role| role)
-                        .map(|role| role.permissions)
-                        .fold(everyone_perms, |acc, perm|  acc | perm);
-        if perms.contains(Permissions::ADMINISTRATOR) {
-            return Permissions::all();
-        }
-        perms
-    }
-
     pub async fn fetch_guild_permissions(
         &self,
         guild_id: GuildId,
@@ -168,14 +139,14 @@ impl Client {
                                 .fetch_one(&self.sql)
                                 .await;
         if let Ok(member) = local_member {
-            Ok(self.guild_permissions(guild_id, user_id, member.role_ids()))
+            Ok(self.cache.guild_permissions(guild_id, user_id, member.role_ids()))
         } else {
             let roles = self.http_client
                 .guild_member(guild_id, user_id)
                 .await?
                 .into_iter()
                 .flat_map(|m| m.roles);
-            Ok(self.guild_permissions(guild_id, user_id, roles))
+            Ok(self.cache.guild_permissions(guild_id, user_id, roles))
         }
     }
 
@@ -192,7 +163,7 @@ impl Client {
                     self.on_guild_leave(*evt).await
                 } else {
                     Ok(())
-                }z
+                }
             },
             Event::MemberAdd(evt) => self.on_member_add(*evt).await,
             Event::MemberChunk(evt) => self.on_member_chunk(evt).await,

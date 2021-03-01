@@ -21,7 +21,7 @@ use std::{
 use twilight_model::{
     channel::{Group, GuildChannel, PrivateChannel},
     gateway::presence::{Presence, Status, UserOrId},
-    guild::{Emoji, Guild, Member, PartialMember, Role},
+    guild::{Emoji, Guild, Member, PartialMember, Role, Permissions},
     id::{ChannelId, EmojiId, GuildId, MessageId, RoleId, UserId},
     user::{CurrentUser, User},
     voice::VoiceState,
@@ -438,6 +438,41 @@ impl InMemoryCache {
         self.0.voice_state_channels.clear();
         self.0.voice_state_guilds.clear();
         self.0.voice_states.clear();
+    }
+
+    /// Gets the guild-level permissions for a given member.
+    /// If the guild or any of the roles are not present, this will return
+    /// Permissions::empty.
+    pub fn guild_permissions<T>(
+        &self,
+        guild_id: GuildId,
+        user_id: UserId,
+        role_ids: T) -> Permissions
+        where T: Iterator<Item=RoleId>
+    {
+        // The owner has all permissions.
+        if let Some(guild) = self.guild(guild_id) {
+            if guild.owner_id == user_id {
+                return Permissions::all();
+            }
+        }
+
+        // The everyone role ID is the same as the guild ID.
+        let everyone_perms = self.role(RoleId(guild_id.0))
+            .map(|role| role.permissions)
+            .unwrap_or(Permissions::empty());
+        let perms = role_ids
+                        .map(|id| self.role(id))
+                        .filter_map(|role| role)
+                        .map(|role| role.permissions)
+                        .fold(everyone_perms, |acc, perm|  acc | perm);
+
+        // Administrators by default have every permission enabled.
+        if perms.contains(Permissions::ADMINISTRATOR) {
+            Permissions::all()
+        } else {
+            perms
+        }
     }
 
     fn cache_current_user(&self, mut current_user: CurrentUser) {
