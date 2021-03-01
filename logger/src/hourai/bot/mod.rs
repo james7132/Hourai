@@ -62,6 +62,7 @@ fn get_user_id(user: UserOrId) -> UserId {
 
 #[derive(Clone)]
 pub struct Client {
+    pub http_client: twilight_http::Client,
     pub gateway: Cluster,
     pub standby: twilight_standby::Standby,
     pub cache: InMemoryCache,
@@ -86,6 +87,7 @@ impl Client {
         };
 
         Ok(Self {
+            http_client: http_client.clone(),
             gateway: Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
                 .shard_scheme(ShardScheme::Auto)
                 .http_client(http_client)
@@ -98,10 +100,6 @@ impl Client {
             sql: db::create_pg_pool(&config).await.expect("Failed to initialize PostgresSQL"),
             redis: db::create_redis_pool(&config).expect("Failed to initialize Redis"),
         })
-    }
-
-    fn http_client(&self) -> &twilight_http::Client {
-        return &self.gateway.config().http_client();
     }
 
     fn user_id(&self) -> UserId {
@@ -173,7 +171,7 @@ impl Client {
         if let Ok(member) = local_member {
             Ok(self.guild_permissions(guild_id, member.role_ids()))
         } else {
-            let roles = self.http_client()
+            let roles = self.http_client
                 .guild_member(guild_id, user_id)
                 .await?
                 .into_iter()
@@ -220,7 +218,7 @@ impl Client {
 
         let perms = self.fetch_guild_permissions(evt.guild_id, self.user_id()).await?;
         if perms.contains(Permissions::BAN_MEMBERS) {
-            if let Some(ban) = self.http_client().ban(evt.guild_id, evt.user.id).await? {
+            if let Some(ban) = self.http_client.ban(evt.guild_id, evt.user.id).await? {
                 db::Ban::from(evt.guild_id, ban)
                     .insert()
                     .execute(&self.sql)
@@ -340,7 +338,7 @@ impl Client {
         let mut txn = self.sql.begin().await?;
         db::Ban::clear_guild(guild_id).execute(&mut txn).await?;
         if perms.contains(Permissions::ADMINISTRATOR | Permissions::BAN_MEMBERS) {
-            let bans: Vec<db::Ban> = self.http_client().bans(guild_id).await?
+            let bans: Vec<db::Ban> = self.http_client.bans(guild_id).await?
                                          .into_iter().map(|b| db::Ban::from(guild_id, b))
                                          .collect();
             debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
