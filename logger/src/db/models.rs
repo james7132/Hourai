@@ -89,6 +89,7 @@ impl Ban {
         }
     }
 
+    /// Constructs a query to add a single ban.
     pub fn insert<'a>(self) -> SqlQuery<'a> {
         sqlx::query("INSERT INTO bans (guild_id, user_id, reason, avatar)
                      VALUES ($1, $2, $3, $4)
@@ -100,6 +101,7 @@ impl Ban {
             .bind(self.avatar)
     }
 
+    /// Constructs a query to bulk add multiple bans.
     pub fn bulk_insert<'a>(bans: Vec<Self>) -> SqlQuery<'a> {
         let guild_ids: Vec<i64> = bans.iter().map(|b| b.guild_id).collect();
         let user_ids: Vec<i64> = bans.iter().map(|b| b.user_id).collect();
@@ -116,22 +118,33 @@ impl Ban {
             .bind(avatars)
     }
 
+    /// Constructs a query to clear a single user's ban from a given guild.
     pub fn clear_ban<'a>(guild_id: GuildId, user_id: UserId) -> SqlQuery<'a> {
         sqlx::query("DELETE FROM bans WHERE guild_id = $1 AND user_id = $2")
             .bind(guild_id.0 as i64)
             .bind(user_id.0 as i64)
     }
 
+    /// Constructs a query to clear a all bans from a given guild.
     pub fn clear_guild<'a>(guild_id: GuildId) -> SqlQuery<'a> {
         sqlx::query("DELETE FROM bans WHERE guild_id = $1")
             .bind(guild_id.0 as i64)
     }
 
+    /// Constructs a query to clear a all bans from a given shard.
+    pub fn clear_shard<'a>(shard_id: u64, shard_total: u64) -> SqlQuery<'a> {
+        sqlx::query("DELETE FROM bans WHERE (guild_id >> 22) % $1 = $2")
+            .bind(shard_id as i64)
+            .bind(shard_total as i64)
+    }
+
+    /// Constructs a query to retreive all bans from a given guild.
     pub fn get_guild_bans<'a>(guild_id: GuildId) -> SqlQueryAs<'a, Self> {
         sqlx::query_as("SELECT guild_id, user_id, reason, avatar FROM bans WHERE guild_id = $1")
             .bind(guild_id.0 as i64)
     }
 
+    /// Constructs a query to retreive all bans for a given user.
     pub fn get_user_bans<'a>(user_id: UserId) -> SqlQueryAs<'a, Self> {
         sqlx::query_as("SELECT guild_id, user_id, reason, avatar FROM bans WHERE user_id = $1")
             .bind(user_id.0 as i64)

@@ -101,11 +101,11 @@ impl Client {
         info!("Client started.");
 
         let mut events = self.gateway.some_events(BOT_EVENTS);
-        while let Some((_, evt)) = events.next().await {
+        while let Some((shard_id, evt)) = events.next().await {
             self.cache.update(&evt);
             self.standby.process(&evt);
             if evt.kind() != EventType::PresenceUpdate {
-                tokio::spawn(self.clone().consume_event(evt));
+                tokio::spawn(self.clone().consume_event(shard_id, evt));
             }
         }
 
@@ -114,11 +114,17 @@ impl Client {
         info!("Client stopped.");
     }
 
+    #[inline(always)]
+    pub fn total_shards(&self) -> u64 {
+        let shards = self.gateway.config().shard_config().shard()[1];
+        assert!(shards > 0, "Bot somehow has a total of zero shards.");
+        shards
+    }
+
     /// Gets the shard ID for a guild.
+    #[inline(always)]
     pub fn shard_id(&self, guild_id: GuildId) -> u64 {
-        let total_shards = self.gateway.config().shard_config().shard()[1];
-        assert!(total_shards > 0, "Bot somehow has a total of zero shards.");
-        (guild_id.0 >> 22) % total_shards
+        (guild_id.0 >> 22) % self.total_shards()
     }
 
     pub async fn chunk_guild(&self, guild_id: GuildId) -> Result<()> {
@@ -150,10 +156,10 @@ impl Client {
         }
     }
 
-    async fn consume_event(self, event: Event) -> () {
+    async fn consume_event(self, shard_id: u64, event: Event) -> () {
         let kind = event.kind();
         let result = match event {
-            Event::Ready(_) => Ok(()),
+            Event::Ready(_) => self.on_shard_ready(shard_id).await,
             Event::BanAdd(evt) => self.on_ban_add(evt).await,
             Event::BanRemove(evt) => self.on_ban_remove(evt).await,
             Event::GuildCreate(evt) => self.on_guild_create(*evt).await,
@@ -181,6 +187,13 @@ impl Client {
         if let Err(err) = result {
             error!("Error while running event with {:?}: {:?}", kind, err);
         }
+    }
+
+    async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
+        db::Ban::clear_shard(shard_id, self.total_shards())
+            .execute(&self.sql)
+            .await?;
+        Ok(())
     }
 
     async fn on_ban_add(self, evt: BanAdd) -> Result<()> {
