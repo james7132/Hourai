@@ -60,6 +60,11 @@ default-features = true
 version = "0.3.1"
 features = ['simd-json', 'rustls']
 
+[dependencies.simd-json]
+default-features = true
+version = "0.3"
+features = ['allow-non-simd']
+
 [dependencies.sqlx]
 default-features = false
 features = ["runtime-tokio-rustls", "postgres", "macros"]
