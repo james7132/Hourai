@@ -27,8 +27,6 @@ class StoragePrefix(enum.Enum):
     # Persistent Guild Level Data
     #   Generally stored in Redis as a hash with all submodels underneath it.
     GUILD_CONFIGS = 1
-    # Cached bans. Ephemeral data that have expirations assigned to them.
-    BANS = 2
 
 
 class GuildPrefix(enum.Enum):

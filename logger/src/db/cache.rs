@@ -28,8 +28,6 @@ enum CachePrefix {
     /// Protobuf configs for per server configuration. Stored in the form of hashes with individual
     /// configs as hash values, keyed by the corresponding CachedGuildConfig subkey.
     GuildConfigs = 1_u8,
-    /// BanInfo Protobufs stored
-    Bans = 2_u8,
 }
 
 /// A prefixed key schema for 64-bit integer keys. Implements ToRedisArgs, so its generically
