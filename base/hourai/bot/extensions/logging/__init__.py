@@ -1,7 +1,6 @@
 from .mod_logging import ModLogging
 from .owner_logging import OwnerLogging
 from .role_logging import RoleLogging
-from .ban_logging import BanLogging
 from .counters import Counters
 
 

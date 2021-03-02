@@ -87,6 +87,15 @@ class EscalationEntry(Base):
     level_delta = Column(types.Integer, nullable=False)
 
 
+class Ban(Base):
+    __tablename__ = 'bans'
+
+    guild_id = Column(types.Integer, primary_key=True)
+    user_id = Column(types.BigInteger, nullable=False)
+    reason = Column(types.Text)
+    avatar = Column(types.Text)
+
+
 class PendingDeescalation(Base):
     __tablename__ = 'pending_deescalations'
 

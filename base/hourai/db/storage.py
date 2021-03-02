@@ -115,7 +115,7 @@ class Storage:
                 wait_time *= 2
 
     def __setup_caches(self):
-        self.bans = bans.BanStorage(self, StoragePrefix.BANS.value)
+        self.bans = bans.BanStorage(self)
 
         for conf in Storage._get_cache_configs():
             # Initialize Parameters
