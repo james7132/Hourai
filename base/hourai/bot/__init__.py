@@ -59,6 +59,10 @@ class Hourai(commands.AutoShardedBot):
             'activity': discord.Game(self.config.activity),
             'help_command': HouraiHelpCommand(),
             'fetch_offline_members': False,
+            'member_cache_flags': discord.MemberCacheFlags(
+                online=False,
+                joined=True,
+                voice=True),
             'allowed_mentions': discord.AllowedMentions(
                 everyone=False,
                 users=True,
@@ -67,7 +71,7 @@ class Hourai(commands.AutoShardedBot):
                 bans=True,
                 guilds=True,
                 invites=True,
-                members=False,
+                members=True,
                 messages=True,
                 presences=False,
                 reactions=True,
