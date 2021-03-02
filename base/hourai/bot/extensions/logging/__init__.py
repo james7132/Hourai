@@ -8,7 +8,6 @@ def setup(bot):
     cogs = (ModLogging(bot),
             OwnerLogging(bot),
             RoleLogging(bot),
-            BanLogging(bot),
             Counters(bot))
     for cog in cogs:
         bot.add_cog(cog)

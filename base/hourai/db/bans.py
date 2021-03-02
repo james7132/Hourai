@@ -1,9 +1,5 @@
-import collections
 import logging
-import coders
 from . import proto, models
-from .redis_utils import redis_transaction
-from hourai.utils import iterable
 
 
 log = logging.getLogger(__name__)
@@ -38,7 +34,7 @@ class BanStorage:
                          .all()
         configs = {cfg.id: cfg for cfg in configs}
         for ban in bans:
-            config = config.get(ban.guild_id)
+            config = configs.get(ban.guild_id)
             ban_proto = proto.BanInfo()
             ban_proto.guild_id = ban.guild_id
             ban_proto.user_id = ban.user_id
