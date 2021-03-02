@@ -11,7 +11,7 @@ class BanStorage:
     def __init__(self, storage):
         self.storage = storage
 
-    async def get_guild_bans(self, guild_id):
+    def get_guild_bans(self, guild_id):
         session = self.storage.create_session()
         with session:
             bans = session.query(models.Ban) \
@@ -19,7 +19,7 @@ class BanStorage:
                           .all()
             return list(self._make_ban_protos(bans, session))
 
-    async def get_user_bans(self, user_id):
+    def get_user_bans(self, user_id):
         session = self.storage.create_session()
         with session:
             bans = session.query(models.Ban) \

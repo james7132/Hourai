@@ -141,7 +141,7 @@ class BannedUserRejector(Validator):
         self.min_guild_size = min_guild_size
 
     async def validate_member(self, ctx):
-        bans = await ctx.bot.storage.bans.get_user_bans(ctx.member.id)
+        bans = ctx.bot.storage.bans.get_user_bans(ctx.member.id)
         valid_bans = list(filter(self._is_valid_ban, bans))
         if len(valid_bans) <= 0:
             return
@@ -168,7 +168,7 @@ class BannedUsernameRejector(Validator):
     async def validate_member(self, ctx):
         if not ctx.guild.me.guild_permissions.ban_members:
             return
-        bans = await ctx.bot.storage.bans.get_guild_bans(ctx.guild.id)
+        bans = ctx.bot.storage.bans.get_guild_bans(ctx.guild.id)
         await self.__check_avatars(ctx, bans)
         self.__check_usernames(ctx, bans)
 
