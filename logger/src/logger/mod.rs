@@ -323,17 +323,21 @@ impl Client {
     async fn refresh_bans(&self, guild_id: GuildId) -> Result<()> {
         let perms = self.fetch_guild_permissions(guild_id, self.user_id()).await?;
 
-        let mut txn = self.sql.begin().await?;
-        db::Ban::clear_guild(guild_id).execute(&mut txn).await?;
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
+            self.ban_logger.lock().await;
             let bans: Vec<db::Ban> = self.http_client.bans(guild_id).await?
                                          .into_iter().map(|b| db::Ban::from(guild_id, b))
                                          .collect();
             debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
+            let mut txn = self.sql.begin().await?;
+            db::Ban::clear_guild(guild_id).execute(&mut txn).await?;
             db::Ban::bulk_insert(bans).execute(&mut txn).await?;
+            txn.commit().await?;
+        } else {
+            debug!("Cleared bans from guild {}", guild_id);
+            db::Ban::clear_guild(guild_id).execute(&self.sql).await?;
         }
-        txn.commit().await?;
         Ok(())
     }
 
