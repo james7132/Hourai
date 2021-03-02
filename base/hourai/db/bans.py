@@ -27,7 +27,7 @@ class BanStorage:
                           .all()
             return list(self._make_ban_protos(bans, session))
 
-    def _make_ban_proto(self, bans, session):
+    def _make_ban_protos(self, bans, session):
         guild_ids = set(b.guild_id for b in bans)
         configs = session.query(models.AdminConfig) \
                          .filter(models.AdminConfig.id.in_(guild_ids)) \

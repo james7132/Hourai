@@ -99,18 +99,15 @@ class ValidationContext:
 
     async def send_modlog_message(self):
         """Sends verification log to a the guild's modlog."""
-        allowed_mentions = []
         mention = None
         # Only ping a mod if enabled and failed approval
         if self.config.ping_moderator_on_fail and not self.approved:
-            online_mod, mention = utils.mention_random_online_mod(self.guild)
-            allowed_mentions.append(online_mod)
+            _, mention = await utils.mention_random_online_mod(self.guild)
         return await self.send_log_message(
-            self.guild.modlog, ping_target=mention,
-            allowed_mentions=allowed_mentions)
+            self.guild.modlog, ping_target=mention)
 
     async def send_log_message(self, messageable, ping_target='',
-                               allowed_mentions=False, include_invite=True):
+                               include_invite=True):
         """Sends verification log to a given messagable target.
 
         messageable must be an appropriate discord.abc.Messageable object.

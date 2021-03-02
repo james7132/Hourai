@@ -7,6 +7,7 @@ import pytimeparse
 import random
 import re
 import time
+import logging
 from hourai import config
 from datetime import timedelta
 
@@ -198,31 +199,41 @@ def find_moderator_roles(guild):
 
 
 def find_moderators(guild):
-    """Finds all of the moderators on a server. Returns a generator of members.
+    """Finds the ID of the moderators on a server. Returns a set of ints.
     """
-    return filter(lambda m: m is not None and not m.bot,
-                  all_with_roles(guild.members, find_moderator_roles(guild)))
+    session = guild.storage.create_session()
+    user_ids = {guild.owner_id}
+    with session:
+        for role in find_moderator_roles(guild):
+            query = (f"SELECT user_id FROM members "
+                     f"WHERE {role.id} = ANY(role_ids)")
+            for row in session.execute(query).fetchall():
+                user_ids.update(row.values())
+    logging.info(f"Found moderators: {user_ids}")
+    return user_ids
 
 
-def find_online_moderators(guild):
-    """Finds all of the online moderators on a server. Returns a generator of
-    members.
+async def find_online_moderators(guild):
+    """Finds all of the online moderators on a server. Returns a list of
+    ints.
     """
-    return filter(is_online, find_moderators(guild))
+    mod_ids = find_moderators(guild)
+    return await guild.storage.online_status.get_online(guild.id, mod_ids)
 
 
-def mention_random_online_mod(guild):
+async def mention_random_online_mod(guild):
     """Mentions a of a currently online moderator.
     If no moderator is online, returns a ping to the server owner.
 
     Returns a tuple of (Member, str).
     """
-    moderators = list(find_online_moderators(guild))
+    moderators = await find_online_moderators(guild)
+    logging.info(f"Found online moderators: {moderators}")
     if len(moderators) > 0:
         moderator = random.choice(moderators)
-        return moderator, moderator.mention
+        return moderator, f"<@{moderator}>"
     else:
-        return guild.owner, f'{guild.owner.mention}, no mods are online!'
+        return guild.owner, f'<@{guild.owner_id}>, no mods are online!'
 
 
 def is_nitro_booster(bot, member):

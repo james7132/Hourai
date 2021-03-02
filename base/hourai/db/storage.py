@@ -3,11 +3,12 @@ import aioredis
 import collections
 import enum
 import coders
+import struct
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import create_engine, orm, pool
 from hourai import config
-from . import models, caches, proto, bans
+from . import models, caches, proto, bans, redis_utils
 
 log = logging.getLogger(__name__)
 
@@ -16,6 +17,28 @@ CacheConfig = collections.namedtuple(
     'CacheConfig', ('attr', 'prefix', 'subprefix', 'subcoder',
                     'value_coder', 'timeout', 'proto_type'),
     defaults=(None,) * 7)
+
+
+class OnlineStatus:
+    __slot__ = ('redis', 'key_coder')
+
+    def __init__(self, redis, prefix):
+        b_prefix = _prefixize(prefix.value)
+        self.redis = redis
+        self.key_coder = coders.IntCoder().prefixed(b_prefix)
+
+    async def get_online(self, guild_id, user_ids):
+        """ Returns the user IDs that are currently online """
+        key_enc = self.key_coder.encode(guild_id)
+        ids = [struct.pack(">Q", user_id) for user_id in user_ids]
+
+        def txn(tr):
+            for id in ids:
+                log.info(f"Query: {key_enc} {id}")
+                yield tr.sismember(key_enc, id)
+        results = await redis_utils.redis_transaction(self.redis, txn)
+        log.info(f"Results: {results}")
+        return [id for id, online in zip(user_ids, results) if online]
 
 
 def protobuf(msg_type):
@@ -27,6 +50,7 @@ class StoragePrefix(enum.Enum):
     # Persistent Guild Level Data
     #   Generally stored in Redis as a hash with all submodels underneath it.
     GUILD_CONFIGS = 1
+    ONLINE_STATUS = 2
 
 
 class GuildPrefix(enum.Enum):
@@ -114,6 +138,8 @@ class Storage:
 
     def __setup_caches(self):
         self.bans = bans.BanStorage(self)
+        self.online_status = OnlineStatus(self.redis,
+                                          StoragePrefix.ONLINE_STATUS)
 
         for conf in Storage._get_cache_configs():
             # Initialize Parameters
