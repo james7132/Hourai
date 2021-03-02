@@ -42,12 +42,13 @@ async fn main() {
 
     let config = config::load_config(get_config_path().as_ref());
     debug!("Loaded Config: {:?}", config);
+    let initializer = init::Initializer::new(config);
 
     #[cfg(feature="logger")]
     info!("Enabled module: logger");
 
     futures::join!(
         #[cfg(feature="logger")]
-        logger::run(config.clone()),
+        logger::run(initializer.clone()),
     );
 }

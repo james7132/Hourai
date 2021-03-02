@@ -1,6 +1,5 @@
 use crate::{init, db};
 use crate::error::Result;
-use crate::config::HouraiConfig;
 use crate::cache::{InMemoryCache, ResourceType};
 use futures::stream::StreamExt;
 use twilight_model::{
@@ -57,8 +56,8 @@ fn get_user_id(user: UserOrId) -> UserId {
     }
 }
 
-pub async fn run(config: HouraiConfig) {
-    Client::new(&config).await.run().await;
+pub async fn run(initializer: init::Initializer) {
+    Client::new(initializer).await.run().await;
 }
 
 #[derive(Clone)]
@@ -73,8 +72,9 @@ struct Client {
 
 impl Client {
 
-    pub async fn new(config: &HouraiConfig) -> Self {
-        let http_client = init::create_http_client(config);
+    pub async fn new(initializer: init::Initializer) -> Self {
+        let config = initializer.config();
+        let http_client = initializer.http_client();
 
         Self {
             http_client: http_client.clone(),
@@ -88,8 +88,8 @@ impl Client {
                 .resource_types(CACHED_RESOURCES)
                 .build(),
             standby: twilight_standby::Standby::new(),
-            sql: init::create_pg_pool(&config).await,
-            redis: init::create_redis_pool(&config),
+            sql: initializer.sql().await,
+            redis: initializer.redis(),
         }
     }
 
