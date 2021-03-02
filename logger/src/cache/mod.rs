@@ -97,7 +97,6 @@ struct InMemoryCacheRef {
     guild_roles: DashMap<GuildId, HashSet<RoleId>>,
     members: DashMap<(GuildId, UserId), Arc<CachedMember>>,
     messages: DashMap<ChannelId, BTreeMap<MessageId, Arc<CachedMessage>>>,
-    presences: DashSet<(GuildId, UserId)>,
     roles: DashMap<RoleId, GuildItem<Role>>,
     unavailable_guilds: DashSet<GuildId>,
     users: DashMap<UserId, (Arc<User>, BTreeSet<GuildId>)>,
@@ -232,6 +231,15 @@ impl InMemoryCache {
             .map(|r| Arc::clone(r.value()))
     }
 
+    /// Gets all of the IDs of the guilds in the cache.
+    ///
+    /// This is an O(n) operation. This requires the [`GUILDS`] intent.
+    ///
+    /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
+    pub fn guilds(&self) -> Vec<GuildId> {
+        self.0.guilds.iter().map(|r| *r.key()).collect()
+    }
+
     /// Gets a guild by ID.
     ///
     /// This is an O(1) operation. This requires the [`GUILDS`] intent.
@@ -291,7 +299,7 @@ impl InMemoryCache {
     /// This requires the [`GUILD_PRESENCES`] intent.
     ///
     /// [`GUILD_PRESENCES`]: ::twilight_model::gateway::Intents::GUILD_PRESENCES
-    pub fn guild_presences(&self, guild_id: GuildId) -> Option<HashSet<UserId>> {
+    pub fn guild_online(&self, guild_id: GuildId) -> Option<HashSet<UserId>> {
         self.0
             .guild_presences
             .get(&guild_id)
@@ -343,7 +351,11 @@ impl InMemoryCache {
     ///
     /// [`GUILD_PRESENCES`]: ::twilight_model::gateway::Intents::GUILD_PRESENCES
     pub fn presence(&self, guild_id: GuildId, user_id: UserId) -> bool {
-        self.0.presences.contains(&(guild_id, user_id))
+        self.0
+            .guild_presences
+            .get(&guild_id)
+            .map(|p| p.contains(&user_id))
+            .unwrap_or(false)
     }
 
     /// Gets a private channel by ID.
@@ -431,7 +443,6 @@ impl InMemoryCache {
         self.0.guild_roles.clear();
         self.0.members.clear();
         self.0.messages.clear();
-        self.0.presences.clear();
         self.0.roles.clear();
         self.0.unavailable_guilds.clear();
         self.0.users.clear();
@@ -713,19 +724,35 @@ impl InMemoryCache {
     }
 
     fn cache_presences(&self, guild_id: GuildId, presences: impl IntoIterator<Item = Presence>) {
-        for presence in presences {
-            self.cache_presence(guild_id, presence);
-        }
+        self.0
+            .guild_presences
+            .get_mut(&guild_id)
+            .map(move |mut kv| {
+                let guild_presences = kv.value_mut();
+                for presence in presences {
+                    let user_id = presence_user_id(&presence);
+                    let online = presence.status == Status::Online;
+                    if online {
+                        guild_presences.insert(user_id);
+                    } else {
+                        guild_presences.remove(&user_id);
+                    }
+                }
+            });
     }
 
-    fn cache_presence(&self, guild_id: GuildId, presence: Presence) -> bool {
-        let k = (guild_id, presence_user_id(&presence));
-        let online = presence.status == Status::Online;
-        if online {
-            self.0.presences.insert(k);
-        } else {
-            self.0.presences.remove(&k);
-        }
+    fn cache_presence(&self, guild_id: GuildId, user_id: UserId, status: Status) -> bool {
+        let online = status == Status::Online;
+        self.0
+            .guild_presences
+            .get_mut(&guild_id)
+            .map(|mut kv| {
+                if online {
+                    kv.value_mut().insert(user_id);
+                } else {
+                    kv.value_mut().remove(&user_id);
+                }
+            });
         online
     }
 
@@ -906,7 +933,7 @@ impl InMemoryCache {
     }
 }
 
-fn presence_user_id(presence: &Presence) -> UserId {
+pub fn presence_user_id(presence: &Presence) -> UserId {
     match presence.user {
         UserOrId::User(ref u) => u.id,
         UserOrId::UserId { id } => id,

@@ -28,6 +28,8 @@ enum CachePrefix {
     /// Protobuf configs for per server configuration. Stored in the form of hashes with individual
     /// configs as hash values, keyed by the corresponding CachedGuildConfig subkey.
     GuildConfigs = 1_u8,
+    /// Redis sets of per-server user IDs of online users.
+    OnlineStatus = 2_u8,
 }
 
 /// A prefixed key schema for 64-bit integer keys. Implements ToRedisArgs, so its generically
@@ -46,6 +48,7 @@ impl ToRedisArgs for CacheKey8 {
     }
 }
 
+#[derive(Copy, Clone)]
 struct Id8(u64);
 
 impl ToRedisArgs for Id8 {
@@ -57,6 +60,35 @@ impl ToRedisArgs for Id8 {
         BigEndian::write_u64(&mut key_enc[0..8], self.0);
         out.write_arg(&key_enc[..]);
     }
+}
+
+pub struct OnlineStatus {
+    pipeline: redis::Pipeline
+}
+
+impl OnlineStatus {
+
+    pub fn new() -> Self {
+        Self {
+            pipeline: redis::pipe().atomic().clone()
+        }
+    }
+
+    pub fn set_online(&mut self, guild_id: GuildId, online: impl IntoIterator<Item=UserId>)
+                      -> &mut Self {
+        let key = CacheKey8(CachePrefix::OnlineStatus, guild_id.0);
+        let ids: Vec<Id8> = online.into_iter().map(|id| Id8(id.0)).collect();
+        self.pipeline
+            .del(key).ignore()
+            .sadd(key, ids).ignore()
+            .expire(key, 3600);
+        self
+    }
+
+    pub fn build(self) -> redis::Pipeline {
+        self.pipeline
+    }
+
 }
 
 fn compress_payload(payload: &[u8]) -> Result<Vec<u8>> {

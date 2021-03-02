@@ -3,7 +3,7 @@ use dashmap::DashMap;
 use std::{borrow::Cow, collections::HashSet, hash::Hash, ops::Deref, sync::Arc};
 use twilight_model::{
     channel::{message::MessageReaction, Channel, GuildChannel, ReactionType},
-    gateway::{event::Event, payload::*, presence::Presence},
+    gateway::{event::Event, payload::*, presence::UserOrId},
     guild::GuildStatus,
     id::GuildId,
 };
@@ -229,11 +229,7 @@ impl UpdateCache for GuildDelete {
         }
 
         if cache.wants(ResourceType::PRESENCE) {
-            if let Some((_, ids)) = cache.0.guild_presences.remove(&id) {
-                for user_id in ids {
-                    cache.0.presences.remove(&(id, user_id));
-                }
-            }
+            cache.0.guild_presences.remove(&id);
         }
     }
 }
@@ -463,15 +459,12 @@ impl UpdateCache for PresenceUpdate {
             return;
         }
 
-        let presence = Presence {
-            activities: self.activities.clone(),
-            client_status: self.client_status.clone(),
-            guild_id: self.guild_id,
-            status: self.status,
-            user: self.user.clone(),
+        let user_id = match self.user {
+            UserOrId::User(ref u) => u.id,
+            UserOrId::UserId { id } => id,
         };
 
-        cache.cache_presence(self.guild_id, presence);
+        cache.cache_presence(self.guild_id, user_id, self.status);
     }
 }
 

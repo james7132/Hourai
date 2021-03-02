@@ -14,6 +14,8 @@ use twilight_gateway::{
     Intents, Event, EventType, EventTypeFlags,
     cluster::*,
 };
+use mobc_redis::redis::aio::Connection;
+use core::time::Duration;
 use tracing::{info, debug, error};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
@@ -100,6 +102,9 @@ impl Client {
         self.gateway.up().await;
         info!("Client started.");
 
+        let _ = tokio::spawn(self.clone().log_bans());
+        let _ = tokio::spawn(self.clone().flush_online());
+
         let mut events = self.gateway.some_events(BOT_EVENTS);
         while let Some((shard_id, evt)) = events.next().await {
             self.cache.update(&evt);
@@ -112,6 +117,40 @@ impl Client {
         info!("Shutting down gateway...");
         self.gateway.down();
         info!("Client stopped.");
+    }
+
+    async fn log_bans(self) {
+        loop {
+            info!("Refreshing bans...");
+            for guild_id in self.cache.guilds() {
+                if let Err(err) = self.refresh_bans(guild_id).await {
+                    error!("Error while logging bans: {:?}", err);
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(180u64)).await;
+        }
+    }
+
+    async fn flush_online(self) {
+        loop {
+            let mut pipeline = db::OnlineStatus::new();
+            for guild_id in self.cache.guilds() {
+                let presences = match self.cache.guild_online(guild_id) {
+                    Some(p) => p,
+                    _ => continue,
+                };
+                pipeline.set_online(guild_id, presences);
+            }
+            if let Ok(mut conn) = self.redis.get().await {
+                let result = pipeline.build()
+                                     .query_async::<Connection, ()>(&mut conn as &mut Connection)
+                                     .await;
+                if let Err(err) = result {
+                    error!("Error while flushing statuses: {:?}", err);
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(60u64)).await;
+        }
     }
 
     #[inline(always)]
@@ -248,10 +287,7 @@ impl Client {
             info!("Guild Available: {}", guild.id);
         }
 
-        futures::join!(
-            self.chunk_guild(guild.id),
-            self.refresh_bans(guild.id),
-        );
+        self.chunk_guild(guild.id).await?;
 
         Ok(())
     }
@@ -266,16 +302,11 @@ impl Client {
     }
 
     async fn on_role_delete(self, evt: RoleDelete) -> Result<()> {
-        let member = db::Member::fetch(evt.guild_id, self.user_id())
-                                .fetch_one(&self.sql)
-                                .await?;
-        if member.role_ids.contains(&(evt.role_id.0 as i64)) {
-            self.refresh_bans(evt.guild_id).await?;
-        }
-
-        db::Member::clear_role(evt.guild_id, evt.role_id)
+        let res = db::Member::clear_role(evt.guild_id, evt.role_id)
             .execute(&self.sql)
-            .await?;
+            .await;
+        self.refresh_bans(evt.guild_id).await?;
+        res?;
         Ok(())
     }
 
@@ -325,7 +356,6 @@ impl Client {
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
-            self.ban_logger.lock().await;
             let bans: Vec<db::Ban> = self.http_client.bans(guild_id).await?
                                          .into_iter().map(|b| db::Ban::from(guild_id, b))
                                          .collect();
