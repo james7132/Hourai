@@ -63,7 +63,6 @@ pub async fn run(initializer: init::Initializer) {
 struct Client {
     pub http_client: twilight_http::Client,
     pub gateway: Cluster,
-    pub standby: twilight_standby::Standby,
     pub cache: InMemoryCache,
     pub sql: sqlx::PgPool,
     pub redis: db::RedisPool,
@@ -86,7 +85,6 @@ impl Client {
             cache: InMemoryCache::builder()
                 .resource_types(CACHED_RESOURCES)
                 .build(),
-            standby: twilight_standby::Standby::new(),
             sql: initializer.sql().await,
             redis: initializer.redis(),
         }
@@ -107,7 +105,6 @@ impl Client {
         let mut events = self.gateway.some_events(BOT_EVENTS);
         while let Some((shard_id, evt)) = events.next().await {
             self.cache.update(&evt);
-            self.standby.process(&evt);
             if evt.kind() != EventType::PresenceUpdate {
                 tokio::spawn(self.clone().consume_event(shard_id, evt));
             }

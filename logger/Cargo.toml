@@ -42,7 +42,6 @@ thiserror = "1.0"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = "0.2.15"
 twilight-model = "0.3.1"
-twilight-standby = "0.3.0"
 # Avoid breaking change
 funty = "=1.1.0"
 # Feature based optional dependencies

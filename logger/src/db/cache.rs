@@ -110,7 +110,7 @@ fn decompress_payload(payload: &[u8]) -> Result<Vec<u8>> {
         return Ok(payload.to_vec());
     }
     let data = &payload[1..];
-    return match CompressionMode::from_u8(payload[0]) {
+    match CompressionMode::from_u8(payload[0]) {
         Some(CompressionMode::Uncompressed) => Ok(data.to_vec()),
         Some(CompressionMode::Zlib) => {
             let mut output: Vec<u8> = Vec::new();
@@ -119,7 +119,7 @@ fn decompress_payload(payload: &[u8]) -> Result<Vec<u8>> {
         }
         // Default to returning the original payload if no match for the header is found
         None => Ok(payload.to_vec()),
-    };
+    }
 }
 
 #[async_trait]

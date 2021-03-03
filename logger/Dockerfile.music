@@ -3,7 +3,7 @@ COPY logger/Cargo.* ./
 RUN mkdir .cargo/ && cargo vendor > .cargo/config
 COPY logger/ .
 COPY proto/ ./src/hourai/db/proto/
-RUN cargo install --path . --verbose
+RUN cargo install --path . --verbose --features "music" --no-default-features
 
 # Copy the statically-linked binary into a scratch container.
 FROM alpine
