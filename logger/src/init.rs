@@ -32,9 +32,9 @@ impl Initializer {
 
     pub fn http_client(&self) -> twilight_http::Client {
         let mut init = self.0.lock().unwrap();
-        let config = init.config;
+        let config = &init.config;
 
-        if let Some(client) = init.http_client {
+        if let Some(client) = init.http_client.clone() {
             return client;
         }
 
@@ -49,7 +49,7 @@ impl Initializer {
             twilight_http::Client::new(&config.discord.bot_token)
         };
 
-        init.http_client.replace(client);
+        init.http_client.replace(client.clone());
         client
     }
 

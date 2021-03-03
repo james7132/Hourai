@@ -5,8 +5,9 @@ authors = ["james7132 <contact@jamessliu.com>"]
 edition = "2018"
 
 [features]
-default = ["logger"]
+default = ["logger", "music"]
 logger = []
+music = ["base64", "hyper", "http", "twilight-lavalink"]
 
 [[bin]]
 name = "hourai"
@@ -44,6 +45,11 @@ twilight-model = "0.3.1"
 twilight-standby = "0.3.0"
 # Avoid breaking change
 funty = "=1.1.0"
+# Feature based optional dependencies
+hyper = { features = ["client", "http2", "runtime"], version = "0.14", optional = true }
+twilight-lavalink = { version = "0.3", optional = true }
+base64 = { version = "0.13", optional = true }
+http = { default-features = false, optional = true, version = "0.2" }
 
 [dependencies.tokio]
 default-features = false

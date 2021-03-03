@@ -16,10 +16,13 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     #[error("Discord Gateway error: {:?}", .0)]
     DiscordGatewayError(#[from] twilight_gateway::cluster::ClusterCommandError),
-    #[error("Discord HTTP error: {:?}", .0)]
-    DiscordHttpError(#[from] twilight_http::Error),
+    #[error("HTTP error: {:?}", .0)]
+    HttpError(#[from] twilight_http::Error),
     #[error("Cache error: {:?}", .0)]
-    CacheError(#[from] CacheNotFound)
+    CacheError(#[from] CacheNotFound),
+    #[cfg(feature = "music")]
+    #[error("Generic HTTP error: {:?}", .0)]
+    GenericHTTPError(#[from] http::Error)
 }
 
 impl From<mobc_redis::redis::RedisError> for Error {
@@ -27,6 +30,16 @@ impl From<mobc_redis::redis::RedisError> for Error {
         Self::Redis(mobc::Error::Inner(err))
     }
 }
+
+#[cfg(feature = "music")]
+impl From<hyper::Error> for Error {
+    fn from(err: hyper::Error) -> Self {
+        Self::HttpError(twilight_http::Error::RequestError {
+            source: err
+        })
+    }
+}
+
 
 #[derive(ErrorTrait, Debug)]
 pub enum CacheNotFound {

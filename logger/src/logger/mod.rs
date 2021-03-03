@@ -1,9 +1,9 @@
+use crate::prelude::*;
 use crate::{init, db};
 use crate::error::Result;
 use crate::cache::{InMemoryCache, ResourceType};
 use futures::stream::StreamExt;
 use twilight_model::{
-    id::*,
     user::User,
     guild::Permissions,
     guild::member::Member,
@@ -15,7 +15,6 @@ use twilight_gateway::{
 };
 use mobc_redis::redis::aio::Connection;
 use core::time::Duration;
-use tracing::{info, debug, error};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::DIRECT_MESSAGES.bits() |

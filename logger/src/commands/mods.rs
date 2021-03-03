@@ -7,7 +7,6 @@ pub type Command = Fn(Context) -> impl Future<Output=Result<(), CommandError>>;
 struct Context {
     pub message: Message,
     pub http: twilight_http::Client,
-
 }
 
 pub enum CommandError {

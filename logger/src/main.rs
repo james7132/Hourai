@@ -5,7 +5,13 @@ mod config;
 mod db;
 mod error;
 mod init;
+mod prelude;
+
+#[cfg(feature="logger")]
 mod logger;
+
+#[cfg(feature="music")]
+mod music;
 
 // Include the auto-generated protos as a module
 mod proto {
@@ -47,8 +53,13 @@ async fn main() {
     #[cfg(feature="logger")]
     info!("Enabled module: logger");
 
+    #[cfg(feature="music")]
+    info!("Enabled module: music");
+
     futures::join!(
         #[cfg(feature="logger")]
         logger::run(initializer.clone()),
+        #[cfg(feature="music")]
+        music::run(initializer.clone()),
     );
 }
