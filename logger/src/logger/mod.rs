@@ -17,7 +17,6 @@ use mobc_redis::redis::aio::Connection;
 use core::time::Duration;
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
-    Intents::DIRECT_MESSAGES.bits() |
     Intents::GUILDS.bits() |
     Intents::GUILD_BANS.bits() |
     Intents::GUILD_MESSAGES.bits() |
@@ -99,8 +98,8 @@ impl Client {
         self.gateway.up().await;
         info!("Client started.");
 
-        let _ = tokio::spawn(self.clone().log_bans());
-        let _ = tokio::spawn(self.clone().flush_online());
+        tokio::spawn(self.clone().log_bans());
+        tokio::spawn(self.clone().flush_online());
 
         let mut events = self.gateway.some_events(BOT_EVENTS);
         while let Some((shard_id, evt)) = events.next().await {

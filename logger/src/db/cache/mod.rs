@@ -4,8 +4,7 @@ use byteorder::{BigEndian, ByteOrder};
 use crate::proto::auto_config::*;
 use crate::proto::guild_configs::*;
 use mobc_redis::redis::aio::ConnectionLike;
-use mobc_redis::redis::{RedisWrite, ToRedisArgs};
-use mobc_redis::redis;
+use mobc_redis::redis::{self, RedisWrite, ToRedisArgs, FromRedisValue};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::io::prelude::*;
@@ -24,18 +23,20 @@ enum CompressionMode {
 /// The single byte key prefix for all keys stored in Redis.
 #[repr(u8)]
 #[derive(Copy, Clone)]
-enum CachePrefix {
+pub(super) enum CachePrefix {
     /// Protobuf configs for per server configuration. Stored in the form of hashes with individual
     /// configs as hash values, keyed by the corresponding CachedGuildConfig subkey.
     GuildConfigs = 1_u8,
     /// Redis sets of per-server user IDs of online users.
     OnlineStatus = 2_u8,
+    /// Messages cached.
+    Messages = 3_u8,
 }
 
 /// A prefixed key schema for 64-bit integer keys. Implements ToRedisArgs, so its generically
 /// usable as an argument to direct Redis calls.
 #[derive(Copy, Clone)]
-struct CacheKey8(CachePrefix, u64);
+pub(super) struct CacheKey8(CachePrefix, u64);
 
 impl ToRedisArgs for CacheKey8 {
     fn write_redis_args<W: ?Sized>(&self, out: &mut W)
@@ -48,10 +49,28 @@ impl ToRedisArgs for CacheKey8 {
     }
 }
 
+/// A prefixed key schema for 2 64-bit integer keys. Implements ToRedisArgs, so its generically
+/// usable as an argument to direct Redis calls.
 #[derive(Copy, Clone)]
-struct Id8(u64);
+pub(super) struct CacheKey16(CachePrefix, u64, u64);
+
+impl ToRedisArgs for CacheKey16 {
+    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
+    where
+        W: RedisWrite,
+    {
+        let mut key_enc = [self.0 as u8; 17];
+        BigEndian::write_u64(&mut key_enc[1..9], self.1);
+        BigEndian::write_u64(&mut key_enc[9..17], self.2);
+        out.write_arg(&key_enc[..]);
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(super) struct Id8(u64);
 
 impl ToRedisArgs for Id8 {
+
     fn write_redis_args<W: ?Sized>(&self, out: &mut W)
     where
         W: RedisWrite,
@@ -60,6 +79,7 @@ impl ToRedisArgs for Id8 {
         BigEndian::write_u64(&mut key_enc[0..8], self.0);
         out.write_arg(&key_enc[..]);
     }
+
 }
 
 pub struct OnlineStatus {
@@ -87,6 +107,62 @@ impl OnlineStatus {
 
     pub fn build(self) -> redis::Pipeline {
         self.pipeline
+    }
+
+}
+
+pub struct Protobuf<T: protobuf::Message>(T);
+
+impl<T: protobuf::Message> Protobuf<T> {
+
+    fn parse_protobuf(data: impl AsRef<[u8]>) -> redis::RedisResult<Self> {
+        match T::parse_from_bytes(data.as_ref()) {
+            Ok(proto) => Ok(Self::from(proto)),
+            Err(err) => Err(Self::convert_error(err))
+        }
+    }
+
+    fn convert_error(err: protobuf::error::ProtobufError) -> redis::RedisError {
+        use protobuf::error::ProtobufError;
+        use redis::{RedisError, ErrorKind};
+        match err {
+            ProtobufError::IoError(io_err) => RedisError::from(io_err),
+            general_err => RedisError::from(
+                (ErrorKind::ResponseError, "Failed to parse Protobuf", general_err.to_string())
+            )
+        }
+    }
+
+}
+
+impl<T: protobuf::Message> From<T> for Protobuf<T> {
+    fn from(value: T) -> Self {
+        Self(value)
+    }
+}
+
+impl<T: protobuf::Message> ToRedisArgs for Protobuf<T> {
+
+    fn write_redis_args<W: ?Sized>(&self, out: &mut W) where W: RedisWrite {
+        out.write_arg(
+            self.0
+                .write_to_bytes()
+                .expect("Should not be generating malformed Protobufs.")
+                .as_slice());
+    }
+
+}
+
+impl<T: protobuf::Message> FromRedisValue for Protobuf<T> {
+
+    fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
+        use redis::{RedisError, Value, ErrorKind};
+        match value {
+            Value::Data(data) => Self::parse_protobuf(data),
+            val =>  Err(RedisError::from(
+                    (ErrorKind::ResponseError, "Type incompatible with Protobufs",
+                     format!("Invalid input: {:?}", val)))),
+        }
     }
 
 }
