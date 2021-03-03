@@ -18,7 +18,7 @@ services:
     depends_on:
       - postgres
       - redis
-      - andesite
+      - lavalink
   logger:
     build:
       context: ../
@@ -76,12 +76,12 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
-  andesite:
-    image: natanbc/andesite:latest
+  lavalink:
+    image: fredboat/lavalink:master
     restart: unless-stopped
-    container_name: andesite
+    container_name: lavalink
     volumes:
-      - ./andesite.conf:/andesite/application.conf
+      - ./lavalink.yml:/opt/Lavalink/application.yml
     expose:
       - 2333
 volumes:
