@@ -42,6 +42,8 @@ class BanStorage:
                 session.query(models.Member) \
                        .filter_by(guild_id=ban.guild_id) \
                        .count()
+            if ban.reason is not None:
+                ban_proto.reason = ban.reason
             if config is not None:
                 ban_proto.guild_blocked = config.is_blocked
             yield ban_proto
