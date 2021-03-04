@@ -7,7 +7,7 @@ pub enum Error {
     #[error("SQL error {:?}", .0)]
     Sql(#[from] sqlx::Error),
     #[error("Redis error: {:?}", .0)]
-    Redis(#[from] mobc::Error<mobc_redis::redis::RedisError>),
+    Redis(#[from] redis::RedisError),
     #[error("Protobuf error: {:?}", .0)]
     Protobuf(#[from] protobuf::ProtobufError),
     #[error("IO error: {:?}", .0)]
@@ -23,12 +23,6 @@ pub enum Error {
     #[cfg(feature = "music")]
     #[error("Generic HTTP error: {:?}", .0)]
     GenericHTTPError(#[from] http::Error)
-}
-
-impl From<mobc_redis::redis::RedisError> for Error {
-    fn from(err: mobc_redis::redis::RedisError) -> Self {
-        Self::Redis(mobc::Error::Inner(err))
-    }
 }
 
 #[cfg(feature = "music")]

@@ -1,7 +1,18 @@
 use serde::Deserialize;
-use std::fs::File;
-use std::path::Path;
-use std::io::BufReader;
+use std::{env, fs::File, io::BufReader, path::{Path, PathBuf}};
+
+const DEFAULT_ENV: &'static str = "dev";
+
+pub fn get_config_path() -> Box<Path> {
+    let execution_env: String = match env::var("HOURAI_ENV") {
+        Ok(val) => val,
+        Err(_) => String::from(DEFAULT_ENV),
+    }.to_lowercase();
+
+    let mut buffer: PathBuf = ["/etc", "hourai"].iter().collect();
+    buffer.push(execution_env);
+    return buffer.into_boxed_path();
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HouraiConfig {

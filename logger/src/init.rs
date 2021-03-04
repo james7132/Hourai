@@ -1,7 +1,7 @@
 use crate::config::HouraiConfig;
 use crate::db::RedisPool;
 use std::sync::{Arc, Mutex};
-use mobc_redis::{redis, RedisConnectionManager};
+use tracing::debug;
 
 /// A common initialization struct for ensuring multiple connections to remote resources are
 struct InitializerRef {
@@ -17,6 +17,16 @@ pub struct Initializer(Arc<Mutex<InitializerRef>>);
 impl Initializer {
 
     pub fn new(config: HouraiConfig) -> Self {
+        tracing_subscriber::fmt()
+            .with_level(true)
+            .with_thread_ids(true)
+            .with_timer(tracing_subscriber::fmt::time::ChronoUtc::rfc3339())
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+            .compact()
+            .init();
+
+        debug!("Loaded Config: {:?}", config);
+
         Self(Arc::new(Mutex::new(InitializerRef {
             config: config,
             http_client: None,
@@ -70,7 +80,7 @@ impl Initializer {
         sql
     }
 
-    pub fn redis(&self) -> RedisPool {
+    pub async fn redis(&self) -> RedisPool {
         let mut init = self.0.lock().unwrap();
 
         if let Some(redis) = init.redis.clone() {
@@ -79,8 +89,9 @@ impl Initializer {
 
         let client = redis::Client::open(self.config().redis.as_ref())
                                    .expect("Failed to create Redis client");
-        let manager = RedisConnectionManager::new(client);
-        let redis = mobc::Pool::builder().max_open(10).build(manager);
+        let redis = redis::aio::ConnectionManager::new(client)
+                          .await
+                          .expect("Failed to initialize multiplexed Redis connection");
 
         init.redis.replace(redis.clone());
         redis

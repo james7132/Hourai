@@ -1,8 +1,4 @@
-use crate::prelude::*;
-use crate::{init, db};
-use crate::error::Result;
-use crate::cache::{InMemoryCache, ResourceType};
-use futures::stream::StreamExt;
+use hourai::{prelude::*, init, db, cache::{InMemoryCache, ResourceType}};
 use twilight_model::{
     user::User,
     guild::Permissions,
@@ -13,7 +9,6 @@ use twilight_gateway::{
     Intents, Event, EventType, EventTypeFlags,
     cluster::*,
 };
-use mobc_redis::redis::aio::Connection;
 use core::time::Duration;
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
@@ -85,7 +80,7 @@ impl Client {
                 .resource_types(CACHED_RESOURCES)
                 .build(),
             sql: initializer.sql().await,
-            redis: initializer.redis(),
+            redis: initializer.redis().await,
         }
     }
 
@@ -126,7 +121,7 @@ impl Client {
         }
     }
 
-    async fn flush_online(self) {
+    async fn flush_online(mut self) {
         loop {
             let mut pipeline = db::OnlineStatus::new();
             for guild_id in self.cache.guilds() {
@@ -136,13 +131,9 @@ impl Client {
                 };
                 pipeline.set_online(guild_id, presences);
             }
-            if let Ok(mut conn) = self.redis.get().await {
-                let result = pipeline.build()
-                                     .query_async::<Connection, ()>(&mut conn as &mut Connection)
-                                     .await;
-                if let Err(err) = result {
-                    error!("Error while flushing statuses: {:?}", err);
-                }
+            let result = pipeline.build().query_async::<RedisPool, ()>(&mut self.redis).await;
+            if let Err(err) = result {
+                error!("Error while flushing statuses: {:?}", err);
             }
             tokio::time::sleep(Duration::from_secs(60u64)).await;
         }

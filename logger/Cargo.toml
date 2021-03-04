@@ -1,5 +1,5 @@
 [package]
-name = "hourai-main"
+name = "hourai"
 version = "0.1.0"
 authors = ["james7132 <contact@jamessliu.com>"]
 edition = "2018"
@@ -10,10 +10,16 @@ logger = []
 music = ["base64", "hyper", "http", "twilight-lavalink"]
 
 [[bin]]
-name = "hourai"
-path =  "src/main.rs"
-test = false
-bench = false
+name = "hourai-logger"
+path = "src/bin/hourai-logger/main.rs"
+test = true
+required-features = ["logger"]
+
+[[bin]]
+name = "hourai-music"
+path = "src/bin/hourai-music/main.rs"
+test = true
+required-features = ["music"]
 
 [build-dependencies]
 walkdir = "2.3.1"
@@ -30,8 +36,7 @@ byteorder = "1.4.2"
 dashmap = { default-features = false, version = "4.0" }
 flate2 = "1.0.20"
 futures = "0.3.12"
-mobc = "0.7.0"
-mobc-redis = "0.7.0"
+redis = { version = "0.20", features = ["aio", "tokio-comp", "connection-manager"] }
 num-derive = "0.3.3"
 num-traits = "0.2.14"
 protobuf = "2.22.0"

@@ -1,6 +1,8 @@
 pub use std::{time::Duration, sync::Arc};
 pub use crate::error::{Error, Result};
 pub use twilight_model::id::{GuildId, UserId};
+pub use crate::db::RedisPool;
+pub use futures::stream::StreamExt;
 pub use tracing::{info, warn, debug, error};
 
 pub trait ClusterExt {
