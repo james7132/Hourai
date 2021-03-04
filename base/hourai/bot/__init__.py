@@ -54,6 +54,7 @@ class Hourai(commands.AutoShardedBot):
         self.storage = kwargs.get('storage') or storage.Storage(self.config)
 
         kwargs = {
+            'max_messages': None,
             'description': self.config.description,
             'command_prefix': self.config.command_prefix,
             'activity': discord.Game(self.config.activity),

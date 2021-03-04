@@ -124,7 +124,8 @@ class MessageFilter(cogs.BaseCog):
         if mention_mod or action_taken:
             text = action_taken + reasons_block
             if mention_mod:
-                _, mention_text = await utils.mention_random_online_mod(guild)
+                _, mention_text = await utils.mention_random_online_mod(
+                        self.bot, guild)
                 text = mention_text + " " + text
             embed = embed_utils.message_to_embed(message)
             tasks.append(guild.modlog.send(content=text, embed=embed))

@@ -102,7 +102,8 @@ class ValidationContext:
         mention = None
         # Only ping a mod if enabled and failed approval
         if self.config.ping_moderator_on_fail and not self.approved:
-            _, mention = await utils.mention_random_online_mod(self.guild)
+            _, mention = await utils.mention_random_online_mod(
+                    self.bot, self.guild)
         return await self.send_log_message(
             self.guild.modlog, ping_target=mention)
 

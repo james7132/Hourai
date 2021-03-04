@@ -342,14 +342,16 @@ class Validation(cogs.BaseCog):
         msg = await ctx.send('Propagating validation role...!')
         last_update = float('-inf')
         total_processed = 0
+        updated = 0
         async for member in ctx.guild.fetch_members(limit=None):
             total_processed += 1
             if role not in member.roles:
-                await self.member.add_roles(role)
-            if total_processed > last_update + 10:
+                await member.add_roles(role)
+                updated += 1
+            if updated > last_update + 10:
                 await msg.edit(
                     content=f'Propagation Ongoing ({total_processed} done)...')
-                last_update = total_processed
+                last_update = updated
         await msg.edit(content='Propagation conplete!')
 
     @commands.Cog.listener()

@@ -221,16 +221,20 @@ async def find_online_moderators(guild):
     return await guild.storage.online_status.get_online(guild.id, mod_ids)
 
 
-async def mention_random_online_mod(guild):
+async def mention_random_online_mod(bot, guild):
     """Mentions a of a currently online moderator.
     If no moderator is online, returns a ping to the server owner.
 
     Returns a tuple of (Member, str).
     """
     moderators = await find_online_moderators(guild)
-    logging.info(f"Found online moderators: {moderators}")
+    mods = await asyncio.gather(
+            *[bot.fetch_user(mod_id) for mod_id in moderators])
+    mods = [mod.id for mod in mods if mod is not None and not mod.bot]
+
+    logging.info(f"Found online moderators: {mods}")
     if len(moderators) > 0:
-        moderator = random.choice(moderators)
+        moderator = random.choice(mods)
         return moderator, f"<@{moderator}>"
     else:
         return guild.owner, f'<@{guild.owner_id}>, no mods are online!'

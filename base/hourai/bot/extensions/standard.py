@@ -265,7 +265,7 @@ class Standard(cogs.BaseCog):
         Pings a moderator on the server. Mod roles begin with "mod" or
         "admin" or have the administrator permission.
         """
-        _, mention = await utils.mention_random_online_mod(ctx.guild)
+        _, mention = await utils.mention_random_online_mod(ctx.bot, ctx.guild)
         await ctx.send(mention)
 
     @commands.command()

@@ -1,6 +1,7 @@
 from discord.flags import BaseFlags, flag_value, fill_with_flags
 from .action_pb2 import *  # noqa
 from .auto_config_pb2 import *  # noqa
+from .cache_pb2 import *  # noqa
 from .ban_pb2 import *  # noqa
 from .escalation_pb2 import *  # noqa
 from .event_pb2 import *  # noqa
