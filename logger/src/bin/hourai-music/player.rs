@@ -1,5 +1,5 @@
 use hourai::prelude::*;
-use crate::{client::Client, queue::MusicQueue, track::*};
+use crate::{Client, queue::MusicQueue, track::*};
 use std::collections::HashSet;
 use dashmap::DashMap;
 use std::sync::{Weak, RwLock, RwLockReadGuard, RwLockWriteGuard};
