@@ -4,11 +4,9 @@ mod emoji;
 mod guild;
 mod member;
 mod message;
-mod voice_state;
 
 pub use self::{
     emoji::CachedEmoji, guild::CachedGuild, member::CachedMember, message::CachedMessage,
-    voice_state::CachedVoiceState,
 };
 
 #[cfg(tests)]

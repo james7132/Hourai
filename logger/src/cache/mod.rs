@@ -100,12 +100,7 @@ struct InMemoryCacheRef {
     roles: DashMap<RoleId, GuildItem<Role>>,
     unavailable_guilds: DashSet<GuildId>,
     users: DashMap<UserId, (Arc<User>, BTreeSet<GuildId>)>,
-    /// Mapping of channels and the users currently connected.
-    voice_state_channels: DashMap<ChannelId, HashSet<(GuildId, UserId)>>,
-    /// Mapping of guilds and users currently connected to its voice channels.
-    voice_state_guilds: DashMap<GuildId, HashSet<UserId>>,
-    /// Mapping of guild ID and user ID pairs to their voice states.
-    voice_states: DashMap<(GuildId, UserId), Arc<VoiceState>>,
+    voice_states: DashMap<(GuildId, UserId), ChannelId>,
 }
 
 /// A thread-safe, in-memory-process cache of Discord data. It can be cloned and
@@ -187,6 +182,29 @@ impl InMemoryCache {
     /// Update the cache with an event from the gateway.
     pub fn update(&self, value: &impl UpdateCache) {
         value.update(self);
+    }
+
+    /// Finds which voice channel a user is in for a given Guild.
+    /// This runs O(1) time.
+    pub fn voice_state(&self, guild_id: GuildId, user_id: UserId) -> Option<ChannelId> {
+        self.0
+            .voice_states
+            .get(&(guild_id, user_id))
+            .map(|kv| *kv.value())
+    }
+
+    /// Finds all of the users in a given voice channel.
+    /// This runs O(n) time if n is the number of the number of user voice states cached.
+    ///
+    /// This linear time scaling is generally fine since the number of users in voice channels is
+    /// signifgantly lower than the sum total of all users visible to the bot.
+    pub fn voice_channel_users(&self, channel_id: ChannelId) -> Vec<UserId> {
+        self.0
+            .voice_states
+            .iter()
+            .filter(|kv| *kv.value() == channel_id)
+            .map(|kv| kv.key().1)
+            .collect()
     }
 
     /// Gets a channel by ID.
@@ -391,37 +409,6 @@ impl InMemoryCache {
         self.0.users.get(&user_id).map(|r| Arc::clone(&r.0))
     }
 
-    /// Gets the voice states within a voice channel.
-    ///
-    /// This requires both the [`GUILDS`] and [`GUILD_VOICE_STATES`] intents.
-    ///
-    /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
-    /// [`GUILD_VOICE_STATES`]: ::twilight_model::gateway::Intents::GUILD_VOICE_STATES
-    pub fn voice_channel_states(&self, channel_id: ChannelId) -> Option<Vec<Arc<VoiceState>>> {
-        let user_ids = self.0.voice_state_channels.get(&channel_id)?;
-
-        Some(
-            user_ids
-                .iter()
-                .filter_map(|key| self.0.voice_states.get(&key).map(|r| Arc::clone(r.value())))
-                .collect(),
-        )
-    }
-
-    /// Gets a voice state by user ID and Guild ID.
-    ///
-    /// This is an O(1) operation. This requires both the [`GUILDS`] and
-    /// [`GUILD_VOICE_STATES`] intents.
-    ///
-    /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
-    /// [`GUILD_VOICE_STATES`]: ::twilight_model::gateway::Intents::GUILD_VOICE_STATES
-    pub fn voice_state(&self, user_id: UserId, guild_id: GuildId) -> Option<Arc<VoiceState>> {
-        self.0
-            .voice_states
-            .get(&(guild_id, user_id))
-            .map(|r| Arc::clone(r.value()))
-    }
-
     /// Clear the state of the Cache.
     ///
     /// This is equal to creating a new empty cache.
@@ -446,8 +433,6 @@ impl InMemoryCache {
         self.0.roles.clear();
         self.0.unavailable_guilds.clear();
         self.0.users.clear();
-        self.0.voice_state_channels.clear();
-        self.0.voice_state_guilds.clear();
         self.0.voice_states.clear();
     }
 
@@ -633,7 +618,6 @@ impl InMemoryCache {
         }
 
         if self.wants(ResourceType::VOICE_STATE) {
-            self.0.voice_state_guilds.insert(guild.id, HashSet::new());
             self.cache_voice_states(guild.voice_states);
         }
 
@@ -813,84 +797,21 @@ impl InMemoryCache {
 
     fn cache_voice_states(&self, voice_states: impl IntoIterator<Item = VoiceState>) {
         for voice_state in voice_states {
-            self.cache_voice_state(voice_state);
+            self.cache_voice_state(&voice_state);
         }
     }
 
-    fn cache_voice_state(&self, vs: VoiceState) -> Option<Arc<VoiceState>> {
-        // This should always exist, but just incase use a match
+    fn cache_voice_state(&self, vs: &VoiceState) {
         let guild_id = match vs.guild_id {
             Some(id) => id,
-            None => return None,
+            None => return,
         };
 
-        let user_id = vs.user_id;
-
-        // Check if the user is switching channels in the same guild (ie. they already have a voice state entry)
-        if let Some(voice_state) = self.0.voice_states.get(&(guild_id, user_id)) {
-            if let Some(channel_id) = voice_state.channel_id {
-                let remove_channel_mapping = self
-                    .0
-                    .voice_state_channels
-                    .get_mut(&channel_id)
-                    .map(|mut channel_voice_states| {
-                        channel_voice_states.remove(&(guild_id, user_id));
-
-                        channel_voice_states.is_empty()
-                    })
-                    .unwrap_or_default();
-
-                if remove_channel_mapping {
-                    self.0.voice_state_channels.remove(&channel_id);
-                }
-            }
+        let key = (guild_id, vs.user_id);
+        match vs.channel_id {
+            Some(id) => {self.0.voice_states.insert(key, id);},
+            None => {self.0.voice_states.remove(&key);},
         }
-
-        // Check if the voice channel_id does not exist, signifying that the user has left
-        if vs.channel_id.is_none() {
-            {
-                let remove_guild = self
-                    .0
-                    .voice_state_guilds
-                    .get_mut(&guild_id)
-                    .map(|mut guild_users| {
-                        guild_users.remove(&user_id);
-
-                        guild_users.is_empty()
-                    })
-                    .unwrap_or_default();
-
-                if remove_guild {
-                    self.0.voice_state_guilds.remove(&guild_id);
-                }
-            }
-
-            let (_, state) = self.0.voice_states.remove(&(guild_id, user_id))?;
-
-            return Some(state);
-        }
-
-        let state = Arc::new(vs);
-
-        self.0
-            .voice_states
-            .insert((guild_id, user_id), Arc::clone(&state));
-
-        self.0
-            .voice_state_guilds
-            .entry(guild_id)
-            .or_default()
-            .insert(user_id);
-
-        if let Some(channel_id) = state.channel_id {
-            self.0
-                .voice_state_channels
-                .entry(channel_id)
-                .or_default()
-                .insert((guild_id, user_id));
-        }
-
-        Some(state)
     }
 
     fn delete_group(&self, channel_id: ChannelId) -> Option<Arc<Group>> {
@@ -1030,27 +951,6 @@ mod tests {
             public_flags: None,
             system: None,
             verified: None,
-        }
-    }
-
-    fn voice_state(
-        guild_id: GuildId,
-        channel_id: Option<ChannelId>,
-        user_id: UserId,
-    ) -> VoiceState {
-        VoiceState {
-            channel_id,
-            deaf: false,
-            guild_id: Some(guild_id),
-            member: None,
-            mute: true,
-            self_deaf: false,
-            self_mute: true,
-            self_stream: false,
-            session_id: "a".to_owned(),
-            suppress: false,
-            token: None,
-            user_id,
         }
     }
 

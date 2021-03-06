@@ -1,7 +1,8 @@
-mod queue;
-mod track;
-mod state;
 mod client;
+mod prelude;
+mod queue;
+mod player;
+mod track;
 
 use hourai::{config, init};
 

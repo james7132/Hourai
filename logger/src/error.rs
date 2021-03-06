@@ -1,3 +1,5 @@
+pub use anyhow::Result;
+pub use crate::commands::CommandError;
 use twilight_model::id::*;
 use thiserror::Error as ErrorTrait;
 
@@ -20,9 +22,14 @@ pub enum Error {
     HttpError(#[from] twilight_http::Error),
     #[error("Cache error: {:?}", .0)]
     CacheError(#[from] CacheNotFound),
+    #[error("Command error: {:?}", .0)]
+    CommandError(#[from] CommandError),
     #[cfg(feature = "music")]
     #[error("Generic HTTP error: {:?}", .0)]
-    GenericHTTPError(#[from] http::Error)
+    GenericHTTPError(#[from] http::Error),
+    #[cfg(feature = "music")]
+    #[error("Lavalik Client error: {:?}", .0)]
+    LavalinkClient(#[from] twilight_lavalink::client::ClientError)
 }
 
 #[cfg(feature = "music")]
@@ -48,5 +55,3 @@ pub enum CacheNotFound {
     #[error("Missing member: {} (guild: {})", .0, .1)]
     Member(UserId, GuildId),
 }
-
-pub type Result<T> = std::result::Result<T, Error>;

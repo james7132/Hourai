@@ -23,14 +23,6 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
         Self(VecDeque::new())
     }
 
-    /// Appends a value to the end of a key's queue.  If a key's queue does not exist, one will be
-    /// created for it.
-    ///
-    /// If there are n keys already in the queue, this is a O(n) operation.
-    pub fn push(&mut self, key: K, value: V) {
-        self.extend(key, vec![value]);
-    }
-
     /// Appends a full list of values to the end of a key's queue.  If a key's queue does not
     /// exist, one will be created for it.
     ///
@@ -42,7 +34,7 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
             self.0
                 .iter_mut()
                 .find(|kv| kv.0 == key)
-                .map(|mut kv| {
+                .map(|kv| {
                     kv.1.reserve(values.len());
                     for value in values {
                         kv.1.push_back(value);
@@ -73,29 +65,41 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
         })
     }
 
+    /// Gets the total number of items in the queue.  If there are n keys and k values in the
+    /// queue for a given key, this is a O(n) operation.
+    pub fn count(&self, key: K) -> Option<usize> {
+        self.0
+            .iter()
+            .find(|kv| kv.0 == key)
+            .map(|kv| kv.1.len())
+    }
+
     /// Shuffles the items for a single key. If there are n keys and k values in the
     /// queue for a given key, this is a O(n + k) operation.
     ///
     /// A no-op if no items have the key in the queue.
-    pub fn shuffle(&mut self, key: K) {
+    ///
+    /// Returns the number of items shuffled in the queue.
+    pub fn shuffle(&mut self, key: K) -> Option<usize> {
         self.0
             .iter_mut()
             .find(|kv| kv.0 == key)
-            .map(|mut kv| {
+            .map(|kv| {
                 kv.1.make_contiguous().shuffle(&mut rand::thread_rng());
-            });
+                kv.1.len()
+            })
     }
 
     /// Clears all of the items within a given the queue.
     /// If there are n keys in the queue, this is a O(n) operation.
-    pub fn clear_key(&mut self, key: K) {
-        self.0.retain(|r| r.0 != key);
-    }
-
-    /// Clears all of the items from the queue.
-    /// This is a O(1) operation.
-    pub fn clear(&mut self) {
-        self.0.clear()
+    ///
+    /// Returns the number of items removed from the queue.
+    pub fn clear_key(&mut self, key: K) -> Option<usize> {
+        self.count(key)
+            .map(|count| {
+                self.0.retain(|r| r.0 != key);
+                count
+            })
     }
 
     pub fn contains_key(&self, key: K) -> bool {

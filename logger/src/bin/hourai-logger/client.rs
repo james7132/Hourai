@@ -1,9 +1,10 @@
 use hourai::{prelude::*, init, db, cache::{InMemoryCache, ResourceType}};
 use twilight_model::{
-    user::User,
+    channel::Message,
+    gateway::payload::*,
     guild::Permissions,
     guild::member::Member,
-    gateway::{payload::*, presence::*},
+    user::User,
 };
 use twilight_gateway::{
     Intents, Event, EventType, EventTypeFlags,
@@ -41,13 +42,6 @@ const CACHED_RESOURCES: ResourceType =
         ResourceType::GUILD.bits() |
         ResourceType::PRESENCE.bits() |
         ResourceType::USER_CURRENT.bits());
-
-fn get_user_id(user: UserOrId) -> UserId {
-    match user {
-        UserOrId::User(user) => user.id,
-        UserOrId::UserId { id } => id,
-    }
-}
 
 pub async fn run(initializer: init::Initializer) {
     Client::new(initializer).await.run().await;
@@ -188,7 +182,7 @@ impl Client {
             Event::BanAdd(evt) => self.on_ban_add(evt).await,
             Event::BanRemove(evt) => self.on_ban_remove(evt).await,
             Event::GuildCreate(evt) => self.on_guild_create(*evt).await,
-            Event::GuildUpdate(evt) => Ok(()),
+            Event::GuildUpdate(_) => Ok(()),
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
                     self.on_guild_leave(*evt).await
@@ -200,6 +194,10 @@ impl Client {
             Event::MemberChunk(evt) => self.on_member_chunk(evt).await,
             Event::MemberRemove(evt) => self.on_member_remove(evt).await,
             Event::MemberUpdate(evt) => self.on_member_update(*evt).await,
+            Event::MessageCreate(evt) => self.on_message_create(evt.0).await,
+            Event::MessageUpdate(evt) => self.on_message_update(*evt).await,
+            Event::MessageDelete(evt) => self.on_message_delete(evt).await,
+            Event::MessageDeleteBulk(evt) => self.on_message_bulk_delete(evt).await,
             Event::RoleCreate(_) => Ok(()),
             Event::RoleUpdate(_) => Ok(()),
             Event::RoleDelete(evt) => self.on_role_delete(evt).await,
@@ -260,7 +258,26 @@ impl Client {
         Ok(())
     }
 
-    async fn on_guild_unavailable(self, evt: GuildDelete) -> Result<()> {
+    async fn on_message_create(mut self, evt: Message) -> Result<()> {
+        db::CachedMessage::new(evt).flush()
+                          .query_async(&mut self.redis).await?;
+        Ok(())
+    }
+
+    async fn on_message_update(self, _: MessageUpdate) -> Result<()> {
+        // TODO(james7132): Properly implement this
+        Ok(())
+    }
+
+    async fn on_message_delete(mut self, evt: MessageDelete) -> Result<()> {
+        db::CachedMessage::delete(evt.channel_id, evt.id)
+                          .query_async(&mut self.redis).await?;
+        Ok(())
+    }
+
+    async fn on_message_bulk_delete(mut self, evt: MessageDeleteBulk) -> Result<()> {
+        db::CachedMessage::bulk_delete(evt.channel_id, evt.ids)
+                          .query_async(&mut self.redis).await?;
         Ok(())
     }
 

@@ -1,8 +1,11 @@
-use async_trait::async_trait;
+use crate::prelude::*;
+use crate::proto::{
+    auto_config::*,
+    guild_configs::*,
+    cache::*,
+};
 use crate::error::Result;
 use byteorder::{BigEndian, ByteOrder};
-use crate::proto::auto_config::*;
-use crate::proto::guild_configs::*;
 use redis::{self, RedisWrite, ToRedisArgs, FromRedisValue, aio::ConnectionLike};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -106,6 +109,58 @@ impl OnlineStatus {
 
     pub fn build(self) -> redis::Pipeline {
         self.pipeline
+    }
+
+}
+
+pub struct CachedMessage {
+    proto: Protobuf<CachedMessageProto>,
+}
+
+impl CachedMessage {
+
+    pub fn new(message: twilight_model::channel::Message) -> Self {
+        let mut msg = CachedMessageProto::new();
+        msg.set_id(message.id.0);
+        msg.set_channel_id(message.channel_id.0);
+        msg.set_content(message.content);
+        if let Some(guild_id) = message.guild_id {
+            msg.set_guild_id(guild_id.0)
+        }
+
+        let user = msg.mut_author();
+        let author = &message.author;
+        user.set_id(author.id.0);
+        user.set_username(author.name.clone());
+        user.set_discriminator(message.author.discriminator() as u32);
+
+        Self {
+            proto: Protobuf(msg)
+        }
+    }
+
+    pub fn flush(self) -> redis::Pipeline {
+        let channel_id = self.proto.0.get_channel_id();
+        let id = self.proto.0.get_id();
+        let key = CacheKey16(CachePrefix::Messages, channel_id, id);
+        let mut pipeline = redis::pipe();
+        pipeline.atomic().set(key, self.proto).expire(key, 3600);
+        pipeline
+    }
+
+    pub fn delete(channel_id: ChannelId, id: MessageId) -> redis::Cmd {
+        Self::bulk_delete(channel_id, vec![id])
+    }
+
+    pub fn bulk_delete(
+        channel_id: ChannelId,
+        ids: impl IntoIterator<Item=MessageId>
+    ) -> redis::Cmd {
+        let keys: Vec<CacheKey16> =
+            ids.into_iter()
+               .map(|id| CacheKey16(CachePrefix::Messages, channel_id.0, id.0))
+               .collect();
+        redis::Cmd::del(keys)
     }
 
 }

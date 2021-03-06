@@ -1,8 +1,5 @@
-use twilight_model::{
-    id::*,
-    user::User,
-    guild::Ban as TwilightBan,
-};
+use crate::prelude::*;
+use twilight_model::{id::*, guild::Ban as TwilightBan};
 use std::convert::TryInto;
 
 pub type SqlDatabase = sqlx::Postgres;
@@ -30,13 +27,12 @@ pub struct Username {
 
 impl Username {
 
-    pub fn new(user: &User) -> Self {
+    pub fn new(user: &twilight_model::user::User) -> Self {
         Self {
             user_id: user.id.0 as i64,
             timestamp: get_unix_millis() as i64,
             name: user.name.clone(),
-            discriminator: Some(user.discriminator.parse::<u32>()
-                .expect("Discriminator isn't a number"))
+            discriminator: Some(user.discriminator() as u32)
         }
     }
 

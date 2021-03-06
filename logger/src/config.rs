@@ -16,10 +16,10 @@ pub fn get_config_path() -> Box<Path> {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HouraiConfig {
-    //pub command_prefix: String,
+    pub command_prefix: String,
     pub database: String,
     pub redis: String,
-    //pub music: MusicConfig,
+    pub music: MusicConfig,
     pub discord: DiscordConfig,
 }
 

@@ -1,7 +1,8 @@
 use twilight_model::id::GuildId;
 use twilight_lavalink::model::Play;
 use std::convert::TryFrom;
-use std::time::Duration;
+use std::{fmt, time::Duration};
+use tracing::error;
 
 #[derive(Clone)]
 pub struct TrackInfo {
@@ -12,25 +13,37 @@ pub struct TrackInfo {
     pub is_stream: bool,
 }
 
+impl fmt::Display for TrackInfo {
+
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(title) = &self.title {
+            f.write_str(title.as_str())
+        } else {
+            f.write_str(self.uri.as_str())
+        }
+    }
+
+}
+
 pub struct Track {
     pub info: TrackInfo,
-    pub encoded: Vec<u8>
+    pub track: Vec<u8>
 }
 
 impl Track {
 
-    pub fn play(self, guild_id: GuildId) -> Play {
-        Play::new(guild_id, self, None, None, false)
+    pub fn play(&self, guild_id: GuildId) -> Play {
+        Play::new(guild_id, base64::encode(&self.track), None, None, false)
     }
 
 }
 
-impl Into<String> for Track {
-
-    fn into(self) -> String {
-        base64::encode(self.encoded)
-    }
-
+fn decode_track(track: String) -> std::result::Result<Vec<u8>, base64::DecodeError> {
+    base64::decode(&track)
+           .map_err(|err| {
+               error!("Failed to decode track {}: {:?}", track, err);
+               err
+           })
 }
 
 impl From<twilight_lavalink::http::TrackInfo> for TrackInfo {
@@ -54,7 +67,7 @@ impl TryFrom<twilight_lavalink::http::Track> for Track {
     fn try_from(value: twilight_lavalink::http::Track) -> Result<Self, Self::Error> {
         Ok(Self {
             info: TrackInfo::from(value.info),
-            encoded: base64::decode(value.track)?
+            track: decode_track(value.track)?
         })
     }
 

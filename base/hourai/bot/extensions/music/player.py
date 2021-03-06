@@ -57,12 +57,6 @@ class HouraiMusicPlayer(wavelink.Player):
         config = self.guild.config.music
         await self.set_volume(config.volume)
 
-    async def disconnect(self) -> None:
-        await super().disconnect()
-        self.current = None
-        self._requestor_id = None
-        self.skip_votes.clear()
-
     async def hook(self, event) -> None:
         if isinstance(event, wavelink.events.TrackEnd):
             if event.reason in ('FINISHED', 'LOAD_FAILED'):
@@ -87,7 +81,7 @@ class HouraiMusicPlayer(wavelink.Player):
                 log.info(f"Voice websocket reconnected to channel "
                          f"{self.channel_id}.")
             else:
-                await self.disconnect()
+                await self.destroy()
         else:
             log.warn('Unhandled Lavalink Event: {event}')
 
@@ -133,8 +127,8 @@ class HouraiMusicPlayer(wavelink.Player):
         self._requestor_id = None
 
         if self.is_connected and len(self.queue) <= 0:
-            # Stop playing the song and disconnect
-            await self.disconnect()
+            # Stop playing the song and destroy
+            await self.destroy()
             await super().stop()
             return
 
@@ -203,7 +197,7 @@ class HouraiMusicPlayer(wavelink.Player):
         self.skip_votes.remove(user.id)
 
     async def stop(self):
-        """Clears the queue and disconnects the voice client."""
+        """Clears the queue and destroys the voice client."""
         self.queue.clear()
         await self.play_next()
         await asyncio.gather(*[ui_msg.stop() for ui_msg in self.ui_msgs])

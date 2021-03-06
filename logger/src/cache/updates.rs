@@ -216,8 +216,7 @@ impl UpdateCache for GuildDelete {
         }
 
         if cache.wants(ResourceType::VOICE_STATE) {
-            // Clear out a guilds voice states when a guild leaves
-            cache.0.voice_state_guilds.remove(&id);
+            cache.0.voice_states.retain(|(g, _), _| *g != id);
         }
 
         if cache.wants(ResourceType::MEMBER) {
@@ -676,11 +675,7 @@ impl UpdateCache for VoiceStateUpdate {
             return;
         }
 
-        cache.cache_voice_state(self.0.clone());
-
-        if let (Some(guild_id), Some(member)) = (self.0.guild_id, &self.0.member) {
-            cache.cache_member(guild_id, member.clone());
-        }
+        cache.cache_voice_state(&self.0);
     }
 }
 
