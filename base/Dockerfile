@@ -6,7 +6,7 @@ RUN apk add --no-cache git protobuf gcc make libffi-dev build-base postgresql-de
 COPY base/requirements.txt .
 RUN pip install --prefix /install -r requirements.txt
 COPY base/ .
-COPY proto/ ./hourai/db/proto
+COPY proto/ .
 RUN protoc $(find /app -type f -regex ".*\.proto") \
   --proto_path=/app \
   --python_out=/app
