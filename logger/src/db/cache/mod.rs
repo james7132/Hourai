@@ -77,7 +77,7 @@ impl ToRedisArgs for Id8 {
     where
         W: RedisWrite,
     {
-        let mut key_enc = [8 as u8; 8];
+        let mut key_enc = [0; 8];
         BigEndian::write_u64(&mut key_enc[0..8], self.0);
         out.write_arg(&key_enc[..]);
     }
@@ -88,12 +88,16 @@ pub struct OnlineStatus {
     pipeline: redis::Pipeline
 }
 
+impl Default for OnlineStatus {
+    fn default() -> Self {
+        Self { pipeline: redis::pipe().atomic().clone() }
+    }
+}
+
 impl OnlineStatus {
 
     pub fn new() -> Self {
-        Self {
-            pipeline: redis::pipe().atomic().clone()
-        }
+        Self::default()
     }
 
     pub fn set_online(&mut self, guild_id: GuildId, online: impl IntoIterator<Item=UserId>)
@@ -232,11 +236,11 @@ fn compress_payload(payload: &[u8]) -> Result<Vec<u8>> {
         CompressionMode::Uncompressed
     };
     output.insert(0, compression_mode as u8);
-    return Ok(output);
+    Ok(output)
 }
 
 fn decompress_payload(payload: &[u8]) -> Result<Vec<u8>> {
-    if payload.len() <= 0 {
+    if payload.len() < 1 {
         return Ok(payload.to_vec());
     }
     let data = &payload[1..];

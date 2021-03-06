@@ -28,7 +28,7 @@ impl Initializer {
         debug!("Loaded Config: {:?}", config);
 
         Self(Arc::new(Mutex::new(InitializerRef {
-            config: config,
+            config,
             http_client: None,
             sql: None,
             redis: None,

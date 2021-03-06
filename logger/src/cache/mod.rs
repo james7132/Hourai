@@ -456,7 +456,7 @@ impl InMemoryCache {
         // The everyone role ID is the same as the guild ID.
         let everyone_perms = self.role(RoleId(guild_id.0))
             .map(|role| role.permissions)
-            .unwrap_or(Permissions::empty());
+            .unwrap_or_else(|| Permissions::empty());
         let perms = role_ids
                         .map(|id| self.role(id))
                         .filter_map(|role| role)
@@ -708,35 +708,27 @@ impl InMemoryCache {
     }
 
     fn cache_presences(&self, guild_id: GuildId, presences: impl IntoIterator<Item = Presence>) {
-        self.0
-            .guild_presences
-            .get_mut(&guild_id)
-            .map(move |mut kv| {
-                let guild_presences = kv.value_mut();
-                for presence in presences {
-                    let user_id = presence_user_id(&presence);
-                    let online = presence.status == Status::Online;
-                    if online {
-                        guild_presences.insert(user_id);
-                    } else {
-                        guild_presences.remove(&user_id);
-                    }
-                }
-            });
-    }
-
-    fn cache_presence(&self, guild_id: GuildId, user_id: UserId, status: Status) -> bool {
-        let online = status == Status::Online;
-        self.0
-            .guild_presences
-            .get_mut(&guild_id)
-            .map(|mut kv| {
-                if online {
+        if let Some(mut kv) = self.0.guild_presences.get_mut(&guild_id) {
+            for presence in presences {
+                let user_id = presence_user_id(&presence);
+                if presence.status == Status::Online {
                     kv.value_mut().insert(user_id);
                 } else {
                     kv.value_mut().remove(&user_id);
                 }
-            });
+            }
+        }
+    }
+
+    fn cache_presence(&self, guild_id: GuildId, user_id: UserId, status: Status) -> bool {
+        let online = status == Status::Online;
+        if let Some(mut kv) = self.0.guild_presences.get_mut(&guild_id) {
+            if online {
+                kv.value_mut().insert(user_id);
+            } else {
+                kv.value_mut().remove(&user_id);
+            }
+        }
         online
     }
 

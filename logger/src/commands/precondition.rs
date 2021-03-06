@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use super::{Context, CommandError};
 
-pub fn require_in_guild<'a>(ctx: &Context<'a>) -> Result<GuildId> {
+pub fn require_in_guild(ctx: &Context<'_>) -> Result<GuildId> {
     ctx.message
        .guild_id
        .ok_or_else(||

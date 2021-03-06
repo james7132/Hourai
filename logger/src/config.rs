@@ -1,18 +1,7 @@
 use serde::Deserialize;
 use std::{env, fs::File, io::BufReader, path::{Path, PathBuf}};
 
-const DEFAULT_ENV: &'static str = "dev";
-
-pub fn get_config_path() -> Box<Path> {
-    let execution_env: String = match env::var("HOURAI_ENV") {
-        Ok(val) => val,
-        Err(_) => String::from(DEFAULT_ENV),
-    }.to_lowercase();
-
-    let mut buffer: PathBuf = ["/etc", "hourai"].iter().collect();
-    buffer.push(execution_env);
-    return buffer.into_boxed_path();
-}
+const DEFAULT_ENV: &str = "dev";
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HouraiConfig {
@@ -72,5 +61,15 @@ pub fn load_config(path: &Path) -> HouraiConfig {
     let file = File::open(path);
     assert!(file.is_ok(), "Cannot open JSON config at {:?}", path);
     let reader = BufReader::new(file.unwrap());
-    return serde_json::from_reader(reader).unwrap();
+    serde_json::from_reader(reader).unwrap()
+}
+
+pub fn get_config_path() -> Box<Path> {
+    let mut buffer: PathBuf = ["/etc", "hourai"].iter().collect();
+    let execution_env: String =
+        env::var("HOURAI_ENV")
+            .unwrap_or_else(|_| String::from(DEFAULT_ENV))
+            .to_lowercase();
+    buffer.push(execution_env);
+    buffer.into_boxed_path()
 }

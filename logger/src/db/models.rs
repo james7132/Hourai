@@ -51,8 +51,7 @@ impl Username {
         let user_ids: Vec<i64> = usernames.iter().map(|u| u.user_id).collect();
         let timestamps: Vec<i64> = usernames.iter().map(|u| u.timestamp).collect();
         let names: Vec<String> = usernames.iter().map(|u| u.name.clone()).collect();
-        let discriminator: Vec<Option<u32>> = usernames.iter().map(|u| u.discriminator.clone())
-                                                       .collect();
+        let discriminator: Vec<Option<u32>> = usernames.iter().map(|u| u.discriminator).collect();
         sqlx::query("INSERT INTO usernames (user_id, timestamp, name, discriminator)
                      SELECT * FROM UNNEST ($1, $2, $3, $4)
                      AS t(user_id, timestamp, name, discriminator)
@@ -175,7 +174,7 @@ impl Member {
         UserId(self.user_id as u64)
     }
 
-    pub fn role_ids<'a>(&'a self) ->  impl Iterator<Item=RoleId> + 'a {
+    pub fn role_ids(&self) ->  impl Iterator<Item=RoleId> + '_ {
         self.role_ids.iter().map(|id| RoleId(id.clone().try_into().unwrap()))
     }
 
