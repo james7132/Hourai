@@ -38,9 +38,9 @@ pub(super) enum CachePrefix {
 /// A prefixed key schema for 64-bit integer keys. Implements ToRedisArgs, so its generically
 /// usable as an argument to direct Redis calls.
 #[derive(Copy, Clone)]
-pub(super) struct CacheKey8(CachePrefix, u64);
+pub(super) struct CacheKey<T>(CachePrefix, T);
 
-impl ToRedisArgs for CacheKey8 {
+impl ToRedisArgs for CacheKey<u64> {
     fn write_redis_args<W: ?Sized>(&self, out: &mut W)
     where
         W: RedisWrite,
@@ -51,27 +51,22 @@ impl ToRedisArgs for CacheKey8 {
     }
 }
 
-/// A prefixed key schema for 2 64-bit integer keys. Implements ToRedisArgs, so its generically
-/// usable as an argument to direct Redis calls.
-#[derive(Copy, Clone)]
-pub(super) struct CacheKey16(CachePrefix, u64, u64);
-
-impl ToRedisArgs for CacheKey16 {
+impl ToRedisArgs for CacheKey<(u64, u64)>{
     fn write_redis_args<W: ?Sized>(&self, out: &mut W)
     where
         W: RedisWrite,
     {
         let mut key_enc = [self.0 as u8; 17];
-        BigEndian::write_u64(&mut key_enc[1..9], self.1);
-        BigEndian::write_u64(&mut key_enc[9..17], self.2);
+        BigEndian::write_u64(&mut key_enc[1..9], self.1.0);
+        BigEndian::write_u64(&mut key_enc[9..17], self.1.1);
         out.write_arg(&key_enc[..]);
     }
 }
 
 #[derive(Copy, Clone)]
-pub(super) struct Id8(u64);
+pub(super) struct Id<T>(T);
 
-impl ToRedisArgs for Id8 {
+impl ToRedisArgs for Id<u64> {
 
     fn write_redis_args<W: ?Sized>(&self, out: &mut W)
     where
@@ -102,8 +97,8 @@ impl OnlineStatus {
 
     pub fn set_online(&mut self, guild_id: GuildId, online: impl IntoIterator<Item=UserId>)
                       -> &mut Self {
-        let key = CacheKey8(CachePrefix::OnlineStatus, guild_id.0);
-        let ids: Vec<Id8> = online.into_iter().map(|id| Id8(id.0)).collect();
+        let key = CacheKey(CachePrefix::OnlineStatus, guild_id.0);
+        let ids: Vec<Id<u64>> = online.into_iter().map(|id| Id(id.0)).collect();
         self.pipeline
             .del(key).ignore()
             .sadd(key, ids).ignore()
@@ -146,7 +141,7 @@ impl CachedMessage {
     pub fn flush(self) -> redis::Pipeline {
         let channel_id = self.proto.0.get_channel_id();
         let id = self.proto.0.get_id();
-        let key = CacheKey16(CachePrefix::Messages, channel_id, id);
+        let key = CacheKey(CachePrefix::Messages, (channel_id, id));
         let mut pipeline = redis::pipe();
         pipeline.atomic().set(key, self.proto).expire(key, 3600);
         pipeline
@@ -160,9 +155,9 @@ impl CachedMessage {
         channel_id: ChannelId,
         ids: impl IntoIterator<Item=MessageId>
     ) -> redis::Cmd {
-        let keys: Vec<CacheKey16> =
+        let keys: Vec<CacheKey<(u64, u64)>> =
             ids.into_iter()
-               .map(|id| CacheKey16(CachePrefix::Messages, channel_id.0, id.0))
+               .map(|id| CacheKey(CachePrefix::Messages, (channel_id.0, id.0)))
                .collect();
         redis::Cmd::del(keys)
     }
@@ -278,7 +273,7 @@ impl<T: protobuf::Message + CachedGuildConfig + Send> Cacheable for T {
         I: Into<GuildId> + Send,
         C: ConnectionLike + Send,
     {
-        let key = CacheKey8(CachePrefix::GuildConfigs, key.into().0);
+        let key = CacheKey(CachePrefix::GuildConfigs, key.into().0);
         let response: Option<Vec<u8>> = redis::Cmd::hget(key, Self::SUBKEY)
             .query_async(connection)
             .await?;
@@ -300,7 +295,7 @@ impl<T: protobuf::Message + CachedGuildConfig + Send> Cacheable for T {
         let mut proto_enc: Vec<u8> = Vec::new();
         value.write_to_vec(&mut proto_enc)?;
         let compressed = compress_payload(&proto_enc[..])?;
-        let key = CacheKey8(CachePrefix::GuildConfigs, key.into().0);
+        let key = CacheKey(CachePrefix::GuildConfigs, key.into().0);
         redis::Cmd::hset(key, Self::SUBKEY, compressed)
             .query_async(connection)
             .await?;
