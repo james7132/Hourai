@@ -307,7 +307,7 @@ impl Client<'static> {
                 Command { name: "queue", .. } => Ok(()),
                 Command { name: "volume", arguments, .. } =>
                     // TODO(james7132): Do proper argument parsing.
-                    self.set_volume(ctx, 100).await,
+                    self.volume(ctx, 100).await,
                 _ => Ok(())
             };
 

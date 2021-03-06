@@ -136,10 +136,13 @@ impl Player {
             let mut state = self.state_mut();
             state.skip_votes.clear();
             let previous = state.currently_playing.as_ref().map(|kv| kv.1.clone());
-            state.currently_playing = state.queue.pop().map(|kv| {
-                get_lavalink_player!(self).send(kv.value.play(self.0.guild_id))?;
-                (kv.key, kv.value.info)
-            });
+            state.currently_playing = match state.queue.pop() {
+                Some(kv) => {
+                    get_lavalink_player!(self).send(kv.value.play(self.0.guild_id))?;
+                    Some((kv.key, kv.value.info))
+                },
+                None => None
+            };
             (previous, state.currently_playing.clone())
         };
         if playing.is_none() {
