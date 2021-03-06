@@ -1,8 +1,7 @@
 name: Lint
 on: push
 jobs:
-  run-linters:
-    name: Run linters
+  flake8:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,3 +22,12 @@ jobs:
           github_token: ${{ secrets.github_token }}
           flake8: true
           flake8_dir: base/
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - run: rustup component add clippy
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
