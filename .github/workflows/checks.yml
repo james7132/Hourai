@@ -1,4 +1,4 @@
-name: Lint
+name: CI
 on: push
 jobs:
   flake8:
@@ -31,3 +31,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
+  rust-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: cd logger && cargo build --all-features
