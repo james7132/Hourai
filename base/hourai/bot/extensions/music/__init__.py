@@ -132,7 +132,7 @@ class Music(cogs.BaseCog):
             members.remove(guild.me.id)
             return len(members) <= 0
         if all(is_empty(vc) for vc in guild.voice_channels):
-            await player.stop()
+            await player.destroy()
 
         # Remove skip votes from those who leave after 5 minutes
         channel = player.channel
@@ -267,7 +267,7 @@ class Music(cogs.BaseCog):
         if not player.is_connected:
             await ctx.send('There is currently no music playing.')
             return
-        await player.stop()
+        await player.destroy()
         await ctx.send(':notes: The player has stopped and the queue has been '
                        'cleared.')
 

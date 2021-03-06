@@ -129,7 +129,6 @@ class HouraiMusicPlayer(wavelink.Player):
         if self.is_connected and len(self.queue) <= 0:
             # Stop playing the song and destroy
             await self.destroy()
-            await super().stop()
             return
 
         requestor_id, song = await self.queue.get()
@@ -198,10 +197,10 @@ class HouraiMusicPlayer(wavelink.Player):
 
     async def stop(self):
         """Clears the queue and destroys the voice client."""
+        await super().stop()
         self.queue.clear()
-        await self.play_next()
-        await asyncio.gather(*[ui_msg.stop() for ui_msg in self.ui_msgs])
         self.ui_msgs.clear()
+        await asyncio.gather(*[ui_msg.stop() for ui_msg in self.ui_msgs])
 
     async def set_volume(self, volume):
         await super().set_volume(volume)
