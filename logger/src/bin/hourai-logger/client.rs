@@ -1,4 +1,4 @@
-use hourai::{prelude::*, init, db, cache::{InMemoryCache, ResourceType}};
+use hourai::{prelude::*, init, config, db, cache::{InMemoryCache, ResourceType}};
 use twilight_model::{
     channel::Message,
     gateway::payload::*,
@@ -43,8 +43,8 @@ const CACHED_RESOURCES: ResourceType =
         ResourceType::PRESENCE.bits() |
         ResourceType::USER_CURRENT.bits());
 
-pub async fn run(initializer: init::Initializer) {
-    Client::new(initializer).await.run().await;
+pub async fn run(conf: config::HouraiConfig) {
+    Client::new(conf).await.run().await;
 }
 
 #[derive(Clone)]
@@ -58,13 +58,15 @@ struct Client {
 
 impl Client {
 
-    pub async fn new(initializer: init::Initializer) -> Self {
-        let config = initializer.config();
-        let http_client = initializer.http_client();
+    pub async fn new(conf: config::HouraiConfig) -> Self {
+        init::init(&conf);
+        let http_client = init::http_client(&conf);
+        let sql = init::sql(&conf).await;
+        let redis = init::redis(&conf).await;
 
         Self {
             http_client: http_client.clone(),
-            gateway: Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
+            gateway: Cluster::builder(&conf.discord.bot_token, BOT_INTENTS)
                 .shard_scheme(ShardScheme::Auto)
                 .http_client(http_client)
                 .build()
@@ -73,8 +75,8 @@ impl Client {
             cache: InMemoryCache::builder()
                 .resource_types(CACHED_RESOURCES)
                 .build(),
-            sql: initializer.sql().await,
-            redis: initializer.redis().await,
+            sql,
+            redis,
         }
     }
 

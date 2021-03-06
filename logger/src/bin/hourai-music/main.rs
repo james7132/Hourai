@@ -8,6 +8,7 @@ use crate::{prelude::*, player::{Player, PlayerManager}, track::Track};
 use hourai::{config, commands, init, cache::{InMemoryCache, ResourceType}};
 use twilight_model::{channel::Message, id::ChannelId};
 use twilight_lavalink::{Lavalink, http::LoadType};
+use http::Uri;
 use twilight_command_parser::{Parser, CommandParserConfig, Command};
 use twilight_gateway::{
     Intents, Event, EventTypeFlags,
@@ -42,7 +43,7 @@ const CACHED_RESOURCES: ResourceType =
 #[tokio::main]
 async fn main() {
     let config = config::load_config(config::get_config_path().as_ref());
-    let initializer = init::Initializer::new(config.clone());
+    init::init(&config);
 
     let parser = {
         let mut parser = CommandParserConfig::new();
@@ -62,7 +63,7 @@ async fn main() {
         Parser::new(parser)
     };
 
-    let http_client = initializer.http_client();
+    let http_client = init::http_client(&config);
     let current_user = http_client.current_user().await.unwrap();
     let cache = InMemoryCache::builder().resource_types(CACHED_RESOURCES).build();
     let gateway = Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
@@ -131,12 +132,16 @@ impl Client<'static> {
 
     async fn connect_node(
         &mut self,
-        uri: impl AsRef<str>,
+        uri: &Uri,
         password: impl Into<String>
     ) -> Result<LavalinkEventStream> {
-        let name = Name::from_str(uri.as_ref()).unwrap();
+        let name = Name::from_str(uri.host().unwrap()).unwrap();
         let pass = password.into();
-        for address in self.resolver.call(name).await? {
+        for mut address in self.resolver.call(name).await? {
+            if let Some(port) = uri.port_u16() {
+                address.set_port(port);
+            }
+
             debug!("Trying to connect to a Lavalink node at: {} ", address);
             match self.lavalink.add(address, pass.as_str()).await  {
                 Ok((_, rx)) => return Ok(rx),
@@ -147,10 +152,11 @@ impl Client<'static> {
     }
 
     async fn run_node(mut self, config: config::MusicNode) {
-        let name = format!("https://{}:{}", config.host, config.port);
+        let name = format!("http://{}:{}", config.host, config.port);
+        let uri = Uri::try_from(name.as_str()).unwrap();
         info!("Starting listener for node {}.", name.as_str());
         loop {
-            let connect = self.connect_node(name.as_str(), config.password.as_str());
+            let connect = self.connect_node(&uri, config.password.as_str());
             let mut rx: LavalinkEventStream = match connect.await {
                 Ok(rx) => rx,
                 Err(err) => {
@@ -172,6 +178,7 @@ impl Client<'static> {
     async fn consume_event(self, event: Event) -> () {
         let kind = event.kind();
         let result = match event {
+            Event::Ready(_) => Ok(()),
             Event::MessageCreate(evt) => self.on_message_create(evt.0).await,
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
