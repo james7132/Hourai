@@ -30,7 +30,7 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+          args: --all-features --manifest-path logger/Cargo.toml
   rust-build:
     runs-on: ubuntu-latest
     steps:
@@ -38,4 +38,4 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - run: cd logger && cargo build --all-features
+      - run: cargo build --all-features --manifest-path logger/Cargo.toml
