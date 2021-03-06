@@ -1,0 +1,44 @@
+name: Docker Build
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: ["main"]
+    types:
+      - completed
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+         name: Checkout
+         uses: actions/checkout@v2
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build (base)
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          context: .
+          file: base/Dockerfile
+          tags: james7132/hourai:latest
+      -
+        name: Build (logger)
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          context: .
+          file: logger/Dockerfile.logger
+          tags: james7132/hourai:latest-logger
+      -
+        name: Build (music)
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          context: .
+          file: logger/Dockerfile.music
+          tags: james7132/hourai:latest-music
