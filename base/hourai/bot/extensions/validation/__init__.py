@@ -318,7 +318,7 @@ class Validation(cogs.BaseCog):
 
     @validation.command(name="disable")
     async def validation_disable(self, ctx):
-        ctx.guild.config.validation = False
+        ctx.guild.config.validation.enabled = False
         await ctx.guild.flush_config()
         await ctx.send('Validation disabled. To reenable, rerun `~validation '
                        'setup`.')
