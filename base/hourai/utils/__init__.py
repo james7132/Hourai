@@ -233,7 +233,7 @@ async def mention_random_online_mod(bot, guild):
     mods = [mod.id for mod in mods if mod is not None and not mod.bot]
 
     logging.info(f"Found online moderators: {mods}")
-    if len(moderators) > 0:
+    if len(mods) > 0:
         moderator = random.choice(mods)
         return moderator, f"<@{moderator}>"
     else:
