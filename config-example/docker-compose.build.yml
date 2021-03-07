@@ -1,14 +1,22 @@
 version: "3.8"
 services:
   hourai:
+    image: james7132/hourai:latest
     build:
-      context: ../
-      dockerfile: ../base/Dockerfile
+      context: ..
+      dockerfile: base/Dockerfile
   logger:
+    image: james7132/hourai:latest-logger
     build:
-      context: ../
-      dockerfile: ../logger/Dockerfile
+      context: ..
+      dockerfile: logger/Dockerfile.logger
+  music:
+    image: james7132/hourai:latest-music
+    build:
+      context: ..
+      dockerfile: logger/Dockerfile.music
   nginx:
+    image: james7132/hourai:latest-frontend
     build:
-      context: ../
-      dockerfile: ../frontend/Dockerfile
+      context: ..
+      dockerfile: frontend/Dockerfile
