@@ -81,3 +81,6 @@ features = ['allow-non-simd']
 default-features = false
 features = ["runtime-tokio-rustls", "postgres", "macros"]
 version = "0.5.1"
+
+[dev-dependencies]
+static_assertions = "1.1.0"

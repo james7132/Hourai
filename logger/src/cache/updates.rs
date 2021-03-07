@@ -253,6 +253,7 @@ impl UpdateCache for GuildUpdate {
 
         if let Some(mut guild) = cache.0.guilds.get_mut(&self.0.id) {
             let mut guild = Arc::make_mut(&mut guild);
+            guild.name = self.name.clone();
             guild.description = self.description.clone();
             guild.features = self.features.clone();
             guild.icon = self.icon.clone();
@@ -675,7 +676,9 @@ impl UpdateCache for VoiceStateUpdate {
             return;
         }
 
-        cache.cache_voice_state(&self.0);
+        if let Some(guild_id) = &self.0.guild_id {
+            cache.cache_voice_state(*guild_id, self.0.user_id, self.0.channel_id);
+        }
     }
 }
 
@@ -684,7 +687,7 @@ impl UpdateCache for WebhooksUpdate {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::ResourceType;
+    use super::super::config::ResourceType;
     use twilight_model::{
         channel::{
             message::{MessageFlags, MessageType},
@@ -1001,65 +1004,6 @@ mod tests {
             token: None,
             user_id: UserId(1),
         }));
-    }
-
-    #[test]
-    fn test_voice_states_members() {
-        use twilight_model::{guild::member::Member, user::User};
-
-        let cache = InMemoryCache::new();
-
-        let mutation = VoiceStateUpdate(VoiceState {
-            channel_id: Some(ChannelId(4)),
-            deaf: false,
-            guild_id: Some(GuildId(2)),
-            member: Some(Member {
-                deaf: false,
-                guild_id: GuildId(2),
-                hoisted_role: None,
-                joined_at: None,
-                mute: false,
-                nick: None,
-                pending: false,
-                premium_since: None,
-                roles: Vec::new(),
-                user: User {
-                    avatar: Some("".to_owned()),
-                    bot: false,
-                    discriminator: "0001".to_owned(),
-                    email: None,
-                    flags: None,
-                    id: UserId(3),
-                    locale: None,
-                    mfa_enabled: None,
-                    name: "test".to_owned(),
-                    premium_type: None,
-                    public_flags: None,
-                    system: None,
-                    verified: None,
-                },
-            }),
-            mute: false,
-            self_deaf: false,
-            self_mute: false,
-            self_stream: false,
-            session_id: "".to_owned(),
-            suppress: false,
-            token: None,
-            user_id: UserId(3),
-        });
-
-        cache.update(&mutation);
-
-        assert_eq!(cache.0.members.len(), 1);
-        {
-            let entry = cache.0.users.get(&UserId(3)).unwrap();
-            assert_eq!(entry.value().1.len(), 1);
-        }
-        assert_eq!(
-            cache.member(GuildId(2), UserId(3)).unwrap().user.name,
-            "test"
-        );
     }
 
     #[test]

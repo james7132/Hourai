@@ -7,6 +7,7 @@ use twilight_model::{
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct CachedGuild {
     pub id: GuildId,
+    pub name: String,
     pub description: Option<String>,
     pub features: Vec<String>,
     pub icon: Option<String>,
