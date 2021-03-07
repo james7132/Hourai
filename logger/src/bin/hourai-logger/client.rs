@@ -28,6 +28,10 @@ const BOT_EVENTS : EventTypeFlags =
         EventTypeFlags::MEMBER_CHUNK.bits() |
         EventTypeFlags::MEMBER_REMOVE.bits() |
         EventTypeFlags::MEMBER_UPDATE.bits() |
+        EventTypeFlags::MESSAGE_CREATE.bits() |
+        EventTypeFlags::MESSAGE_UPDATE.bits() |
+        EventTypeFlags::MESSAGE_DELETE.bits() |
+        EventTypeFlags::MESSAGE_DELETE_BULK.bits() |
         EventTypeFlags::GUILD_CREATE.bits() |
         EventTypeFlags::GUILD_UPDATE.bits() |
         EventTypeFlags::GUILD_DELETE.bits() |
