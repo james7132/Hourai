@@ -723,15 +723,15 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @prune.command(name="user")
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def prune_user(self, ctx, *members: discord.Member):
+    async def prune_user(self, ctx, *user: discord.User):
         """Prunes messages in the current channel that belong to specific users.
 
         Up to 100 messages will be deleted.
         Messages over 14 days old will not be deleted.
         Requires: Manage Messages (User and Bot)
         """
-        members = set(members)
-        count = await self._prune(ctx, predicate=lambda m: m.author in members)
+        users = set(users)
+        count = await self._prune(ctx, predicate=lambda m: m.author in users)
         await ctx.send(f":thumbsup: Deleted {count} messages.",
                        delete_after=DELETE_WAIT_DURATION)
 
