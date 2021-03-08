@@ -55,10 +55,11 @@ impl GuildConfig {
         conn: &mut C
     ) -> Result<T> {
         let key = CacheKey(CachePrefix::GuildConfigs, id.0);
-        let response: Compressed<Protobuf<T>> = redis::Cmd::hget(key, vec![T::SUBKEY])
-            .query_async(conn)
-            .await?;
-        Ok(response.0.0)
+        let response: Option<Compressed<Protobuf<T>>> =
+            redis::Cmd::hget(key, vec![T::SUBKEY])
+                  .query_async(conn)
+                  .await?;
+        Ok(response.map(|c| c.0.0).unwrap_or_else(|| T::new()))
     }
 
     pub fn set<T: ::protobuf::Message + CachedGuildConfig>(
@@ -116,7 +117,8 @@ impl CachedMessage {
         let id = self.proto.0.get_id();
         let key = CacheKey(CachePrefix::Messages, (channel_id, id));
         let mut pipeline = redis::pipe();
-        pipeline.atomic().set(key, self.proto).expire(key, 3600);
+        // Keep 1 day's worth of messages cached.
+        pipeline.atomic().set(key, self.proto).expire(key, 86400);
         pipeline
     }
 

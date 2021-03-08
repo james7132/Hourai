@@ -16,8 +16,7 @@ pub fn message_link(message: &impl MessageLike) -> String {
 pub fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
     let author = message.author();
     Ok(EmbedBuilder::new()
-        .author(EmbedAuthorBuilder::new()
-            .name(format!("{} ({})", author.display_name(), author.id()))?
+        .footer(EmbedFooterBuilder::new(format!("{} ({})", author.display_name(), author.id()))?
             .icon_url(ImageSource::url(author.avatar_url())?))
         .title(format!("ID: {}", message.id()))?
         .url(message_link(message))

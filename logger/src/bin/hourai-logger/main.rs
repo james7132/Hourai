@@ -265,8 +265,9 @@ impl Client {
     }
 
     async fn on_message_create(mut self, evt: Message) -> Result<()> {
-        db::CachedMessage::new(evt).flush()
-                          .query_async(&mut self.redis).await?;
+        if !evt.author.bot {
+            db::CachedMessage::new(evt).flush().query_async(&mut self.redis).await?;
+        }
         Ok(())
     }
 

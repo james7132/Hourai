@@ -5,7 +5,7 @@ use twilight_model::user::User;
 use twilight_model::guild::Member;
 
 const DEFAULT_AVATAR_COUNT: u64 = 5;
-const BASE_ASSET_URI: &str = "'https://cdn.discordapp.com";
+const BASE_ASSET_URI: &str = "https://cdn.discordapp.com";
 
 pub trait UserLike : Snowflake<UserId> {
     fn name(&self) -> &str;

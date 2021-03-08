@@ -79,7 +79,7 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
             client.http_client
                   .create_message(output_channel.unwrap())
                   .content(format!("Message by <@{}> deleted from <#{}>",
-                           msg.get_id(), msg.get_channel_id()))?
+                           msg.author().get_id(), msg.get_channel_id()))?
                   .embed(embed::message_to_embed(&msg)?
                                .color(0x992d22)? // Dark red
                                .build()?)?
