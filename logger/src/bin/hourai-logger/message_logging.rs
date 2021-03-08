@@ -1,6 +1,6 @@
 use super::Client;
 use anyhow::anyhow;
-use hourai::models::MessageLike;
+use hourai::models::{MessageLike, UserLike};
 use hourai::proto::guild_configs::*;
 use hourai::proto::util::IdFilter;
 use hourai::{db, embed, error::Result};
@@ -44,6 +44,9 @@ pub(super) async fn on_message_update(
     before: impl MessageLike,
     after: impl MessageLike
 ) -> Result<()> {
+    if before.author().bot() {
+        return Ok(());
+    }
     let guild_id = before.guild_id().ok_or_else(|| anyhow!("Not in guild."))?;
     let config = get_logging_config(&mut client, guild_id).await?;
     let type_config = config.get_edited_messages();
@@ -53,7 +56,9 @@ pub(super) async fn on_message_update(
               .create_message(output_channel.unwrap())
               .content(format!("Message by <@{}> edited from <#{}>",
                        before.id(), before.channel_id()))?
-              .embed(embed::message_diff_embed(&before, &after)?.build()?)?
+              .embed(embed::message_diff_embed(&before, &after)?
+                           .color(0xa84300)? // Dark orange
+                           .build()?)?
               .await?;
     }
     Ok(())
@@ -68,11 +73,16 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
         let cached = db::CachedMessage::fetch(evt.channel_id, evt.id, &mut client.redis)
                                        .await?;
         if let Some(msg) = cached {
+            if msg.author().bot() {
+                return Ok(());
+            }
             client.http_client
                   .create_message(output_channel.unwrap())
                   .content(format!("Message by <@{}> deleted from <#{}>",
                            msg.get_id(), msg.get_channel_id()))?
-                  .embed(embed::message_to_embed(&msg)?.build()?)?
+                  .embed(embed::message_to_embed(&msg)?
+                               .color(0x992d22)? // Dark red
+                               .build()?)?
                   .await?;
         }
     }
