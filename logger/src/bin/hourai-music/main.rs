@@ -32,13 +32,20 @@ const BOT_INTENTS: Intents = Intents::from_bits_truncate(
 const BOT_EVENTS : EventTypeFlags =
     EventTypeFlags::from_bits_truncate(
         EventTypeFlags::READY.bits() |
+        EventTypeFlags::CHANNEL_CREATE.bits() |
+        EventTypeFlags::CHANNEL_UPDATE.bits() |
+        EventTypeFlags::CHANNEL_DELETE.bits() |
+        EventTypeFlags::MESSAGE_CREATE.bits() |
         EventTypeFlags::VOICE_STATE_UPDATE.bits() |
+        EventTypeFlags::GUILD_CREATE.bits() |
         EventTypeFlags::GUILD_DELETE.bits());
 
 const CACHED_RESOURCES: ResourceType =
     ResourceType::from_bits_truncate(
-        ResourceType::VOICE_STATE.bits() |
-        ResourceType::USER_CURRENT.bits());
+        ResourceType::GUILD.bits() |
+        ResourceType::CHANNEL.bits() |
+        ResourceType::ROLE.bits() |
+        ResourceType::VOICE_STATE.bits());
 
 #[tokio::main]
 async fn main() {
@@ -76,6 +83,7 @@ async fn main() {
     let shard_count = gateway.config().shard_config().shard()[1];
     let lavalink = Lavalink::new(current_user.id, shard_count);
     let client = Client {
+        user_id: current_user.id,
         http_client,
         lavalink: lavalink.clone(),
         cache: cache.clone(),
@@ -111,6 +119,7 @@ async fn main() {
 
 #[derive(Clone)]
 pub struct Client<'a> {
+    pub user_id: UserId,
     pub http_client: twilight_http::Client,
     pub hyper: HyperClient<HttpConnector>,
     pub gateway: Cluster,
@@ -122,13 +131,6 @@ pub struct Client<'a> {
 }
 
 impl Client<'static> {
-
-    pub fn user_id(&self) -> UserId {
-        self.cache
-            .current_user()
-            .expect("Bot is not ready yet.")
-            .id
-    }
 
     async fn connect_node(
         &mut self,
@@ -179,7 +181,11 @@ impl Client<'static> {
         let kind = event.kind();
         let result = match event {
             Event::Ready(_) => Ok(()),
+            Event::ChannelCreate(_) => Ok(()),
+            Event::ChannelUpdate(_) => Ok(()),
+            Event::ChannelDelete(_) => Ok(()),
             Event::MessageCreate(evt) => self.on_message_create(evt.0).await,
+            Event::GuildCreate(_) => Ok(()),
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
                     self.players.destroy_player(evt.id);
@@ -250,7 +256,7 @@ impl Client<'static> {
         let guild_id = commands::precondition::require_in_guild(&ctx)?;
 
         let user = self.cache.voice_state(guild_id, ctx.message.author.id);
-        let bot = self.cache.voice_state(guild_id, self.user_id());
+        let bot = self.cache.voice_state(guild_id, self.user_id);
         if user.is_none() {
             bail!(CommandError::FailedPrecondition(
                   "You must be in a voice channel to play music."));
@@ -278,7 +284,9 @@ impl Client<'static> {
 
     // Commands
     async fn on_message_create(self, evt: Message) -> Result<()> {
+        debug!("Recieved message: {}", evt.content.as_str());
         if let Some(command) = self.parser.parse(evt.content.as_str()) {
+            debug!("Potential command: {}", evt.content.as_str());
             let ctx = commands::Context {
                 message: &evt,
                 http: self.http_client.clone(),
@@ -300,8 +308,11 @@ impl Client<'static> {
                 Command { name: "queue", .. } => Ok(()),
                 Command { name: "volume", arguments, .. } =>
                     // TODO(james7132): Do proper argument parsing.
-                    self.volume(ctx, 100).await,
-                _ => Ok(())
+                    self.volume(ctx, Some(100)).await,
+                _ => {
+                    debug!("Failed to find command: {}", evt.content.as_str());
+                    Ok(())
+                }
             };
 
             if let Err(err) = result {
@@ -466,14 +477,20 @@ impl Client<'static> {
         Ok(())
     }
 
-    async fn volume(&self, ctx: commands::Context<'_>, volume: i64) -> Result<()> {
-        self.require_dj(&ctx).await?;
-        if volume < 0 || volume > 150 {
-            bail!(CommandError::InvalidArgument(
-                    "Volume must be between 0 and 150.".into()));
-        }
-        self.require_playing(&ctx)?.set_volume(volume)?;
-        ctx.respond().content(format!("Set volume to `{}`.", volume))?.await?;
+    async fn volume(&self, ctx: commands::Context<'_>, volume: Option<i64>) -> Result<()> {
+        let player = self.require_playing(&ctx)?;
+        let response = if let Some(vol) = volume {
+            self.require_dj(&ctx).await?;
+            if vol < 0 || vol > 150 {
+                bail!(CommandError::InvalidArgument(
+                        "Volume must be between 0 and 150.".into()));
+            }
+            player.set_volume(vol as u8)?;
+            format!("Set volume to `{}`.", vol)
+        } else {
+            format!("Current volume is `{}`.", player.volume())
+        };
+        ctx.respond().content(response)?.await?;
         Ok(())
     }
 

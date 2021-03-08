@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use rand::seq::SliceRandom;
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct QueueItem<K, V> {
     pub key: K,
     pub value: V
@@ -23,6 +24,14 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
         Self(VecDeque::new())
     }
 
+    pub fn push(&mut self, key: K, value: V) {
+        if let Some(kv) = self.0.iter_mut().find(|kv| kv.0 == key) {
+            kv.1.push_back(value);
+        } else {
+            self.0.push_back((key, VecDeque::from(vec![value])));
+        }
+    }
+
     /// Appends a full list of values to the end of a key's queue.  If a key's queue does not
     /// exist, one will be created for it.
     ///
@@ -30,16 +39,11 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
     /// is a O(n + m) operation.
     pub fn extend(&mut self, key: K, values: impl IntoIterator<Item=V>) {
         let values: VecDeque<V> = values.into_iter().collect();
-        if self.contains_key(key) {
-            self.0
-                .iter_mut()
-                .find(|kv| kv.0 == key)
-                .map(|kv| {
-                    kv.1.reserve(values.len());
-                    for value in values {
-                        kv.1.push_back(value);
-                    }
-                });
+        if let Some(kv) = self.0.iter_mut().find(|kv| kv.0 == key) {
+            kv.1.reserve(values.len());
+            for value in values {
+                kv.1.push_back(value);
+            }
         } else {
             self.0.push_back((key, values));
         }
@@ -65,8 +69,14 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
         })
     }
 
-    /// Gets the total number of items in the queue.  If there are n keys and k values in the
-    /// queue for a given key, this is a O(n) operation.
+    /// Gets the total number of items in the queue. If there are n keys and k values in the queue
+    /// for a given key, this is a O(n) operation.
+    pub fn len(&self) -> usize {
+        self.0.iter().map(|kv| kv.1.len()).sum()
+    }
+
+    /// Gets the total number of items in the queue for a given key.  If there are n keys and k
+    /// values in the queue for a given key, this is a O(n) operation.
     pub fn count(&self, key: K) -> Option<usize> {
         self.0
             .iter()
@@ -90,7 +100,7 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
             })
     }
 
-    /// Clears all of the items within a given the queue.
+    /// Clears all of the items with a given key in the queue.
     /// If there are n keys in the queue, this is a O(n) operation.
     ///
     /// Returns the number of items removed from the queue.
@@ -102,8 +112,136 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
             })
     }
 
-    pub fn contains_key(&self, key: K) -> bool {
+    /// Clears all of the items within a given the queue.
+    /// If there are n keys in the queue, this is a O(1) operation.
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
+
+    pub fn contains_key(&mut self, key: K) -> bool {
         self.0.iter().find(|kv| kv.0 == key).is_some()
+    }
+
+}
+
+#[cfg(test)]
+mod test {
+    use super::{MusicQueue, QueueItem};
+
+    #[test]
+    fn test_queue_push() {
+        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        queue.push(20, 20);
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.count(20), Some(1));
+        assert_eq!(queue.count(40), None);
+    }
+
+    #[test]
+    fn test_queue_pop() {
+        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        queue.push(20, 20);
+        let result = queue.pop();
+        assert_eq!(result, Some(QueueItem { key: 20, value: 20 }));
+        assert_eq!(queue.len(), 0);
+        assert_eq!(queue.count(20), None);
+        assert_eq!(queue.count(40), None);
+    }
+
+    #[test]
+    fn test_queue_pop_empty() {
+        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        assert_eq!(queue.pop(), None);
+        assert_eq!(queue.len(), 0);
+        assert_eq!(queue.count(20), None);
+        assert_eq!(queue.count(40), None);
+        assert_eq!(queue.pop(), None);
+        assert_eq!(queue.pop(), None);
+        assert_eq!(queue.pop(), None);
+        assert_eq!(queue.pop(), None);
+    }
+
+    #[test]
+    fn test_queue_extend() {
+        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        queue.extend(20, vec![20, 40 ,60]);
+        assert_eq!(queue.len(), 3);
+        assert_eq!(queue.count(20), Some(3));
+        assert_eq!(queue.count(40), None);
+        assert_eq!(queue.pop(), Some(QueueItem { key: 20, value: 20 }));
+        assert_eq!(queue.len(), 2);
+        assert_eq!(queue.count(20), Some(2));
+        assert_eq!(queue.count(40), None);
+        assert_eq!(queue.pop(), Some(QueueItem { key: 20, value: 40 }));
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.count(20), Some(1));
+        assert_eq!(queue.count(40), None);
+        assert_eq!(queue.pop(), Some(QueueItem { key: 20, value: 60 }));
+        assert_eq!(queue.len(), 0);
+        assert_eq!(queue.count(20), None);
+        assert_eq!(queue.count(40), None);
+    }
+
+    #[test]
+    fn test_queue_clear() {
+        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        queue.extend(20, vec![20, 40 ,60]);
+        queue.extend(40, vec![20, 40 ,60]);
+        queue.extend(60, vec![20, 40 ,60]);
+        assert_eq!(queue.len(), 9);
+        assert_eq!(queue.count(20), Some(3));
+        assert_eq!(queue.count(40), Some(3));
+        assert_eq!(queue.count(60), Some(3));
+        queue.clear();
+        assert_eq!(queue.len(), 0);
+        assert_eq!(queue.count(20), None);
+        assert_eq!(queue.count(40), None);
+        assert_eq!(queue.count(60), None);
+    }
+
+    #[test]
+    fn test_queue_round_robin() {
+        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        queue.push(20, 20);
+        queue.push(10, 10);
+        queue.push(5, 30);
+        queue.push(10, 15);
+        queue.push(20, 40);
+        queue.push(20, 60);
+        assert_eq!(queue.len(), 6);
+        assert_eq!(queue.count(20), Some(3));
+        assert_eq!(queue.count(10), Some(2));
+        assert_eq!(queue.count(5), Some(1));
+        assert_eq!(queue.pop(), Some(QueueItem { key: 20, value: 20 }));
+        assert_eq!(queue.len(), 5);
+        assert_eq!(queue.count(20), Some(2));
+        assert_eq!(queue.count(10), Some(2));
+        assert_eq!(queue.count(5), Some(1));
+        assert_eq!(queue.pop(), Some(QueueItem { key: 10, value: 10 }));
+        assert_eq!(queue.len(), 4);
+        assert_eq!(queue.count(20), Some(2));
+        assert_eq!(queue.count(10), Some(1));
+        assert_eq!(queue.count(5), Some(1));
+        assert_eq!(queue.pop(), Some(QueueItem { key: 5, value: 30 }));
+        assert_eq!(queue.len(), 3);
+        assert_eq!(queue.count(20), Some(2));
+        assert_eq!(queue.count(10), Some(1));
+        assert_eq!(queue.count(5), None);
+        assert_eq!(queue.pop(), Some(QueueItem { key: 20, value: 40 }));
+        assert_eq!(queue.len(), 2);
+        assert_eq!(queue.count(20), Some(1));
+        assert_eq!(queue.count(10), Some(1));
+        assert_eq!(queue.count(5), None);
+        assert_eq!(queue.pop(), Some(QueueItem { key: 10, value: 15 }));
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.count(20), Some(1));
+        assert_eq!(queue.count(10), None);
+        assert_eq!(queue.count(5), None);
+        assert_eq!(queue.pop(), Some(QueueItem { key: 20, value: 60 }));
+        assert_eq!(queue.len(), 0);
+        assert_eq!(queue.count(20), None);
+        assert_eq!(queue.count(10), None);
+        assert_eq!(queue.count(5), None);
     }
 
 }

@@ -49,11 +49,12 @@ struct PlayerState {
 }
 
 struct PlayerRef {
+    state: RwLock<PlayerState>,
     manager: Weak<PlayerManager>,
     lavalink_manager: LavalinkPlayerManager,
     gateway: Cluster,
     guild_id: GuildId,
-    state: RwLock<PlayerState>,
+    volume: u8,
 }
 
 impl Drop for PlayerRef {
@@ -78,12 +79,13 @@ impl Player {
             lavalink_manager: client.lavalink.players().clone(),
             gateway: client.gateway.clone(),
             guild_id: guild_id,
+            volume: 100,
             state: RwLock::new(PlayerState {
                 channel_id: None,
                 currently_playing: None,
                 skip_votes: HashSet::new(),
                 queue: MusicQueue::new()
-            })
+            }),
         }));
 
         client.players.add_player(&player);
@@ -91,11 +93,11 @@ impl Player {
         Ok(player)
     }
 
-    fn state(&self) -> RwLockReadGuard<'_, PlayerState> {
+    fn state(&self) -> RwLockReadGuard<PlayerState> {
         self.0.state.read().expect("Player state lock has been poisoned")
     }
 
-    fn state_mut(&self) -> RwLockWriteGuard<'_, PlayerState> {
+    fn state_mut(&self) -> RwLockWriteGuard<PlayerState> {
         self.0.state.write().expect("Player state lock has been poisoned")
     }
 
@@ -105,6 +107,10 @@ impl Player {
 
     pub fn channel_id(&self) -> Option<ChannelId> {
         self.state().channel_id.clone()
+    }
+
+    pub fn volume(&self) -> u8 {
+        self.0.volume
     }
 
     /// Queues up a track to be played.
@@ -198,8 +204,8 @@ impl Player {
         Ok(())
     }
 
-    pub fn set_volume(&self, paused: i64) -> Result<()> {
-        get_lavalink_player!(self).send(Volume::from((self.0.guild_id, paused as i64)))?;
+    pub fn set_volume(&self, volume: u8) -> Result<()> {
+        get_lavalink_player!(self).send(Volume::from((self.0.guild_id, volume as i64)))?;
         Ok(())
     }
 
