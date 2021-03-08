@@ -12,8 +12,10 @@ message CachedMessageProto {
 }
 
 message CachedUserProto {
-  // NEXT ID: 4
+  // NEXT ID: 6
   optional fixed64 id = 1;
   optional string username = 2;
   optional uint32 discriminator = 3;
+  optional string avatar = 4;
+  optional bool bot = 5;
 }

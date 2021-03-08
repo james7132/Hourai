@@ -1,6 +1,6 @@
-use crate::prelude::*;
 use twilight_model::{id::*, guild::Ban as TwilightBan};
 use std::convert::TryInto;
+use crate::models::UserLike;
 
 pub type SqlDatabase = sqlx::Postgres;
 pub type SqlQuery<'a> =
@@ -27,11 +27,11 @@ pub struct Username {
 
 impl Username {
 
-    pub fn new(user: &twilight_model::user::User) -> Self {
+    pub fn new(user: &impl UserLike) -> Self {
         Self {
-            user_id: user.id.0 as i64,
+            user_id: user.id().0 as i64,
             timestamp: get_unix_millis() as i64,
-            name: user.name.clone(),
+            name: user.name().to_owned(),
             discriminator: Some(user.discriminator() as u32)
         }
     }

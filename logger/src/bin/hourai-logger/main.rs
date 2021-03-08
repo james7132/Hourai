@@ -1,3 +1,5 @@
+mod message_logging;
+
 use hourai::{prelude::*, init, config, db, cache::{InMemoryCache, ResourceType}};
 use twilight_model::{
     channel::Message,
@@ -268,18 +270,31 @@ impl Client {
         Ok(())
     }
 
-    async fn on_message_update(self, _: MessageUpdate) -> Result<()> {
+    async fn on_message_update(mut self, evt: MessageUpdate) -> Result<()> {
         // TODO(james7132): Properly implement this
+        let cached = db::CachedMessage::fetch(evt.channel_id, evt.id, &mut self.redis)
+                                       .await?;
+        if let Some(mut msg) = cached {
+            if let Some(content) = evt.content {
+                let before = msg.clone();
+                msg.set_content(content);
+                tokio::spawn(message_logging::on_message_update(self.clone(),
+                             before.clone(), msg));
+                db::CachedMessage::new(before).flush().query_async(&mut self.redis).await?;
+            }
+        }
+
         Ok(())
     }
 
     async fn on_message_delete(mut self, evt: MessageDelete) -> Result<()> {
-        db::CachedMessage::delete(evt.channel_id, evt.id)
-                          .query_async(&mut self.redis).await?;
+        message_logging::on_message_delete(&mut self, &evt).await?;
+        db::CachedMessage::delete(evt.channel_id, evt.id).query_async(&mut self.redis).await?;
         Ok(())
     }
 
     async fn on_message_bulk_delete(mut self, evt: MessageDeleteBulk) -> Result<()> {
+        tokio::spawn(message_logging::on_message_bulk_delete(self.clone(), evt.clone()));
         db::CachedMessage::bulk_delete(evt.channel_id, evt.ids)
                           .query_async(&mut self.redis).await?;
         Ok(())
@@ -377,5 +392,6 @@ impl Client {
         }
         Ok(())
     }
+
 
 }

@@ -4,10 +4,12 @@ mod keys;
 mod protobuf;
 
 use crate::prelude::*;
-use crate::proto::{
-    cache::*,
-};
+use crate::models::{Snowflake, UserLike, MessageLike};
+use crate::proto::cache::*;
+use redis::aio::ConnectionLike;
+use self::compression::Compressed;
 use self::keys::{Id, CacheKey, CachePrefix};
+pub use self::guild_config::CachedGuildConfig;
 use self::protobuf::Protobuf;
 use twilight_model::id::*;
 
@@ -44,30 +46,69 @@ impl OnlineStatus {
 
 }
 
+pub struct GuildConfig;
+
+impl GuildConfig {
+
+    pub async fn fetch<T: ::protobuf::Message + CachedGuildConfig, C: ConnectionLike>(
+        id: GuildId,
+        conn: &mut C
+    ) -> Result<T> {
+        let key = CacheKey(CachePrefix::GuildConfigs, id.0);
+        let response: Compressed<Protobuf<T>> = redis::Cmd::hget(key, vec![T::SUBKEY])
+            .query_async(conn)
+            .await?;
+        Ok(response.0.0)
+    }
+
+    pub fn set<T: ::protobuf::Message + CachedGuildConfig>(
+        id: GuildId,
+        value: T
+    ) -> redis::Cmd {
+        let key = CacheKey(CachePrefix::GuildConfigs, id.0);
+        redis::Cmd::hset(key, vec![T::SUBKEY], Compressed(Protobuf(value)))
+    }
+
+}
+
 pub struct CachedMessage {
     proto: Protobuf<CachedMessageProto>,
 }
 
 impl CachedMessage {
 
-    pub fn new(message: twilight_model::channel::Message) -> Self {
+    pub fn new(message: impl MessageLike) -> Self {
         let mut msg = CachedMessageProto::new();
-        msg.set_id(message.id.0);
-        msg.set_channel_id(message.channel_id.0);
-        msg.set_content(message.content);
-        if let Some(guild_id) = message.guild_id {
+        msg.set_id(message.id().0);
+        msg.set_channel_id(message.channel_id().0);
+        msg.set_content(message.content().to_owned());
+        if let Some(guild_id) = message.guild_id() {
             msg.set_guild_id(guild_id.0)
         }
 
         let user = msg.mut_author();
-        let author = &message.author;
-        user.set_id(author.id.0);
-        user.set_username(author.name.clone());
-        user.set_discriminator(message.author.discriminator() as u32);
-
-        Self {
-            proto: Protobuf(msg)
+        let author = message.author();
+        user.set_id(author.id().0);
+        user.set_username(author.name().to_owned());
+        user.set_discriminator(author.discriminator() as u32);
+        user.set_bot(author.bot());
+        if let Some(avatar) = author.avatar_hash() {
+            user.set_avatar(avatar.to_owned());
         }
+
+        Self { proto: Protobuf(msg) }
+    }
+
+    pub async fn fetch<C: ConnectionLike>(
+        channel_id: ChannelId,
+        message_id: MessageId,
+        conn: &mut C
+    ) -> Result<Option<CachedMessageProto>> {
+        let key = CacheKey(CachePrefix::Messages, (channel_id.0, message_id.0));
+        let proto: Option<Protobuf<CachedMessageProto>> = redis::Cmd::get(key)
+            .query_async(conn)
+            .await?;
+        Ok(proto.map(|proto| proto.0))
     }
 
     pub fn flush(self) -> redis::Pipeline {
