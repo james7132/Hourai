@@ -5,16 +5,6 @@ from hourai.utils import embed as embed_utils
 from hourai.utils import format, success, checks
 
 
-def should_log(channel_id, config):
-    if not config.enabled:
-        return False
-    if channel_id in config.channel_filter.denylist:
-        return False
-    if len(config.channel_filter.allowlist) > 0:
-        return channel_id in config.channel_filter.allowlist
-    return True
-
-
 class ModLogging(cogs.BaseCog):
     """ Cog for logging Discord and bot events to a servers' modlog channels.
     """
@@ -22,62 +12,6 @@ class ModLogging(cogs.BaseCog):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-
-    @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
-        guild = before.guild
-        if guild is None:
-            return
-        config = guild.config.logging.edited_messages
-        channel = guild.get_channel(config.output_channel_id)
-        if not should_log(before.channel.id, config) or \
-           channel is None or before.author.bot:
-            return
-        content = (f'Message by {before.author.mention} edited in '
-                   f'{before.channel.mention}.')
-        embed = embed_utils.message_to_embed(before)
-        embed.description = None
-        embed.color = discord.Color.dark_orange()
-        embed.add_field(name="Before", value=before.content)
-        embed.add_field(name="After", value=after.content)
-        await channel.send(content=content, embed=embed)
-
-    @commands.Cog.listener()
-    async def on_raw_message_delete(self, payload):
-        guild = self.bot.get_guild(payload.guild_id or 0)
-        if guild is None:
-            return
-        config = guild.config.logging.deleted_messages
-        channel = guild.get_channel(config.output_channel_id)
-        if not should_log(payload.channel_id, config) or channel is None:
-            return
-        content = f'Message deleted in <#{payload.channel_id}>.'
-        msg = payload.cached_message
-        embed = embed_utils.message_to_embed(msg or payload.message_id)
-        embed.color = discord.Color.dark_red()
-        if msg is not None:
-            if msg.author.bot:
-                return
-            content = (f'Message by {msg.author.mention} deleted in '
-                       f'{msg.channel.mention}.')
-            if len(msg.attachments) > 0:
-                attachments = (attach.url for attach in msg.attachments)
-                field = format.vertical_list(attachments)
-                embed.add_field(name='Attachments', value=field)
-        await channel.send(content=content, embed=embed)
-
-    @commands.Cog.listener()
-    async def on_raw_bulk_message_delete(self, payload):
-        guild = self.bot.get_guild(payload.guild_id or 0)
-        if guild is None:
-            return
-        config = guild.config.logging.deleted_messages
-        channel = guild.get_channel(config.output_channel_id)
-        if not should_log(payload.channel_id, config) or channel is None:
-            return
-        content = (f'{len(payload.message_ids)} messages bulk deleted in '
-                   f'<#{payload.channel_id}>.')
-        await channel.send(content=content)
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
