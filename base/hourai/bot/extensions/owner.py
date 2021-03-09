@@ -75,35 +75,6 @@ class Owner(cogs.BaseCog):
             broadcast_msg(guild) for guild in ctx.bot.guilds])
 
     @commands.command()
-    async def reload(self, ctx,  *, extension: str):
-        """Reloads the specified bot module."""
-        extension = f'{extensions.__name__}.{extension}'
-        try:
-            ctx.bot.unload_extension(extension)
-        except Exception:
-            pass
-        try:
-            ctx.bot.load_extension(extension)
-        except Exception as e:
-            trace = utils.format.ellipsize(traceback.format_exc())
-            err_type = type(e).__name__
-            await ctx.send(f'**ERROR**: {err_type} - {e}\n```{trace}```')
-        else:
-            await utils.success(ctx)
-
-    @commands.command()
-    async def repeat(self, ctx, times: int, *, command):
-        """Repeats a command a specified number of times."""
-        msg = copy.copy(ctx.message)
-        msg.content = command
-
-        new_ctx = await ctx.bot.get_context(msg)
-        new_ctx.db = ctx.db
-
-        for i in range(times):
-            await new_ctx.reinvoke()
-
-    @commands.command()
     async def eval(self, ctx, *, expr: str):
         """Evaluates a Python snippet and returns it."""
         global_vars = {**globals(), **{
@@ -168,20 +139,6 @@ class Owner(cogs.BaseCog):
         filename = f"{ctx.guild.name.replace(' ', '_')}.pbtxt"
         await ctx.send(
                 file=utils.str_to_discord_file(output, filename=filename))
-
-    @commands.command()
-    async def extractids(self, ctx, *, input_str: str):
-        """Extracts all IDs from a provided string."""
-        ids = re.findall(r'\d+', input_str)
-        await ctx.send(format.vertical_list(ids))
-
-    @commands.command()
-    async def leave(self, ctx, *, guild_ids: int):
-        for id in guild_ids:
-            guild = ctx.bot.get_guild(id)
-            if guild is None:
-                continue
-            await guild.leave()
 
     @commands.command()
     async def events(self, ctx):
