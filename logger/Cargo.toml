@@ -39,6 +39,9 @@ futures = { default-features = false, version = "0.3.12" }
 redis = { version = "0.20", features = ["aio", "tokio-comp", "connection-manager"] }
 num-derive = "0.3.3"
 num-traits = "0.2.14"
+lazy_static = "1.4"
+regex = "1.4"
+humantime = "2.1"
 protobuf = "2.22.0"
 rand = "0.8.3"
 serde = "1.0.123"
