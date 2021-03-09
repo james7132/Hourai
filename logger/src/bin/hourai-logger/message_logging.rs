@@ -1,14 +1,40 @@
-use super::Client;
+use anyhow::Result;
+use crate::Client;
 use anyhow::anyhow;
-use hourai::models::{MessageLike, UserLike};
+use hourai::db;
+use hourai::models::{Snowflake, MessageLike, UserLike};
 use hourai::proto::guild_configs::*;
 use hourai::proto::util::IdFilter;
-use hourai::{db, embed, error::Result};
+use chrono::Utc;
 use twilight_model::id::*;
 use twilight_model::gateway::payload::{MessageDelete, MessageDeleteBulk};
+use twilight_embed_builder::*;
+
+fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
+    let author = message.author();
+    Ok(EmbedBuilder::new()
+        .footer(EmbedFooterBuilder::new(format!("{} ({})", author.display_name(), author.id()))?
+            .icon_url(ImageSource::url(author.avatar_url())?))
+        .title(format!("ID: {}", message.id()))?
+        .url(message.message_link())
+        .timestamp(Utc::now().to_rfc3339()))
+}
+
+fn message_to_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
+    Ok(message_base_embed(message)?.description(message.content())?)
+}
+
+fn message_diff_embed(
+    before: &impl MessageLike,
+    after: &impl MessageLike
+) -> Result<EmbedBuilder> {
+    Ok(message_base_embed(before)?
+        .field(EmbedFieldBuilder::new("Before", before.content())?)
+        .field(EmbedFieldBuilder::new("After", after.content())?))
+}
 
 async fn get_logging_config(client: &mut Client, guild_id: GuildId) -> Result<LoggingConfig> {
-    db::GuildConfig::fetch::<LoggingConfig, db::RedisPool>(guild_id, &mut client.redis).await
+    db::GuildConfig::fetch(guild_id, &mut client.redis).await
 }
 
 fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {
@@ -56,9 +82,9 @@ pub(super) async fn on_message_update(
               .create_message(output_channel.unwrap())
               .content(format!("Message by <@{}> edited from <#{}>",
                        before.id(), before.channel_id()))?
-              .embed(embed::message_diff_embed(&before, &after)?
-                           .color(0xa84300)? // Dark orange
-                           .build()?)?
+              .embed(message_diff_embed(&before, &after)?
+                       .color(0xa84300)? // Dark orange
+                       .build()?)?
               .await?;
     }
     Ok(())
@@ -80,9 +106,9 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
                   .create_message(output_channel.unwrap())
                   .content(format!("Message by <@{}> deleted from <#{}>",
                            msg.author().get_id(), msg.get_channel_id()))?
-                  .embed(embed::message_to_embed(&msg)?
-                               .color(0x992d22)? // Dark red
-                               .build()?)?
+                  .embed(message_to_embed(&msg)?
+                           .color(0x992d22)? // Dark red
+                           .build()?)?
                   .await?;
         }
     }

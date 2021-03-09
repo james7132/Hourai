@@ -3,7 +3,6 @@ extern crate lazy_static;
 
 pub mod cache;
 pub mod commands;
-pub mod embed;
 pub mod config;
 pub mod db;
 pub mod error;

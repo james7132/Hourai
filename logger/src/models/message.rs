@@ -13,6 +13,16 @@ pub trait MessageLike : Snowflake<MessageId> {
     fn guild_id(&self) -> Option<GuildId>;
     fn author(&self) -> &Self::Author;
     fn content(&self) -> &str;
+
+    /// Gets the link to the message
+    fn message_link(&self) -> String {
+        let prefix = if let Some(guild_id) = self.guild_id() {
+            guild_id.to_string()
+        } else {
+            "@me".to_owned()
+        };
+        format!("https://discord.com/channels/{}/{}/{}", prefix, self.channel_id(), self.id())
+    }
 }
 
 impl Snowflake<MessageId> for Message {
