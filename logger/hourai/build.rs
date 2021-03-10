@@ -40,7 +40,7 @@ fn protobuf_codegen(src_dir: &str, out_dir: &str) {
 fn main() {
     let source_dir = match std::env::var("DOCKER_BUILD") {
         Err(VarError::NotPresent) => "../../proto/",
-        _ => "proto/",
+        _ => "../proto/",
     };
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR must be specified");
     protobuf_codegen(source_dir, out_dir.as_str());

@@ -1,10 +1,9 @@
 FROM ekidd/rust-musl-builder:stable as build
 ENV DOCKER_BUILD=1
-COPY logger/Cargo.* ./
-RUN mkdir .cargo/ && cargo vendor > .cargo/config
 COPY logger/ .
 COPY proto/ ./proto/
-RUN cargo install --path . --verbose
+RUN ls -R ./proto
+RUN cargo install --path hourai-logger --verbose
 
 # Copy the statically-linked binary into a scratch container.
 FROM alpine
