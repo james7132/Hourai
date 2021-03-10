@@ -10,6 +10,7 @@ pub struct HouraiConfig {
     pub redis: String,
     pub music: MusicConfig,
     pub discord: DiscordConfig,
+    pub web: WebConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
