@@ -9,12 +9,27 @@ services:
     image: james7132/hourai:latest-logger
     build:
       context: ..
-      dockerfile: logger/Dockerfile.logger
+      dockerfile: logger/hourai-logger/Dockerfile
   music:
     image: james7132/hourai:latest-music
     build:
       context: ..
-      dockerfile: logger/Dockerfile.music
+      dockerfile: logger/hourai-music/Dockerfile
+  validation:
+    image: james7132/hourai:latest-music
+    build:
+      context: ..
+      dockerfile: logger/hourai-validation/Dockerfile
+  music:
+    image: james7132/hourai:latest-music
+    build:
+      context: ..
+      dockerfile: logger/hourai-music/Dockerfile
+  web:
+    image: james7132/hourai:latest-music
+    build:
+      context: ..
+      dockerfile: logger/hourai-web/Dockerfile
   nginx:
     image: james7132/hourai:latest-frontend
     build:

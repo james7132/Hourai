@@ -2,7 +2,7 @@ FROM ekidd/rust-musl-builder:stable as build
 ENV DOCKER_BUILD=1
 COPY logger/ .
 COPY proto/ ./proto/
-RUN cargo install --path hourai-music --verbose
+RUN cargo build --release --bins
 
 # Copy the statically-linked binary into a scratch container.
 FROM alpine
@@ -15,5 +15,5 @@ ENV RUST_LOG=info
 ENV HOURAI_CONFIG=/opt/hourai.jsonnet
 ENV HOURAI_ENV=dev
 
-COPY --from=build /home/rust/.cargo/bin/hourai-music .
-CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && /hourai-music
+COPY --from=build /home/rust/src/hourai-logger .
+CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && /hourai-logger

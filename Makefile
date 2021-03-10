@@ -5,7 +5,7 @@ pull:
 	docker-compose -p hourai -f config/docker-compose.prod.yml pull
 
 start_dev:
-	docker-compose -p hourai -f config/docker-compose.dev.yml up -d
+	docker-compose -p hourai -f config/docker-compose.dev.yml up -d --build
 
 start_prod:
 	docker-compose -p hourai -f config/docker-compose.prod.yml up -d

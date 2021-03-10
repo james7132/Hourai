@@ -517,4 +517,3 @@ fn format_duration(duration: Duration) -> String {
         format!("{:02}:{:02}", minutes, secs)
     }
 }
-
