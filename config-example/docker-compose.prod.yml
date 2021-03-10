@@ -83,11 +83,22 @@ services:
       - ./lavalink.yml:/opt/Lavalink/application.yml
     expose:
       - 2333
+  grafana:
+    image: grafana/grafana:master
+    restart: unless-stopped
+    container_name: grafana
+    volumes:
+      - ./grafana.ini:/etc/grafana/grafana.ini
+      - grafana-data:/var/lib/grafana
+    expose:
+      - 3000
 volumes:
   db-data:
     name: "db-data"
   redis-data:
     name: "redis-data"
+  grafana-data:
+    name: "grafana-data"
 networks:
   default:
     name: "hourai"
