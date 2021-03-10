@@ -3,15 +3,24 @@ mod guild_config;
 mod keys;
 mod protobuf;
 
-use crate::prelude::*;
-use crate::models::{Snowflake, UserLike, MessageLike};
-use crate::proto::cache::*;
+use anyhow::Result;
+use hourai::models::{Snowflake, UserLike, MessageLike, id::*};
+use hourai::proto::cache::*;
 use redis::aio::ConnectionLike;
 use self::compression::Compressed;
 use self::keys::{Id, CacheKey, CachePrefix};
 pub use self::guild_config::CachedGuildConfig;
 use self::protobuf::Protobuf;
-use twilight_model::id::*;
+use tracing::debug;
+
+pub type RedisPool = redis::aio::ConnectionManager;
+
+pub async fn init(config: &hourai::config::HouraiConfig) -> RedisPool {
+    debug!("Creating Redis client");
+    let client = redis::Client::open(config.redis.as_ref())
+                               .expect("Failed to create Redis client");
+    RedisPool::new(client).await.expect("Failed to initialize multiplexed Redis connection")
+}
 
 pub struct OnlineStatus {
     pipeline: redis::Pipeline

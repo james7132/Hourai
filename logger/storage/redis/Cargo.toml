@@ -1,0 +1,19 @@
+[package]
+name = "hourai-redis"
+version = "0.1.0"
+authors = ["james7132 <contact@jamessliu.com>"]
+edition = "2018"
+
+[dependencies]
+hourai = { path = "../../hourai" }
+anyhow = "1.0"
+byteorder = "1.4.2"
+flate2 = "1.0.20"
+num-derive = "0.3.3"
+num-traits = "0.2.14"
+protobuf = "2.22"
+tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
+
+[dependencies.redis]
+version = "0.20"
+features = ["aio", "tokio-comp", "connection-manager"]

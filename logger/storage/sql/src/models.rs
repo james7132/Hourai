@@ -1,6 +1,9 @@
-use twilight_model::{id::*, guild::Ban as TwilightBan};
+use hourai::models::{
+    UserLike, id::*,
+    guild::Ban as TwilightBan,
+    guild::Member as TwilightMember
+};
 use std::convert::TryInto;
-use crate::models::UserLike;
 
 pub type SqlDatabase = sqlx::Postgres;
 pub type SqlQuery<'a> =
@@ -227,7 +230,7 @@ pub struct Member {
 
 impl Member {
 
-    pub fn from(member: &twilight_model::guild::member::Member) -> Self {
+    pub fn from(member: &TwilightMember) -> Self {
         Self {
             guild_id: member.guild_id.0 as i64,
             user_id: member.user.id.0 as i64,

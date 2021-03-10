@@ -1,4 +1,4 @@
-use crate::proto::{
+use hourai::proto::{
     auto_config::*,
     guild_configs::*,
 };

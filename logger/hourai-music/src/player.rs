@@ -1,3 +1,4 @@
+use anyhow::Result;
 use hourai::prelude::*;
 use crate::{Client, queue::MusicQueue, track::*};
 use std::collections::HashSet;

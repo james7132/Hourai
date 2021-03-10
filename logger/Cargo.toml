@@ -1,5 +1,11 @@
 [workspace]
-members = ["hourai", "hourai-logger", "hourai-music"]
+members = [
+  "hourai",
+  "hourai-logger",
+  "hourai-music",
+  "storage/sql",
+  "storage/redis",
+]
 
 [profile.release]
 opt-level = 3

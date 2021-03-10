@@ -10,7 +10,7 @@ use twilight_lavalink::{Lavalink, http::LoadType};
 use http::Uri;
 use twilight_command_parser::{Parser, CommandParserConfig, Command};
 use hourai::{
-    config, commands, init, cache::{InMemoryCache, ResourceType},
+    config, commands::{self, CommandError}, init, cache::{InMemoryCache, ResourceType},
     models::{channel::Message, id::*},
     gateway::{Intents, Event, EventTypeFlags, cluster::*},
 };

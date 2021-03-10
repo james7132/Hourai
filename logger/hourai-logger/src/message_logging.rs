@@ -1,10 +1,10 @@
 use anyhow::Result;
 use crate::Client;
 use anyhow::anyhow;
-use hourai::db;
 use hourai::models::{Snowflake, MessageLike, UserLike};
 use hourai::proto::guild_configs::*;
 use hourai::proto::util::IdFilter;
+use hourai_redis::{CachedMessage, GuildConfig};
 use chrono::Utc;
 use hourai::models::id::*;
 use hourai::models::gateway::payload::{MessageDelete, MessageDeleteBulk};
@@ -34,7 +34,7 @@ fn message_diff_embed(
 }
 
 async fn get_logging_config(client: &mut Client, guild_id: GuildId) -> Result<LoggingConfig> {
-    db::GuildConfig::fetch(guild_id, &mut client.redis).await
+    GuildConfig::fetch(guild_id, &mut client.redis).await
 }
 
 fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {
@@ -96,8 +96,8 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
-        let cached = db::CachedMessage::fetch(evt.channel_id, evt.id, &mut client.redis)
-                                       .await?;
+        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut client.redis)
+                                   .await?;
         if let Some(msg) = cached {
             if msg.author().bot() {
                 return Ok(());

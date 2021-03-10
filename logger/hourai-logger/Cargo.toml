@@ -6,6 +6,8 @@ edition = "2018"
 
 [dependencies]
 hourai = { path = "../hourai" }
+hourai-sql = { path = "../storage/sql" }
+hourai-redis = { path = "../storage/redis" }
 anyhow = "1.0"
 chrono = "0.4"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }

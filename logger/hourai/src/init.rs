@@ -1,5 +1,4 @@
 use crate::config::HouraiConfig;
-use crate::db::RedisPool;
 use tracing::debug;
 
 pub fn init(config: &HouraiConfig) {
@@ -26,22 +25,4 @@ pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
     } else {
         twilight_http::Client::new(&config.discord.bot_token)
     }
-}
-
-pub async fn sql(config: &HouraiConfig) -> sqlx::PgPool {
-    debug!("Creating Postgres client");
-    sqlx::postgres::PgPoolOptions::new()
-         .max_connections(3)
-         .connect(&config.database)
-         .await
-         .expect("Failed to initialize SQL connection pool")
-}
-
-pub async fn redis(config: &HouraiConfig) -> RedisPool {
-    debug!("Creating Redis client");
-    let client = redis::Client::open(config.redis.as_ref())
-                               .expect("Failed to create Redis client");
-    redis::aio::ConnectionManager::new(client)
-          .await
-          .expect("Failed to initialize multiplexed Redis connection")
 }

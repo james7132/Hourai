@@ -1,0 +1,14 @@
+[package]
+name = "hourai-sql"
+version = "0.1.0"
+authors = ["james7132 <contact@jamessliu.com>"]
+edition = "2018"
+
+[dependencies]
+hourai = { path = "../../hourai" }
+tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
+
+[dependencies.sqlx]
+default-features = false
+features = ["runtime-tokio-rustls", "postgres", "macros"]
+version = "0.5.1"
