@@ -24,23 +24,7 @@ pub enum Error {
     CacheError(#[from] CacheNotFound),
     #[error("Command error: {:?}", .0)]
     CommandError(#[from] CommandError),
-    #[cfg(feature = "music")]
-    #[error("Generic HTTP error: {:?}", .0)]
-    GenericHTTPError(#[from] http::Error),
-    #[cfg(feature = "music")]
-    #[error("Lavalik Client error: {:?}", .0)]
-    LavalinkClient(#[from] twilight_lavalink::client::ClientError)
 }
-
-#[cfg(feature = "music")]
-impl From<hyper::Error> for Error {
-    fn from(err: hyper::Error) -> Self {
-        Self::HttpError(twilight_http::Error::RequestError {
-            source: err
-        })
-    }
-}
-
 
 #[derive(ErrorTrait, Debug)]
 pub enum CacheNotFound {

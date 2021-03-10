@@ -1,8 +1,8 @@
+pub use twilight_model::user::*;
 use super::Snowflake;
+use super::id::UserId;
+use super::guild::Member;
 use crate::proto::cache::CachedUserProto;
-use twilight_model::id::UserId;
-use twilight_model::user::User;
-use twilight_model::guild::Member;
 
 const DEFAULT_AVATAR_COUNT: u64 = 5;
 const BASE_ASSET_URI: &str = "https://cdn.discordapp.com";

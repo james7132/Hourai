@@ -16,3 +16,5 @@ pub mod proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
 }
 
+pub use twilight_gateway as gateway;
+pub use twilight_http as http;

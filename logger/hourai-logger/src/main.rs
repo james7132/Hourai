@@ -1,17 +1,24 @@
 mod message_logging;
 
-use hourai::{prelude::*, init, config, db, cache::{InMemoryCache, ResourceType}};
-use twilight_model::{
-    channel::Message,
-    gateway::payload::*,
-    guild::Permissions,
-    guild::member::Member,
-    user::User,
+use anyhow::Result;
+use tracing::{info, error, debug};
+use hourai::{
+    init, config, db,
+    cache::{InMemoryCache, ResourceType},
+    models::{
+        id::*,
+        channel::Message,
+        gateway::payload::*,
+        guild::Permissions,
+        guild::member::Member,
+        user::User,
+    },
+    gateway::{
+        Intents, Event, EventType, EventTypeFlags,
+        cluster::*,
+    }
 };
-use twilight_gateway::{
-    Intents, Event, EventType, EventTypeFlags,
-    cluster::*,
-};
+use futures::stream::StreamExt;
 use core::time::Duration;
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
@@ -94,7 +101,7 @@ async fn main() {
     info!("Client stopped.");
 }
 
-async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
+async fn flush_online(cache: InMemoryCache, mut redis: db::RedisPool) {
     loop {
         let mut pipeline = db::OnlineStatus::new();
         for guild_id in cache.guilds() {
@@ -104,7 +111,7 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
             };
             pipeline.set_online(guild_id, presences);
         }
-        let result = pipeline.build().query_async::<RedisPool, ()>(&mut redis).await;
+        let result = pipeline.build().query_async::<db::RedisPool, ()>(&mut redis).await;
         if let Err(err) = result {
             error!("Error while flushing statuses: {:?}", err);
         }
@@ -114,10 +121,10 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
 
 #[derive(Clone)]
 struct Client {
-    pub http_client: twilight_http::Client,
+    pub http_client: hourai::http::Client,
     pub gateway: Cluster,
     pub cache: InMemoryCache,
-    pub sql: sqlx::PgPool,
+    pub sql: db::SqlPool,
     pub redis: db::RedisPool,
 }
 

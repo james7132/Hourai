@@ -3,16 +3,16 @@ mod queue;
 mod player;
 mod track;
 
-use anyhow::bail;
+use anyhow::{bail, Result};
+use futures::stream::StreamExt;
 use crate::{prelude::*, player::{Player, PlayerManager}, track::Track};
-use hourai::{config, commands, init, cache::{InMemoryCache, ResourceType}};
-use twilight_model::{channel::Message, id::ChannelId};
 use twilight_lavalink::{Lavalink, http::LoadType};
 use http::Uri;
 use twilight_command_parser::{Parser, CommandParserConfig, Command};
-use twilight_gateway::{
-    Intents, Event, EventTypeFlags,
-    cluster::*,
+use hourai::{
+    config, commands, init, cache::{InMemoryCache, ResourceType},
+    models::{channel::Message, id::*},
+    gateway::{Intents, Event, EventTypeFlags, cluster::*},
 };
 use std::{convert::TryFrom, str::FromStr};
 use hyper::{
@@ -120,7 +120,7 @@ async fn main() {
 #[derive(Clone)]
 pub struct Client<'a> {
     pub user_id: UserId,
-    pub http_client: twilight_http::Client,
+    pub http_client: hourai::http::Client,
     pub hyper: HyperClient<HttpConnector>,
     pub gateway: Cluster,
     pub cache: InMemoryCache,

@@ -3,9 +3,9 @@ use crate::{Client, queue::MusicQueue, track::*};
 use std::collections::HashSet;
 use dashmap::DashMap;
 use std::sync::{Weak, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use twilight_gateway::Cluster;
+use hourai::gateway::Cluster;
 use twilight_lavalink::{player::PlayerManager as LavalinkPlayerManager, model::*};
-use twilight_model::id::{UserId, GuildId, ChannelId};
+use hourai::models::id::{UserId, GuildId, ChannelId};
 
 macro_rules! get_lavalink_player {
     ($self:expr) => {

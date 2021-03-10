@@ -6,8 +6,8 @@ use hourai::models::{Snowflake, MessageLike, UserLike};
 use hourai::proto::guild_configs::*;
 use hourai::proto::util::IdFilter;
 use chrono::Utc;
-use twilight_model::id::*;
-use twilight_model::gateway::payload::{MessageDelete, MessageDeleteBulk};
+use hourai::models::id::*;
+use hourai::models::gateway::payload::{MessageDelete, MessageDeleteBulk};
 use twilight_embed_builder::*;
 
 fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {

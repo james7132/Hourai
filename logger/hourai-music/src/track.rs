@@ -1,4 +1,4 @@
-use twilight_model::id::GuildId;
+use hourai::models::id::GuildId;
 use twilight_lavalink::model::Play;
 use std::convert::TryFrom;
 use std::{fmt, time::Duration};
@@ -31,11 +31,9 @@ pub struct Track {
 }
 
 impl Track {
-
     pub fn play(&self, guild_id: GuildId) -> Play {
         Play::new(guild_id, base64::encode(&self.track), None, None, false)
     }
-
 }
 
 fn decode_track(track: String) -> std::result::Result<Vec<u8>, base64::DecodeError> {
@@ -47,7 +45,6 @@ fn decode_track(track: String) -> std::result::Result<Vec<u8>, base64::DecodeErr
 }
 
 impl From<twilight_lavalink::http::TrackInfo> for TrackInfo {
-
     fn from(value: twilight_lavalink::http::TrackInfo) -> Self {
         Self {
             title: value.title,
@@ -57,19 +54,14 @@ impl From<twilight_lavalink::http::TrackInfo> for TrackInfo {
             is_stream: value.is_stream,
         }
     }
-
 }
 
 impl TryFrom<twilight_lavalink::http::Track> for Track {
-
     type Error = base64::DecodeError;
-
     fn try_from(value: twilight_lavalink::http::Track) -> Result<Self, Self::Error> {
         Ok(Self {
             info: TrackInfo::from(value.info),
             track: decode_track(value.track)?
         })
     }
-
 }
-
