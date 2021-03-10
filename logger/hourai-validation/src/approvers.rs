@@ -1,8 +1,8 @@
 use super::{*, context};
 use async_trait::async_trait;
-use crate::cache::InMemoryCache;
-use twilight_model::id::UserId;
-use twilight_model::user::{User, UserFlags};
+use hourai::cache::InMemoryCache;
+use hourai::models::id::UserId;
+use hourai::models::user::{User, UserFlags};
 use std::collections::HashSet;
 
 lazy_static! {
@@ -30,7 +30,7 @@ impl Validator for DistinguishedUserValidator {
         for guild_id in self.0.guilds() {
             if let Some(guild) = self.0.guild(guild_id) {
                 if guild.owner_id == member_id && guild.features.contains(&VERIFIED_FEATURE) {
-                    ctx.add_approval_reason("User is a verified bot developer.");
+                    ctx.add_approval_reason("User is the owner of a verified server.");
                 }
             }
         }

@@ -9,11 +9,8 @@ walkdir = "2.3.1"
 protobuf-codegen-pure = "2.18.0"
 
 [dependencies]
-async-trait = "0.1.42"
 bitflags = { default-features = false, version = "1" }
 dashmap = { default-features = false, version = "4.0" }
-#regex = "1.4"
-#humantime = "2.1"
 protobuf = "2.22.0"
 serde = "1.0.123"
 serde_json = "1.0.62"

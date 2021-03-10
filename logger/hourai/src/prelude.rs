@@ -1,6 +1,5 @@
 pub use std::{time::Duration, sync::Arc};
 pub use tracing::{info, warn, debug, error};
-pub use async_trait::async_trait;
 use crate::models::id::GuildId;
 
 pub trait ClusterExt {

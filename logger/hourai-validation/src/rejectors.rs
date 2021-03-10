@@ -1,14 +1,11 @@
 use async_trait::async_trait;
 use chrono::Duration;
 use chrono::offset::Utc;
-use crate::cache::InMemoryCache;
-use crate::db::{SqlPool, Username, Ban, ValidationBan};
-use crate::models::Snowflake;
+use crate::{*, context};
 use dashmap::DashMap;
-use std::collections::HashMap;
+use hourai_sql::{SqlPool, Username, Ban, ValidationBan};
+use hourai::{cache::InMemoryCache, models::{Snowflake, user::User}};
 use regex::Regex;
-use super::{*, context};
-use twilight_model::user::User;
 
 lazy_static! {
     static ref DELETED_USERNAME_MATCH: Regex = Regex::new("Deleted User [0-9a-fA-F]{8}").unwrap();

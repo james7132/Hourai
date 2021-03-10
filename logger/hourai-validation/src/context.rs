@@ -1,4 +1,4 @@
-use twilight_model::guild::Member;
+use hourai::models::guild::Member;
 
 #[derive(Debug, Clone)]
 pub enum ValidationReason {
