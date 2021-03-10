@@ -92,6 +92,13 @@ services:
       - grafana-data:/var/lib/grafana
     expose:
       - 3000
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
 volumes:
   db-data:
     name: "db-data"
@@ -99,6 +106,8 @@ volumes:
     name: "redis-data"
   grafana-data:
     name: "grafana-data"
+  prometheus-data:
+    name: prometheus-data-prod
 networks:
   default:
     name: "hourai"
