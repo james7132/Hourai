@@ -62,7 +62,7 @@ pub fn load_config(path: &Path) -> HouraiConfig {
     let file = File::open(path);
     assert!(file.is_ok(), "Cannot open JSON config at {:?}", path);
     let reader = BufReader::new(file.unwrap());
-    serde_json::from_reader(reader).unwrap()
+    simd_json::serde::from_reader(reader).unwrap()
 }
 
 pub fn get_config_path() -> Box<Path> {
