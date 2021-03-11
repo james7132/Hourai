@@ -11,11 +11,17 @@ pub struct HouraiConfig {
     pub music: MusicConfig,
     pub discord: DiscordConfig,
     pub web: WebConfig,
+    pub metrics: MetricsConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WebConfig {
     pub port: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MetricsConfig {
+    pub port: Option<u16>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

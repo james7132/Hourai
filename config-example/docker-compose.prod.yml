@@ -21,6 +21,8 @@ services:
     image: james7132/hourai:logger
     container_name: logger
     restart: unless-stopped
+    expose:
+      - 9090
     environment:
       - HOURAI_CONFIG=/opt/hourai.jsonnet
       - HOURAI_ENV=prod

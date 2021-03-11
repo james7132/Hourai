@@ -1,5 +1,7 @@
 use crate::config::HouraiConfig;
 use tracing::debug;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use metrics_exporter_prometheus::PrometheusBuilder;
 
 pub fn init(config: &HouraiConfig) {
     tracing_subscriber::fmt()
@@ -9,6 +11,13 @@ pub fn init(config: &HouraiConfig) {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .compact()
         .init();
+
+    let metrics_port = config.metrics.port.unwrap_or(9090);
+    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), metrics_port);
+    PrometheusBuilder::new()
+        .listen_address(socket)
+        .install()
+        .expect("Failed to set up Prometheus metrics exporter");
 
     debug!("Loaded Config: {:?}", config);
 }

@@ -9,13 +9,14 @@ walkdir = "2.3.1"
 protobuf-codegen-pure = "2.18.0"
 
 [dependencies]
+anyhow = "1.0.38"
 bitflags = { default-features = false, version = "1" }
+chrono = "0.4"
 dashmap = { default-features = false, version = "4.0" }
+metrics-exporter-prometheus = "0.3"
 protobuf = "2.22.0"
 serde = "1.0.123"
-anyhow = "1.0.38"
 thiserror = "1.0"
-chrono = "0.4"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = "0.2.15"
 twilight-model = "0.3"
@@ -27,7 +28,7 @@ twilight-command-parser = "0.3"
 [dependencies.twilight-gateway]
 default-features = true
 version = "0.3.1"
-features = ['simd-json', 'rustls']
+features = ['simd-json', 'rustls', 'metrics']
 
 [dependencies.twilight-http]
 default-features = true

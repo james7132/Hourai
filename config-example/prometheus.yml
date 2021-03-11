@@ -6,6 +6,10 @@ scrape_configs:
     scrape_interval: 30s
     static_configs:
       - targets: ['lavalink:2333']
+  - job_name: 'logger'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['logger:9090']
   - job_name: 'http-proxy'
     scrape_interval: 10s
     static_configs:

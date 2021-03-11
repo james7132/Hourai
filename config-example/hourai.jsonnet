@@ -30,6 +30,10 @@ local env(suffix) = {
     port: 8080
   },
 
+  metrics: {
+    port: 9090
+  },
+
   music: {
     nodes: [{
       identifier: "ddDa",
