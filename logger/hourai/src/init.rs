@@ -12,6 +12,8 @@ pub fn init(config: &HouraiConfig) {
         .compact()
         .init();
 
+    debug!("Loaded Config: {:?}", config);
+
     let metrics_port = config.metrics.port.unwrap_or(9090);
     let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), metrics_port);
     PrometheusBuilder::new()
@@ -19,7 +21,7 @@ pub fn init(config: &HouraiConfig) {
         .install()
         .expect("Failed to set up Prometheus metrics exporter");
 
-    debug!("Loaded Config: {:?}", config);
+    debug!("Exposed metrics on: {}", socket);
 }
 
 pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {

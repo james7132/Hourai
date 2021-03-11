@@ -262,6 +262,14 @@ impl Member {
             .bind(self.nickname)
     }
 
+    pub fn count_guilds<'a>() -> SqlQueryAs<'a, (i64,)> {
+        sqlx::query_as("SELECT count(distinct guild_id) FROM members")
+    }
+
+    pub fn count_members<'a>() -> SqlQueryAs<'a, (i64,)> {
+        sqlx::query_as("SELECT count(*) FROM members")
+    }
+
     pub fn fetch<'a>(guild_id: GuildId, user_id: UserId) -> SqlQueryAs<'a, Self> {
         sqlx::query_as("SELECT * FROM members WHERE guild_id = $1 AND user_id = $2")
              .bind(guild_id.0 as i64)

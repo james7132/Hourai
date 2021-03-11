@@ -59,9 +59,9 @@ pub struct GuildConfig;
 
 impl GuildConfig {
 
-    pub async fn fetch<T: ::protobuf::Message + CachedGuildConfig, C: ConnectionLike>(
+    pub async fn fetch<T: ::protobuf::Message + CachedGuildConfig>(
         id: GuildId,
-        conn: &mut C
+        conn: &mut RedisPool
     ) -> Result<T> {
         let key = CacheKey(CachePrefix::GuildConfigs, id.0);
         let response: Option<Compressed<Protobuf<T>>> =

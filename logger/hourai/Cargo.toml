@@ -14,8 +14,8 @@ bitflags = { default-features = false, version = "1" }
 chrono = "0.4"
 dashmap = { default-features = false, version = "4.0" }
 metrics-exporter-prometheus = "0.3"
-protobuf = "2.22.0"
-serde = "1.0.123"
+protobuf = "2.22"
+serde = "1.0"
 thiserror = "1.0"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = "0.2.15"
