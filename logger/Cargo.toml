@@ -1,10 +1,11 @@
 [workspace]
 members = [
   "hourai",
+  "hourai-feeds",
   "hourai-logger",
   "hourai-music",
   "hourai-validation",
-  "hourai-web",
+  #"hourai-web",
   "storage/sql",
   "storage/redis",
 ]
