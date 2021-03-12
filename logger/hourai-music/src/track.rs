@@ -25,6 +25,7 @@ impl fmt::Display for TrackInfo {
 
 }
 
+#[derive(Clone)]
 pub struct Track {
     pub info: TrackInfo,
     pub track: Vec<u8>

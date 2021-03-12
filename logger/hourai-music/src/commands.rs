@@ -15,12 +15,6 @@ macro_rules! get_player {
     }
 }
 
-macro_rules! create_player {
-    ($client:expr, $guild_id: expr) => {
-        $client.lavalink.player($guild_id)
-    }
-}
-
 pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<()> {
     debug!("Recieved message: {}", evt.content.as_str());
     if let Some(command) = client.parser.parse(evt.content.as_str()) {
@@ -106,18 +100,10 @@ async fn require_dj(client: &Client<'static>, ctx: &commands::Context<'_>) -> Re
     Ok(())
 }
 
-async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Option<&str>) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
-    let channel_id = require_in_voice_channel(client, &ctx)?;
-
-    if query.is_none() {
-        return pause(client, ctx, false).await;
-    }
-
-    let node = client.get_node(guild_id).await?;
-    let response = match client.load_tracks(node, query.unwrap()).await {
+async fn load_tracks(client: &Client<'static>, node: &Node, query: &str) -> Vec<Track> {
+    let response = match client.load_tracks(node, query).await {
         Ok(tracks) => tracks,
-        Err(_) => bail!(CommandError::GenericFailure("Failed to load track(s).")),
+        Err(_) => return vec![],
     };
 
     let tracks = match response {
@@ -139,16 +125,38 @@ async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Optio
             }
         },
         LoadedTracks { load_type: LoadType::LoadFailed, .. } => {
-            bail!(CommandError::GenericFailure("Failed to load tracks."));
+            error!("Failed to load query `{}`", query);
+            vec![]
         },
         _ => vec![],
     };
 
-    let queue: Vec<Track> = tracks.into_iter()
-                                  .filter_map(|t| Track::try_from(t).ok())
-                                  .collect();
-    let duration = format_duration(queue.iter().map(|t| t.info.length).sum());
+    tracks.into_iter().filter_map(|t| Track::try_from(t).ok()).collect()
+}
 
+async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Option<&str>) -> Result<()> {
+    let guild_id = require_in_guild(&ctx)?;
+    let channel_id = require_in_voice_channel(client, &ctx)?;
+
+    if query.is_none() {
+        return pause(client, ctx, false).await;
+    }
+
+    let query = query.unwrap().trim_matches(
+        |c: char| c.is_whitespace() || c == '<' || c == '>');
+    let queries =vec![query.to_owned(),
+                      format!("ytsearch:{}", query),
+                      format!("scsearch:{}", query)];
+    let node = client.get_node(guild_id).await?;
+    let mut queue: Vec<Track> = Vec::new();
+    for subquery in queries {
+        queue = load_tracks(client, &node, subquery.as_str()).await;
+        if queue.len() > 0 {
+            break;
+        }
+    }
+
+    let duration = format_duration(queue.iter().map(|t| t.info.length).sum());
     let response = if queue.len() > 1 {
         format!(":notes: Added **{}** tracks ({}) to the music queue.",
                 queue.len(), duration)
@@ -156,22 +164,23 @@ async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Optio
         format!(":notes: Added `{}` ({}) to the music queue.",
                 &queue[0].info, duration)
     } else {
-        format!(":bulb: No results found for `{}`", query.unwrap())
+        format!(":bulb: No results found for `{}`", query)
     };
 
-    if let Some(mut state) = client.states.get_mut(&guild_id) {
-        state.value_mut().queue.extend(ctx.message.author.id, queue);
-    } else {
-        create_player!(client, guild_id).await?.value()
-            .connect(client.gateway.clone(), channel_id);
-        let mut state_queue = MusicQueue::new();
-        state_queue.extend(ctx.message.author.id, queue);
-        client.states.insert(guild_id, PlayerState {
-            channel_id: channel_id,
-            skip_votes: HashSet::new(),
-            queue: state_queue
-        });
-        client.play_next(guild_id)?;
+    if queue.len() > 0 {
+        if let Some(mut state) = client.states.get_mut(&guild_id) {
+            state.value_mut().queue.extend(ctx.message.author.id, queue);
+        } else {
+            client.connect(guild_id, channel_id).await?;
+            let mut state_queue = MusicQueue::new();
+            state_queue.extend(ctx.message.author.id, queue);
+            client.states.insert(guild_id, PlayerState {
+                channel_id: channel_id,
+                skip_votes: HashSet::new(),
+                queue: state_queue
+            });
+            client.start_playing(guild_id).await?;
+        }
     }
 
     ctx.respond().content(response)?.await?;
@@ -196,7 +205,7 @@ async fn stop(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
     let guild_id = require_in_guild(&ctx)?;
     require_dj(client, &ctx).await?;
     require_playing!(client, ctx);
-    client.disconnect(guild_id);
+    client.disconnect(guild_id).await?;
     ctx.respond()
        .content("The player has been stopped and the queue has been cleared")?
        .await?;
@@ -214,7 +223,7 @@ async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
     }).unwrap();
 
     let response = if  votes >= required {
-        format!("Skipped `{}`", client.play_next(guild_id)?.unwrap())
+        format!("Skipped `{}`", client.play_next(guild_id).await?.unwrap())
     } else {
         format!("Total votes: `{}/{}`.", votes, required)
     };
@@ -265,7 +274,7 @@ async fn forceskip(client: &Client<'static>, ctx: commands::Context<'_>) -> Resu
     let guild_id = require_in_guild(&ctx)?;
     require_dj(client, &ctx).await?;
     require_playing!(client, ctx);
-    let response = if let Some(previous) = client.play_next(guild_id)? {
+    let response = if let Some(previous) = client.play_next(guild_id).await? {
         format!("Skipped `{}`.", previous)
     } else {
         "There is nothing in the queue right now.".to_owned()
@@ -307,10 +316,11 @@ fn format_duration(duration: Duration) -> String {
     let hours = secs / 3600;
     secs -= hours * 3600;
     let minutes = secs / 60;
-    secs -= secs * 60;
+    secs -= minutes * 60;
     if hours > 0 {
         format!("{:02}:{:02}:{:02}", hours, minutes, secs)
     } else {
         format!("{:02}:{:02}", minutes, secs)
     }
+
 }

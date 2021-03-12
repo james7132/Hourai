@@ -6,7 +6,7 @@ mod commands;
 
 use anyhow::{bail, Result};
 use futures::stream::StreamExt;
-use crate::{prelude::*, track::TrackInfo, player::PlayerState};
+use crate::{prelude::*, track::{Track, TrackInfo}, player::PlayerState};
 use twilight_lavalink::{Lavalink, model::*};
 use http::Uri;
 use twilight_command_parser::{Parser, CommandParserConfig};
@@ -33,14 +33,15 @@ const BOT_INTENTS: Intents = Intents::from_bits_truncate(
 
 const BOT_EVENTS : EventTypeFlags =
     EventTypeFlags::from_bits_truncate(
-        EventTypeFlags::READY.bits() |
         EventTypeFlags::CHANNEL_CREATE.bits() |
-        EventTypeFlags::CHANNEL_UPDATE.bits() |
         EventTypeFlags::CHANNEL_DELETE.bits() |
-        EventTypeFlags::MESSAGE_CREATE.bits() |
-        EventTypeFlags::VOICE_STATE_UPDATE.bits() |
+        EventTypeFlags::CHANNEL_UPDATE.bits() |
         EventTypeFlags::GUILD_CREATE.bits() |
-        EventTypeFlags::GUILD_DELETE.bits());
+        EventTypeFlags::GUILD_DELETE.bits() |
+        EventTypeFlags::MESSAGE_CREATE.bits() |
+        EventTypeFlags::READY.bits() |
+        EventTypeFlags::VOICE_SERVER_UPDATE.bits() |
+        EventTypeFlags::VOICE_STATE_UPDATE.bits());
 
 const CACHED_RESOURCES: ResourceType =
     ResourceType::from_bits_truncate(
@@ -190,11 +191,13 @@ impl Client<'static> {
             Event::GuildCreate(_) => Ok(()),
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
-                    self.disconnect(evt.id);
+                    self.disconnect(evt.id).await
+                } else {
+                    Ok(())
                 }
-                Ok(())
             },
             Event::VoiceStateUpdate(_) => Ok(()),
+            Event::VoiceServerUpdate(_) => Ok(()),
             _ => {
                 error!("Unexpected event type: {:?}", event);
                 Ok(())
@@ -212,7 +215,7 @@ impl Client<'static> {
                 info!("Started track in guild {}: {}", evt.guild_id, evt.track);
                 Ok(())
             },
-            IncomingEvent::TrackEnd(evt) => self.on_track_end(evt),
+            IncomingEvent::TrackEnd(evt) => self.on_track_end(evt).await,
             _ => Ok(()),
         };
 
@@ -221,12 +224,12 @@ impl Client<'static> {
         }
     }
 
-    fn on_track_end(&self, evt: &TrackEnd) -> Result<()> {
+    async fn on_track_end(&self, evt: &TrackEnd) -> Result<()> {
         info!("Track ended in guild {} (reason: {}): {}",
               evt.guild_id, evt.reason.as_str(), evt.track);
         match evt.reason.as_str() {
-            "FINISHED" => {self.play_next(evt.guild_id)?;}
-            "LOAD_FAILED" => {self.play_next(evt.guild_id)?;}
+            "FINISHED" => {self.play_next(evt.guild_id).await?;}
+            "LOAD_FAILED" => {self.play_next(evt.guild_id).await?;}
             _ => {},
         }
         Ok(())
@@ -242,7 +245,7 @@ impl Client<'static> {
     // HTTP requests to the Lavalink nodes
     pub async fn load_tracks(
         &self,
-        node: Node,
+        node: &Node,
         query: impl AsRef<str>
     ) -> Result<LoadedTracks> {
         let config = node.config().clone();
@@ -258,33 +261,68 @@ impl Client<'static> {
         Ok(serde_json::from_slice::<LoadedTracks>(&response_bytes)?)
     }
 
+    async fn play(&self, guild_id: GuildId, track: &Track) -> Result<()> {
+        self.lavalink.player(guild_id).await?.value().play(track)?;
+        Ok(())
+    }
+
+    pub async fn start_playing(&self, guild_id: GuildId) -> Result<()> {
+        let track = self.states.get(&guild_id).unwrap().currently_playing();
+        if let Some((_, track)) = track {
+            self.play(guild_id, &track).await?;
+        }
+        Ok(())
+    }
+
     /// Plays the next item in the queue.
     /// Panics if a player does not exist.
-    pub fn play_next(&self, guild_id: GuildId) -> Result<Option<TrackInfo>> {
-        let (prev, disconnect) =  {
+    pub async fn play_next(&self, guild_id: GuildId) -> Result<Option<TrackInfo>> {
+        let (prev, cp) =  {
             let mut state = self.states.get_mut(&guild_id).unwrap();
             let prev = state.queue.pop().map(|kv| kv.value.info);
-            let cp = state.currently_playing();
-            if let Some(kv) = &cp {
-                self.lavalink.players().get(&guild_id)
-                    .unwrap().value().play(kv.1)?;
-            }
-            (prev, cp.is_some())
+            (prev, state.currently_playing())
         };
         // Must be done seperately to avoid a deadlock.
-        if disconnect {
-            self.disconnect(guild_id);
+        if let Some((_, track)) = &cp {
+            self.play(guild_id, track).await?;
+        } else {
+            self.disconnect(guild_id).await?;
         }
         Ok(prev)
     }
 
-    pub fn disconnect(&self, guild_id: GuildId) {
-        self.states.remove(&guild_id);
-        let result = self.lavalink.players().get(&guild_id).unwrap().value()
-            .disconnect(self.gateway.clone());
-        if let Err(err) = result {
-            error!("Error while disconnecting player: {}", err);
-        }
+    pub async fn connect(&self, guild_id: GuildId, channel_id: ChannelId) -> Result<()> {
+        let shard_id = self.gateway.shard_id(guild_id);
+        self.gateway.command(shard_id, &serde_json::json!({
+            "op": 4,
+            "d": {
+                "channel_id": channel_id,
+                "guild_id": guild_id,
+                "self_mute": false,
+                "self_deaf": false,
+            }
+        })).await?;
+
+        info!("Connected to channel {} in guild {}", channel_id, guild_id);
+        Ok(())
+    }
+
+    pub async fn disconnect(&self, guild_id: GuildId) -> Result<()> {
+        self.lavalink.player(guild_id).await?.value().send(Stop::new(guild_id))?;
+        info!("Stopped playing in in guild {}", guild_id);
+
+        let shard_id = self.gateway.shard_id(guild_id);
+        self.gateway.command(shard_id, &serde_json::json!({
+            "op": 4,
+            "d": {
+                "channel_id": None::<ChannelId>,
+                "guild_id": guild_id,
+                "self_mute": false,
+                "self_deaf": false,
+            }
+        })).await?;
+        info!("Disconnected from guild {}", guild_id);
+        Ok(())
     }
 
     pub fn mutate_state<F, R>(&self, guild_id: GuildId, f: F) -> Option<R>
