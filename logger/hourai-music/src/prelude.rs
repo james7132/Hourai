@@ -5,6 +5,7 @@ pub use twilight_lavalink::{
     http::LoadedTracks,
     model::IncomingEvent
 };
+pub use crate::player::PlayerExt;
 pub use std::net::SocketAddr;
 use futures::channel::mpsc::UnboundedReceiver;
 

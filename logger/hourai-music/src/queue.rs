@@ -49,6 +49,15 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
         }
     }
 
+    /// Peeks at the first item in the queue. This is a O(1) operation.
+    pub fn peek(&self) -> Option<QueueItem<K, &V>> {
+        let queue_peek = self.0.get(0)?;
+        Some(QueueItem {
+            key: queue_peek.0,
+            value: queue_peek.1.get(0)?
+        })
+    }
+
     /// Pops the latest item from the queue. This is a O(1) operation.
     pub fn pop(&mut self) -> Option<QueueItem<K, V>> {
         let (key, value, size) = {

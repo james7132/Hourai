@@ -2,16 +2,18 @@ mod prelude;
 mod queue;
 mod player;
 mod track;
+mod commands;
 
 use anyhow::{bail, Result};
 use futures::stream::StreamExt;
-use crate::{prelude::*, player::{Player, PlayerManager}, track::Track};
-use twilight_lavalink::{Lavalink, http::LoadType};
+use crate::{prelude::*, track::TrackInfo, player::PlayerState};
+use twilight_lavalink::{Lavalink, model::*};
 use http::Uri;
-use twilight_command_parser::{Parser, CommandParserConfig, Command};
+use twilight_command_parser::{Parser, CommandParserConfig};
+use dashmap::DashMap;
 use hourai::{
-    config, commands::{self, CommandError}, init, cache::{InMemoryCache, ResourceType},
-    models::{channel::Message, id::*},
+    config, init, cache::{InMemoryCache, ResourceType},
+    models::id::*,
     gateway::{Intents, Event, EventTypeFlags, cluster::*},
 };
 use std::{convert::TryFrom, str::FromStr};
@@ -88,7 +90,7 @@ async fn main() {
         lavalink: lavalink.clone(),
         cache: cache.clone(),
         gateway: gateway.clone(),
-        players: Arc::new(PlayerManager::new()),
+        states: Arc::new(DashMap::new()),
         hyper: HyperClient::new(),
         resolver: GaiResolver::new(),
         parser: parser
@@ -125,7 +127,7 @@ pub struct Client<'a> {
     pub gateway: Cluster,
     pub cache: InMemoryCache,
     pub lavalink: twilight_lavalink::Lavalink,
-    pub players: Arc<PlayerManager>,
+    pub states: Arc<DashMap<GuildId, PlayerState>>,
     pub resolver: GaiResolver,
     pub parser: Parser<'a>
 }
@@ -184,11 +186,11 @@ impl Client<'static> {
             Event::ChannelCreate(_) => Ok(()),
             Event::ChannelUpdate(_) => Ok(()),
             Event::ChannelDelete(_) => Ok(()),
-            Event::MessageCreate(evt) => self.on_message_create(evt.0).await,
+            Event::MessageCreate(evt) => commands::on_message_create(self, evt.0).await,
             Event::GuildCreate(_) => Ok(()),
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
-                    self.players.destroy_player(evt.id);
+                    self.disconnect(evt.id);
                 }
                 Ok(())
             },
@@ -205,18 +207,13 @@ impl Client<'static> {
     }
 
     async fn handle_lavalink_event(self, event: IncomingEvent) {
-        let guild_id = match &event {
-            IncomingEvent::PlayerUpdate(evt) => evt.guild_id,
-            IncomingEvent::TrackStart(evt) => evt.guild_id,
-            IncomingEvent::TrackEnd(evt) => evt.guild_id,
-            _ => return,
-        };
-
-        let result = if let Some(player) = self.players.get_player(guild_id) {
-            player.handle_event(&event).await
-        } else {
-            error!("Recieved unexpected lavalink event: {:?}", &event);
-            return;
+        let result = match &event {
+            IncomingEvent::TrackStart(ref evt) => {
+                info!("Started track in guild {}: {}", evt.guild_id, evt.track);
+                Ok(())
+            },
+            IncomingEvent::TrackEnd(evt) => self.on_track_end(evt),
+            _ => Ok(()),
         };
 
         if let Err(err) = result {
@@ -224,8 +221,18 @@ impl Client<'static> {
         }
     }
 
-    pub async fn get_lavalink_node(&self, guild_id: GuildId)
-        -> Result<twilight_lavalink::Node> {
+    fn on_track_end(&self, evt: &TrackEnd) -> Result<()> {
+        info!("Track ended in guild {} (reason: {}): {}",
+              evt.guild_id, evt.reason.as_str(), evt.track);
+        match evt.reason.as_str() {
+            "FINISHED" => {self.play_next(evt.guild_id)?;}
+            "LOAD_FAILED" => {self.play_next(evt.guild_id)?;}
+            _ => {},
+        }
+        Ok(())
+    }
+
+    pub async fn get_node(&self, guild_id: GuildId) -> Result<twilight_lavalink::Node> {
         Ok(match self.lavalink.players().get(&guild_id) {
             Some(kv) => kv.value().node().clone(),
             None => self.lavalink.best().await?,
@@ -251,269 +258,32 @@ impl Client<'static> {
         Ok(serde_json::from_slice::<LoadedTracks>(&response_bytes)?)
     }
 
-    fn require_in_voice_channel(&self, ctx: &commands::Context<'_>)
-        -> Result<Option<ChannelId>> {
-        let guild_id = commands::precondition::require_in_guild(&ctx)?;
-
-        let user = self.cache.voice_state(guild_id, ctx.message.author.id);
-        let bot = self.cache.voice_state(guild_id, self.user_id);
-        if user.is_none() {
-            bail!(CommandError::FailedPrecondition(
-                  "You must be in a voice channel to play music."));
-        } else if bot.is_some() && user != bot {
-            bail!(CommandError::FailedPrecondition(
-                  "You must be in the same voice channel to play music."));
-        }
-
-        Ok(user)
-    }
-
-    fn require_playing(&self, ctx: &commands::Context<'_>) -> Result<Player> {
-        let guild_id = commands::precondition::require_in_guild(&ctx)?;
-
-        self.players
-            .get_player(guild_id)
-            .ok_or_else(||
-                CommandError::FailedPrecondition("No music is currently playing.").into())
-    }
-
-    async fn require_dj(&self, ctx: &commands::Context<'_>) -> Result<()> {
-        self.require_in_voice_channel(&ctx)?;
-        Ok(())
-    }
-
-    // Commands
-    async fn on_message_create(self, evt: Message) -> Result<()> {
-        debug!("Recieved message: {}", evt.content.as_str());
-        if let Some(command) = self.parser.parse(evt.content.as_str()) {
-            debug!("Potential command: {}", evt.content.as_str());
-            let ctx = commands::Context {
-                message: &evt,
-                http: self.http_client.clone(),
-                cache: self.cache.clone(),
-            };
-
-            let result = match command {
-                Command { name: "play", arguments, .. } =>
-                    self.play(ctx, arguments.into_remainder()).await,
-                Command { name: "pause", .. } => self.pause(ctx, true).await,
-                Command { name: "stop", .. } => self.stop(ctx).await,
-                Command { name: "shuffle",  .. } => self.shuffle(ctx).await,
-                Command { name: "skip", .. } => self.skip(ctx).await,
-                Command { name: "forceskip", .. } => self.forceskip(ctx).await,
-                Command { name: "remove", arguments, .. } => Ok(()),
-                Command { name: "removeall", .. } => self.remove_all(ctx).await,
-                Command { name: "nowplaying", .. } => Ok(()),
-                Command { name: "np", .. } => Ok(()),
-                Command { name: "queue", .. } => Ok(()),
-                Command { name: "volume", arguments, .. } =>
-                    // TODO(james7132): Do proper argument parsing.
-                    self.volume(ctx, Some(100)).await,
-                _ => {
-                    debug!("Failed to find command: {}", evt.content.as_str());
-                    Ok(())
-                }
-            };
-
-            if let Err(err) = result {
-                match err.downcast::<CommandError>() {
-                    Ok(command_error) => {
-                        self.http_client
-                            .create_message(evt.channel_id)
-                            .reply(evt.id)
-                            .content(format!(":x: {}", command_error))?
-                            .await?;
-                    },
-                    Err(err) => bail!(err),
-                }
+    /// Plays the next item in the queue.
+    /// Panics if a player does not exist.
+    pub fn play_next(&self, guild_id: GuildId) -> Result<Option<TrackInfo>> {
+        let (prev, disconnect) =  {
+            let mut state = self.states.get_mut(&guild_id).unwrap();
+            let prev = state.queue.pop().map(|kv| kv.value.info);
+            let cp = state.currently_playing();
+            if let Some(kv) = &cp {
+                self.lavalink.players().get(&guild_id)
+                    .unwrap().value().play(kv.1)?;
             }
+            (prev, cp.is_some())
+        };
+        // Must be done seperately to avoid a deadlock.
+        if disconnect {
+            self.disconnect(guild_id);
         }
-        Ok(())
+        Ok(prev)
     }
 
-    async fn play(&self, ctx: commands::Context<'_>, query: Option<&str>) -> Result<()> {
-        let guild_id = commands::precondition::require_in_guild(&ctx)?;
-        let user_channel_id = self.require_in_voice_channel(&ctx)?;
-
-        if query.is_none() {
-            return self.pause(ctx, false).await;
+    pub fn disconnect(&self, guild_id: GuildId) {
+        self.states.remove(&guild_id);
+        let result = self.lavalink.players().get(&guild_id).unwrap().value()
+            .disconnect(self.gateway.clone());
+        if let Err(err) = result {
+            error!("Error while disconnecting player: {}", err);
         }
-
-        let node = self.get_lavalink_node(guild_id).await?;
-        let response = match self.load_tracks(node, query.unwrap()).await {
-            Ok(tracks) => tracks,
-            Err(_) => bail!(CommandError::GenericFailure("Failed to load track(s).")),
-        };
-
-        let tracks = match response {
-            LoadedTracks { load_type: LoadType::TrackLoaded, tracks, .. } => {
-                assert!(tracks.len() > 0);
-                vec![tracks[0].clone()]
-            },
-            LoadedTracks { load_type: LoadType::SearchResult, tracks, .. } => {
-                // TODO(james7132): This could be improved by doing a edit distance from
-                // the query for similarity matching.
-                assert!(tracks.len() > 0);
-                vec![tracks[0].clone()]
-            },
-            LoadedTracks { load_type: LoadType::PlaylistLoaded, tracks, playlist_info, .. } => {
-                if let Some(idx) = playlist_info.selected_track {
-                    vec![tracks[idx as usize].clone()]
-                } else {
-                    tracks
-                }
-            },
-            LoadedTracks { load_type: LoadType::LoadFailed, .. } => {
-                bail!(CommandError::GenericFailure("Failed to load tracks."));
-            },
-            _ => vec![],
-        };
-
-        let queue: Vec<Track> = tracks.into_iter()
-                                      .filter_map(|t| Track::try_from(t).ok())
-                                      .collect();
-        let duration = format_duration(queue.iter().map(|t| t.info.length).sum());
-
-        let response = if queue.len() > 1 {
-            format!(":notes: Added **{}** tracks ({}) to the music queue.",
-                    queue.len(), duration)
-        } else if queue.len() == 1 {
-            format!(":notes: Added `{}` ({}) to the music queue.",
-                    &queue[0].info, duration)
-        } else {
-            format!(":bulb: No results found for `{}`", query.unwrap())
-        };
-
-        if let Some(player) = self.players.get_player(guild_id) {
-            player.enqueue(ctx.message.author.id, queue);
-        } else {
-            let player = Player::new(&self, guild_id).await?;
-            player.enqueue(ctx.message.author.id, queue);
-            player.connect(user_channel_id.unwrap()).await?;
-            player.play_next().await?;
-        }
-
-        ctx.respond().content(response)?.await?;
-        Ok(())
-    }
-
-    async fn pause(&self, ctx: commands::Context<'_>, pause: bool) -> Result<()> {
-        self.require_dj(&ctx).await?;
-        self.require_playing(&ctx)?.set_pause(pause)?;
-        Ok(())
-    }
-
-    async fn stop(&self, ctx: commands::Context<'_>) -> Result<()> {
-        self.require_dj(&ctx).await?;
-        self.require_playing(&ctx)?
-            .disconnect()
-            .await?;
-        ctx.respond()
-           .content("The player has been stopped and the queue has been cleared")?
-           .await?;
-        Ok(())
-    }
-
-    async fn skip(&self, ctx: commands::Context<'_>) -> Result<()> {
-        self.require_in_voice_channel(&ctx)?;
-        let player = self.require_playing(&ctx)?;
-        player.vote_to_skip(ctx.message.author.id);
-
-        // TODO(james7132): Make this ratio configurable.
-        let listeners = self.cache.voice_channel_users(player.channel_id().unwrap()).len();
-        let votes_required = listeners / 2;
-
-        let response = if player.vote_count() >= votes_required {
-            format!("Skipped `{}`", player.play_next().await?.unwrap())
-        } else {
-            format!("Total votes: `{}/{}`.", player.vote_count(), votes_required)
-        };
-
-        ctx.respond().content(response)?.await?;
-        Ok(())
-    }
-
-    // TODO(james7132): Properly implmement
-    async fn remove(&self, ctx: commands::Context<'_>, index: usize) -> Result<()> {
-        self.require_in_voice_channel(&ctx)?;
-        let player = self.require_playing(&ctx)?;
-        ctx.respond().content("Skipped.")?.await?;
-        Ok(())
-    }
-
-    async fn remove_all(&self, ctx: commands::Context<'_>) -> Result<()> {
-        self.require_in_voice_channel(&ctx)?;
-        let player = self.require_playing(&ctx)?;
-        let response = if let Some(count) = player.clear_user(ctx.message.author.id) {
-            format!("Removed **{}** tracks from the queue.", count)
-        } else {
-            "You currently do not have any tracks in the queue.".to_owned()
-        };
-        ctx.respond().content(response)?.await?;
-        Ok(())
-    }
-
-    async fn shuffle(&self, ctx: commands::Context<'_>) -> Result<()> {
-        self.require_in_voice_channel(&ctx)?;
-        let player = self.require_playing(&ctx)?;
-        let response = if let Some(count) = player.shuffle(ctx.message.author.id) {
-            format!("Shuffled **{}** tracks in the queue.", count)
-        } else {
-            "You currently do not have any tracks in the queue.".to_owned()
-        };
-        ctx.respond().content(response)?.await?;
-        Ok(())
-    }
-
-    async fn forceskip(&self, ctx: commands::Context<'_>) -> Result<()> {
-        self.require_dj(&ctx).await?;
-        let player = self.require_playing(&ctx)?;
-        let response = if let Some(previous) = player.play_next().await? {
-            format!("Skipped `{}`.", previous)
-        } else {
-            "There is nothing in the queue right now.".to_owned()
-        };
-        ctx.respond().content(response)?.await?;
-        Ok(())
-    }
-
-    async fn volume(&self, ctx: commands::Context<'_>, volume: Option<i64>) -> Result<()> {
-        let player = self.require_playing(&ctx)?;
-        let response = if let Some(vol) = volume {
-            self.require_dj(&ctx).await?;
-            if vol < 0 || vol > 150 {
-                bail!(CommandError::InvalidArgument(
-                        "Volume must be between 0 and 150.".into()));
-            }
-            player.set_volume(vol as u8)?;
-            format!("Set volume to `{}`.", vol)
-        } else {
-            format!("Current volume is `{}`.", player.volume())
-        };
-        ctx.respond().content(response)?.await?;
-        Ok(())
-    }
-
-    async fn queue(&self, _: commands::Context<'_>) -> Result<()> {
-        // TODO(james7132): Implement.
-        Ok(())
-    }
-
-    async fn now_playing(&self, _: commands::Context<'_>) -> Result<()> {
-        // TODO(james7132): Implement.
-        Ok(())
-    }
-}
-
-fn format_duration(duration: Duration) -> String {
-    let mut secs = duration.as_secs();
-    let hours = secs / 3600;
-    secs -= hours * 3600;
-    let minutes = secs / 60;
-    secs -= secs * 60;
-    if hours > 0 {
-        format!("{:02}:{:02}:{:02}", hours, minutes, secs)
-    } else {
-        format!("{:02}:{:02}", minutes, secs)
     }
 }
