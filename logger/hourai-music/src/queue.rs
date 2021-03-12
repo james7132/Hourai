@@ -16,6 +16,7 @@ pub struct QueueItem<K, V> {
 ///
 /// This structure is thread-safe and does not implement Send or Sync. Wrapping it in a RwLock is
 /// highly suggested.
+#[derive(Clone)]
 pub struct MusicQueue<K, V>(VecDeque<(K, VecDeque<V>)>);
 
 impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
@@ -131,6 +132,51 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
         self.0.iter().find(|kv| kv.0 == key).is_some()
     }
 
+    pub fn iter<'a>(&'a self) -> MusicQueueIterator<'a, K, V> {
+        MusicQueueIterator {
+            queue: self,
+            key_idx: 0,
+            bucket_idx: 0,
+            max_bucket_idx: self.0.iter().map(|kv| kv.1.len()).max().unwrap_or(0)
+        }
+    }
+
+}
+
+pub struct MusicQueueIterator<'a, K, V> {
+    queue: &'a MusicQueue<K, V>,
+    key_idx: usize,
+    bucket_idx: usize,
+    max_bucket_idx: usize,
+}
+
+impl<'a, K: Copy, V> Iterator for MusicQueueIterator<'a, K, V> {
+    type Item = QueueItem<K, &'a V>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.bucket_idx > self.max_bucket_idx {
+            return None;
+        }
+        loop {
+            let item = self.queue.0.get(self.key_idx)
+                           .and_then(|kv| {
+                               kv.1.get(self.bucket_idx)
+                                 .map(|v| QueueItem {
+                                     key: kv.0,
+                                     value: v
+                                 })
+                           });
+            self.key_idx += 1;
+            if self.key_idx >= self.queue.0.len() {
+                self.key_idx = 0;
+                self.bucket_idx += 1;
+            }
+            if item.is_some() {
+                return item;
+            } else if self.bucket_idx > self.max_bucket_idx {
+                return None;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -251,6 +297,27 @@ mod test {
         assert_eq!(queue.count(20), None);
         assert_eq!(queue.count(10), None);
         assert_eq!(queue.count(5), None);
+    }
+
+    #[test]
+    fn test_queue_iter() {
+        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        queue.push(20, 20);
+        queue.push(20, 40);
+        queue.push(10, 10);
+        queue.push(5, 30);
+        queue.push(10, 15);
+        queue.push(20, 60);
+        let mut iter = queue.iter();
+        assert_eq!(iter.next(), Some(QueueItem { key: 20, value: &20 }));
+        assert_eq!(iter.next(), Some(QueueItem { key: 10, value: &10 }));
+        assert_eq!(iter.next(), Some(QueueItem { key: 5, value: &30 }));
+        assert_eq!(iter.next(), Some(QueueItem { key: 20, value: &40 }));
+        assert_eq!(iter.next(), Some(QueueItem { key: 10, value: &15 }));
+        assert_eq!(iter.next(), Some(QueueItem { key: 20, value: &60 }));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
     }
 
 }
