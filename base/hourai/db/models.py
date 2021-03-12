@@ -10,13 +10,6 @@ from sqlalchemy.dialects import postgresql
 
 Base = declarative_base()
 
-feed_channels_table = Table('feed_channels', Base.metadata,
-                            Column('feed_id', types.BigInteger,
-                                   ForeignKey('feeds.id')),
-                            Column('channel_id', types.BigInteger,
-                                   ForeignKey('channels.id')))
-
-
 class UnixTimestamp(types.TypeDecorator):
     impl = types.BigInteger
 
@@ -159,51 +152,3 @@ class Alias(Base):
     guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
     name = Column(types.String(2000), primary_key=True)
     content = Column(types.String(2000))
-
-
-class Channel(Base):
-    __tablename__ = 'channels'
-
-    id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    guild_id = Column(types.BigInteger, nullable=True)
-
-    feeds = relationship("Feed", secondary=feed_channels_table,
-                         back_populates="channels")
-
-    def get_resource(self, bot):
-        return bot.get_channel(self.id)
-
-
-@enum.unique
-class FeedType(enum.Enum):
-    RSS = enum.auto()
-    REDDIT = enum.auto()
-    HACKER_NEWS = enum.auto()
-    TWITTER = enum.auto()
-
-
-class Feed(Base):
-    __tablename__ = 'feeds'
-    __table_args__ = (UniqueConstraint('type', 'source'),)
-
-    id = Column(types.Integer, primary_key=True, autoincrement=True)
-    _type = Column('type', types.String(255), nullable=False)
-    source = Column(types.String(8192), nullable=False)
-    last_updated = Column(UnixTimestamp, nullable=False)
-
-    channels = relationship("Channel", secondary=feed_channels_table,
-                            back_populates="feeds")
-
-    @property
-    def type(self):
-        return FeedType._member_map_.get(self._type, None)
-
-    @type.setter
-    def set_type(self, value):
-        assert isinstance(value, FeedType)
-        self._type = value.name
-
-    def get_channels(self, bot):
-        """ Returns a generator for all channels in the feed. """
-
-        return (ch.get_resource(bot) for ch in self.channels)

@@ -23,6 +23,3 @@ dblpy==0.4.0
 
 # For music bot features
 wavelink==0.9.8
-
-# API Wrappers for feeds and external services
-asyncpraw==7.1.1
