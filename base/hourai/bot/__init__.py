@@ -8,7 +8,7 @@ import logging
 import pkgutil
 import sys
 from discord.ext import commands
-from hourai import config, web
+from hourai import config
 from hourai.db import storage
 from hourai.utils import fake, uvloop
 from . import actions, extensions
@@ -92,8 +92,6 @@ class Hourai(commands.AutoShardedBot):
         self.bot_counters = collections.defaultdict(collections.Counter)
         self.guild_counters = collections.defaultdict(collections.Counter)
 
-        self.web_app_runner = None
-
     def _get_state(self, **options):
         return HouraiConnectionState(
                 storage=self.storage, dispatch=self.dispatch,
@@ -154,33 +152,13 @@ class Hourai(commands.AutoShardedBot):
         super().run(*args, **kwargs)
 
     async def start(self, *args, **kwargs):
-        try:
-            await self.storage.init()
-            await self.http_session.__aenter__()
-            await self.start_web_api()
-        except Exception:
-            log.exception("Failed to set up web API.")
-            raise
+        await self.storage.init()
+        await self.http_session.__aenter__()
         log.info('Starting bot...')
         await super().start(*args, **kwargs)
 
-    async def start_web_api(self):
-        app = await web.create_app(self.config, bot=self)
-
-        web_app_kwargs = {}
-        log_format = self.config.logging.access_log_format
-        if log_format:
-            web_app_kwargs['access_log_format'] = log_format
-
-        self.web_app_runner = aiohttp.web.AppRunner(app, **web_app_kwargs)
-        port = self.config.web.port
-        await self.web_app_runner.setup()
-        await aiohttp.web.TCPSite(self.web_app_runner, port=port).start()
-
     async def close(self):
         await super().close()
-        if self.web_app_runner is not None:
-            await self.web_app_runner.cleanup()
         await self.http_session.__aexit__(None, None, None)
 
     async def on_guild_available(self, guild):
