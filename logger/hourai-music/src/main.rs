@@ -286,4 +286,9 @@ impl Client<'static> {
             error!("Error while disconnecting player: {}", err);
         }
     }
+
+    pub fn mutate_state<F, R>(&self, guild_id: GuildId, f: F) -> Option<R>
+        where F: Fn(&mut PlayerState) -> R {
+        self.states.get_mut(&guild_id).map(|mut kv| f(kv.value_mut()))
+    }
 }
