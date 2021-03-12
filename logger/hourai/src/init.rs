@@ -12,14 +12,16 @@ pub fn init(config: &HouraiConfig) {
         .compact()
         .init();
 
+    debug!("Loaded Config: {:?}", config);
+
     let metrics_port = config.metrics.port.unwrap_or(9090);
-    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), metrics_port);
+    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), metrics_port);
     PrometheusBuilder::new()
         .listen_address(socket)
         .install()
         .expect("Failed to set up Prometheus metrics exporter");
 
-    debug!("Loaded Config: {:?}", config);
+    debug!("Metrics endpoint listening on http://0.0.0.0:{}", metrics_port);
 }
 
 pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
