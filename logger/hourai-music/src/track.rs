@@ -1,4 +1,4 @@
-use hourai::models::id::GuildId;
+use hourai::models::{id::GuildId, user::User};
 use twilight_lavalink::model::Play;
 use std::convert::TryFrom;
 use std::{fmt, time::Duration};
@@ -27,6 +27,7 @@ impl fmt::Display for TrackInfo {
 
 #[derive(Clone)]
 pub struct Track {
+    pub requestor: User,
     pub info: TrackInfo,
     pub track: Vec<u8>
 }
@@ -57,12 +58,13 @@ impl From<twilight_lavalink::http::TrackInfo> for TrackInfo {
     }
 }
 
-impl TryFrom<twilight_lavalink::http::Track> for Track {
+impl TryFrom<(User, twilight_lavalink::http::Track)> for Track {
     type Error = base64::DecodeError;
-    fn try_from(value: twilight_lavalink::http::Track) -> Result<Self, Self::Error> {
+    fn try_from(value: (User, twilight_lavalink::http::Track)) -> Result<Self, Self::Error> {
         Ok(Self {
-            info: TrackInfo::from(value.info),
-            track: decode_track(value.track)?
+            requestor: value.0,
+            info: TrackInfo::from(value.1.info),
+            track: decode_track(value.1.track)?
         })
     }
 }

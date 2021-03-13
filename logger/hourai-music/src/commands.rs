@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use anyhow::{bail, Result};
 use hourai::{
-    models::{id::ChannelId, channel::Message},
-    commands::{self, CommandError, precondition::*}
+    models::{id::ChannelId, channel::Message, user::User},
+    commands::{self, CommandError, precondition::*},
 };
 use twilight_command_parser::Command;
 use twilight_lavalink::http::LoadType;
@@ -100,7 +100,11 @@ async fn require_dj(client: &Client<'static>, ctx: &commands::Context<'_>) -> Re
     Ok(())
 }
 
-async fn load_tracks(client: &Client<'static>, node: &Node, query: &str) -> Vec<Track> {
+async fn load_tracks(
+    client: &Client<'static>,
+    author: &User,
+    node: &Node,
+    query: &str) -> Vec<Track> {
     let response = match client.load_tracks(node, query).await {
         Ok(tracks) => tracks,
         Err(_) => return vec![],
@@ -131,7 +135,7 @@ async fn load_tracks(client: &Client<'static>, node: &Node, query: &str) -> Vec<
         _ => vec![],
     };
 
-    tracks.into_iter().filter_map(|t| Track::try_from(t).ok()).collect()
+    tracks.into_iter().filter_map(|t| Track::try_from((author.clone(), t)).ok()).collect()
 }
 
 async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Option<&str>) -> Result<()> {
@@ -150,7 +154,7 @@ async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Optio
     let node = client.get_node(guild_id).await?;
     let mut queue: Vec<Track> = Vec::new();
     for subquery in queries {
-        queue = load_tracks(client, &node, subquery.as_str()).await;
+        queue = load_tracks(client, &ctx.message.author, &node, subquery.as_str()).await;
         if queue.len() > 0 {
             break;
         }

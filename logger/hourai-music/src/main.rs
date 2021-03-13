@@ -3,6 +3,7 @@ mod queue;
 mod player;
 mod track;
 mod commands;
+mod ui;
 
 use anyhow::{bail, Result};
 use futures::stream::StreamExt;
