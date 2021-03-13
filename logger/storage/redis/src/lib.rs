@@ -3,48 +3,55 @@ mod guild_config;
 mod keys;
 mod protobuf;
 
+use self::compression::Compressed;
+pub use self::guild_config::CachedGuildConfig;
+use self::keys::{CacheKey, CachePrefix, Id};
+use self::protobuf::Protobuf;
 use anyhow::Result;
-use hourai::models::{Snowflake, UserLike, MessageLike, id::*};
+use hourai::models::{id::*, MessageLike, Snowflake, UserLike};
 use hourai::proto::cache::*;
 use redis::aio::ConnectionLike;
-use self::compression::Compressed;
-use self::keys::{Id, CacheKey, CachePrefix};
-pub use self::guild_config::CachedGuildConfig;
-use self::protobuf::Protobuf;
 use tracing::debug;
 
 pub type RedisPool = redis::aio::ConnectionManager;
 
 pub async fn init(config: &hourai::config::HouraiConfig) -> RedisPool {
     debug!("Creating Redis client");
-    let client = redis::Client::open(config.redis.as_ref())
-                               .expect("Failed to create Redis client");
-    RedisPool::new(client).await.expect("Failed to initialize multiplexed Redis connection")
+    let client = redis::Client::open(config.redis.as_ref()).expect("Failed to create Redis client");
+    RedisPool::new(client)
+        .await
+        .expect("Failed to initialize multiplexed Redis connection")
 }
 
 pub struct OnlineStatus {
-    pipeline: redis::Pipeline
+    pipeline: redis::Pipeline,
 }
 
 impl Default for OnlineStatus {
     fn default() -> Self {
-        Self { pipeline: redis::pipe().atomic().clone() }
+        Self {
+            pipeline: redis::pipe().atomic().clone(),
+        }
     }
 }
 
 impl OnlineStatus {
-
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn set_online(&mut self, guild_id: GuildId, online: impl IntoIterator<Item=UserId>)
-                      -> &mut Self {
+    pub fn set_online(
+        &mut self,
+        guild_id: GuildId,
+        online: impl IntoIterator<Item = UserId>,
+    ) -> &mut Self {
         let key = CacheKey(CachePrefix::OnlineStatus, guild_id.0);
         let ids: Vec<Id<u64>> = online.into_iter().map(|id| Id(id.0)).collect();
         self.pipeline
-            .del(key).ignore()
-            .sadd(key, ids).ignore()
+            .del(key)
+            .ignore()
+            .sadd(key, ids)
+            .ignore()
             .expire(key, 3600);
         self
     }
@@ -52,33 +59,26 @@ impl OnlineStatus {
     pub fn build(self) -> redis::Pipeline {
         self.pipeline
     }
-
 }
 
 pub struct GuildConfig;
 
 impl GuildConfig {
-
     pub async fn fetch<T: ::protobuf::Message + CachedGuildConfig, C: ConnectionLike>(
         id: GuildId,
-        conn: &mut C
+        conn: &mut C,
     ) -> Result<T> {
         let key = CacheKey(CachePrefix::GuildConfigs, id.0);
-        let response: Option<Compressed<Protobuf<T>>> =
-            redis::Cmd::hget(key, vec![T::SUBKEY])
-                  .query_async(conn)
-                  .await?;
-        Ok(response.map(|c| c.0.0).unwrap_or_else(|| T::new()))
+        let response: Option<Compressed<Protobuf<T>>> = redis::Cmd::hget(key, vec![T::SUBKEY])
+            .query_async(conn)
+            .await?;
+        Ok(response.map(|c| c.0 .0).unwrap_or_else(|| T::new()))
     }
 
-    pub fn set<T: ::protobuf::Message + CachedGuildConfig>(
-        id: GuildId,
-        value: T
-    ) -> redis::Cmd {
+    pub fn set<T: ::protobuf::Message + CachedGuildConfig>(id: GuildId, value: T) -> redis::Cmd {
         let key = CacheKey(CachePrefix::GuildConfigs, id.0);
         redis::Cmd::hset(key, vec![T::SUBKEY], Compressed(Protobuf(value)))
     }
-
 }
 
 pub struct CachedMessage {
@@ -86,7 +86,6 @@ pub struct CachedMessage {
 }
 
 impl CachedMessage {
-
     pub fn new(message: impl MessageLike) -> Self {
         let mut msg = CachedMessageProto::new();
         msg.set_id(message.id().0);
@@ -106,18 +105,19 @@ impl CachedMessage {
             user.set_avatar(avatar.to_owned());
         }
 
-        Self { proto: Protobuf(msg) }
+        Self {
+            proto: Protobuf(msg),
+        }
     }
 
     pub async fn fetch<C: ConnectionLike>(
         channel_id: ChannelId,
         message_id: MessageId,
-        conn: &mut C
+        conn: &mut C,
     ) -> Result<Option<CachedMessageProto>> {
         let key = CacheKey(CachePrefix::Messages, (channel_id.0, message_id.0));
-        let proto: Option<Protobuf<CachedMessageProto>> = redis::Cmd::get(key)
-            .query_async(conn)
-            .await?;
+        let proto: Option<Protobuf<CachedMessageProto>> =
+            redis::Cmd::get(key).query_async(conn).await?;
         Ok(proto.map(|proto| proto.0))
     }
 
@@ -137,13 +137,12 @@ impl CachedMessage {
 
     pub fn bulk_delete(
         channel_id: ChannelId,
-        ids: impl IntoIterator<Item=MessageId>
+        ids: impl IntoIterator<Item = MessageId>,
     ) -> redis::Cmd {
-        let keys: Vec<CacheKey<(u64, u64)>> =
-            ids.into_iter()
-               .map(|id| CacheKey(CachePrefix::Messages, (channel_id.0, id.0)))
-               .collect();
+        let keys: Vec<CacheKey<(u64, u64)>> = ids
+            .into_iter()
+            .map(|id| CacheKey(CachePrefix::Messages, (channel_id.0, id.0)))
+            .collect();
         redis::Cmd::del(keys)
     }
-
 }

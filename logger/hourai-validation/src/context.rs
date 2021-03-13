@@ -7,7 +7,6 @@ pub enum ValidationReason {
 }
 
 impl ValidationReason {
-
     pub fn is_approval(&self) -> bool {
         self.approval_reason().is_some()
     }
@@ -29,7 +28,6 @@ impl ValidationReason {
             _ => None,
         }
     }
-
 }
 
 pub struct ValidationContext {
@@ -38,7 +36,6 @@ pub struct ValidationContext {
 }
 
 impl ValidationContext {
-
     pub fn new(member: Member) -> Self {
         Self {
             member: member,
@@ -55,7 +52,8 @@ impl ValidationContext {
     }
 
     pub fn add_rejection_reason(&mut self, reason: impl Into<String>) {
-        self.reasons.push(ValidationReason::Rejection(reason.into()));
+        self.reasons
+            .push(ValidationReason::Rejection(reason.into()));
     }
 
     pub fn add_reason(&mut self, reason: ValidationReason) {
@@ -66,12 +64,11 @@ impl ValidationContext {
         self.reasons.last().map(|r| r.is_approval()).unwrap_or(true)
     }
 
-    pub fn approval_reasons(&self) -> impl Iterator<Item=&str> {
+    pub fn approval_reasons(&self) -> impl Iterator<Item = &str> {
         self.reasons.iter().filter_map(|r| r.approval_reason())
     }
 
-    pub fn rejection_reasons(&self) -> impl Iterator<Item=&str> {
+    pub fn rejection_reasons(&self) -> impl Iterator<Item = &str> {
         self.reasons.iter().filter_map(|r| r.approval_reason())
     }
-
 }

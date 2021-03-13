@@ -1,12 +1,12 @@
 #[macro_use]
 extern crate lazy_static;
 
-mod context;
 mod approvers;
+mod context;
 mod rejectors;
 
-use anyhow::Result;
 use self::context::ValidationContext;
+use anyhow::Result;
 use async_trait::async_trait;
 
 pub type BoxedValidator = Box<dyn Validator + Sync + 'static>;
@@ -32,33 +32,33 @@ pub struct GenericValidator {
 }
 
 impl GenericValidator {
-
     pub fn new_approver<T: Fn(&ValidationContext) -> Result<bool> + Sync + 'static>(
         reason: impl Into<String>,
-        approver: T
+        approver: T,
     ) -> BoxedValidator {
         Self::new(context::ValidationReason::Approval(reason.into()), approver)
     }
 
     pub fn new_rejector<T: Fn(&ValidationContext) -> Result<bool> + Sync + 'static>(
         reason: impl Into<String>,
-        approver: T
+        approver: T,
     ) -> BoxedValidator {
-        Self::new(context::ValidationReason::Rejection(reason.into()), approver)
+        Self::new(
+            context::ValidationReason::Rejection(reason.into()),
+            approver,
+        )
     }
 
     fn new<T: Fn(&ValidationContext) -> Result<bool> + Sync + 'static>(
         reason: context::ValidationReason,
-        approver: T
+        approver: T,
     ) -> BoxedValidator {
         Box::new(GenericValidator {
             reason: reason,
             pred: Box::new(approver),
         })
     }
-
 }
-
 
 #[async_trait]
 impl Validator for GenericValidator {

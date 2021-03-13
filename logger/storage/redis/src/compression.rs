@@ -1,8 +1,8 @@
-use redis::{self, RedisWrite, ToRedisArgs, FromRedisValue};
-use std::io::prelude::*;
+use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use flate2::{write::ZlibEncoder, read::ZlibDecoder, Compression};
+use redis::{self, FromRedisValue, RedisWrite, ToRedisArgs};
+use std::io::prelude::*;
 
 /// The single byte compression mode header for values stored in Redis.
 #[repr(u8)]
@@ -17,8 +17,10 @@ enum CompressionMode {
 pub struct Compressed<T: ToRedisArgs + FromRedisValue>(pub T);
 
 impl<T: ToRedisArgs + FromRedisValue> ToRedisArgs for Compressed<T> {
-
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W) where W: RedisWrite {
+    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
+    where
+        W: RedisWrite,
+    {
         let mut payload: Vec<Vec<u8>> = Vec::new();
         self.0.write_redis_args(&mut payload);
         for arg in payload {
@@ -36,13 +38,11 @@ impl<T: ToRedisArgs + FromRedisValue> ToRedisArgs for Compressed<T> {
             out.write_arg(&output[..]);
         }
     }
-
 }
 
 impl<T: ToRedisArgs + FromRedisValue> FromRedisValue for Compressed<T> {
-
     fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
-        use redis::{RedisError, Value, ErrorKind};
+        use redis::{ErrorKind, RedisError, Value};
         if let Value::Data(data) = value {
             let inner = if data.len() < 1 {
                 T::from_redis_value(&value)?
@@ -62,9 +62,11 @@ impl<T: ToRedisArgs + FromRedisValue> FromRedisValue for Compressed<T> {
             };
             Ok(Self(inner))
         } else {
-            Err(RedisError::from((ErrorKind::ResponseError, "Type cannot be compressed",
-                     format!("Invalid input: {:?}", value))))
+            Err(RedisError::from((
+                ErrorKind::ResponseError,
+                "Type cannot be compressed",
+                format!("Invalid input: {:?}", value),
+            )))
         }
     }
-
 }
