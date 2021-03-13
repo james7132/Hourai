@@ -5,5 +5,4 @@ pub struct RedditAuth {
 }
 
 impl RedditAuth {
-
 }

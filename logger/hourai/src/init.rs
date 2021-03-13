@@ -3,7 +3,7 @@ use tracing::debug;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use metrics_exporter_prometheus::PrometheusBuilder;
 
-pub fn init(config: &HouraiConfig) {
+pub fn start_logging() {
     tracing_subscriber::fmt()
         .with_level(true)
         .with_thread_ids(true)
@@ -11,7 +11,10 @@ pub fn init(config: &HouraiConfig) {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .compact()
         .init();
+}
 
+pub fn init(config: &HouraiConfig) {
+    start_logging();
     debug!("Loaded Config: {:?}", config);
 
     let metrics_port = config.metrics.port.unwrap_or(9090);

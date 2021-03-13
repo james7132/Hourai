@@ -1,33 +1,58 @@
+use anyhow::Result;
 use hourai::models::{id::ChannelId, channel::embed::Embed};
 use hourai_sql::{SqlQuery, SqlQueryAs};
 use tracing::error;
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct Post {
-    channel_id: ChannelId,
-    content: String,
-    embed: Embed,
+    channel_ids: Vec<ChannelId>,
+    content: Option<String>,
+    embed: Option<Embed>,
 }
 
 impl Post {
 
-    pub async fn push(self, client: hourai::http::Client) -> Result<()>{
-        client.create_message(self.channel_id)
-              .content(self.content)?
-              .embed(self.embed)?
-              .await?
+    pub fn broadcast(self, client: hourai::http::Client) -> Result<()> {
+        for channel_id in self.channel_ids {
+            let subclient = client.clone();
+            let content = self.content.clone();
+            let embed = self.embed.clone();
+            tokio::spawn(async move {
+                if let Err(err) = Self::push(subclient, channel_id, content, embed).await {
+                    error!("Error while posting to channel {}: {:?}", channel_id, err);
+                }
+            });
+        }
+        Ok(())
+    }
+
+    async fn push(
+        client: hourai::http::Client,
+        channel_id: ChannelId,
+        content: Option<String>,
+        embed: Option<Embed>
+    ) -> Result<()> {
+        let mut request = client.create_message(channel_id);
+        if let Some(content) = content {
+            request = request.content(content.as_str())?;
+        }
+        if let Some(embed) = embed {
+            request = request.embed(embed.clone())?;
+        }
+        request.await?;
+        Ok(())
     }
 
 }
 
 #[derive(sqlx::FromRow)]
 pub struct Feed {
-    id: i64,
+    pub id: i64,
     #[sqlx(rename = "type")]
-    feed_type: String,
-    source: String,
-    last_updated: i64,
-    channel_ids: Vec<i64>,
+    pub feed_type: String,
+    pub source: String,
+    pub last_updated: i64,
+    pub channel_ids: Vec<i64>,
 }
 
 impl Feed {
@@ -59,21 +84,12 @@ impl Feed {
              .bind(self.id)
     }
 
-    /// Broadcasts the post to all of the feed's channels.
-    pub async fn broadcast(&self, client: &hourai::http::Client, post: impl Into<Post>) {
-        let post = post.into();
-        let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
-        for channel_id in self.channel_ids {
-            let subclient = client.clone();
-            let mut subpost = post.clone();
-            subpost.channel_id = ChannelId(channel_id as u64);
-            tasks.push(tokio::spawn(async move {
-                if let Err(err) = subpost.push(subclient).await {
-                    error!("Error while posting to channel {}: {:?}", channel_id, err);
-                }
-            }));
+    pub fn make_post(&self, content: Option<String>, embed: Option<Embed>) -> Post {
+        Post {
+            channel_ids: self.channel_ids.iter().map(|id| ChannelId(*id as u64)).collect(),
+            content: content,
+            embed: embed,
         }
-        futures::future::join_all(tasks).await;
     }
 
 }
