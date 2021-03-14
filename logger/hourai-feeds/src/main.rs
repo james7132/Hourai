@@ -16,14 +16,13 @@ async fn main() {
         http: init::http_client(&config),
         sql: hourai_sql::init(&config).await,
         tx,
-        config,
     };
 
-    tokio::spawn(reddit::start(client.clone()));
+    tokio::spawn(reddit::start(client.clone(), config.reddit));
 
     while let Some(post) = rx.next().await {
         tracing::info!("New post: {:?}", post);
-        if let Err(err) = post.broadcast(client.http.clone()) {
+        if let Err(err) = post.broadcast(client.clone()) {
             tracing::error!("Error while broadcasting post to Discord: {}", err);
         }
     }
@@ -34,5 +33,4 @@ pub struct Client {
     http: hourai::http::Client,
     sql: SqlPool,
     tx: UnboundedSender<models::Post>,
-    config: hourai::config::HouraiConfig,
 }

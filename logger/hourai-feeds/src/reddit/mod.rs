@@ -9,6 +9,7 @@ use hourai::models::channel::embed::Embed;
 use models::SubmissionListing;
 use tracing::error;
 use twilight_embed_builder::*;
+use http::status::StatusCode;
 use futures::lock::Mutex;
 use reqwest::Response;
 
@@ -45,9 +46,9 @@ impl RedditClient {
     }
 }
 
-pub async fn start(client: Client) {
-    tracing::debug!("Starting reddit feeds...");
-    let auth = auth::RedditAuth::login(client.config.reddit.clone())
+pub async fn start(client: Client, config: hourai::config::RedditConfig) {
+    tracing::info!("Starting reddit feeds...");
+    let auth = auth::RedditAuth::login(config)
         .await.expect("Failed to authorize with Reddit");
     let mut reddit_client = RedditClient::new(auth);
     let mut cursor: u64 = 0;
@@ -65,6 +66,7 @@ pub async fn start(client: Client) {
         };
 
         for feed in &feeds {
+            tracing::info!("Checking /r/{}", feed.source);
             let response = match reddit_client.get_new(feed.source.as_str()).await {
                 Ok(response) => response,
                 Err(err) => {
@@ -90,6 +92,18 @@ pub async fn start(client: Client) {
 }
 
 async fn push_posts(feed: &Feed, response: Response, client: &Client) -> Result<()> {
+    // Handle errors from Reddit's API.
+    match response.status() {
+        StatusCode::NOT_FOUND => feed.delete(&client.sql).await?,
+        StatusCode::FORBIDDEN => feed.delete(&client.sql).await?,
+        code if code.is_success() => {},
+        code if code.is_client_error() =>
+            anyhow::bail!("Reddit returned a client error: {:?}", response),
+        code if code.is_server_error() =>
+            anyhow::bail!("Reddit returned a server error: {:?}", response),
+        _ => anyhow::bail!("Unexpected response from Reddit: {:?}", response),
+    }
+
     // Reddit reports creation time in seconds unix time.
     // Feeds are done with millisecond accuracy, so this ratio is to account for that difference.
     let mut update_time = feed.last_updated;
@@ -100,10 +114,11 @@ async fn push_posts(feed: &Feed, response: Response, client: &Client) -> Result<
         .data
         .children
         .into_iter()
+        .rev()
         .map(|thing| thing.data)
         .filter(|sub| {
             update_time = std::cmp::max(update_time, (sub.created_utc * 1000.0) as i64);
-            sub.created_utc < min_time as f64
+            sub.created_utc > min_time as f64
         })
         .filter_map(|sub| make_post(feed, sub).ok())
         .for_each(|post| {
@@ -164,5 +179,4 @@ fn ellipsize(input: &str, max_len: usize) -> String {
         let end = input.char_indices().nth(limit).unwrap().0;
         format!("{}...", &input[0..end])
     }
-
 }

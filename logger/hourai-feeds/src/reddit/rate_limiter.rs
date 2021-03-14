@@ -51,7 +51,7 @@ impl RateLimiter {
         if let Some(header) = response.headers().get(header) {
             Ok(header.to_str()?.parse::<T>()?)
         } else {
-            tracing::warn!("Could not find header '{}' in the response from Reddit.", header);
+            tracing::debug!("Could not find header '{}' in the response from Reddit.", header);
             bail!("Header not found.")
         }
     }
