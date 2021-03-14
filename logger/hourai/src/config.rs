@@ -12,6 +12,7 @@ pub struct HouraiConfig {
     pub discord: DiscordConfig,
     pub web: WebConfig,
     pub metrics: MetricsConfig,
+    pub reddit: RedditConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -52,11 +53,7 @@ pub struct DiscordConfig {
 pub struct RedditConfig {
     pub client_id: String,
     pub client_secret: String,
-    pub username: String,
-    pub password: String,
     pub user_agent: String,
-    pub base_url: String,
-    pub fetch_limit: i32,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -80,4 +77,5 @@ pub fn get_config_path() -> Box<Path> {
             .to_lowercase();
     buffer.push(execution_env);
     buffer.into_boxed_path()
+
 }

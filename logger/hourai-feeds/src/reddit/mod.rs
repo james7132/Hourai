@@ -7,51 +7,65 @@ use crate::{models::*, Client};
 use anyhow::Result;
 use hourai::models::channel::embed::Embed;
 use models::SubmissionListing;
-use std::time::Duration;
 use tracing::error;
 use twilight_embed_builder::*;
 use futures::lock::Mutex;
+use reqwest::Response;
 
-const SUBREDDITS_PER_PAGE: u8 = 60;
+const SUBREDDITS_PER_PAGE: u64 = 60;
 
 pub struct RedditClient {
-    http: reqwest::Client,
+    auth: auth::RedditAuth,
     rate_limiter: Mutex<rate_limiter::RateLimiter>,
 }
 
 impl RedditClient {
-    pub fn login() -> Self {
+    pub fn new(auth: auth::RedditAuth) -> Self {
         Self {
-            http: reqwest::Client::new(),
+            auth: auth,
             rate_limiter: Mutex::new(rate_limiter::RateLimiter::default()),
         }
     }
 
-    pub async fn new(&self, subreddit: &str) -> Result<reqwest::Response> {
-        let mut rl = self.rate_limiter.lock().await;
-        let url = format!("https://reddit.com/r/{}/new.json?limit=100", subreddit);
-        let response = self.http.get(url).send().await?;
-        rl.update(&response);
-        // TODO(james7132): Add OAuth and rate limiting
+    pub async fn get_new(&mut self, subreddit: &str) -> Result<Response> {
+        {
+            self.rate_limiter.lock().await.wait().await;
+        }
+        let token = self.auth.get_token().await?;
+        let url = format!("https://oauth.reddit.com/r/{}/new.json?limit=100", subreddit);
+        let response = self.http().get(url).bearer_auth(token).send().await?;
+        {
+            self.rate_limiter.lock().await.update(&response);
+        }
         Ok(response)
+    }
+
+    fn http(&self) -> &reqwest::Client {
+        &self.auth.http
     }
 }
 
 pub async fn start(client: Client) {
     tracing::debug!("Starting reddit feeds...");
-    let reddit_client = RedditClient::login();
-    //let mut cursor: u64 = 0;
+    let auth = auth::RedditAuth::login(client.config.reddit.clone())
+        .await.expect("Failed to authorize with Reddit");
+    let mut reddit_client = RedditClient::new(auth);
+    let mut cursor: u64 = 0;
     while !client.tx.is_closed() {
-        //let feeds: Vec<Feed> = Feed::fetch_page("REDDIT", SUBREDDITS_PER_PAGE, cursor);
-        let feeds: Vec<Feed> = vec![Feed {
-            id: 0,
-            feed_type: "REDDIT".to_owned(),
-            source: "all".to_owned(),
-            last_updated: 0,
-            channel_ids: vec![1, 2, 3, 4, 5],
-        }];
-        for feed in feeds {
-            let response = match reddit_client.new(feed.source.as_str()).await {
+        let query = Feed::fetch_page("REDDIT", SUBREDDITS_PER_PAGE, cursor)
+                .fetch_all(&client.sql)
+                .await;
+        let feeds = match query {
+            Ok(feeds) => feeds,
+            Err(err) => {
+                tracing::error!("Error while fetching feeds from the SQL database: {}", err);
+                client.tx.close_channel();
+                return;
+            }
+        };
+
+        for feed in &feeds {
+            let response = match reddit_client.get_new(feed.source.as_str()).await {
                 Ok(response) => response,
                 Err(err) => {
                     error!(
@@ -62,50 +76,46 @@ pub async fn start(client: Client) {
                 }
             };
 
-            match make_posts(&feed, response).await {
-                Ok(posts) => {
-                    if let Err(err) = push_posts(&client, &feed, posts).await {
-                        error!("Error while pushing Reddit posts: {}", err);
-                    }
-                },
-                Err(err) => {
-                    error!("Error while making Reddit posts: {}", err);
-                    continue;
-                },
+            if let Err(err) = push_posts(&feed, response, &client).await {
+                error!("Error while pushing Reddit posts: {}", err);
             }
         }
 
-        //if feeds.len() <= SUBREDDITS_PER_PAGE {
-        //cursor = 0;
-        //} else {
-        //cursor += SUBREDDITS_PER_PAGE;
-        //}
+        if feeds.len() <= SUBREDDITS_PER_PAGE as usize {
+            cursor = 0;
+        } else {
+            cursor += SUBREDDITS_PER_PAGE;
+        }
     }
 }
 
-async fn push_posts(client: &Client, feed: &Feed, posts: Vec<Post>) -> Result<()> {
-    //let mut update_time = feed.last_updated;
-    for post in posts {
-        //if posts.created_at > feed.last_updated {
-        let _ = client.tx.unbounded_send(post);
-        //}
-    }
-    Ok(())
-    //if update_time != feed.last_updated {
-    //feed.update(update_time).exexute(&client.sql).await;
-    //}
-}
+async fn push_posts(feed: &Feed, response: Response, client: &Client) -> Result<()> {
+    // Reddit reports creation time in seconds unix time.
+    // Feeds are done with millisecond accuracy, so this ratio is to account for that difference.
+    let mut update_time = feed.last_updated;
+    let min_time = update_time / 1000;
 
-async fn make_posts(feed: &Feed, response: reqwest::Response) -> Result<Vec<Post>> {
     let mut text = response.text().await?;
-    let submissions: SubmissionListing<'_> = simd_json::serde::from_str(text.as_mut_str())?;
-    let posts = submissions
+    simd_json::serde::from_str::<SubmissionListing>(text.as_mut_str())?
         .data
         .children
         .into_iter()
-        .filter_map(|sub| make_post(feed, sub.data).ok())
-        .collect();
-    Ok(posts)
+        .map(|thing| thing.data)
+        .filter(|sub| {
+            update_time = std::cmp::max(update_time, (sub.created_utc * 1000.0) as i64);
+            sub.created_utc < min_time as f64
+        })
+        .filter_map(|sub| make_post(feed, sub).ok())
+        .for_each(|post| {
+            if let Err(err) = client.tx.unbounded_send(post) {
+                error!("Error while sending post: {}", err);
+            }
+        });
+
+    if update_time != feed.last_updated {
+        feed.update(update_time).execute(&client.sql).await?;
+    }
+    Ok(())
 }
 
 fn make_post(feed: &Feed, source: Submission) -> Result<Post> {
@@ -154,4 +164,5 @@ fn ellipsize(input: &str, max_len: usize) -> String {
         let end = input.char_indices().nth(limit).unwrap().0;
         format!("{}...", &input[0..end])
     }
+
 }

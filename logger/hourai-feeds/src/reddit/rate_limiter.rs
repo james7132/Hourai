@@ -32,7 +32,7 @@ impl RateLimiter {
     }
 
     pub fn update(&mut self, response: &reqwest::Response) {
-        let headers = response.headers();
+        tracing::debug!("{:?}", response.headers());
         if let Ok(used) = Self::get_header(response, "X-Ratelimit-Used") {
             self.used = used;
         }

@@ -55,7 +55,7 @@ pub struct Feed {
 
 impl Feed {
     /// Fetches a page of feeds with a given type
-    pub fn fetch_page<'a>(feed_type: String, count: u64, offset: u64) -> SqlQueryAs<'a, Self> {
+    pub fn fetch_page<'a>(feed_type: impl Into<String>, count: u64, offset: u64) -> SqlQueryAs<'a, Self> {
         sqlx::query_as(
             "SELECT \
                            feeds.id, feeds.source, feeds.last_updated, \
@@ -71,15 +71,15 @@ impl Feed {
                        LIMIT $2 \
                        OFFSET $3",
         )
-        .bind(feed_type)
+        .bind(feed_type.into())
         .bind(count as i64)
         .bind(offset as i64)
     }
 
     /// Creates a query to update the database
-    pub fn update<'a>(&self, latest_time: u64) -> SqlQuery<'a> {
+    pub fn update<'a>(&self, latest_time: i64) -> SqlQuery<'a> {
         sqlx::query("UPDATE feeds SET feeds.last_updated = $1 WHERE feeds.id = $2")
-            .bind(latest_time as i64)
+            .bind(latest_time)
             .bind(self.id)
     }
 
