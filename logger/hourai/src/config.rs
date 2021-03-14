@@ -18,6 +18,7 @@ pub struct HouraiConfig {
     pub web: WebConfig,
     pub metrics: MetricsConfig,
     pub reddit: RedditConfig,
+    pub third_party: ThirdPartyConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -59,6 +60,13 @@ pub struct RedditConfig {
     pub client_id: String,
     pub client_secret: String,
     pub user_agent: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ThirdPartyConfig {
+    pub discord_boats_token: Option<String>,
+    pub discord_bots_token: Option<String>,
+    pub top_gg_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
