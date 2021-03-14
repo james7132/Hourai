@@ -301,11 +301,6 @@ class Standard(cogs.BaseCog):
                                f"added.")
                 return
 
-        channel = ctx.session.query(models.Channel).get(ctx.channel.id)
-        if channel is None:
-            channel = models.Channel(id=ctx.channel.id)
-            ctx.session.add(channel)
-
         feeds = ctx.session.query(models.Feed) \
                    .filter_by(_type="REDDIT") \
                    .filter(models.Feed.source.in_(subreddits)) \
@@ -313,11 +308,14 @@ class Standard(cogs.BaseCog):
         seen_subs = {f.source: f for f in feeds}
         now = datetime.utcnow()
         for sub in subreddits:
-            feed = seen_subs.get(sub, models.Feed(_type="REDDIT",
-                                                  source=sub,
-                                                  last_updated=now))
-            if feed not in channel.feeds:
-                channel.feeds.append(feed)
+            if sub in seen_subs:
+                feed = seen_subs[sub]
+            else:
+                feed = models.Feed(_type="REDDIT", source=sub, last_updated=now)
+                ctx.session.add(feed)
+
+            if not any(ch.id == ctx.channel.id for ch in feed.channels):
+                feed.channels.append(FeedChannel(channel_id=ctx.channel.id))
 
         ctx.session.commit()
         await ctx.send(f"Set up feed for `/r/{subreddit}` in this channel")
@@ -332,21 +330,10 @@ class Standard(cogs.BaseCog):
         """
         subreddits = set(subreddit.split("+"))
 
-        channel = ctx.session.query(models.Channel).get(ctx.channel.id)
-        if channel is None:
-            await ctx.send("No reddit feeds are configured for this channel.")
-            return
-
-        feeds = ctx.session.query(models.Feed) \
-                   .filter_by(_type="REDDIT") \
-                   .filter(models.Feed.source.in_(subreddits)) \
-                   .all()
-
-        for feed in feeds:
-            channel.feeds.remove(feed)
-            if len(feed.channels) <= 0:
-                ctx.session.delete(feed)
-
+        ctx.session.execute("""
+        DELETE FROM feed_channels WHERE channel_id = :ci AND feed_id IN
+        (SELECT id FROM feeds WHERE type = 'REDDIT' AND source IN :sr)
+        """, {"ci": ctx.channel.id, "sr": subreddits})
         ctx.session.commit()
         await ctx.send(f"Removed feed for `/r/{subreddit}` from this channel")
 

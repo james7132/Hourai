@@ -181,7 +181,7 @@ class FeedChannel(Base):
     feed_id = Column('feed_id', types.BigInteger, ForeignKey('feeds.id'),
                      primary_key=True)
     channel_id = Column('channel_id', types.BigInteger, primary_key=True)
-    feed = relationship("Feed", back_populates="channels")z
+    feed = relationship("Feed", back_populates="channels")
 
 
 Index("idx_username_user_id", Username.user_id)
