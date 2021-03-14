@@ -76,12 +76,7 @@ async fn main() {
             .current_user()
             .await
             .expect("User should not fail to load.");
-        let application = http_client
-            .current_user_application()
-            .await
-            .expect("User should be a bot.");
         Client {
-            client_id: application.id,
             user_id: user.id,
             http_client,
             gateway: gateway.clone(),
@@ -142,7 +137,6 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
 #[derive(Clone)]
 pub struct Client {
     pub user_id: UserId,
-    pub client_id: ApplicationId,
     pub http_client: hourai::http::Client,
     pub gateway: Cluster,
     pub cache: InMemoryCache,
