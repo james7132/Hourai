@@ -10,24 +10,30 @@ use models::SubmissionListing;
 use std::time::Duration;
 use tracing::error;
 use twilight_embed_builder::*;
+use futures::lock::Mutex;
 
 const SUBREDDITS_PER_PAGE: u8 = 60;
 
 pub struct RedditClient {
     http: reqwest::Client,
+    rate_limiter: Mutex<rate_limiter::RateLimiter>,
 }
 
 impl RedditClient {
     pub fn login() -> Self {
         Self {
             http: reqwest::Client::new(),
+            rate_limiter: Mutex::new(rate_limiter::RateLimiter::default()),
         }
     }
 
     pub async fn new(&self, subreddit: &str) -> Result<reqwest::Response> {
+        let mut rl = self.rate_limiter.lock().await;
         let url = format!("https://reddit.com/r/{}/new.json?limit=100", subreddit);
+        let response = self.http.get(url).send().await?;
+        rl.update(&response);
         // TODO(james7132): Add OAuth and rate limiting
-        Ok(self.http.get(url).send().await?)
+        Ok(response)
     }
 }
 
@@ -68,8 +74,6 @@ pub async fn start(client: Client) {
                 },
             }
         }
-
-        tokio::time::sleep(Duration::from_secs(2)).await;
 
         //if feeds.len() <= SUBREDDITS_PER_PAGE {
         //cursor = 0;
