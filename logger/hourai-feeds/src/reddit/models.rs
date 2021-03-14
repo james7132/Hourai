@@ -15,7 +15,7 @@ pub struct Listing<'a, T> {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Submission<'a>{
+pub struct Submission<'a> {
     pub title: &'a str,
     pub author: &'a str,
     pub subreddit: &'a str,

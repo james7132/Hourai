@@ -1,8 +1,8 @@
 use anyhow::Result;
-use hourai::models::{channel::embed::Embed, id::ChannelId};
 use hourai::http::Error as HttpError;
-use http::status::StatusCode;
+use hourai::models::{channel::embed::Embed, id::ChannelId};
 use hourai_sql::{SqlQuery, SqlQueryAs};
+use http::status::StatusCode;
 use tracing::error;
 
 #[derive(Debug)]
@@ -42,20 +42,29 @@ impl Post {
         }
         match request.await {
             Ok(_) => Ok(()),
-            Err(HttpError::Response { status: StatusCode::NOT_FOUND, ..}) =>
-                Self::delete_channel(channel_id, &client).await,
-            Err(HttpError::Response { status: StatusCode::FORBIDDEN, ..}) =>
-                Self::delete_channel(channel_id, &client).await,
+            Err(HttpError::Response {
+                status: StatusCode::NOT_FOUND,
+                ..
+            }) => Self::delete_channel(channel_id, &client).await,
+            Err(HttpError::Response {
+                status: StatusCode::FORBIDDEN,
+                ..
+            }) => Self::delete_channel(channel_id, &client).await,
             Err(err) => Err(anyhow::anyhow!(err)),
         }
     }
 
     async fn delete_channel(channel_id: ChannelId, client: &crate::Client) -> Result<()> {
         let mut txn = client.sql.begin().await?;
-        Feed::delete_feed_channel(channel_id).execute(&mut txn).await?;
+        Feed::delete_feed_channel(channel_id)
+            .execute(&mut txn)
+            .await?;
         Feed::delete_channel(channel_id).execute(&mut txn).await?;
         txn.commit().await?;
-        tracing::info!("Deleted channel {} from the database. No longer postable.", channel_id);
+        tracing::info!(
+            "Deleted channel {} from the database. No longer postable.",
+            channel_id
+        );
         Ok(())
     }
 }
@@ -70,7 +79,11 @@ pub struct Feed {
 
 impl Feed {
     /// Fetches a page of feeds with a given type
-    pub fn fetch_page<'a>(feed_type: impl Into<String>, count: u64, offset: u64) -> SqlQueryAs<'a, Self> {
+    pub fn fetch_page<'a>(
+        feed_type: impl Into<String>,
+        count: u64,
+        offset: u64,
+    ) -> SqlQueryAs<'a, Self> {
         sqlx::query_as(
             "SELECT \
                  feeds.id, feeds.source, feeds.last_updated, \
@@ -99,13 +112,11 @@ impl Feed {
     }
 
     pub fn delete_feed_channel<'a>(channel_id: ChannelId) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM feed_channels WHERE channel_id = $1")
-            .bind(channel_id.0 as i64)
+        sqlx::query("DELETE FROM feed_channels WHERE channel_id = $1").bind(channel_id.0 as i64)
     }
 
     pub fn delete_channel<'a>(channel_id: ChannelId) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM channels WHERE id = $1")
-            .bind(channel_id.0 as i64)
+        sqlx::query("DELETE FROM channels WHERE id = $1").bind(channel_id.0 as i64)
     }
 
     pub fn make_post(&self, content: Option<String>, embed: Option<Embed>) -> Post {
@@ -123,15 +134,18 @@ impl Feed {
     pub async fn delete(&self, sql: &hourai_sql::SqlPool) -> Result<()> {
         let mut txn = sql.begin().await?;
         sqlx::query("DELETE FROM feed_channels WHERE feed_id = $1")
-             .bind(self.id)
-             .execute(&mut txn)
-             .await?;
+            .bind(self.id)
+            .execute(&mut txn)
+            .await?;
         sqlx::query("DELETE FROM feeds WHERE id = $1")
-             .bind(self.id)
-             .execute(&mut txn)
-             .await?;
+            .bind(self.id)
+            .execute(&mut txn)
+            .await?;
         txn.commit().await?;
-        tracing::info!("Deleted feed (ID: {}) from the database. No longer readable.", self.id);
+        tracing::info!(
+            "Deleted feed (ID: {}) from the database. No longer readable.",
+            self.id
+        );
         Ok(())
     }
 }

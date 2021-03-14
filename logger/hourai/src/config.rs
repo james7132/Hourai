@@ -81,5 +81,4 @@ pub fn get_config_path() -> Box<Path> {
         .to_lowercase();
     buffer.push(execution_env);
     buffer.into_boxed_path()
-
 }
