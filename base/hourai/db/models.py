@@ -10,6 +10,7 @@ from sqlalchemy.dialects import postgresql
 
 Base = declarative_base()
 
+
 class UnixTimestamp(types.TypeDecorator):
     impl = types.BigInteger
 
@@ -139,6 +140,48 @@ class Username(Base):
             'timestamp': datetime.utcnow(),
         })
         return cls(*args, **kwargs)
+
+
+@enum.unique
+class FeedType(enum.Enum):
+    RSS = enum.auto()
+    REDDIT = enum.auto()
+    HACKER_NEWS = enum.auto()
+    TWITTER = enum.auto()
+
+
+class Feed(Base):
+    __tablename__ = 'feeds'
+    __table_args__ = (UniqueConstraint('type', 'source'),)
+
+    id = Column(types.Integer, primary_key=True, autoincrement=True)
+    _type = Column('type', types.String(255), nullable=False)
+    source = Column(types.String(8192), nullable=False)
+    last_updated = Column(UnixTimestamp, nullable=False)
+    channels = relationship("FeedChannel", back_populates="feed")
+
+    @property
+    def type(self):
+        return FeedType._member_map_.get(self._type, None)
+
+    @type.setter
+    def set_type(self, value):
+        assert isinstance(value, FeedType)
+        self._type = value.name
+
+    def get_channels(self, bot):
+        """ Returns a generator for all channels in the feed. """
+
+        return (ch.get_resource(bot) for ch in self.channels)
+
+
+class FeedChannel(Base):
+    __tablename__ = 'feed_channels'
+
+    feed_id = Column('feed_id', types.BigInteger, ForeignKey('feeds.id'),
+                     primary_key=True)
+    channel_id = Column('channel_id', types.BigInteger, primary_key=True)
+    feed = relationship("Feed", back_populates="channels")z
 
 
 Index("idx_username_user_id", Username.user_id)

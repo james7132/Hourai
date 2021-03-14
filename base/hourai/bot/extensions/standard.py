@@ -288,7 +288,7 @@ class Standard(cogs.BaseCog):
         /r/aww).
         Requires: Manage Server permissions.
         """
-        subreddit = subreddit.replace('/r/', '')
+        subreddit = subreddit.replace('/r/', '').lower()
         subreddits = subreddit.split("+")
 
         url = f"https://reddit.com/r/{subreddit}/new.json"

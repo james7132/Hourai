@@ -93,7 +93,7 @@ impl Feed {
 
     /// Creates a query to update the database
     pub fn update<'a>(&self, latest_time: i64) -> SqlQuery<'a> {
-        sqlx::query("UPDATE feeds SET feeds.last_updated = $1 WHERE feeds.id = $2")
+        sqlx::query("UPDATE feeds SET last_updated = $1 WHERE id = $2")
             .bind(latest_time)
             .bind(self.id)
     }
