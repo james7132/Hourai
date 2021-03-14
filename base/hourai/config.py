@@ -136,8 +136,6 @@ def __make_configuration_template():
             "user_agent": "",
             "client_id": "",
             "client_secret": "",
-            "username": "",
-            "password": "",
         },
 
         # Logging can be arbitrary

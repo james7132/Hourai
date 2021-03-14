@@ -55,12 +55,7 @@ local env(suffix) = {
   reddit: {
     client_id: "ddDa",
     client_secret: "ddDa",
-    username: "ddDa",
-    password: "ddDa",
-
     user_agent: "linux:discord.hourai.reddit:v2.0 (by /u/james7132)",
-    base_url: "https://reddit.com",
-    fetch_limit: "20",
   },
 
   logging: {
