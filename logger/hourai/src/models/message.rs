@@ -1,12 +1,12 @@
-use super::Snowflake;
 use super::user::UserLike;
+use super::Snowflake;
 use crate::proto::cache::{CachedMessageProto, CachedUserProto};
-use twilight_model::id::*;
-use twilight_model::user::User;
 use twilight_model::channel::Message;
 use twilight_model::gateway::payload::MessageUpdate;
+use twilight_model::id::*;
+use twilight_model::user::User;
 
-pub trait MessageLike : Snowflake<MessageId> {
+pub trait MessageLike: Snowflake<MessageId> {
     type Author: UserLike;
 
     fn channel_id(&self) -> ChannelId;
@@ -21,7 +21,12 @@ pub trait MessageLike : Snowflake<MessageId> {
         } else {
             "@me".to_owned()
         };
-        format!("https://discord.com/channels/{}/{}/{}", prefix, self.channel_id(), self.id())
+        format!(
+            "https://discord.com/channels/{}/{}/{}",
+            prefix,
+            self.channel_id(),
+            self.id()
+        )
     }
 }
 

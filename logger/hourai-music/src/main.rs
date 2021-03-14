@@ -1,51 +1,57 @@
+mod player;
 mod prelude;
 mod queue;
-mod player;
 mod track;
 
+use crate::{
+    player::{Player, PlayerManager},
+    prelude::*,
+    track::Track,
+};
 use anyhow::{bail, Result};
 use futures::stream::StreamExt;
-use crate::{prelude::*, player::{Player, PlayerManager}, track::Track};
-use twilight_lavalink::{Lavalink, http::LoadType};
-use http::Uri;
-use twilight_command_parser::{Parser, CommandParserConfig, Command};
 use hourai::{
-    config, commands::{self, CommandError}, init, cache::{InMemoryCache, ResourceType},
+    cache::{InMemoryCache, ResourceType},
+    commands::{self, CommandError},
+    config,
+    gateway::{cluster::*, Event, EventTypeFlags, Intents},
+    init,
     models::{channel::Message, id::*},
-    gateway::{Intents, Event, EventTypeFlags, cluster::*},
+};
+use http::Uri;
+use hyper::{
+    client::{
+        connect::dns::{GaiResolver, Name},
+        Client as HyperClient, HttpConnector,
+    },
+    service::Service,
+    Body, Request,
 };
 use std::{convert::TryFrom, str::FromStr};
-use hyper::{
-    Body, Request,
-    service::Service,
-    client::{
-        Client as HyperClient, HttpConnector,
-        connect::dns::{Name, GaiResolver}
-    }
-};
+use twilight_command_parser::{Command, CommandParserConfig, Parser};
+use twilight_lavalink::{http::LoadType, Lavalink};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
-    Intents::GUILDS.bits() |
-    Intents::GUILD_MESSAGES.bits() |
-    Intents::GUILD_VOICE_STATES.bits());
+    Intents::GUILDS.bits() | Intents::GUILD_MESSAGES.bits() | Intents::GUILD_VOICE_STATES.bits(),
+);
 
-const BOT_EVENTS : EventTypeFlags =
-    EventTypeFlags::from_bits_truncate(
-        EventTypeFlags::READY.bits() |
-        EventTypeFlags::CHANNEL_CREATE.bits() |
-        EventTypeFlags::CHANNEL_UPDATE.bits() |
-        EventTypeFlags::CHANNEL_DELETE.bits() |
-        EventTypeFlags::MESSAGE_CREATE.bits() |
-        EventTypeFlags::VOICE_STATE_UPDATE.bits() |
-        EventTypeFlags::GUILD_CREATE.bits() |
-        EventTypeFlags::GUILD_DELETE.bits());
+const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
+    EventTypeFlags::READY.bits()
+        | EventTypeFlags::CHANNEL_CREATE.bits()
+        | EventTypeFlags::CHANNEL_UPDATE.bits()
+        | EventTypeFlags::CHANNEL_DELETE.bits()
+        | EventTypeFlags::MESSAGE_CREATE.bits()
+        | EventTypeFlags::VOICE_STATE_UPDATE.bits()
+        | EventTypeFlags::GUILD_CREATE.bits()
+        | EventTypeFlags::GUILD_DELETE.bits(),
+);
 
-const CACHED_RESOURCES: ResourceType =
-    ResourceType::from_bits_truncate(
-        ResourceType::GUILD.bits() |
-        ResourceType::CHANNEL.bits() |
-        ResourceType::ROLE.bits() |
-        ResourceType::VOICE_STATE.bits());
+const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
+    ResourceType::GUILD.bits()
+        | ResourceType::CHANNEL.bits()
+        | ResourceType::ROLE.bits()
+        | ResourceType::VOICE_STATE.bits(),
+);
 
 #[tokio::main]
 async fn main() {
@@ -72,13 +78,15 @@ async fn main() {
 
     let http_client = init::http_client(&config);
     let current_user = http_client.current_user().await.unwrap();
-    let cache = InMemoryCache::builder().resource_types(CACHED_RESOURCES).build();
+    let cache = InMemoryCache::builder()
+        .resource_types(CACHED_RESOURCES)
+        .build();
     let gateway = Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
-            .shard_scheme(ShardScheme::Auto)
-            .http_client(http_client.clone())
-            .build()
-            .await
-            .expect("Failed to connect to the Discord gateway");
+        .shard_scheme(ShardScheme::Auto)
+        .http_client(http_client.clone())
+        .build()
+        .await
+        .expect("Failed to connect to the Discord gateway");
 
     let shard_count = gateway.config().shard_config().shard()[1];
     let lavalink = Lavalink::new(current_user.id, shard_count);
@@ -91,7 +99,7 @@ async fn main() {
         players: Arc::new(PlayerManager::new()),
         hyper: HyperClient::new(),
         resolver: GaiResolver::new(),
-        parser: parser
+        parser: parser,
     };
 
     // Start the lavalink node connections.
@@ -127,15 +135,14 @@ pub struct Client<'a> {
     pub lavalink: twilight_lavalink::Lavalink,
     pub players: Arc<PlayerManager>,
     pub resolver: GaiResolver,
-    pub parser: Parser<'a>
+    pub parser: Parser<'a>,
 }
 
 impl Client<'static> {
-
     async fn connect_node(
         &mut self,
         uri: &Uri,
-        password: impl Into<String>
+        password: impl Into<String>,
     ) -> Result<LavalinkEventStream> {
         let name = Name::from_str(uri.host().unwrap()).unwrap();
         let pass = password.into();
@@ -145,9 +152,9 @@ impl Client<'static> {
             }
 
             debug!("Trying to connect to a Lavalink node at: {} ", address);
-            match self.lavalink.add(address, pass.as_str()).await  {
+            match self.lavalink.add(address, pass.as_str()).await {
                 Ok((_, rx)) => return Ok(rx),
-                Err(err) => debug!("Failed to connect to {}: {:?}", address, err)
+                Err(err) => debug!("Failed to connect to {}: {:?}", address, err),
             }
         }
         bail!("No valid destination. Cannot connect.");
@@ -166,7 +173,7 @@ impl Client<'static> {
                     debug!("Retrying connection to {} in 5 seconds.", name.as_str());
                     tokio::time::sleep(Duration::from_secs(5)).await;
                     continue;
-                },
+                }
             };
 
             info!("Connected to node to {}.", name.as_str());
@@ -191,12 +198,12 @@ impl Client<'static> {
                     self.players.destroy_player(evt.id);
                 }
                 Ok(())
-            },
+            }
             Event::VoiceStateUpdate(_) => Ok(()),
             _ => {
                 error!("Unexpected event type: {:?}", event);
                 Ok(())
-            },
+            }
         };
 
         if let Err(err) = result {
@@ -220,12 +227,14 @@ impl Client<'static> {
         };
 
         if let Err(err) = result {
-            error!("Error while handling Lavalink event {:?}. Error: {:?}", event, err);
+            error!(
+                "Error while handling Lavalink event {:?}. Error: {:?}",
+                event, err
+            );
         }
     }
 
-    pub async fn get_lavalink_node(&self, guild_id: GuildId)
-        -> Result<twilight_lavalink::Node> {
+    pub async fn get_lavalink_node(&self, guild_id: GuildId) -> Result<twilight_lavalink::Node> {
         Ok(match self.lavalink.players().get(&guild_id) {
             Some(kv) => kv.value().node().clone(),
             None => self.lavalink.best().await?,
@@ -233,36 +242,33 @@ impl Client<'static> {
     }
 
     // HTTP requests to the Lavalink nodes
-    pub async fn load_tracks(
-        &self,
-        node: Node,
-        query: impl AsRef<str>
-    ) -> Result<LoadedTracks> {
+    pub async fn load_tracks(&self, node: Node, query: impl AsRef<str>) -> Result<LoadedTracks> {
         let config = node.config().clone();
         let (parts, body) = twilight_lavalink::http::load_track(
-                config.address,
-                query.as_ref(),
-                &config.authorization,
-            )?
-            .into_parts();
+            config.address,
+            query.as_ref(),
+            &config.authorization,
+        )?
+        .into_parts();
         let req = Request::from_parts(parts, Body::from(body));
         let res = self.hyper.request(req).await?;
         let response_bytes = hyper::body::to_bytes(res.into_body()).await?;
         Ok(serde_json::from_slice::<LoadedTracks>(&response_bytes)?)
     }
 
-    fn require_in_voice_channel(&self, ctx: &commands::Context<'_>)
-        -> Result<Option<ChannelId>> {
+    fn require_in_voice_channel(&self, ctx: &commands::Context<'_>) -> Result<Option<ChannelId>> {
         let guild_id = commands::precondition::require_in_guild(&ctx)?;
 
         let user = self.cache.voice_state(guild_id, ctx.message.author.id);
         let bot = self.cache.voice_state(guild_id, self.user_id);
         if user.is_none() {
             bail!(CommandError::FailedPrecondition(
-                  "You must be in a voice channel to play music."));
+                "You must be in a voice channel to play music."
+            ));
         } else if bot.is_some() && user != bot {
             bail!(CommandError::FailedPrecondition(
-                  "You must be in the same voice channel to play music."));
+                "You must be in the same voice channel to play music."
+            ));
         }
 
         Ok(user)
@@ -271,10 +277,9 @@ impl Client<'static> {
     fn require_playing(&self, ctx: &commands::Context<'_>) -> Result<Player> {
         let guild_id = commands::precondition::require_in_guild(&ctx)?;
 
-        self.players
-            .get_player(guild_id)
-            .ok_or_else(||
-                CommandError::FailedPrecondition("No music is currently playing.").into())
+        self.players.get_player(guild_id).ok_or_else(|| {
+            CommandError::FailedPrecondition("No music is currently playing.").into()
+        })
     }
 
     async fn require_dj(&self, ctx: &commands::Context<'_>) -> Result<()> {
@@ -294,21 +299,42 @@ impl Client<'static> {
             };
 
             let result = match command {
-                Command { name: "play", arguments, .. } =>
-                    self.play(ctx, arguments.into_remainder()).await,
+                Command {
+                    name: "play",
+                    arguments,
+                    ..
+                } => self.play(ctx, arguments.into_remainder()).await,
                 Command { name: "pause", .. } => self.pause(ctx, true).await,
                 Command { name: "stop", .. } => self.stop(ctx).await,
-                Command { name: "shuffle",  .. } => self.shuffle(ctx).await,
+                Command {
+                    name: "shuffle", ..
+                } => self.shuffle(ctx).await,
                 Command { name: "skip", .. } => self.skip(ctx).await,
-                Command { name: "forceskip", .. } => self.forceskip(ctx).await,
-                Command { name: "remove", arguments, .. } => Ok(()),
-                Command { name: "removeall", .. } => self.remove_all(ctx).await,
-                Command { name: "nowplaying", .. } => Ok(()),
+                Command {
+                    name: "forceskip", ..
+                } => self.forceskip(ctx).await,
+                Command {
+                    name: "remove",
+                    arguments,
+                    ..
+                } => Ok(()),
+                Command {
+                    name: "removeall", ..
+                } => self.remove_all(ctx).await,
+                Command {
+                    name: "nowplaying", ..
+                } => Ok(()),
                 Command { name: "np", .. } => Ok(()),
                 Command { name: "queue", .. } => Ok(()),
-                Command { name: "volume", arguments, .. } =>
-                    // TODO(james7132): Do proper argument parsing.
-                    self.volume(ctx, Some(100)).await,
+                Command {
+                    name: "volume",
+                    arguments,
+                    ..
+                } =>
+                // TODO(james7132): Do proper argument parsing.
+                {
+                    self.volume(ctx, Some(100)).await
+                }
                 _ => {
                     debug!("Failed to find command: {}", evt.content.as_str());
                     Ok(())
@@ -323,7 +349,7 @@ impl Client<'static> {
                             .reply(evt.id)
                             .content(format!(":x: {}", command_error))?
                             .await?;
-                    },
+                    }
                     Err(err) => bail!(err),
                 }
             }
@@ -346,40 +372,62 @@ impl Client<'static> {
         };
 
         let tracks = match response {
-            LoadedTracks { load_type: LoadType::TrackLoaded, tracks, .. } => {
+            LoadedTracks {
+                load_type: LoadType::TrackLoaded,
+                tracks,
+                ..
+            } => {
                 assert!(tracks.len() > 0);
                 vec![tracks[0].clone()]
-            },
-            LoadedTracks { load_type: LoadType::SearchResult, tracks, .. } => {
+            }
+            LoadedTracks {
+                load_type: LoadType::SearchResult,
+                tracks,
+                ..
+            } => {
                 // TODO(james7132): This could be improved by doing a edit distance from
                 // the query for similarity matching.
                 assert!(tracks.len() > 0);
                 vec![tracks[0].clone()]
-            },
-            LoadedTracks { load_type: LoadType::PlaylistLoaded, tracks, playlist_info, .. } => {
+            }
+            LoadedTracks {
+                load_type: LoadType::PlaylistLoaded,
+                tracks,
+                playlist_info,
+                ..
+            } => {
                 if let Some(idx) = playlist_info.selected_track {
                     vec![tracks[idx as usize].clone()]
                 } else {
                     tracks
                 }
-            },
-            LoadedTracks { load_type: LoadType::LoadFailed, .. } => {
+            }
+            LoadedTracks {
+                load_type: LoadType::LoadFailed,
+                ..
+            } => {
                 bail!(CommandError::GenericFailure("Failed to load tracks."));
-            },
+            }
             _ => vec![],
         };
 
-        let queue: Vec<Track> = tracks.into_iter()
-                                      .filter_map(|t| Track::try_from(t).ok())
-                                      .collect();
+        let queue: Vec<Track> = tracks
+            .into_iter()
+            .filter_map(|t| Track::try_from(t).ok())
+            .collect();
         let duration = format_duration(queue.iter().map(|t| t.info.length).sum());
 
         let response = if queue.len() > 1 {
-            format!(":notes: Added **{}** tracks ({}) to the music queue.",
-                    queue.len(), duration)
+            format!(
+                ":notes: Added **{}** tracks ({}) to the music queue.",
+                queue.len(),
+                duration
+            )
         } else if queue.len() == 1 {
-            format!(":notes: Added `{}` ({}) to the music queue.",
-                    &queue[0].info, duration)
+            format!(
+                ":notes: Added `{}` ({}) to the music queue.",
+                &queue[0].info, duration
+            )
         } else {
             format!(":bulb: No results found for `{}`", query.unwrap())
         };
@@ -405,12 +453,10 @@ impl Client<'static> {
 
     async fn stop(&self, ctx: commands::Context<'_>) -> Result<()> {
         self.require_dj(&ctx).await?;
-        self.require_playing(&ctx)?
-            .disconnect()
-            .await?;
+        self.require_playing(&ctx)?.disconnect().await?;
         ctx.respond()
-           .content("The player has been stopped and the queue has been cleared")?
-           .await?;
+            .content("The player has been stopped and the queue has been cleared")?
+            .await?;
         Ok(())
     }
 
@@ -420,7 +466,10 @@ impl Client<'static> {
         player.vote_to_skip(ctx.message.author.id);
 
         // TODO(james7132): Make this ratio configurable.
-        let listeners = self.cache.voice_channel_users(player.channel_id().unwrap()).len();
+        let listeners = self
+            .cache
+            .voice_channel_users(player.channel_id().unwrap())
+            .len();
         let votes_required = listeners / 2;
 
         let response = if player.vote_count() >= votes_required {
@@ -483,7 +532,8 @@ impl Client<'static> {
             self.require_dj(&ctx).await?;
             if vol < 0 || vol > 150 {
                 bail!(CommandError::InvalidArgument(
-                        "Volume must be between 0 and 150.".into()));
+                    "Volume must be between 0 and 150.".into()
+                ));
             }
             player.set_volume(vol as u8)?;
             format!("Set volume to `{}`.", vol)

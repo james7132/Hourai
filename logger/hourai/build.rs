@@ -1,16 +1,15 @@
-use walkdir::WalkDir;
 use std::env::VarError;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 
 extern crate protobuf_codegen_pure;
 
-fn find_proto_files(root: impl AsRef<Path>) -> impl Iterator<Item=Box<Path>> {
+fn find_proto_files(root: impl AsRef<Path>) -> impl Iterator<Item = Box<Path>> {
     WalkDir::new(root.as_ref())
         .into_iter()
         .filter_map(Result::ok)
-        .filter(|e| !e.file_type().is_dir() &&
-            e.path().extension() == Some(OsStr::new("proto")))
+        .filter(|e| !e.file_type().is_dir() && e.path().extension() == Some(OsStr::new("proto")))
         .map(|e| Box::from(e.path()))
 }
 

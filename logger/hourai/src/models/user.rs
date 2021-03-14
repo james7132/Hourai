@@ -1,26 +1,37 @@
-pub use twilight_model::user::*;
-use super::Snowflake;
-use super::id::UserId;
 use super::guild::Member;
+use super::id::UserId;
+use super::Snowflake;
 use crate::proto::cache::CachedUserProto;
+pub use twilight_model::user::*;
 
 const DEFAULT_AVATAR_COUNT: u64 = 5;
 const BASE_ASSET_URI: &str = "https://cdn.discordapp.com";
 
-pub trait UserLike : Snowflake<UserId> {
+pub trait UserLike: Snowflake<UserId> {
     fn name(&self) -> &str;
     fn discriminator(&self) -> u16;
     fn avatar_hash(&self) -> Option<&str>;
     fn bot(&self) -> bool;
 
     fn avatar_url(&self) -> String {
-        let format = if self.is_avatar_animated() { "gif" } else { "webp" };
+        let format = if self.is_avatar_animated() {
+            "gif"
+        } else {
+            "webp"
+        };
         self.avatar_url_as(format, 1024)
     }
 
     fn avatar_url_as(&self, format: &str, size: u32) -> String {
         if let Some(hash) = self.avatar_hash() {
-            format!("{}/avatars/{}/{}.{}?size={}", BASE_ASSET_URI, self.id(), hash, format, size)
+            format!(
+                "{}/avatars/{}/{}.{}?size={}",
+                BASE_ASSET_URI,
+                self.id(),
+                hash,
+                format,
+                size
+            )
         } else {
             self.default_avatar_url()
         }
@@ -32,7 +43,9 @@ pub trait UserLike : Snowflake<UserId> {
     }
 
     fn is_avatar_animated(&self) -> bool {
-        self.avatar_hash().map(|hash| hash.starts_with("a_")).unwrap_or(false)
+        self.avatar_hash()
+            .map(|hash| hash.starts_with("a_"))
+            .unwrap_or(false)
     }
 
     fn display_name(&self) -> String {
@@ -95,7 +108,6 @@ impl UserLike for Member {
 }
 
 impl UserLike for CachedUserProto {
-
     fn name(&self) -> &str {
         self.get_username()
     }
@@ -115,5 +127,4 @@ impl UserLike for CachedUserProto {
     fn bot(&self) -> bool {
         self.get_bot()
     }
-
 }

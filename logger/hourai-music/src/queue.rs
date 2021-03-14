@@ -1,10 +1,10 @@
-use std::collections::VecDeque;
 use rand::seq::SliceRandom;
+use std::collections::VecDeque;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct QueueItem<K, V> {
     pub key: K,
-    pub value: V
+    pub value: V,
 }
 
 /// A FIFO, round-robin key based queue.  The input is be a pair of key, value pairs.
@@ -18,8 +18,10 @@ pub struct QueueItem<K, V> {
 /// highly suggested.
 pub struct MusicQueue<K, V>(VecDeque<(K, VecDeque<V>)>);
 
-impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
-
+impl<K, V> MusicQueue<K, V>
+where
+    K: Copy + Eq,
+{
     pub fn new() -> Self {
         Self(VecDeque::new())
     }
@@ -37,7 +39,7 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
     ///
     /// If there are n keys already in the queue and m values are being added to the queue, this
     /// is a O(n + m) operation.
-    pub fn extend(&mut self, key: K, values: impl IntoIterator<Item=V>) {
+    pub fn extend(&mut self, key: K, values: impl IntoIterator<Item = V>) {
         let values: VecDeque<V> = values.into_iter().collect();
         if let Some(kv) = self.0.iter_mut().find(|kv| kv.0 == key) {
             kv.1.reserve(values.len());
@@ -53,7 +55,10 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
     pub fn pop(&mut self) -> Option<QueueItem<K, V>> {
         let (key, value, size) = {
             let peek = self.0.get_mut(0)?;
-            let value = peek.1.pop_front().expect("Individual user queues should be non-empty");
+            let value = peek
+                .1
+                .pop_front()
+                .expect("Individual user queues should be non-empty");
             (peek.0, value, peek.1.len())
         };
 
@@ -65,7 +70,7 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
 
         Some(QueueItem {
             key: key,
-            value: value
+            value: value,
         })
     }
 
@@ -78,10 +83,7 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
     /// Gets the total number of items in the queue for a given key.  If there are n keys and k
     /// values in the queue for a given key, this is a O(n) operation.
     pub fn count(&self, key: K) -> Option<usize> {
-        self.0
-            .iter()
-            .find(|kv| kv.0 == key)
-            .map(|kv| kv.1.len())
+        self.0.iter().find(|kv| kv.0 == key).map(|kv| kv.1.len())
     }
 
     /// Shuffles the items for a single key. If there are n keys and k values in the
@@ -91,13 +93,10 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
     ///
     /// Returns the number of items shuffled in the queue.
     pub fn shuffle(&mut self, key: K) -> Option<usize> {
-        self.0
-            .iter_mut()
-            .find(|kv| kv.0 == key)
-            .map(|kv| {
-                kv.1.make_contiguous().shuffle(&mut rand::thread_rng());
-                kv.1.len()
-            })
+        self.0.iter_mut().find(|kv| kv.0 == key).map(|kv| {
+            kv.1.make_contiguous().shuffle(&mut rand::thread_rng());
+            kv.1.len()
+        })
     }
 
     /// Clears all of the items with a given key in the queue.
@@ -105,11 +104,10 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
     ///
     /// Returns the number of items removed from the queue.
     pub fn clear_key(&mut self, key: K) -> Option<usize> {
-        self.count(key)
-            .map(|count| {
-                self.0.retain(|r| r.0 != key);
-                count
-            })
+        self.count(key).map(|count| {
+            self.0.retain(|r| r.0 != key);
+            count
+        })
     }
 
     /// Clears all of the items within a given the queue.
@@ -121,7 +119,6 @@ impl<K, V> MusicQueue<K, V> where K: Copy + Eq {
     pub fn contains_key(&mut self, key: K) -> bool {
         self.0.iter().find(|kv| kv.0 == key).is_some()
     }
-
 }
 
 #[cfg(test)]
@@ -130,7 +127,7 @@ mod test {
 
     #[test]
     fn test_queue_push() {
-        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
         queue.push(20, 20);
         assert_eq!(queue.len(), 1);
         assert_eq!(queue.count(20), Some(1));
@@ -139,7 +136,7 @@ mod test {
 
     #[test]
     fn test_queue_pop() {
-        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
         queue.push(20, 20);
         let result = queue.pop();
         assert_eq!(result, Some(QueueItem { key: 20, value: 20 }));
@@ -150,7 +147,7 @@ mod test {
 
     #[test]
     fn test_queue_pop_empty() {
-        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
         assert_eq!(queue.pop(), None);
         assert_eq!(queue.len(), 0);
         assert_eq!(queue.count(20), None);
@@ -163,8 +160,8 @@ mod test {
 
     #[test]
     fn test_queue_extend() {
-        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
-        queue.extend(20, vec![20, 40 ,60]);
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        queue.extend(20, vec![20, 40, 60]);
         assert_eq!(queue.len(), 3);
         assert_eq!(queue.count(20), Some(3));
         assert_eq!(queue.count(40), None);
@@ -184,10 +181,10 @@ mod test {
 
     #[test]
     fn test_queue_clear() {
-        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
-        queue.extend(20, vec![20, 40 ,60]);
-        queue.extend(40, vec![20, 40 ,60]);
-        queue.extend(60, vec![20, 40 ,60]);
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        queue.extend(20, vec![20, 40, 60]);
+        queue.extend(40, vec![20, 40, 60]);
+        queue.extend(60, vec![20, 40, 60]);
         assert_eq!(queue.len(), 9);
         assert_eq!(queue.count(20), Some(3));
         assert_eq!(queue.count(40), Some(3));
@@ -201,7 +198,7 @@ mod test {
 
     #[test]
     fn test_queue_round_robin() {
-        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
         queue.push(20, 20);
         queue.push(10, 10);
         queue.push(5, 30);
@@ -243,5 +240,4 @@ mod test {
         assert_eq!(queue.count(10), None);
         assert_eq!(queue.count(5), None);
     }
-
 }

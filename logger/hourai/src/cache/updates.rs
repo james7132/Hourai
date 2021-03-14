@@ -686,8 +686,8 @@ impl UpdateCache for WebhooksUpdate {}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::config::ResourceType;
+    use super::*;
     use twilight_model::{
         channel::{
             message::{MessageFlags, MessageType},

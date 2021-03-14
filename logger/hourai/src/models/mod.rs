@@ -1,5 +1,5 @@
-pub mod user;
 pub mod message;
+pub mod user;
 
 pub use twilight_model::channel;
 pub use twilight_model::gateway;
@@ -11,14 +11,14 @@ pub use twilight_model::voice;
 
 use chrono::prelude::DateTime;
 use chrono::Utc;
-use std::time::{UNIX_EPOCH, Duration};
+use std::time::{Duration, UNIX_EPOCH};
 
-pub use self::{user::UserLike, message::MessageLike};
+pub use self::{message::MessageLike, user::UserLike};
 
 pub trait Snowflake<I: SnowflakeId> {
     fn id(&self) -> I;
 
-    fn created_at(&self) -> DateTime::<Utc> {
+    fn created_at(&self) -> DateTime<Utc> {
         let timestamp = (self.id().as_u64() >> 22) + 1420070400000_u64;
         DateTime::<Utc>::from(UNIX_EPOCH + Duration::from_millis(timestamp))
     }
@@ -35,7 +35,7 @@ macro_rules! snowflake_id {
                 self.0
             }
         }
-    }
+    };
 }
 
 snowflake_id!(id::UserId);

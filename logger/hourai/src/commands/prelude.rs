@@ -1,10 +1,9 @@
-use twilight_command_parser::Arguments;
-use std::str::FromStr;
 use std::iter::Peekable;
+use std::str::FromStr;
+use twilight_command_parser::Arguments;
 
 trait ArgumentsExt {
-    fn parse_next<T: FromArgument>(&mut self) ->
-        Result<Option<T>, <T as FromArgument>::Err>;
+    fn parse_next<T: FromArgument>(&mut self) -> Result<Option<T>, <T as FromArgument>::Err>;
 
     /// Parses until either the stream is done or the next argument cannot be parsed.
     fn parse_until<T: FromArgument>(&mut self) -> Vec<T> {
@@ -20,15 +19,13 @@ trait ArgumentsExt {
     }
 }
 
-trait FromArgument : Sized {
+trait FromArgument: Sized {
     type Err;
     fn parse_as(arg: impl AsRef<str>) -> Result<Self, Self::Err>;
 }
 
 impl ArgumentsExt for Peekable<Arguments<'_>> {
-
-    fn parse_next<T: FromArgument>(&mut self) ->
-        Result<Option<T>, <T as FromArgument>::Err> {
+    fn parse_next<T: FromArgument>(&mut self) -> Result<Option<T>, <T as FromArgument>::Err> {
         if let Some(arg) = self.peek() {
             let result = T::parse_as(*arg)?;
             self.next();
@@ -37,7 +34,6 @@ impl ArgumentsExt for Peekable<Arguments<'_>> {
             Ok(None)
         }
     }
-
 }
 
 impl<T: FromStr> FromArgument for T {

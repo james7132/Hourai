@@ -1,7 +1,7 @@
 use crate::config::HouraiConfig;
-use tracing::debug;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use metrics_exporter_prometheus::PrometheusBuilder;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use tracing::debug;
 
 pub fn start_logging() {
     tracing_subscriber::fmt()
@@ -17,14 +17,19 @@ pub fn init(config: &HouraiConfig) {
     start_logging();
     debug!("Loaded Config: {:?}", config);
 
+    debug!("Loaded Config: {:?}", config);
+
     let metrics_port = config.metrics.port.unwrap_or(9090);
-    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), metrics_port);
+    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), metrics_port);
     PrometheusBuilder::new()
         .listen_address(socket)
         .install()
         .expect("Failed to set up Prometheus metrics exporter");
 
-    debug!("Exposed metrics on: {}", socket);
+    debug!(
+        "Metrics endpoint listening on http://0.0.0.0:{}",
+        metrics_port
+    );
 }
 
 pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {

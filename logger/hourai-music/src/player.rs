@@ -1,27 +1,27 @@
+use crate::{queue::MusicQueue, track::*, Client};
 use anyhow::Result;
-use hourai::prelude::*;
-use crate::{Client, queue::MusicQueue, track::*};
-use std::collections::HashSet;
 use dashmap::DashMap;
-use std::sync::{Weak, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use hourai::gateway::Cluster;
-use twilight_lavalink::{player::PlayerManager as LavalinkPlayerManager, model::*};
-use hourai::models::id::{UserId, GuildId, ChannelId};
+use hourai::models::id::{ChannelId, GuildId, UserId};
+use hourai::prelude::*;
+use std::collections::HashSet;
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
+use twilight_lavalink::{model::*, player::PlayerManager as LavalinkPlayerManager};
 
 macro_rules! get_lavalink_player {
     ($self:expr) => {
-        $self.0
-             .lavalink_manager
-             .get(&$self.0.guild_id)
-             .expect("twilight-lavalink player should have been created.")
-             .value()
+        $self
+            .0
+            .lavalink_manager
+            .get(&$self.0.guild_id)
+            .expect("twilight-lavalink player should have been created.")
+            .value()
     };
 }
 
 pub struct PlayerManager(DashMap<GuildId, Player>);
 
 impl PlayerManager {
-
     pub fn new() -> Self {
         Self(DashMap::new())
     }
@@ -39,7 +39,6 @@ impl PlayerManager {
         debug!("Destroyed player for guild {}", guild_id);
         self.0.remove(&guild_id);
     }
-
 }
 
 struct PlayerState {
@@ -59,18 +58,15 @@ struct PlayerRef {
 }
 
 impl Drop for PlayerRef {
-
     fn drop(&mut self) {
         debug!("Dropped player for guild {}", self.guild_id);
     }
-
 }
 
 #[derive(Clone)]
 pub struct Player(Arc<PlayerRef>);
 
 impl Player {
-
     pub async fn new<'a>(client: &Client<'a>, guild_id: GuildId) -> Result<Self> {
         // Ensure that there exists a player managed by twilight-lavalink
         client.lavalink.player(guild_id).await?;
@@ -85,7 +81,7 @@ impl Player {
                 channel_id: None,
                 currently_playing: None,
                 skip_votes: HashSet::new(),
-                queue: MusicQueue::new()
+                queue: MusicQueue::new(),
             }),
         }));
 
@@ -95,11 +91,17 @@ impl Player {
     }
 
     fn state(&self) -> RwLockReadGuard<PlayerState> {
-        self.0.state.read().expect("Player state lock has been poisoned")
+        self.0
+            .state
+            .read()
+            .expect("Player state lock has been poisoned")
     }
 
     fn state_mut(&self) -> RwLockWriteGuard<PlayerState> {
-        self.0.state.write().expect("Player state lock has been poisoned")
+        self.0
+            .state
+            .write()
+            .expect("Player state lock has been poisoned")
     }
 
     pub fn guild_id(&self) -> GuildId {
@@ -115,7 +117,7 @@ impl Player {
     }
 
     /// Queues up a track to be played.
-    pub fn enqueue(&self, user_id: UserId, tracks: impl IntoIterator<Item=Track>) {
+    pub fn enqueue(&self, user_id: UserId, tracks: impl IntoIterator<Item = Track>) {
         self.state_mut().queue.extend(user_id, tracks);
     }
 
@@ -134,7 +136,7 @@ impl Player {
         self.state().skip_votes.len()
     }
 
-    pub fn vote_to_skip(&self, user_id: UserId)  {
+    pub fn vote_to_skip(&self, user_id: UserId) {
         self.state_mut().skip_votes.insert(user_id);
     }
 
@@ -147,8 +149,8 @@ impl Player {
                 Some(kv) => {
                     get_lavalink_player!(self).send(kv.value.play(self.0.guild_id))?;
                     Some((kv.key, kv.value.info))
-                },
-                None => None
+                }
+                None => None,
             };
             (previous, state.currently_playing.clone())
         };
@@ -162,18 +164,24 @@ impl Player {
         let gateway = &self.0.gateway;
         let shard_id = gateway.shard_id(self.0.guild_id);
         gateway
-            .command(shard_id, &serde_json::json!({
-                "op": 4,
-                "d": {
-                    "channel_id": channel_id,
-                    "guild_id": self.0.guild_id,
-                    "self_mute": false,
-                    "self_deaf": false,
-                }
-            }))
+            .command(
+                shard_id,
+                &serde_json::json!({
+                    "op": 4,
+                    "d": {
+                        "channel_id": channel_id,
+                        "guild_id": self.0.guild_id,
+                        "self_mute": false,
+                        "self_deaf": false,
+                    }
+                }),
+            )
             .await?;
         self.state_mut().channel_id = Some(channel_id);
-        info!("Connected to channel {} in guild {}", channel_id, self.0.guild_id);
+        info!(
+            "Connected to channel {} in guild {}",
+            channel_id, self.0.guild_id
+        );
         Ok(())
     }
 
@@ -181,15 +189,18 @@ impl Player {
         let gateway = &self.0.gateway;
         let shard_id = gateway.shard_id(self.0.guild_id);
         gateway
-            .command(shard_id, &serde_json::json!({
-                "op": 4,
-                "d": {
-                    "channel_id": None::<ChannelId>,
-                    "guild_id": self.0.guild_id,
-                    "self_mute": false,
-                    "self_deaf": false,
-                }
-            }))
+            .command(
+                shard_id,
+                &serde_json::json!({
+                    "op": 4,
+                    "d": {
+                        "channel_id": None::<ChannelId>,
+                        "guild_id": self.0.guild_id,
+                        "self_mute": false,
+                        "self_deaf": false,
+                    }
+                }),
+            )
             .await?;
         get_lavalink_player!(self).send(Destroy::from(self.0.guild_id))?;
         self.state_mut().channel_id = None;
@@ -223,14 +234,21 @@ impl Player {
     }
 
     async fn on_track_end(&self, evt: &TrackEnd) -> Result<()> {
-        info!("Track ended in guild {} (reason: {}): {}",
-              self.0.guild_id, evt.reason.as_str(), evt.track);
+        info!(
+            "Track ended in guild {} (reason: {}): {}",
+            self.0.guild_id,
+            evt.reason.as_str(),
+            evt.track
+        );
         match evt.reason.as_str() {
-            "FINISHED" => {self.play_next().await?;}
-            "LOAD_FAILED" => {self.play_next().await?;}
-            _ => {},
+            "FINISHED" => {
+                self.play_next().await?;
+            }
+            "LOAD_FAILED" => {
+                self.play_next().await?;
+            }
+            _ => {}
         }
         Ok(())
     }
-
 }

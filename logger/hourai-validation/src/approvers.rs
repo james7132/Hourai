@@ -1,4 +1,4 @@
-use super::{*, context};
+use super::{context, *};
 use async_trait::async_trait;
 use hourai::cache::InMemoryCache;
 use hourai::models::id::UserId;
@@ -13,7 +13,6 @@ struct DistinguishedUserValidator(InMemoryCache);
 
 #[async_trait]
 impl Validator for DistinguishedUserValidator {
-
     async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()> {
         let flags = ctx.member().user.flags.unwrap_or(UserFlags::empty());
         if flags.contains(UserFlags::DISCORD_EMPLOYEE) {
@@ -36,32 +35,40 @@ impl Validator for DistinguishedUserValidator {
         }
         Ok(())
     }
-
 }
 
 pub fn user_has_nitro(user: &User) -> bool {
-    let flag = user.flags.map(|f| f.contains(UserFlags::EARLY_SUPPORTER)).unwrap_or(false);
-    let animated = user.avatar.as_ref().map(|a| a.starts_with("a_")).unwrap_or(false);
+    let flag = user
+        .flags
+        .map(|f| f.contains(UserFlags::EARLY_SUPPORTER))
+        .unwrap_or(false);
+    let animated = user
+        .avatar
+        .as_ref()
+        .map(|a| a.starts_with("a_"))
+        .unwrap_or(false);
     flag || animated
 }
 
 pub(super) fn nitro() -> BoxedValidator {
     GenericValidator::new_approver(
         "User currently has or has had Nitro. Probably not a user bot.",
-        |ctx| Ok(user_has_nitro(&ctx.member().user)))
+        |ctx| Ok(user_has_nitro(&ctx.member().user)),
+    )
 }
 
-pub(super) fn bot_owners(owners: impl IntoIterator<Item=UserId>) -> BoxedValidator {
+pub(super) fn bot_owners(owners: impl IntoIterator<Item = UserId>) -> BoxedValidator {
     let owner_ids: HashSet<UserId> = owners.into_iter().collect();
-    GenericValidator::new_approver(
-        "User is an owner of this bot.",
-        move |ctx| Ok(owner_ids.contains(&ctx.member().user.id)))
+    GenericValidator::new_approver("User is an owner of this bot.", move |ctx| {
+        Ok(owner_ids.contains(&ctx.member().user.id))
+    })
 }
 
 pub(super) fn bot() -> BoxedValidator {
     GenericValidator::new_approver(
         "User is an OAuth2 bot that can only be manually added by moderators.",
-        |ctx| Ok(ctx.member().user.bot))
+        |ctx| Ok(ctx.member().user.bot),
+    )
 }
 
 pub(super) fn distinguished_user(cache: InMemoryCache) -> BoxedValidator {
