@@ -1,29 +1,29 @@
 use serde::Deserialize;
 
-pub type SubmissionListing = Thing<Listing<Thing<Submission>>>;
+pub type SubmissionListing<'a> = Thing<'a, Listing<'a, Thing<'a, Submission<'a>>>>;
 
 #[derive(Debug, Deserialize)]
-pub struct Thing<T> {
-    pub kind: String,
+pub struct Thing<'a, T> {
+    pub kind: &'a str,
     pub data: T,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Listing<T> {
-    pub modhash: String,
+pub struct Listing<'a, T> {
+    pub modhash: &'a str,
     pub children: Vec<T>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Submission {
-    pub title: String,
-    pub author: String,
-    pub subreddit: String,
+pub struct Submission<'a>{
+    pub title: &'a str,
+    pub author: &'a str,
+    pub subreddit: &'a str,
     pub is_self: bool,
-    pub selftext: String,
-    pub permalink: String,
-    pub url: String,
-    pub post_hint: Option<String>,
-    pub link_flair_text: Option<String>,
+    pub selftext: &'a str,
+    pub permalink: &'a str,
+    pub url: &'a str,
+    pub post_hint: Option<&'a str>,
+    pub link_flair_text: Option<&'a str>,
     pub created_utc: f64,
 }

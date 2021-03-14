@@ -1,10 +1,10 @@
-mod reddit;
 mod models;
+mod reddit;
 
-use hourai::{init, config};
-use hourai_sql::SqlPool;
-use futures::prelude::*;
 use futures::channel::mpsc::UnboundedSender;
+use futures::prelude::*;
+use hourai::{config, init};
+use hourai_sql::SqlPool;
 
 #[tokio::main]
 async fn main() {
@@ -16,7 +16,7 @@ async fn main() {
     let client = Client {
         //http: init::http_client(&config),
         //sql: hourai_sql::init(&config).await,
-        tx
+        tx,
     };
 
     tokio::spawn(reddit::start(client.clone()));

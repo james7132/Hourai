@@ -1,5 +1,5 @@
 use anyhow::Result;
-use hourai::models::{id::ChannelId, channel::embed::Embed};
+use hourai::models::{channel::embed::Embed, id::ChannelId};
 use hourai_sql::{SqlQuery, SqlQueryAs};
 use tracing::error;
 
@@ -11,7 +11,6 @@ pub struct Post {
 }
 
 impl Post {
-
     pub fn broadcast(self, client: hourai::http::Client) -> Result<()> {
         for channel_id in self.channel_ids {
             let subclient = client.clone();
@@ -30,7 +29,7 @@ impl Post {
         client: hourai::http::Client,
         channel_id: ChannelId,
         content: Option<String>,
-        embed: Option<Embed>
+        embed: Option<Embed>,
     ) -> Result<()> {
         let mut request = client.create_message(channel_id);
         if let Some(content) = content {
@@ -42,7 +41,6 @@ impl Post {
         request.await?;
         Ok(())
     }
-
 }
 
 #[derive(sqlx::FromRow)]
@@ -56,10 +54,10 @@ pub struct Feed {
 }
 
 impl Feed {
-
     /// Fetches a page of feeds with a given type
     pub fn fetch_page<'a>(feed_type: String, count: u64, offset: u64) -> SqlQueryAs<'a, Self> {
-        sqlx::query_as("SELECT \
+        sqlx::query_as(
+            "SELECT \
                            feeds.id, feeds.source, feeds.last_updated, \
                            array_agg(feed_channels.channel_id) as channel_ids \
                        FROM \
@@ -71,25 +69,29 @@ impl Feed {
                        GROUP BY
                            feeds.id \
                        LIMIT $2 \
-                       OFFSET $3")
-             .bind(feed_type)
-             .bind(count as i64)
-             .bind(offset as i64)
+                       OFFSET $3",
+        )
+        .bind(feed_type)
+        .bind(count as i64)
+        .bind(offset as i64)
     }
 
     /// Creates a query to update the database
     pub fn update<'a>(&self, latest_time: u64) -> SqlQuery<'a> {
         sqlx::query("UPDATE feeds SET feeds.last_updated = $1 WHERE feeds.id = $2")
-             .bind(latest_time as i64)
-             .bind(self.id)
+            .bind(latest_time as i64)
+            .bind(self.id)
     }
 
     pub fn make_post(&self, content: Option<String>, embed: Option<Embed>) -> Post {
         Post {
-            channel_ids: self.channel_ids.iter().map(|id| ChannelId(*id as u64)).collect(),
+            channel_ids: self
+                .channel_ids
+                .iter()
+                .map(|id| ChannelId(*id as u64))
+                .collect(),
             content: content,
             embed: embed,
         }
     }
-
 }

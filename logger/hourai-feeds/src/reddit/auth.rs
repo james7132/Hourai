@@ -4,5 +4,4 @@ pub struct RedditAuth {
     config: RedditConfig,
 }
 
-impl RedditAuth {
-}
+impl RedditAuth {}
