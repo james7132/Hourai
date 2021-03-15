@@ -1,12 +1,9 @@
-pub use hourai::prelude::*;
-pub use twilight_lavalink::{
-    Lavalink, Node,
-    player::Player as TwilightPlayer,
-    http::LoadedTracks,
-    model::IncomingEvent
-};
-pub use crate::player::PlayerExt;
-pub use std::net::SocketAddr;
 use futures::channel::mpsc::UnboundedReceiver;
+pub use hourai::prelude::*;
+pub use std::net::SocketAddr;
+pub use crate::player::PlayerExt;
+pub use twilight_lavalink::{
+    http::LoadedTracks, model::IncomingEvent, player::Player as TwilightPlayer, Lavalink, Node,
+};
 
 pub type LavalinkEventStream = UnboundedReceiver<IncomingEvent>;

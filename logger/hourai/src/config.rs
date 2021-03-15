@@ -1,5 +1,10 @@
 use serde::Deserialize;
-use std::{env, fs::File, io::BufReader, path::{Path, PathBuf}};
+use std::{
+    env,
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+};
 
 const DEFAULT_ENV: &str = "dev";
 
@@ -12,6 +17,8 @@ pub struct HouraiConfig {
     pub discord: DiscordConfig,
     pub web: WebConfig,
     pub metrics: MetricsConfig,
+    pub reddit: RedditConfig,
+    pub third_party: ThirdPartyConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -52,16 +59,19 @@ pub struct DiscordConfig {
 pub struct RedditConfig {
     pub client_id: String,
     pub client_secret: String,
-    pub username: String,
-    pub password: String,
     pub user_agent: String,
-    pub base_url: String,
-    pub fetch_limit: i32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ThirdPartyConfig {
+    pub discord_boats_token: Option<String>,
+    pub discord_bots_token: Option<String>,
+    pub top_gg_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WebhookConfig {
-    pub bot_log: String
+    pub bot_log: String,
 }
 
 /// Loads the config for the bot. Panics if the reading the files fails or parsing fails.
@@ -74,10 +84,9 @@ pub fn load_config(path: &Path) -> HouraiConfig {
 
 pub fn get_config_path() -> Box<Path> {
     let mut buffer: PathBuf = ["/etc", "hourai"].iter().collect();
-    let execution_env: String =
-        env::var("HOURAI_ENV")
-            .unwrap_or_else(|_| String::from(DEFAULT_ENV))
-            .to_lowercase();
+    let execution_env: String = env::var("HOURAI_ENV")
+        .unwrap_or_else(|_| String::from(DEFAULT_ENV))
+        .to_lowercase();
     buffer.push(execution_env);
     buffer.into_boxed_path()
 }

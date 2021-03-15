@@ -1,31 +1,31 @@
+mod player;
 mod prelude;
 mod queue;
-mod player;
 mod track;
 mod commands;
 mod ui;
 
 use anyhow::{bail, Result};
+use crate::{prelude::*, player::PlayerState, track::{Track, TrackInfo}};
+use dashmap::DashMap;
 use futures::stream::StreamExt;
-use crate::{prelude::*, track::{Track, TrackInfo}, player::PlayerState};
-use twilight_lavalink::{Lavalink, model::*};
 use http::Uri;
 use twilight_command_parser::{Parser, CommandParserConfig};
-use dashmap::DashMap;
+use twilight_lavalink::{Lavalink, model::*};
 use hourai::{
     config, init, cache::{InMemoryCache, ResourceType},
     models::id::*,
     gateway::{Intents, Event, EventTypeFlags, cluster::*},
 };
-use std::{convert::TryFrom, str::FromStr};
 use hyper::{
-    Body, Request,
-    service::Service,
     client::{
+        connect::dns::{GaiResolver, Name},
         Client as HyperClient, HttpConnector,
-        connect::dns::{Name, GaiResolver}
-    }
+    },
+    service::Service,
+    Body, Request,
 };
+use std::{convert::TryFrom, str::FromStr};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits() |
@@ -76,13 +76,15 @@ async fn main() {
 
     let http_client = init::http_client(&config);
     let current_user = http_client.current_user().await.unwrap();
-    let cache = InMemoryCache::builder().resource_types(CACHED_RESOURCES).build();
+    let cache = InMemoryCache::builder()
+        .resource_types(CACHED_RESOURCES)
+        .build();
     let gateway = Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
-            .shard_scheme(ShardScheme::Auto)
-            .http_client(http_client.clone())
-            .build()
-            .await
-            .expect("Failed to connect to the Discord gateway");
+        .shard_scheme(ShardScheme::Auto)
+        .http_client(http_client.clone())
+        .build()
+        .await
+        .expect("Failed to connect to the Discord gateway");
 
     let shard_count = gateway.config().shard_config().shard()[1];
     let lavalink = Lavalink::new(current_user.id, shard_count);
@@ -95,7 +97,7 @@ async fn main() {
         states: Arc::new(DashMap::new()),
         hyper: HyperClient::new(),
         resolver: GaiResolver::new(),
-        parser: parser
+        parser: parser,
     };
 
     // Start the lavalink node connections.
@@ -131,15 +133,14 @@ pub struct Client<'a> {
     pub lavalink: twilight_lavalink::Lavalink,
     pub states: Arc<DashMap<GuildId, PlayerState>>,
     pub resolver: GaiResolver,
-    pub parser: Parser<'a>
+    pub parser: Parser<'a>,
 }
 
 impl Client<'static> {
-
     async fn connect_node(
         &mut self,
         uri: &Uri,
-        password: impl Into<String>
+        password: impl Into<String>,
     ) -> Result<LavalinkEventStream> {
         let name = Name::from_str(uri.host().unwrap()).unwrap();
         let pass = password.into();
@@ -149,9 +150,9 @@ impl Client<'static> {
             }
 
             debug!("Trying to connect to a Lavalink node at: {} ", address);
-            match self.lavalink.add(address, pass.as_str()).await  {
+            match self.lavalink.add(address, pass.as_str()).await {
                 Ok((_, rx)) => return Ok(rx),
-                Err(err) => debug!("Failed to connect to {}: {:?}", address, err)
+                Err(err) => debug!("Failed to connect to {}: {:?}", address, err),
             }
         }
         bail!("No valid destination. Cannot connect.");
@@ -170,7 +171,7 @@ impl Client<'static> {
                     debug!("Retrying connection to {} in 5 seconds.", name.as_str());
                     tokio::time::sleep(Duration::from_secs(5)).await;
                     continue;
-                },
+                }
             };
 
             info!("Connected to node to {}.", name.as_str());
@@ -202,7 +203,7 @@ impl Client<'static> {
             _ => {
                 error!("Unexpected event type: {:?}", event);
                 Ok(())
-            },
+            }
         };
 
         if let Err(err) = result {
@@ -221,7 +222,10 @@ impl Client<'static> {
         };
 
         if let Err(err) = result {
-            error!("Error while handling Lavalink event {:?}. Error: {:?}", event, err);
+            error!(
+                "Error while handling Lavalink event {:?}. Error: {:?}",
+                event, err
+            );
         }
     }
 
@@ -244,18 +248,14 @@ impl Client<'static> {
     }
 
     // HTTP requests to the Lavalink nodes
-    pub async fn load_tracks(
-        &self,
-        node: &Node,
-        query: impl AsRef<str>
-    ) -> Result<LoadedTracks> {
+    pub async fn load_tracks(&self, node: &Node, query: impl AsRef<str>) -> Result<LoadedTracks> {
         let config = node.config().clone();
         let (parts, body) = twilight_lavalink::http::load_track(
-                config.address,
-                query.as_ref(),
-                &config.authorization,
-            )?
-            .into_parts();
+            config.address,
+            query.as_ref(),
+            &config.authorization,
+        )?
+        .into_parts();
         let req = Request::from_parts(parts, Body::from(body));
         let res = self.hyper.request(req).await?;
         let response_bytes = hyper::body::to_bytes(res.into_body()).await?;

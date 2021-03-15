@@ -10,12 +10,6 @@ from sqlalchemy.dialects import postgresql
 
 Base = declarative_base()
 
-feed_channels_table = Table('feed_channels', Base.metadata,
-                            Column('feed_id', types.BigInteger,
-                                   ForeignKey('feeds.id')),
-                            Column('channel_id', types.BigInteger,
-                                   ForeignKey('channels.id')))
-
 
 class UnixTimestamp(types.TypeDecorator):
     impl = types.BigInteger
@@ -148,32 +142,6 @@ class Username(Base):
         return cls(*args, **kwargs)
 
 
-Index("idx_username_user_id", Username.user_id)
-UniqueConstraint(Username.user_id, Username.name,
-                 Username.discriminator, name="idx_unique_username")
-
-
-class Alias(Base):
-    __tablename__ = 'aliases'
-
-    guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    name = Column(types.String(2000), primary_key=True)
-    content = Column(types.String(2000))
-
-
-class Channel(Base):
-    __tablename__ = 'channels'
-
-    id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    guild_id = Column(types.BigInteger, nullable=True)
-
-    feeds = relationship("Feed", secondary=feed_channels_table,
-                         back_populates="channels")
-
-    def get_resource(self, bot):
-        return bot.get_channel(self.id)
-
-
 @enum.unique
 class FeedType(enum.Enum):
     RSS = enum.auto()
@@ -190,9 +158,7 @@ class Feed(Base):
     _type = Column('type', types.String(255), nullable=False)
     source = Column(types.String(8192), nullable=False)
     last_updated = Column(UnixTimestamp, nullable=False)
-
-    channels = relationship("Channel", secondary=feed_channels_table,
-                            back_populates="feeds")
+    channels = relationship("FeedChannel", back_populates="feed")
 
     @property
     def type(self):
@@ -207,3 +173,25 @@ class Feed(Base):
         """ Returns a generator for all channels in the feed. """
 
         return (ch.get_resource(bot) for ch in self.channels)
+
+
+class FeedChannel(Base):
+    __tablename__ = 'feed_channels'
+
+    feed_id = Column('feed_id', types.BigInteger, ForeignKey('feeds.id'),
+                     primary_key=True)
+    channel_id = Column('channel_id', types.BigInteger, primary_key=True)
+    feed = relationship("Feed", back_populates="channels")
+
+
+Index("idx_username_user_id", Username.user_id)
+UniqueConstraint(Username.user_id, Username.name,
+                 Username.discriminator, name="idx_unique_username")
+
+
+class Alias(Base):
+    __tablename__ = 'aliases'
+
+    guild_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
+    name = Column(types.String(2000), primary_key=True)
+    content = Column(types.String(2000))

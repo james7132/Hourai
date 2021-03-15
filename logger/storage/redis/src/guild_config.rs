@@ -1,7 +1,4 @@
-use hourai::proto::{
-    auto_config::*,
-    guild_configs::*,
-};
+use hourai::proto::{auto_config::*, guild_configs::*};
 
 pub trait CachedGuildConfig {
     const SUBKEY: u8;

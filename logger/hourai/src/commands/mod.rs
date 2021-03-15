@@ -1,10 +1,10 @@
-pub mod prelude;
 pub mod precondition;
+pub mod prelude;
 
 use crate::cache::InMemoryCache;
-use twilight_model::channel::Message;
 use thiserror::Error;
 use twilight_http::request::channel::message::*;
+use twilight_model::channel::Message;
 
 #[derive(Debug, Clone)]
 pub struct Context<'a> {
@@ -14,13 +14,11 @@ pub struct Context<'a> {
 }
 
 impl Context<'_> {
-
     pub fn respond(&self) -> CreateMessage {
         self.http
             .create_message(self.message.channel_id)
             .reply(self.message.id)
     }
-
 }
 
 /// The sum type of all errors that might result from fetching

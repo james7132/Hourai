@@ -21,7 +21,7 @@ use std::{
 use twilight_model::{
     channel::{Group, GuildChannel, PrivateChannel},
     gateway::presence::{Presence, Status, UserOrId},
-    guild::{Emoji, Guild, Member, PartialMember, Role, Permissions},
+    guild::{Emoji, Guild, Member, PartialMember, Permissions, Role},
     id::{ChannelId, EmojiId, GuildId, MessageId, RoleId, UserId},
     user::{CurrentUser, User},
     voice::VoiceState,
@@ -431,8 +431,10 @@ impl InMemoryCache {
         &self,
         guild_id: GuildId,
         user_id: UserId,
-        role_ids: T) -> Permissions
-        where T: Iterator<Item=RoleId>
+        role_ids: T,
+    ) -> Permissions
+    where
+        T: Iterator<Item = RoleId>,
     {
         // The owner has all permissions.
         if let Some(guild) = self.guild(guild_id) {
@@ -442,14 +444,15 @@ impl InMemoryCache {
         }
 
         // The everyone role ID is the same as the guild ID.
-        let everyone_perms = self.role(RoleId(guild_id.0))
+        let everyone_perms = self
+            .role(RoleId(guild_id.0))
             .map(|role| role.permissions)
             .unwrap_or_else(|| Permissions::empty());
         let perms = role_ids
-                        .map(|id| self.role(id))
-                        .filter_map(|role| role)
-                        .map(|role| role.permissions)
-                        .fold(everyone_perms, |acc, perm|  acc | perm);
+            .map(|id| self.role(id))
+            .filter_map(|role| role)
+            .map(|role| role.permissions)
+            .fold(everyone_perms, |acc, perm| acc | perm);
 
         // Administrators by default have every permission enabled.
         if perms.contains(Permissions::ADMINISTRATOR) {
@@ -776,23 +779,25 @@ impl InMemoryCache {
         user
     }
 
-    fn cache_voice_states(&self,
+    fn cache_voice_states(
+        &self,
         guild_id: GuildId,
-        voice_states: impl IntoIterator<Item = VoiceState>) {
+        voice_states: impl IntoIterator<Item = VoiceState>,
+    ) {
         for voice_state in voice_states {
             self.cache_voice_state(guild_id, voice_state.user_id, voice_state.channel_id);
         }
     }
 
-    fn cache_voice_state(
-        &self,
-        guild_id: GuildId,
-        user_id: UserId,
-        channel_id: Option<ChannelId>) {
+    fn cache_voice_state(&self, guild_id: GuildId, user_id: UserId, channel_id: Option<ChannelId>) {
         let key = (guild_id, user_id);
         match channel_id {
-            Some(id) => {self.0.voice_states.insert(key, id);},
-            None => {self.0.voice_states.remove(&key);},
+            Some(id) => {
+                self.0.voice_states.insert(key, id);
+            }
+            None => {
+                self.0.voice_states.remove(&key);
+            }
         }
     }
 

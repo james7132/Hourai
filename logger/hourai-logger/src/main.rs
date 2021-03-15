@@ -1,62 +1,57 @@
+mod listings;
 mod message_logging;
 
 use anyhow::Result;
-use tracing::{info, error, debug};
+use core::time::Duration;
+use futures::stream::StreamExt;
 use hourai::{
-    init, config,
     cache::{InMemoryCache, ResourceType},
+    config,
+    gateway::{cluster::*, Event, EventType, EventTypeFlags, Intents},
+    init,
     models::{
-        id::*,
-        channel::Message,
-        gateway::payload::*,
-        guild::Permissions,
-        guild::member::Member,
+        channel::Message, gateway::payload::*, guild::member::Member, guild::Permissions, id::*,
         user::User,
     },
-    gateway::{
-        Intents, Event, EventType, EventTypeFlags,
-        cluster::*,
-    }
 };
-use hourai_sql::*;
 use hourai_redis::*;
-use futures::stream::StreamExt;
-use core::time::Duration;
+use hourai_sql::*;
+use tracing::{debug, error, info};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
-    Intents::GUILDS.bits() |
-    Intents::GUILD_BANS.bits() |
-    Intents::GUILD_MESSAGES.bits() |
-    Intents::GUILD_MEMBERS.bits() |
-    Intents::GUILD_PRESENCES.bits());
+    Intents::GUILDS.bits()
+        | Intents::GUILD_BANS.bits()
+        | Intents::GUILD_MESSAGES.bits()
+        | Intents::GUILD_MEMBERS.bits()
+        | Intents::GUILD_PRESENCES.bits(),
+);
 
-const BOT_EVENTS : EventTypeFlags =
-    EventTypeFlags::from_bits_truncate(
-        EventTypeFlags::READY.bits() |
-        EventTypeFlags::BAN_ADD.bits() |
-        EventTypeFlags::BAN_REMOVE.bits() |
-        EventTypeFlags::MEMBER_ADD.bits() |
-        EventTypeFlags::MEMBER_CHUNK.bits() |
-        EventTypeFlags::MEMBER_REMOVE.bits() |
-        EventTypeFlags::MEMBER_UPDATE.bits() |
-        EventTypeFlags::MESSAGE_CREATE.bits() |
-        EventTypeFlags::MESSAGE_UPDATE.bits() |
-        EventTypeFlags::MESSAGE_DELETE.bits() |
-        EventTypeFlags::MESSAGE_DELETE_BULK.bits() |
-        EventTypeFlags::GUILD_CREATE.bits() |
-        EventTypeFlags::GUILD_UPDATE.bits() |
-        EventTypeFlags::GUILD_DELETE.bits() |
-        EventTypeFlags::PRESENCE_UPDATE.bits() |
-        EventTypeFlags::ROLE_CREATE.bits() |
-        EventTypeFlags::ROLE_UPDATE.bits() |
-        EventTypeFlags::ROLE_DELETE.bits());
+const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
+    EventTypeFlags::READY.bits()
+        | EventTypeFlags::BAN_ADD.bits()
+        | EventTypeFlags::BAN_REMOVE.bits()
+        | EventTypeFlags::MEMBER_ADD.bits()
+        | EventTypeFlags::MEMBER_CHUNK.bits()
+        | EventTypeFlags::MEMBER_REMOVE.bits()
+        | EventTypeFlags::MEMBER_UPDATE.bits()
+        | EventTypeFlags::MESSAGE_CREATE.bits()
+        | EventTypeFlags::MESSAGE_UPDATE.bits()
+        | EventTypeFlags::MESSAGE_DELETE.bits()
+        | EventTypeFlags::MESSAGE_DELETE_BULK.bits()
+        | EventTypeFlags::GUILD_CREATE.bits()
+        | EventTypeFlags::GUILD_UPDATE.bits()
+        | EventTypeFlags::GUILD_DELETE.bits()
+        | EventTypeFlags::PRESENCE_UPDATE.bits()
+        | EventTypeFlags::ROLE_CREATE.bits()
+        | EventTypeFlags::ROLE_UPDATE.bits()
+        | EventTypeFlags::ROLE_DELETE.bits(),
+);
 
-const CACHED_RESOURCES: ResourceType =
-    ResourceType::from_bits_truncate(
-        ResourceType::ROLE.bits() |
-        ResourceType::GUILD.bits() |
-        ResourceType::PRESENCE.bits() |
-        ResourceType::USER_CURRENT.bits());
+const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
+    ResourceType::ROLE.bits()
+        | ResourceType::GUILD.bits()
+        | ResourceType::PRESENCE.bits()
+);
 
 #[tokio::main]
 async fn main() {
@@ -66,25 +61,40 @@ async fn main() {
     let http_client = init::http_client(&config);
     let sql = hourai_sql::init(&config).await;
     let redis = hourai_redis::init(&config).await;
-    let cache = InMemoryCache::builder().resource_types(CACHED_RESOURCES).build();
+    let cache = InMemoryCache::builder()
+        .resource_types(CACHED_RESOURCES)
+        .build();
     let gateway = Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
-            .shard_scheme(ShardScheme::Auto)
-            .http_client(http_client.clone())
-            .build()
-            .await
-            .expect("Failed to connect to the Discord gateway");
+        .shard_scheme(ShardScheme::Auto)
+        .http_client(http_client.clone())
+        .build()
+        .await
+        .expect("Failed to connect to the Discord gateway");
 
-    let client = Client {
-        http_client,
-        gateway: gateway.clone(),
-        cache: cache.clone(),
-        sql,
-        redis: redis.clone(),
+    let client = {
+        let user = http_client
+            .current_user()
+            .await
+            .expect("User should not fail to load.");
+        Client {
+            user_id: user.id,
+            http_client,
+            gateway: gateway.clone(),
+            cache: cache.clone(),
+            sql,
+            redis: redis.clone(),
+        }
     };
 
     info!("Starting gateway...");
     gateway.up().await;
     info!("Client started.");
+
+    tokio::spawn(listings::run_push_listings(
+        client.clone(),
+        config.clone(),
+        Duration::from_secs(300),
+    ));
 
     // Setup background tasks
     tokio::spawn(client.clone().log_bans());
@@ -113,7 +123,10 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
             };
             pipeline.set_online(guild_id, presences);
         }
-        let result = pipeline.build().query_async::<RedisPool, ()>(&mut redis).await;
+        let result = pipeline
+            .build()
+            .query_async::<RedisPool, ()>(&mut redis)
+            .await;
         if let Err(err) = result {
             error!("Error while flushing statuses: {:?}", err);
         }
@@ -122,7 +135,8 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
 }
 
 #[derive(Clone)]
-struct Client {
+pub struct Client {
+    pub user_id: UserId,
     pub http_client: hourai::http::Client,
     pub gateway: Cluster,
     pub cache: InMemoryCache,
@@ -131,11 +145,6 @@ struct Client {
 }
 
 impl Client {
-
-    fn user_id(&self) -> UserId {
-        self.cache.current_user().unwrap().id
-    }
-
     async fn log_bans(self) {
         loop {
             info!("Refreshing bans...");
@@ -166,22 +175,27 @@ impl Client {
         let request = RequestGuildMembers::builder(guild_id)
             .presences(true)
             .query(String::new(), None);
-        self.gateway.command(self.shard_id(guild_id), &request).await?;
+        self.gateway
+            .command(self.shard_id(guild_id), &request)
+            .await?;
         Ok(())
     }
 
     pub async fn fetch_guild_permissions(
         &self,
         guild_id: GuildId,
-        user_id: UserId
+        user_id: UserId,
     ) -> Result<Permissions> {
         let local_member = hourai_sql::Member::fetch(guild_id, user_id)
-                                .fetch_one(&self.sql)
-                                .await;
+            .fetch_one(&self.sql)
+            .await;
         if let Ok(member) = local_member {
-            Ok(self.cache.guild_permissions(guild_id, user_id, member.role_ids()))
+            Ok(self
+                .cache
+                .guild_permissions(guild_id, user_id, member.role_ids()))
         } else {
-            let roles = self.http_client
+            let roles = self
+                .http_client
                 .guild_member(guild_id, user_id)
                 .await?
                 .into_iter()
@@ -204,7 +218,7 @@ impl Client {
                 } else {
                     Ok(())
                 }
-            },
+            }
             Event::MemberAdd(evt) => self.on_member_add(*evt).await,
             Event::MemberChunk(evt) => self.on_member_chunk(evt).await,
             Event::MemberRemove(evt) => self.on_member_remove(evt).await,
@@ -219,7 +233,7 @@ impl Client {
             _ => {
                 error!("Unexpected event type: {:?}", event);
                 Ok(())
-            },
+            }
         };
 
         if let Err(err) = result {
@@ -237,7 +251,9 @@ impl Client {
     async fn on_ban_add(self, evt: BanAdd) -> Result<()> {
         self.log_users(vec![evt.user.clone()]).await?;
 
-        let perms = self.fetch_guild_permissions(evt.guild_id, self.user_id()).await?;
+        let perms = self
+            .fetch_guild_permissions(evt.guild_id, self.user_id)
+            .await?;
         if perms.contains(Permissions::BAN_MEMBERS) {
             if let Some(ban) = self.http_client.ban(evt.guild_id, evt.user.id).await? {
                 Ban::from(evt.guild_id, ban)
@@ -275,22 +291,30 @@ impl Client {
 
     async fn on_message_create(mut self, evt: Message) -> Result<()> {
         if !evt.author.bot {
-            CachedMessage::new(evt).flush().query_async(&mut self.redis).await?;
+            CachedMessage::new(evt)
+                .flush()
+                .query_async(&mut self.redis)
+                .await?;
         }
         Ok(())
     }
 
     async fn on_message_update(mut self, evt: MessageUpdate) -> Result<()> {
         // TODO(james7132): Properly implement this
-        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut self.redis)
-                                       .await?;
+        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut self.redis).await?;
         if let Some(mut msg) = cached {
             if let Some(content) = evt.content {
                 let before = msg.clone();
                 msg.set_content(content);
-                tokio::spawn(message_logging::on_message_update(self.clone(),
-                             before.clone(), msg));
-                CachedMessage::new(before).flush().query_async(&mut self.redis).await?;
+                tokio::spawn(message_logging::on_message_update(
+                    self.clone(),
+                    before.clone(),
+                    msg,
+                ));
+                CachedMessage::new(before)
+                    .flush()
+                    .query_async(&mut self.redis)
+                    .await?;
             }
         }
 
@@ -299,14 +323,20 @@ impl Client {
 
     async fn on_message_delete(mut self, evt: MessageDelete) -> Result<()> {
         message_logging::on_message_delete(&mut self, &evt).await?;
-        CachedMessage::delete(evt.channel_id, evt.id).query_async(&mut self.redis).await?;
+        CachedMessage::delete(evt.channel_id, evt.id)
+            .query_async(&mut self.redis)
+            .await?;
         Ok(())
     }
 
     async fn on_message_bulk_delete(mut self, evt: MessageDeleteBulk) -> Result<()> {
-        tokio::spawn(message_logging::on_message_bulk_delete(self.clone(), evt.clone()));
+        tokio::spawn(message_logging::on_message_bulk_delete(
+            self.clone(),
+            evt.clone(),
+        ));
         CachedMessage::bulk_delete(evt.channel_id, evt.ids)
-                          .query_async(&mut self.redis).await?;
+            .query_async(&mut self.redis)
+            .await?;
         Ok(())
     }
 
@@ -351,14 +381,12 @@ impl Client {
             guild_id: evt.guild_id.0 as i64,
             user_id: evt.user.id.0 as i64,
             role_ids: evt.roles.iter().map(|id| id.0 as i64).collect(),
-            nickname: evt.nick
-        }.insert()
-         .execute(&self.sql)
-         .await?;
-        Username::new(&evt.user)
-            .insert()
-            .execute(&self.sql)
-            .await?;
+            nickname: evt.nick,
+        }
+        .insert()
+        .execute(&self.sql)
+        .await?;
+        Username::new(&evt.user).insert().execute(&self.sql).await?;
         Ok(())
     }
 
@@ -384,13 +412,17 @@ impl Client {
     }
 
     async fn refresh_bans(&self, guild_id: GuildId) -> Result<()> {
-        let perms = self.fetch_guild_permissions(guild_id, self.user_id()).await?;
+        let perms = self.fetch_guild_permissions(guild_id, self.user_id).await?;
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
-            let bans: Vec<Ban> = self.http_client.bans(guild_id).await?
-                                         .into_iter().map(|b| Ban::from(guild_id, b))
-                                         .collect();
+            let bans: Vec<Ban> = self
+                .http_client
+                .bans(guild_id)
+                .await?
+                .into_iter()
+                .map(|b| Ban::from(guild_id, b))
+                .collect();
             debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
             let mut txn = self.sql.begin().await?;
             Ban::clear_guild(guild_id).execute(&mut txn).await?;
@@ -402,6 +434,4 @@ impl Client {
         }
         Ok(())
     }
-
-
 }

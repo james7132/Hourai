@@ -1,5 +1,5 @@
 [package]
-name = "hourai-logger"
+name = "hourai-feeds"
 version = "0.1.0"
 authors = ["james7132 <contact@jamessliu.com>"]
 edition = "2018"
@@ -7,16 +7,25 @@ edition = "2018"
 [dependencies]
 hourai = { path = "../hourai" }
 hourai-sql = { path = "../storage/sql" }
-hourai-redis = { path = "../storage/redis" }
 anyhow = "1.0"
-chrono = "0.4"
-reqwest = { version = "0.11", features = ["json"] }
-serde_json = "1.0"
+futures = "0.3"
+http = { default-features = false, version = "0.2" }
+reqwest = "0.11"
+serde = { version = "1.0", features = ["derive"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
-futures = { default-features = false, version = "0.3.12" }
 twilight-embed-builder = "0.3"
+
+[dependencies.sqlx]
+default-features = false
+features = ["runtime-tokio-rustls", "postgres", "macros"]
+version = "0.5.1"
 
 [dependencies.tokio]
 default-features = false
 version = "1.0"
 features = ["macros", "rt"]
+
+[dependencies.simd-json]
+default-features = true
+version = "0.3"
+features = ['allow-non-simd']

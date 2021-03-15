@@ -1,8 +1,8 @@
 use anyhow::Result;
 use crate::{queue::MusicQueue, track::*};
+use hourai::models::id::{UserId, ChannelId};
 use std::collections::HashSet;
 use twilight_lavalink::model::*;
-use hourai::models::id::{UserId, ChannelId};
 
 pub struct PlayerState {
     pub channel_id: ChannelId,

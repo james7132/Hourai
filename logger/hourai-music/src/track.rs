@@ -1,8 +1,8 @@
 use hourai::models::{id::GuildId, user::User};
-use twilight_lavalink::model::Play;
 use std::convert::TryFrom;
 use std::{fmt, time::Duration};
 use tracing::error;
+use twilight_lavalink::model::Play;
 
 #[derive(Clone)]
 pub struct TrackInfo {
@@ -14,7 +14,6 @@ pub struct TrackInfo {
 }
 
 impl fmt::Display for TrackInfo {
-
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(title) = &self.title {
             f.write_str(title.as_str())
@@ -22,14 +21,13 @@ impl fmt::Display for TrackInfo {
             f.write_str(self.uri.as_str())
         }
     }
-
 }
 
 #[derive(Clone)]
 pub struct Track {
     pub requestor: User,
     pub info: TrackInfo,
-    pub track: Vec<u8>
+    pub track: Vec<u8>,
 }
 
 impl Track {
@@ -39,11 +37,10 @@ impl Track {
 }
 
 fn decode_track(track: String) -> std::result::Result<Vec<u8>, base64::DecodeError> {
-    base64::decode(&track)
-           .map_err(|err| {
-               error!("Failed to decode track {}: {:?}", track, err);
-               err
-           })
+    base64::decode(&track).map_err(|err| {
+        error!("Failed to decode track {}: {:?}", track, err);
+        err
+    })
 }
 
 impl From<twilight_lavalink::http::TrackInfo> for TrackInfo {
