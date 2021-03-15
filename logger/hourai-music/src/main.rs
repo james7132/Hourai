@@ -1,22 +1,26 @@
+mod commands;
 mod player;
 mod prelude;
 mod queue;
 mod track;
-mod commands;
 mod ui;
 
+use crate::{
+    player::PlayerState,
+    prelude::*,
+    track::{Track, TrackInfo},
+};
 use anyhow::{bail, Result};
-use crate::{prelude::*, player::PlayerState, track::{Track, TrackInfo}};
 use dashmap::DashMap;
 use futures::stream::StreamExt;
-use http::Uri;
-use twilight_command_parser::{Parser, CommandParserConfig};
-use twilight_lavalink::{Lavalink, model::*};
 use hourai::{
-    config, init, cache::{InMemoryCache, ResourceType},
+    cache::{InMemoryCache, ResourceType},
+    config,
+    gateway::{cluster::*, Event, EventTypeFlags, Intents},
+    init,
     models::id::*,
-    gateway::{Intents, Event, EventTypeFlags, cluster::*},
 };
+use http::Uri;
 use hyper::{
     client::{
         connect::dns::{GaiResolver, Name},
@@ -26,30 +30,31 @@ use hyper::{
     Body, Request,
 };
 use std::{convert::TryFrom, str::FromStr};
+use twilight_command_parser::{CommandParserConfig, Parser};
+use twilight_lavalink::{model::*, Lavalink};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
-    Intents::GUILDS.bits() |
-    Intents::GUILD_MESSAGES.bits() |
-    Intents::GUILD_VOICE_STATES.bits());
+    Intents::GUILDS.bits() | Intents::GUILD_MESSAGES.bits() | Intents::GUILD_VOICE_STATES.bits(),
+);
 
-const BOT_EVENTS : EventTypeFlags =
-    EventTypeFlags::from_bits_truncate(
-        EventTypeFlags::CHANNEL_CREATE.bits() |
-        EventTypeFlags::CHANNEL_DELETE.bits() |
-        EventTypeFlags::CHANNEL_UPDATE.bits() |
-        EventTypeFlags::GUILD_CREATE.bits() |
-        EventTypeFlags::GUILD_DELETE.bits() |
-        EventTypeFlags::MESSAGE_CREATE.bits() |
-        EventTypeFlags::READY.bits() |
-        EventTypeFlags::VOICE_SERVER_UPDATE.bits() |
-        EventTypeFlags::VOICE_STATE_UPDATE.bits());
+const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
+    EventTypeFlags::CHANNEL_CREATE.bits()
+        | EventTypeFlags::CHANNEL_DELETE.bits()
+        | EventTypeFlags::CHANNEL_UPDATE.bits()
+        | EventTypeFlags::GUILD_CREATE.bits()
+        | EventTypeFlags::GUILD_DELETE.bits()
+        | EventTypeFlags::MESSAGE_CREATE.bits()
+        | EventTypeFlags::READY.bits()
+        | EventTypeFlags::VOICE_SERVER_UPDATE.bits()
+        | EventTypeFlags::VOICE_STATE_UPDATE.bits(),
+);
 
-const CACHED_RESOURCES: ResourceType =
-    ResourceType::from_bits_truncate(
-        ResourceType::GUILD.bits() |
-        ResourceType::CHANNEL.bits() |
-        ResourceType::ROLE.bits() |
-        ResourceType::VOICE_STATE.bits());
+const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
+    ResourceType::GUILD.bits()
+        | ResourceType::CHANNEL.bits()
+        | ResourceType::ROLE.bits()
+        | ResourceType::VOICE_STATE.bits(),
+);
 
 #[tokio::main]
 async fn main() {
@@ -197,7 +202,7 @@ impl Client<'static> {
                 } else {
                     Ok(())
                 }
-            },
+            }
             Event::VoiceStateUpdate(_) => Ok(()),
             Event::VoiceServerUpdate(_) => Ok(()),
             _ => {
@@ -216,7 +221,7 @@ impl Client<'static> {
             IncomingEvent::TrackStart(ref evt) => {
                 info!("Started track in guild {}: {}", evt.guild_id, evt.track);
                 Ok(())
-            },
+            }
             IncomingEvent::TrackEnd(evt) => self.on_track_end(evt).await,
             _ => Ok(()),
         };
@@ -230,12 +235,20 @@ impl Client<'static> {
     }
 
     async fn on_track_end(&self, evt: &TrackEnd) -> Result<()> {
-        info!("Track ended in guild {} (reason: {}): {}",
-              evt.guild_id, evt.reason.as_str(), evt.track);
+        info!(
+            "Track ended in guild {} (reason: {}): {}",
+            evt.guild_id,
+            evt.reason.as_str(),
+            evt.track
+        );
         match evt.reason.as_str() {
-            "FINISHED" => {self.play_next(evt.guild_id).await?;}
-            "LOAD_FAILED" => {self.play_next(evt.guild_id).await?;}
-            _ => {},
+            "FINISHED" => {
+                self.play_next(evt.guild_id).await?;
+            }
+            "LOAD_FAILED" => {
+                self.play_next(evt.guild_id).await?;
+            }
+            _ => {}
         }
         Ok(())
     }
@@ -243,7 +256,10 @@ impl Client<'static> {
     /// Gets which voice channel the bot is currently connected to in
     /// a guild.
     pub fn get_channel(&self, guild_id: GuildId) -> Option<ChannelId> {
-        self.lavalink.players().get(&guild_id).and_then(|kv| kv.value().channel_id())
+        self.lavalink
+            .players()
+            .get(&guild_id)
+            .and_then(|kv| kv.value().channel_id())
     }
 
     /// Counts the number of users in the same voice channel as the bot.
@@ -292,7 +308,7 @@ impl Client<'static> {
     /// Plays the next item in the queue.
     /// Panics if a player does not exist.
     pub async fn play_next(&self, guild_id: GuildId) -> Result<Option<TrackInfo>> {
-        let (prev, cp) =  {
+        let (prev, cp) = {
             let mut state = self.states.get_mut(&guild_id).unwrap();
             let prev = state.queue.pop().map(|kv| kv.value.info);
             (prev, state.currently_playing())
@@ -308,40 +324,58 @@ impl Client<'static> {
 
     pub async fn connect(&self, guild_id: GuildId, channel_id: ChannelId) -> Result<()> {
         let shard_id = self.gateway.shard_id(guild_id);
-        self.gateway.command(shard_id, &serde_json::json!({
-            "op": 4,
-            "d": {
-                "channel_id": channel_id,
-                "guild_id": guild_id,
-                "self_mute": false,
-                "self_deaf": false,
-            }
-        })).await?;
+        self.gateway
+            .command(
+                shard_id,
+                &serde_json::json!({
+                    "op": 4,
+                    "d": {
+                        "channel_id": channel_id,
+                        "guild_id": guild_id,
+                        "self_mute": false,
+                        "self_deaf": false,
+                    }
+                }),
+            )
+            .await?;
 
         info!("Connected to channel {} in guild {}", channel_id, guild_id);
         Ok(())
     }
 
     pub async fn disconnect(&self, guild_id: GuildId) -> Result<()> {
-        self.lavalink.player(guild_id).await?.value().send(Stop::new(guild_id))?;
+        self.lavalink
+            .player(guild_id)
+            .await?
+            .value()
+            .send(Stop::new(guild_id))?;
         info!("Stopped playing in in guild {}", guild_id);
 
         let shard_id = self.gateway.shard_id(guild_id);
-        self.gateway.command(shard_id, &serde_json::json!({
-            "op": 4,
-            "d": {
-                "channel_id": None::<ChannelId>,
-                "guild_id": guild_id,
-                "self_mute": false,
-                "self_deaf": false,
-            }
-        })).await?;
+        self.gateway
+            .command(
+                shard_id,
+                &serde_json::json!({
+                    "op": 4,
+                    "d": {
+                        "channel_id": None::<ChannelId>,
+                        "guild_id": guild_id,
+                        "self_mute": false,
+                        "self_deaf": false,
+                    }
+                }),
+            )
+            .await?;
         info!("Disconnected from guild {}", guild_id);
         Ok(())
     }
 
     pub fn mutate_state<F, R>(&self, guild_id: GuildId, f: F) -> Option<R>
-        where F: Fn(&mut PlayerState) -> R {
-        self.states.get_mut(&guild_id).map(|mut kv| f(kv.value_mut()))
+    where
+        F: Fn(&mut PlayerState) -> R,
+    {
+        self.states
+            .get_mut(&guild_id)
+            .map(|mut kv| f(kv.value_mut()))
     }
 }

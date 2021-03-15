@@ -1,6 +1,6 @@
-use anyhow::Result;
 use crate::{queue::MusicQueue, track::*};
-use hourai::models::id::{UserId, ChannelId};
+use anyhow::Result;
+use hourai::models::id::{ChannelId, UserId};
 use std::collections::HashSet;
 use twilight_lavalink::model::*;
 

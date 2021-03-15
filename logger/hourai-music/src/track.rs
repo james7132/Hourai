@@ -61,7 +61,7 @@ impl TryFrom<(User, twilight_lavalink::http::Track)> for Track {
         Ok(Self {
             requestor: value.0,
             info: TrackInfo::from(value.1.info),
-            track: decode_track(value.1.track)?
+            track: decode_track(value.1.track)?,
         })
     }
 }

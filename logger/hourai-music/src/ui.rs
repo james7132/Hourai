@@ -1,25 +1,25 @@
 use anyhow::{bail, Result};
-use hourai::models::{id::*, channel::embed::Embed, UserLike};
-use twilight_embed_builder::*;
+use hourai::models::{channel::embed::Embed, id::*, UserLike};
 use std::time::{Duration, Instant};
 use tokio::sync::oneshot::error::TryRecvError;
+use twilight_embed_builder::*;
 
 const PROGRESS_BAR_WIDTH: usize = 12;
 
 pub struct MessageUI {
-    cancel: tokio::sync::oneshot::Sender<()>
+    cancel: tokio::sync::oneshot::Sender<()>,
 }
 
 impl MessageUI {
     pub fn run<U>(ui: U, update_interval: Duration) -> Self
-        where U: Updateable + Send + 'static
+    where
+        U: Updateable + Send + 'static,
     {
         let (tx, mut rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             while let Ok(_) = ui.update().await {
                 match rx.try_recv() {
-                    Err(TryRecvError::Empty) =>
-                        tokio::time::sleep(update_interval).await,
+                    Err(TryRecvError::Empty) => tokio::time::sleep(update_interval).await,
                     _ => break,
                 }
             }
@@ -37,12 +37,15 @@ pub trait Updateable: Sync {
     async fn update(&self) -> Result<()>;
 }
 
-pub trait EmbedUIBuilder : Sized + Default + Sync + Send {
+pub trait EmbedUIBuilder: Sized + Default + Sync + Send {
     fn build_content(&self, ui: &EmbedUI<Self>) -> String;
     fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed>;
 }
 
-pub struct EmbedUI<T> where T : EmbedUIBuilder {
+pub struct EmbedUI<T>
+where
+    T: EmbedUIBuilder + Default,
+{
     pub client: crate::Client<'static>,
     pub guild_id: GuildId,
     pub channel_id: ChannelId,
@@ -79,9 +82,12 @@ impl EmbedUIBuilder for NowPlayingUI {
     }
 
     fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed> {
-        let track ={
-            let cp = ui.client.states.get(&ui.guild_id)
-                       .and_then(|kv| kv.currently_playing().map(|kv| kv.1));
+        let track = {
+            let cp = ui
+                .client
+                .states
+                .get(&ui.guild_id)
+                .and_then(|kv| kv.currently_playing().map(|kv| kv.1));
             match cp {
                 Some(track) => track,
                 None => return not_playing_embed(),
@@ -98,19 +104,21 @@ impl EmbedUIBuilder for NowPlayingUI {
                     } else {
                         (pos / time, player.paused())
                     }
-                },
-                None => (f64::INFINITY, true)
+                }
+                None => (f64::INFINITY, true),
             }
         };
 
-        let prefix = if paused { "⏸️" } else { "▶️"};
-        let suffix= if paused { "🔇" } else { "🔊"};
+        let prefix = if paused { "⏸️" } else { "▶️" };
+        let suffix = if paused { "🔇" } else { "🔊" };
         let progress = format!("{}{}{}", prefix, progress_bar(complete), suffix);
 
         Ok(EmbedBuilder::new()
-            .author(EmbedAuthorBuilder::new()
-                .name(track.requestor.display_name())?
-                .icon_url(ImageSource::url(track.requestor.avatar_url())?))
+            .author(
+                EmbedAuthorBuilder::new()
+                    .name(track.requestor.display_name())?
+                    .icon_url(ImageSource::url(track.requestor.avatar_url())?),
+            )
             .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))?
             .description(progress)?
             .url(track.info.uri.clone())
@@ -124,9 +132,11 @@ impl EmbedUIBuilder for QueueUI {
     }
 
     fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed> {
-        let track =
-            ui.client.states.get(&ui.guild_id)
-              .and_then(|kv| kv.currently_playing().map(|kv| kv.1));
+        let track = ui
+            .client
+            .states
+            .get(&ui.guild_id)
+            .and_then(|kv| kv.currently_playing().map(|kv| kv.1));
         if track.is_none() {
             return not_playing_embed();
         }

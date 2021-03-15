@@ -1,18 +1,18 @@
 use crate::prelude::*;
+use crate::{player::PlayerState, queue::MusicQueue, track::Track, Client};
 use anyhow::{bail, Result};
 use hourai::{
-    models::{id::ChannelId, channel::Message, user::User},
-    commands::{self, CommandError, precondition::*},
+    commands::{self, precondition::*, CommandError},
+    models::{channel::Message, id::ChannelId, user::User},
 };
+use std::{collections::HashSet, convert::TryFrom};
 use twilight_command_parser::Command;
 use twilight_lavalink::http::LoadType;
-use crate::{Client, track::Track, player::PlayerState, queue::MusicQueue};
-use std::{convert::TryFrom, collections::HashSet};
 
 macro_rules! get_player {
     ($client:expr, $guild_id: expr) => {
         $client.lavalink.players().get($guild_id).unwrap().value()
-    }
+    };
 }
 
 pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<()> {
@@ -26,21 +26,42 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
         };
 
         let result = match command {
-            Command { name: "play", arguments, .. } =>
-                play(&client, ctx, arguments.into_remainder()).await,
+            Command {
+                name: "play",
+                arguments,
+                ..
+            } => play(&client, ctx, arguments.into_remainder()).await,
             Command { name: "pause", .. } => pause(&client, ctx, true).await,
             Command { name: "stop", .. } => stop(&client, ctx).await,
-            Command { name: "shuffle",  .. } => shuffle(&client, ctx).await,
+            Command {
+                name: "shuffle", ..
+            } => shuffle(&client, ctx).await,
             Command { name: "skip", .. } => skip(&client, ctx).await,
-            Command { name: "forceskip", .. } => forceskip(&client, ctx).await,
-            Command { name: "remove", arguments, .. } => Ok(()),
-            Command { name: "removeall", .. } => remove_all(&client, ctx).await,
-            Command { name: "nowplaying", .. } => Ok(()),
+            Command {
+                name: "forceskip", ..
+            } => forceskip(&client, ctx).await,
+            Command {
+                name: "remove",
+                arguments,
+                ..
+            } => Ok(()),
+            Command {
+                name: "removeall", ..
+            } => remove_all(&client, ctx).await,
+            Command {
+                name: "nowplaying", ..
+            } => Ok(()),
             Command { name: "np", .. } => Ok(()),
             Command { name: "queue", .. } => Ok(()),
-            Command { name: "volume", arguments, .. } =>
-                // TODO(james7132): Do proper argument parsing.
-                volume(&client, ctx, Some(100)).await,
+            Command {
+                name: "volume",
+                arguments,
+                ..
+            } =>
+            // TODO(james7132): Do proper argument parsing.
+            {
+                volume(&client, ctx, Some(100)).await
+            }
             _ => {
                 debug!("Failed to find command: {}", evt.content.as_str());
                 Ok(())
@@ -50,12 +71,13 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
         if let Err(err) = result {
             match err.downcast::<CommandError>() {
                 Ok(command_error) => {
-                    client.http_client
+                    client
+                        .http_client
                         .create_message(evt.channel_id)
                         .reply(evt.id)
                         .content(format!(":x: {}", command_error))?
                         .await?;
-                },
+                }
                 Err(err) => bail!(err),
             }
         }
@@ -63,36 +85,43 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
     Ok(())
 }
 
-fn require_in_voice_channel(client: &Client<'static>, ctx: &commands::Context<'_>)
-    -> Result<ChannelId> {
+fn require_in_voice_channel(
+    client: &Client<'static>,
+    ctx: &commands::Context<'_>,
+) -> Result<ChannelId> {
     let guild_id = require_in_guild(&ctx)?;
 
     let user = client.cache.voice_state(guild_id, ctx.message.author.id);
     let bot = client.get_channel(guild_id);
     if bot.is_some() && user != bot {
         bail!(CommandError::FailedPrecondition(
-              "You must be in the same voice channel to play music."));
+            "You must be in the same voice channel to play music."
+        ));
     } else if let Some(channel) = user {
         Ok(channel)
     } else {
         bail!(CommandError::FailedPrecondition(
-              "You must be in a voice channel to play music."));
+            "You must be in a voice channel to play music."
+        ));
     }
 }
 
 macro_rules! require_playing {
     ($client:expr, $ctx:expr) => {
-        $client.states
-               .get_mut(&require_in_guild(&$ctx)?)
-               .ok_or_else(|| CommandError::FailedPrecondition("No music is currently playing."))
-               .and_then(|state| {
-                   if state.value().currently_playing().is_some() {
-                       Ok(state)
-                   } else {
-                       Err(CommandError::FailedPrecondition("No music is currently playing."))
-                   }
-               })?
-    }
+        $client
+            .states
+            .get_mut(&require_in_guild(&$ctx)?)
+            .ok_or_else(|| CommandError::FailedPrecondition("No music is currently playing."))
+            .and_then(|state| {
+                if state.value().currently_playing().is_some() {
+                    Ok(state)
+                } else {
+                    Err(CommandError::FailedPrecondition(
+                        "No music is currently playing.",
+                    ))
+                }
+            })?
+    };
 }
 
 async fn require_dj(client: &Client<'static>, ctx: &commands::Context<'_>) -> Result<()> {
@@ -104,41 +133,65 @@ async fn load_tracks(
     client: &Client<'static>,
     author: &User,
     node: &Node,
-    query: &str) -> Vec<Track> {
+    query: &str,
+) -> Vec<Track> {
     let response = match client.load_tracks(node, query).await {
         Ok(tracks) => tracks,
         Err(_) => return vec![],
     };
 
     let tracks = match response {
-        LoadedTracks { load_type: LoadType::TrackLoaded, tracks, .. } => {
+        LoadedTracks {
+            load_type: LoadType::TrackLoaded,
+            tracks,
+            ..
+        } => {
             assert!(tracks.len() > 0);
             vec![tracks[0].clone()]
-        },
-        LoadedTracks { load_type: LoadType::SearchResult, tracks, .. } => {
+        }
+        LoadedTracks {
+            load_type: LoadType::SearchResult,
+            tracks,
+            ..
+        } => {
             // TODO(james7132): This could be improved by doing a edit distance from
             // the query for similarity matching.
             assert!(tracks.len() > 0);
             vec![tracks[0].clone()]
-        },
-        LoadedTracks { load_type: LoadType::PlaylistLoaded, tracks, playlist_info, .. } => {
+        }
+        LoadedTracks {
+            load_type: LoadType::PlaylistLoaded,
+            tracks,
+            playlist_info,
+            ..
+        } => {
             if let Some(idx) = playlist_info.selected_track {
                 vec![tracks[idx as usize].clone()]
             } else {
                 tracks
             }
-        },
-        LoadedTracks { load_type: LoadType::LoadFailed, .. } => {
+        }
+        LoadedTracks {
+            load_type: LoadType::LoadFailed,
+            ..
+        } => {
             error!("Failed to load query `{}`", query);
             vec![]
-        },
+        }
         _ => vec![],
     };
 
-    tracks.into_iter().filter_map(|t| Track::try_from((author.clone(), t)).ok()).collect()
+    tracks
+        .into_iter()
+        .filter_map(|t| Track::try_from((author.clone(), t)).ok())
+        .collect()
 }
 
-async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Option<&str>) -> Result<()> {
+async fn play(
+    client: &Client<'static>,
+    ctx: commands::Context<'_>,
+    query: Option<&str>,
+) -> Result<()> {
     let guild_id = require_in_guild(&ctx)?;
     let channel_id = require_in_voice_channel(client, &ctx)?;
 
@@ -146,11 +199,14 @@ async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Optio
         return pause(client, ctx, false).await;
     }
 
-    let query = query.unwrap().trim_matches(
-        |c: char| c.is_whitespace() || c == '<' || c == '>');
-    let queries =vec![query.to_owned(),
-                      format!("ytsearch:{}", query),
-                      format!("scsearch:{}", query)];
+    let query = query
+        .unwrap()
+        .trim_matches(|c: char| c.is_whitespace() || c == '<' || c == '>');
+    let queries = vec![
+        query.to_owned(),
+        format!("ytsearch:{}", query),
+        format!("scsearch:{}", query),
+    ];
     let node = client.get_node(guild_id).await?;
     let mut queue: Vec<Track> = Vec::new();
     for subquery in queries {
@@ -162,11 +218,16 @@ async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Optio
 
     let duration = format_duration(queue.iter().map(|t| t.info.length).sum());
     let response = if queue.len() > 1 {
-        format!(":notes: Added **{}** tracks ({}) to the music queue.",
-                queue.len(), duration)
+        format!(
+            ":notes: Added **{}** tracks ({}) to the music queue.",
+            queue.len(),
+            duration
+        )
     } else if queue.len() == 1 {
-        format!(":notes: Added `{}` ({}) to the music queue.",
-                &queue[0].info, duration)
+        format!(
+            ":notes: Added `{}` ({}) to the music queue.",
+            &queue[0].info, duration
+        )
     } else {
         format!(":bulb: No results found for `{}`", query)
     };
@@ -178,10 +239,13 @@ async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Optio
             client.connect(guild_id, channel_id).await?;
             let mut state_queue = MusicQueue::new();
             state_queue.extend(ctx.message.author.id, queue);
-            client.states.insert(guild_id, PlayerState {
-                skip_votes: HashSet::new(),
-                queue: state_queue
-            });
+            client.states.insert(
+                guild_id,
+                PlayerState {
+                    skip_votes: HashSet::new(),
+                    queue: state_queue,
+                },
+            );
             client.start_playing(guild_id).await?;
         }
     }
@@ -210,8 +274,8 @@ async fn stop(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
     require_playing!(client, ctx);
     client.disconnect(guild_id).await?;
     ctx.respond()
-       .content("The player has been stopped and the queue has been cleared")?
-       .await?;
+        .content("The player has been stopped and the queue has been cleared")?
+        .await?;
     Ok(())
 }
 
@@ -219,13 +283,15 @@ async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
     let guild_id = require_in_guild(&ctx)?;
     require_in_voice_channel(client, &ctx)?;
     require_playing!(client, ctx);
-    let (votes, required) = client.mutate_state(guild_id, |state| {
-        state.skip_votes.insert(ctx.message.author.id);
-        let listeners = client.count_listeners(guild_id);
-        (state.skip_votes.len(), listeners / 2)
-    }).unwrap();
+    let (votes, required) = client
+        .mutate_state(guild_id, |state| {
+            state.skip_votes.insert(ctx.message.author.id);
+            let listeners = client.count_listeners(guild_id);
+            (state.skip_votes.len(), listeners / 2)
+        })
+        .unwrap();
 
-    let response = if  votes >= required {
+    let response = if votes >= required {
         format!("Skipped `{}`", client.play_next(guild_id).await?.unwrap())
     } else {
         format!("Total votes: `{}/{}`.", votes, required)
@@ -247,13 +313,15 @@ async fn remove_all(client: &Client<'static>, ctx: commands::Context<'_>) -> Res
     let guild_id = require_in_guild(&ctx)?;
     require_in_voice_channel(client, &ctx)?;
     require_playing!(client, ctx);
-    let response = client.mutate_state(guild_id, |state| {
-        if let Some(count) = state.queue.clear_key(ctx.message.author.id) {
-            format!("Removed **{}** tracks from the queue.", count)
-        } else {
-            "You currently do not have any tracks in the queue.".to_owned()
-        }
-    }).unwrap();
+    let response = client
+        .mutate_state(guild_id, |state| {
+            if let Some(count) = state.queue.clear_key(ctx.message.author.id) {
+                format!("Removed **{}** tracks from the queue.", count)
+            } else {
+                "You currently do not have any tracks in the queue.".to_owned()
+            }
+        })
+        .unwrap();
     ctx.respond().content(response)?.await?;
     Ok(())
 }
@@ -262,13 +330,15 @@ async fn shuffle(client: &Client<'static>, ctx: commands::Context<'_>) -> Result
     let guild_id = require_in_guild(&ctx)?;
     require_in_voice_channel(client, &ctx)?;
     require_playing!(client, ctx);
-    let response = client.mutate_state(guild_id, |state| {
-        if let Some(count) = state.queue.shuffle(ctx.message.author.id) {
-            format!("Shuffled **{}** tracks in the queue.", count)
-        } else {
-            "You currently do not have any tracks in the queue.".to_owned()
-        }
-    }).unwrap();
+    let response = client
+        .mutate_state(guild_id, |state| {
+            if let Some(count) = state.queue.shuffle(ctx.message.author.id) {
+                format!("Shuffled **{}** tracks in the queue.", count)
+            } else {
+                "You currently do not have any tracks in the queue.".to_owned()
+            }
+        })
+        .unwrap();
     ctx.respond().content(response)?.await?;
     Ok(())
 }
@@ -286,19 +356,27 @@ async fn forceskip(client: &Client<'static>, ctx: commands::Context<'_>) -> Resu
     Ok(())
 }
 
-async fn volume(client: &Client<'static>, ctx: commands::Context<'_>, volume: Option<i64>) -> Result<()> {
+async fn volume(
+    client: &Client<'static>,
+    ctx: commands::Context<'_>,
+    volume: Option<i64>,
+) -> Result<()> {
     let guild_id = require_in_guild(&ctx)?;
     require_playing!(client, ctx);
     let response = if let Some(vol) = volume {
         require_dj(client, &ctx).await?;
         if vol < 0 || vol > 150 {
             bail!(CommandError::InvalidArgument(
-                    "Volume must be between 0 and 150.".into()));
+                "Volume must be between 0 and 150.".into()
+            ));
         }
         get_player!(client, &guild_id).set_volume(vol as u8)?;
         format!("Set volume to `{}`.", vol)
     } else {
-        format!("Current volume is `{}`.", get_player!(client, &guild_id).volume_ref())
+        format!(
+            "Current volume is `{}`.",
+            get_player!(client, &guild_id).volume_ref()
+        )
     };
     ctx.respond().content(response)?.await?;
     Ok(())
@@ -325,5 +403,4 @@ fn format_duration(duration: Duration) -> String {
     } else {
         format!("{:02}:{:02}", minutes, secs)
     }
-
 }

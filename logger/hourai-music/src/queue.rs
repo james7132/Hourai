@@ -57,7 +57,7 @@ where
         let queue_peek = self.0.get(0)?;
         Some(QueueItem {
             key: queue_peek.0,
-            value: queue_peek.1.get(0)?
+            value: queue_peek.1.get(0)?,
         })
     }
 
@@ -135,10 +135,9 @@ where
             queue: self,
             key_idx: 0,
             bucket_idx: 0,
-            max_bucket_idx: self.0.iter().map(|kv| kv.1.len()).max().unwrap_or(0)
+            max_bucket_idx: self.0.iter().map(|kv| kv.1.len()).max().unwrap_or(0),
         }
     }
-
 }
 
 pub struct MusicQueueIterator<'a, K, V> {
@@ -155,14 +154,12 @@ impl<'a, K: Copy, V> Iterator for MusicQueueIterator<'a, K, V> {
             return None;
         }
         loop {
-            let item = self.queue.0.get(self.key_idx)
-                           .and_then(|kv| {
-                               kv.1.get(self.bucket_idx)
-                                 .map(|v| QueueItem {
-                                     key: kv.0,
-                                     value: v
-                                 })
-                           });
+            let item = self.queue.0.get(self.key_idx).and_then(|kv| {
+                kv.1.get(self.bucket_idx).map(|v| QueueItem {
+                    key: kv.0,
+                    value: v,
+                })
+            });
             self.key_idx += 1;
             if self.key_idx >= self.queue.0.len() {
                 self.key_idx = 0;
@@ -299,7 +296,7 @@ mod test {
 
     #[test]
     fn test_queue_iter() {
-        let mut queue: MusicQueue<u64, u64> =  MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
         queue.push(20, 20);
         queue.push(20, 40);
         queue.push(10, 10);
@@ -307,15 +304,44 @@ mod test {
         queue.push(10, 15);
         queue.push(20, 60);
         let mut iter = queue.iter();
-        assert_eq!(iter.next(), Some(QueueItem { key: 20, value: &20 }));
-        assert_eq!(iter.next(), Some(QueueItem { key: 10, value: &10 }));
+        assert_eq!(
+            iter.next(),
+            Some(QueueItem {
+                key: 20,
+                value: &20
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(QueueItem {
+                key: 10,
+                value: &10
+            })
+        );
         assert_eq!(iter.next(), Some(QueueItem { key: 5, value: &30 }));
-        assert_eq!(iter.next(), Some(QueueItem { key: 20, value: &40 }));
-        assert_eq!(iter.next(), Some(QueueItem { key: 10, value: &15 }));
-        assert_eq!(iter.next(), Some(QueueItem { key: 20, value: &60 }));
+        assert_eq!(
+            iter.next(),
+            Some(QueueItem {
+                key: 20,
+                value: &40
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(QueueItem {
+                key: 10,
+                value: &15
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(QueueItem {
+                key: 20,
+                value: &60
+            })
+        );
         assert_eq!(iter.next(), None);
         assert_eq!(iter.next(), None);
         assert_eq!(iter.next(), None);
     }
-
 }
