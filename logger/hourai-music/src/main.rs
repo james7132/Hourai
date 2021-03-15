@@ -8,6 +8,7 @@ mod ui;
 use crate::{
     player::PlayerState,
     prelude::*,
+    queue::MusicQueue,
     track::{Track, TrackInfo},
 };
 use anyhow::{bail, Result};
@@ -253,6 +254,16 @@ impl Client<'static> {
         Ok(())
     }
 
+    /// Gets some information about a guild's player queue.
+    pub fn get_queue<F, R>(&self, guild_id: GuildId, f: F) -> Option<R>
+    where
+        F: Fn(&MusicQueue<UserId, Track>) -> R,
+    {
+        self.states
+            .get(&guild_id)
+            .map(|kv| f(&kv.value().queue))
+    }
+
     /// Gets the currently playing track in a given guild.
     /// If not playing, return None.
     pub fn currently_playing(&self, guild_id: GuildId) -> Option<Track> {
@@ -381,7 +392,7 @@ impl Client<'static> {
 
     pub fn mutate_state<F, R>(&self, guild_id: GuildId, f: F) -> Option<R>
     where
-        F: Fn(&mut PlayerState) -> R,
+        F: FnOnce(&mut PlayerState) -> R,
     {
         self.states
             .get_mut(&guild_id)

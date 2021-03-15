@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::{player::PlayerState, queue::MusicQueue, track::Track, Client};
+use crate::{player::PlayerState, queue::MusicQueue, track::Track, Client, ui::*};
 use anyhow::{bail, Result};
 use hourai::{
     commands::{self, precondition::*, CommandError},
@@ -50,9 +50,9 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
             } => remove_all(&client, ctx).await,
             Command {
                 name: "nowplaying", ..
-            } => Ok(()),
-            Command { name: "np", .. } => Ok(()),
-            Command { name: "queue", .. } => Ok(()),
+            } => now_playing(&client, ctx).await,
+            Command { name: "np", .. } => now_playing(&client, ctx).await,
+            Command { name: "queue", .. } => queue(&client, ctx).await,
             Command {
                 name: "volume",
                 arguments,
@@ -244,6 +244,8 @@ async fn play(
                 PlayerState {
                     skip_votes: HashSet::new(),
                     queue: state_queue,
+                    now_playing_ui: None,
+                    queue_ui: None,
                 },
             );
             client.start_playing(guild_id).await?;
@@ -382,25 +384,20 @@ async fn volume(
     Ok(())
 }
 
-async fn queue(client: &Client<'static>, _: commands::Context<'_>) -> Result<()> {
-    // TODO(james7132): Implement.
+async fn queue(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
+    let guild_id = require_in_guild(&ctx)?;
+    let ui = EmbedUI::<NowPlayingUI>::create(client.clone(), ctx).await?;
+    client.mutate_state(guild_id, move |state| {
+        state.now_playing_ui.replace(MessageUI::run(ui, Duration::from_secs(5)));
+    });
     Ok(())
 }
 
-async fn now_playing(client: &Client<'static>, _: commands::Context<'_>) -> Result<()> {
-    // TODO(james7132): Implement.
+async fn now_playing(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
+    let guild_id = require_in_guild(&ctx)?;
+    let ui = EmbedUI::<QueueUI>::create(client.clone(), ctx).await?;
+    client.mutate_state(guild_id, move |state| {
+        state.queue_ui.replace(MessageUI::run(ui, Duration::from_secs(5)));
+    });
     Ok(())
-}
-
-fn format_duration(duration: Duration) -> String {
-    let mut secs = duration.as_secs();
-    let hours = secs / 3600;
-    secs -= hours * 3600;
-    let minutes = secs / 60;
-    secs -= minutes * 60;
-    if hours > 0 {
-        format!("{:02}:{:02}:{:02}", hours, minutes, secs)
-    } else {
-        format!("{:02}:{:02}", minutes, secs)
-    }
 }
