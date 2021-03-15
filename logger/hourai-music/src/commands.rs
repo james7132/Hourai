@@ -3,7 +3,12 @@ use crate::{player::PlayerState, queue::MusicQueue, track::Track, ui::*, Client}
 use anyhow::{bail, Result};
 use hourai::{
     commands::{self, precondition::*, prelude::*, CommandError},
-    models::{channel::Message, id::ChannelId, user::User, UserLike},
+    models::{
+        channel::Message,
+        id::{ChannelId, GuildId},
+        user::User,
+        UserLike,
+    },
 };
 use std::{collections::HashSet, convert::TryFrom};
 use twilight_command_parser::{Arguments, Command};
@@ -82,7 +87,7 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
 fn require_in_voice_channel(
     client: &Client<'static>,
     ctx: &commands::Context<'_>,
-) -> Result<ChannelId> {
+) -> Result<(GuildId, ChannelId)> {
     let guild_id = require_in_guild(&ctx)?;
 
     let user = client.cache.voice_state(guild_id, ctx.message.author.id);
@@ -92,7 +97,7 @@ fn require_in_voice_channel(
             "You must be in the same voice channel to play music."
         ));
     } else if let Some(channel) = user {
-        Ok(channel)
+        Ok((guild_id, channel))
     } else {
         bail!(CommandError::FailedPrecondition(
             "You must be in a voice channel to play music."
@@ -100,28 +105,19 @@ fn require_in_voice_channel(
     }
 }
 
-macro_rules! require_playing {
-    ($client:expr, $ctx:expr) => {
-        $client
-            .states
-            .get_mut(&require_in_guild(&$ctx)?)
-            .ok_or_else(|| CommandError::FailedPrecondition("No music is currently playing."))
-            .and_then(|state| {
-                if state.value().is_playing() {
-                    Ok(state)
-                } else {
-                    Err(CommandError::FailedPrecondition(
-                        "No music is currently playing.",
-                    ))
-                }
-            })?
-    };
+fn require_playing(client: &Client<'static>, ctx: &commands::Context<'_>) -> Result<GuildId> {
+    let guild_id = require_in_guild(&ctx)?;
+    client
+        .states
+        .get(&guild_id)
+        .filter(|state| state.value().is_playing())
+        .ok_or_else(|| CommandError::FailedPrecondition("No music is currently playing."))?;
+    Ok(guild_id)
 }
 
 /// Requires that the author is a DJ on the server to use the command.
 async fn require_dj(client: &Client<'static>, ctx: &commands::Context<'_>) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
-    require_in_voice_channel(client, &ctx)?;
+    let (guild_id, _) = require_in_voice_channel(client, &ctx)?;
     if let Some(member) = &ctx.message.member {
         let config = client.get_config(guild_id).await?;
         let dj_roles = config.get_dj_role_id();
@@ -199,8 +195,7 @@ async fn play(
     ctx: commands::Context<'_>,
     query: Option<&str>,
 ) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
-    let channel_id = require_in_voice_channel(client, &ctx)?;
+    let (guild_id, channel_id) = require_in_voice_channel(client, &ctx)?;
 
     if query.is_none() {
         return pause(client, ctx, false).await;
@@ -264,9 +259,8 @@ async fn play(
 }
 
 async fn pause(client: &Client<'static>, ctx: commands::Context<'_>, pause: bool) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
+    let guild_id = require_playing(client, &ctx)?;
     require_dj(client, &ctx).await?;
-    require_playing!(client, ctx);
     get_player!(client, &guild_id).set_pause(pause)?;
     let response = if pause {
         "The music bot has been paused."
@@ -278,9 +272,8 @@ async fn pause(client: &Client<'static>, ctx: commands::Context<'_>, pause: bool
 }
 
 async fn stop(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
+    let guild_id = require_playing(client, &ctx)?;
     require_dj(client, &ctx).await?;
-    require_playing!(client, ctx);
     client.disconnect(guild_id).await?;
     ctx.respond()
         .content("The player has been stopped and the queue has been cleared")?
@@ -289,9 +282,8 @@ async fn stop(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
 }
 
 async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
+    let guild_id = require_playing(client, &ctx)?;
     require_in_voice_channel(client, &ctx)?;
-    require_playing!(client, ctx);
     let (votes, required) = client
         .mutate_state(guild_id, |state| {
             state.skip_votes.insert(ctx.message.author.id);
@@ -316,9 +308,8 @@ async fn remove(
     ctx: commands::Context<'_>,
     arguments: &mut Arguments<'_>,
 ) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
+    let guild_id = require_playing(client, &ctx)?;
     require_in_voice_channel(client, &ctx)?;
-    require_playing!(client, ctx);
     let idx = arguments.parse_next::<usize>()?;
     commands::precondition::no_excess_arguments(arguments)?;
 
@@ -354,9 +345,8 @@ async fn remove(
 }
 
 async fn remove_all(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
+    let guild_id = require_playing(client, &ctx)?;
     require_in_voice_channel(client, &ctx)?;
-    require_playing!(client, ctx);
     let response = client
         .mutate_state(guild_id, |state| {
             if let Some(count) = state.queue.clear_key(ctx.message.author.id) {
@@ -371,9 +361,8 @@ async fn remove_all(client: &Client<'static>, ctx: commands::Context<'_>) -> Res
 }
 
 async fn shuffle(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
+    let guild_id = require_playing(client, &ctx)?;
     require_in_voice_channel(client, &ctx)?;
-    require_playing!(client, ctx);
     let response = client
         .mutate_state(guild_id, |state| {
             if let Some(count) = state.queue.shuffle(ctx.message.author.id) {
@@ -388,9 +377,8 @@ async fn shuffle(client: &Client<'static>, ctx: commands::Context<'_>) -> Result
 }
 
 async fn forceskip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
+    let guild_id = require_playing(client, &ctx)?;
     require_dj(client, &ctx).await?;
-    require_playing!(client, ctx);
     let response = if let Some(previous) = client.play_next(guild_id).await? {
         format!("Skipped `{}`.", previous)
     } else {
@@ -405,7 +393,7 @@ async fn volume(
     ctx: commands::Context<'_>,
     arguments: &mut Arguments<'_>,
 ) -> Result<()> {
-    let guild_id = require_in_guild(&ctx)?;
+    let guild_id = require_playing(client, &ctx)?;
     let volume = arguments.parse_next_opt::<i64>();
     commands::precondition::no_excess_arguments(arguments)?;
     let response = if let Some(vol) = volume {
