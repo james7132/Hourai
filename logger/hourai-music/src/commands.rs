@@ -68,7 +68,7 @@ fn require_in_voice_channel(client: &Client<'static>, ctx: &commands::Context<'_
     let guild_id = require_in_guild(&ctx)?;
 
     let user = client.cache.voice_state(guild_id, ctx.message.author.id);
-    let bot = client.cache.voice_state(guild_id, client.user_id);
+    let bot = client.get_channel(guild_id);
     if bot.is_some() && user != bot {
         bail!(CommandError::FailedPrecondition(
               "You must be in the same voice channel to play music."));
@@ -179,7 +179,6 @@ async fn play(client: &Client<'static>, ctx: commands::Context<'_>, query: Optio
             let mut state_queue = MusicQueue::new();
             state_queue.extend(ctx.message.author.id, queue);
             client.states.insert(guild_id, PlayerState {
-                channel_id: channel_id,
                 skip_votes: HashSet::new(),
                 queue: state_queue
             });
@@ -222,7 +221,7 @@ async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
     require_playing!(client, ctx);
     let (votes, required) = client.mutate_state(guild_id, |state| {
         state.skip_votes.insert(ctx.message.author.id);
-        let listeners = client.cache.voice_channel_users(state.channel_id).len();
+        let listeners = client.count_listeners(guild_id);
         (state.skip_votes.len(), listeners / 2)
     }).unwrap();
 

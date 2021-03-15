@@ -5,7 +5,6 @@ use std::collections::HashSet;
 use twilight_lavalink::model::*;
 
 pub struct PlayerState {
-    pub channel_id: ChannelId,
     pub skip_votes: HashSet<UserId>,
     pub queue: MusicQueue<UserId, Track>,
 }

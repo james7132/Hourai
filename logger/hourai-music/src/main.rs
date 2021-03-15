@@ -240,6 +240,20 @@ impl Client<'static> {
         Ok(())
     }
 
+    /// Gets which voice channel the bot is currently connected to in
+    /// a guild.
+    pub fn get_channel(&self, guild_id: GuildId) -> Option<ChannelId> {
+        self.lavalink.players().get(&guild_id).and_then(|kv| kv.value().channel_id())
+    }
+
+    /// Counts the number of users in the same voice channel as the bot.
+    /// If not in a voice channel, returns 0.
+    pub fn count_listeners(&self, guild_id: GuildId) -> usize {
+        self.get_channel(guild_id)
+            .map(|id| self.cache.voice_channel_users(id).len())
+            .unwrap_or(0)
+    }
+
     pub async fn get_node(&self, guild_id: GuildId) -> Result<twilight_lavalink::Node> {
         Ok(match self.lavalink.players().get(&guild_id) {
             Some(kv) => kv.value().node().clone(),
