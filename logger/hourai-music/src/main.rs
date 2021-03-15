@@ -316,15 +316,15 @@ impl Client<'static> {
     /// Panics if a player does not exist.
     pub async fn play_next(&self, guild_id: GuildId) -> Result<Option<TrackInfo>> {
         let prev = {
-            if let Some(state) = self.states.get_mut(&guild_id) {
-                state.queue.pop().map(|kv| kv.value.info)
+            if let Some(mut state) = self.states.get_mut(&guild_id) {
+                state.value_mut().queue.pop().map(|kv| kv.value.info)
             } else {
                 return Ok(None);
             }
         };
         // Must be done seperately to avoid a deadlock.
-        if let Some(track) = self.currently_playing() {
-            self.play(guild_id, track).await?;
+        if let Some(track) = self.currently_playing(guild_id) {
+            self.play(guild_id, &track).await?;
         } else {
             self.disconnect(guild_id).await?;
         }
