@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 hourai = { path = "../hourai" }
+hourai-redis = { path = "../storage/redis" }
 anyhow = "1.0"
 async-trait = "0.1.42"
 base64 = "0.13"

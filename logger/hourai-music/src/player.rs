@@ -36,7 +36,10 @@ pub trait PlayerExt {
         Ok(())
     }
 
-    fn set_volume(&self, volume: u8) -> Result<()> {
+    fn set_volume(&self, mut volume: u32) -> Result<()> {
+        if volume > 150 {
+            volume = 150;
+        }
         let player = self.as_player();
         player.send(Volume::from((player.guild_id(), volume as i64)))?;
         Ok(())

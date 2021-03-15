@@ -1,14 +1,10 @@
+use crate::{prelude::*, track::Track, Client};
 use anyhow::{bail, Result};
 use hourai::{
     commands,
-    models::{
-        UserLike,
-        channel::embed::Embed,
-        id::*,
-    },
+    models::{channel::embed::Embed, id::*, UserLike},
 };
 use std::time::{Duration, Instant};
-use crate::{prelude::*, track::Track, Client};
 use tokio::sync::oneshot::error::TryRecvError;
 use twilight_embed_builder::*;
 
@@ -72,13 +68,17 @@ where
         let channel_id = ctx.message.channel_id;
 
         let mut dummy = Self {
-            client, guild_id, channel_id,
+            client,
+            guild_id,
+            channel_id,
             message_id: MessageId(0),
             expiration: Instant::now() + Duration::from_secs(300),
             builder: T::default(),
         };
 
-        let message = dummy.client.http_client
+        let message = dummy
+            .client
+            .http_client
             .create_message(channel_id)
             .content(dummy.builder.build_content(&dummy))?
             .embed(dummy.builder.build_embed(&dummy)?)?
@@ -110,7 +110,7 @@ impl<T: EmbedUIBuilder> Updateable for EmbedUI<T> {
 pub struct NowPlayingUI;
 #[derive(Default)]
 pub struct QueueUI {
-    page: usize
+    page: usize,
 }
 
 impl EmbedUIBuilder for NowPlayingUI {
@@ -144,33 +144,48 @@ impl EmbedUIBuilder for QueueUI {
             None => return ":notes: **Now Playing...**".to_owned(),
         };
         let queue_len = ui.client.get_queue(ui.guild_id, |q| q.len()).unwrap();
-        let total_duration = ui.client.get_queue(ui.guild_id, |q| {
-            q.iter().map(|kv| kv.value.info.length).sum()
-        }).unwrap();
-        format!(":arrow_forward: **{}**\n:notes: Current Queue | {} entries | {}",
-                track.info, queue_len, format_duration(total_duration))
+        let total_duration = ui
+            .client
+            .get_queue(ui.guild_id, |q| {
+                q.iter().map(|kv| kv.value.info.length).sum()
+            })
+            .unwrap();
+        format!(
+            ":arrow_forward: **{}**\n:notes: Current Queue | {} entries | {}",
+            track.info,
+            queue_len,
+            format_duration(total_duration)
+        )
     }
 
     fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed> {
         fn format_track(idx: usize, track: &Track) -> String {
-            format!("`{}.` `[{}]` **{} - <@{}>**",
-                    idx, format_duration(track.info.length), track.info, track.requestor.id)
+            format!(
+                "`{}.` `[{}]` **{} - <@{}>**",
+                idx,
+                format_duration(track.info.length),
+                track.info,
+                track.requestor.id
+            )
         }
 
         let pages = match ui.client.get_queue(ui.guild_id, |q| q.len()) {
             Some(len) => len / TRACKS_PER_PAGE,
             None => return not_playing_embed(),
         };
-        let description = ui.client.get_queue(ui.guild_id, |q| {
-            q.iter()
-             .enumerate()
-             // Add one for the currently playing song.
-             .skip(self.page * TRACKS_PER_PAGE + 1)
-             .take(TRACKS_PER_PAGE)
-             .map(|kv| format_track(kv.0, &kv.1.value))
-             .collect::<Vec<String>>()
-             .join("\n")
-        }).unwrap();
+        let description = ui
+            .client
+            .get_queue(ui.guild_id, |q| {
+                q.iter()
+                    .enumerate()
+                    // Add one for the currently playing song.
+                    .skip(self.page * TRACKS_PER_PAGE + 1)
+                    .take(TRACKS_PER_PAGE)
+                    .map(|kv| format_track(kv.0, &kv.1.value))
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            })
+            .unwrap();
         let footer = format!("Page {}/{}", self.page + 1, pages + 1);
         Ok(EmbedBuilder::new()
             .description(description)?
@@ -194,7 +209,11 @@ fn build_progress_bar<T: EmbedUIBuilder + Default>(ui: &EmbedUI<T>) -> String {
         None => (f64::INFINITY, true),
     };
 
-    let prefix = if paused { ":pause_button:" } else { ":arrow_forward:" };
+    let prefix = if paused {
+        ":pause_button:"
+    } else {
+        ":arrow_forward:"
+    };
     let suffix = if paused { ":mute:" } else { ":loud_sound:" };
     format!("{}{}{}", prefix, progress_bar(complete), suffix)
 }

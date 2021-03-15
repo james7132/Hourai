@@ -20,7 +20,9 @@ use hourai::{
     gateway::{cluster::*, Event, EventTypeFlags, Intents},
     init,
     models::id::*,
+    proto::guild_configs::MusicConfig,
 };
+use hourai_redis::*;
 use http::Uri;
 use hyper::{
     client::{
@@ -85,6 +87,7 @@ async fn main() {
     let cache = InMemoryCache::builder()
         .resource_types(CACHED_RESOURCES)
         .build();
+    let redis = hourai_redis::init(&config).await;
     let gateway = Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
@@ -104,6 +107,7 @@ async fn main() {
         hyper: HyperClient::new(),
         resolver: GaiResolver::new(),
         parser: parser,
+        redis,
     };
 
     // Start the lavalink node connections.
@@ -139,6 +143,7 @@ pub struct Client<'a> {
     pub lavalink: twilight_lavalink::Lavalink,
     pub states: Arc<DashMap<GuildId, PlayerState>>,
     pub resolver: GaiResolver,
+    pub redis: RedisPool,
     pub parser: Parser<'a>,
 }
 
@@ -254,14 +259,27 @@ impl Client<'static> {
         Ok(())
     }
 
+    /// Gets the music config for a server.
+    pub async fn get_config(&self, guild_id: GuildId) -> Result<MusicConfig> {
+        let mut conn = self.redis.clone();
+        GuildConfig::fetch::<MusicConfig>(guild_id, &mut conn).await
+    }
+
+    /// Sets the music config for the sever.
+    pub async fn set_config(&self, guild_id: GuildId, config: MusicConfig) -> Result<()> {
+        let mut conn = self.redis.clone();
+        GuildConfig::set::<MusicConfig>(guild_id, config)
+            .query_async(&mut conn)
+            .await?;
+        Ok(())
+    }
+
     /// Gets some information about a guild's player queue.
     pub fn get_queue<F, R>(&self, guild_id: GuildId, f: F) -> Option<R>
     where
         F: Fn(&MusicQueue<UserId, Track>) -> R,
     {
-        self.states
-            .get(&guild_id)
-            .map(|kv| f(&kv.value().queue))
+        self.states.get(&guild_id).map(|kv| f(&kv.value().queue))
     }
 
     /// Gets the currently playing track in a given guild.
@@ -318,7 +336,16 @@ impl Client<'static> {
 
     pub async fn start_playing(&self, guild_id: GuildId) -> Result<()> {
         if let Some(track) = self.currently_playing(guild_id) {
-            self.play(guild_id, &track).await?;
+            let config = self.get_config(guild_id).await?;
+            let kv = self.lavalink.player(guild_id).await?;
+            let player = kv.value();
+            let volume = if config.has_volume() {
+                config.get_volume()
+            } else {
+                50
+            };
+            player.set_volume(volume)?;
+            player.play(&track)?;
         }
         Ok(())
     }

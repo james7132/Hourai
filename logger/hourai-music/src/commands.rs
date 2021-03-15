@@ -1,6 +1,6 @@
 use crate::prelude::*;
-use crate::{player::PlayerState, queue::MusicQueue, track::Track, Client, ui::*};
-use anyhow::{bail, Result};
+use crate::{player::PlayerState, queue::MusicQueue, track::Track, ui::*, Client};
+use anyhow::{anyhow, bail, Result};
 use hourai::{
     commands::{self, precondition::*, CommandError},
     models::{channel::Message, id::ChannelId, user::User},
@@ -124,9 +124,22 @@ macro_rules! require_playing {
     };
 }
 
+/// Requires that the author is a DJ on the server to use the command.
 async fn require_dj(client: &Client<'static>, ctx: &commands::Context<'_>) -> Result<()> {
+    let guild_id = require_in_guild(&ctx)?;
     require_in_voice_channel(client, &ctx)?;
-    Ok(())
+    if let Some(member) = &ctx.message.member {
+        let config = client.get_config(guild_id).await?;
+        let dj_roles = config.get_dj_role_id();
+        for role_id in member.roles.iter() {
+            if dj_roles.contains(&role_id.0) {
+                return Ok(());
+            }
+        }
+    }
+    bail!(CommandError::FailedPrecondition(
+        "User must be a DJ to use this command."
+    ))
 }
 
 async fn load_tracks(
@@ -364,7 +377,6 @@ async fn volume(
     volume: Option<i64>,
 ) -> Result<()> {
     let guild_id = require_in_guild(&ctx)?;
-    require_playing!(client, ctx);
     let response = if let Some(vol) = volume {
         require_dj(client, &ctx).await?;
         if vol < 0 || vol > 150 {
@@ -372,7 +384,13 @@ async fn volume(
                 "Volume must be between 0 and 150.".into()
             ));
         }
-        get_player!(client, &guild_id).set_volume(vol as u8)?;
+        get_player!(client, &guild_id).set_volume(vol as u32)?;
+
+        // Update config
+        let mut config = client.get_config(guild_id).await?;
+        config.set_volume(vol as u32);
+        client.set_config(guild_id, config).await?;
+
         format!("Set volume to `{}`.", vol)
     } else {
         format!(
@@ -388,7 +406,9 @@ async fn queue(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<(
     let guild_id = require_in_guild(&ctx)?;
     let ui = EmbedUI::<NowPlayingUI>::create(client.clone(), ctx).await?;
     client.mutate_state(guild_id, move |state| {
-        state.now_playing_ui.replace(MessageUI::run(ui, Duration::from_secs(5)));
+        state
+            .now_playing_ui
+            .replace(MessageUI::run(ui, Duration::from_secs(5)));
     });
     Ok(())
 }
@@ -397,7 +417,9 @@ async fn now_playing(client: &Client<'static>, ctx: commands::Context<'_>) -> Re
     let guild_id = require_in_guild(&ctx)?;
     let ui = EmbedUI::<QueueUI>::create(client.clone(), ctx).await?;
     client.mutate_state(guild_id, move |state| {
-        state.queue_ui.replace(MessageUI::run(ui, Duration::from_secs(5)));
+        state
+            .queue_ui
+            .replace(MessageUI::run(ui, Duration::from_secs(5)));
     });
     Ok(())
 }
