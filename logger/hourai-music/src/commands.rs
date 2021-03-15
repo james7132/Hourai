@@ -16,9 +16,7 @@ macro_rules! get_player {
 }
 
 pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<()> {
-    debug!("Recieved message: {}", evt.content.as_str());
     if let Some(command) = client.parser.parse(evt.content.as_str()) {
-        debug!("Potential command: {}", evt.content.as_str());
         let ctx = commands::Context {
             message: &evt,
             http: client.http_client.clone(),
