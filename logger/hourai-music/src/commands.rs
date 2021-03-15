@@ -6,7 +6,7 @@ use hourai::{
     models::{channel::Message, id::ChannelId, user::User},
 };
 use std::{collections::HashSet, convert::TryFrom};
-use twilight_command_parser::Command;
+use twilight_command_parser::{Arguments, Command};
 use twilight_lavalink::http::LoadType;
 
 macro_rules! get_player {
@@ -55,13 +55,9 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
             Command { name: "queue", .. } => queue(&client, ctx).await,
             Command {
                 name: "volume",
-                arguments,
+                mut arguments,
                 ..
-            } =>
-            // TODO(james7132): Do proper argument parsing.
-            {
-                volume(&client, ctx, Some(100)).await
-            }
+            } => volume(&client, ctx, &mut arguments).await,
             _ => {
                 debug!("Failed to find command: {}", evt.content.as_str());
                 Ok(())
@@ -374,9 +370,11 @@ async fn forceskip(client: &Client<'static>, ctx: commands::Context<'_>) -> Resu
 async fn volume(
     client: &Client<'static>,
     ctx: commands::Context<'_>,
-    volume: Option<i64>,
+    arguments: &mut Arguments<'_>,
 ) -> Result<()> {
     let guild_id = require_in_guild(&ctx)?;
+    let volume: Option<i64> = arguments.next().and_then(|arg| arg.parse::<i64>().ok());
+    commands::precondition::no_excess_arguments(arguments)?;
     let response = if let Some(vol) = volume {
         require_dj(client, &ctx).await?;
         if vol < 0 || vol > 150 {
