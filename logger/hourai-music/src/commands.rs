@@ -1,9 +1,9 @@
 use crate::prelude::*;
 use crate::{player::PlayerState, queue::MusicQueue, track::Track, ui::*, Client};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use hourai::{
-    commands::{self, precondition::*, CommandError},
-    models::{channel::Message, id::ChannelId, user::User},
+    commands::{self, precondition::*, prelude::*, CommandError},
+    models::{channel::Message, id::ChannelId, user::User, UserLike},
 };
 use std::{collections::HashSet, convert::TryFrom};
 use twilight_command_parser::{Arguments, Command};
@@ -42,9 +42,9 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
             } => forceskip(&client, ctx).await,
             Command {
                 name: "remove",
-                arguments,
+                mut arguments,
                 ..
-            } => Ok(()),
+            } => remove(&client, ctx, &mut arguments).await,
             Command {
                 name: "removeall", ..
             } => remove_all(&client, ctx).await,
@@ -313,10 +313,45 @@ async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
 }
 
 // TODO(james7132): Properly implmement
-async fn remove(client: &Client<'static>, ctx: commands::Context<'_>, index: usize) -> Result<()> {
+async fn remove(
+    client: &Client<'static>,
+    ctx: commands::Context<'_>,
+    arguments: &mut Arguments<'_>,
+) -> Result<()> {
+    let guild_id = require_in_guild(&ctx)?;
     require_in_voice_channel(client, &ctx)?;
     require_playing!(client, ctx);
-    ctx.respond().content("Skipped.")?.await?;
+    let idx = arguments.parse_next::<usize>()?;
+    commands::precondition::no_excess_arguments(arguments)?;
+
+    if idx == 0 {
+        // Do not allow removing the currently playing song from the queue.
+        ctx.respond()
+            .content(":x: Invalid index for removal.")?
+            .await?;
+        return Ok(());
+    }
+
+    let author = ctx.message.author.id;
+    let response = client
+        .mutate_state(guild_id, |state| {
+            match state.queue.get(idx).map(|kv| kv.value.clone()) {
+                Some(track) if author == track.requestor.id => {
+                    state.queue.remove(idx);
+                    format!("Removed `{}` from the queue.", track.info)
+                }
+                Some(track) => {
+                    format!(
+                        "Only a DJ or {} tracks from the queue.",
+                        track.requestor.display_name()
+                    )
+                }
+                None => format!("There is no track at index {} in the queue.", idx),
+            }
+        })
+        .unwrap();
+
+    ctx.respond().content(response)?.await?;
     Ok(())
 }
 
@@ -373,7 +408,7 @@ async fn volume(
     arguments: &mut Arguments<'_>,
 ) -> Result<()> {
     let guild_id = require_in_guild(&ctx)?;
-    let volume: Option<i64> = arguments.next().and_then(|arg| arg.parse::<i64>().ok());
+    let volume = arguments.parse_next_opt::<i64>();
     commands::precondition::no_excess_arguments(arguments)?;
     let response = if let Some(vol) = volume {
         require_dj(client, &ctx).await?;

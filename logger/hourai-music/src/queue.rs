@@ -109,6 +109,24 @@ where
         })
     }
 
+    /// Gets the item at the nth index in the queue, if found.
+    /// Runs in O(n) time if n items are in the queue.
+    pub fn get(&mut self, idx: usize) -> Option<QueueItem<K, &V>> {
+        self.iter().nth(idx)
+    }
+
+    /// Removes the item at the nth index in the queue and returns it, if found.
+    /// Runs in O(n) time if n items are in the queue.
+    pub fn remove(&mut self, idx: usize) -> Option<V> {
+        let (k, b) = self.index_iter().nth(idx)?;
+        let bucket = self.0.get_mut(k).unwrap();
+        let retval = bucket.1.remove(b).unwrap();
+        if bucket.1.len() == 0 {
+            self.0.remove(k);
+        }
+        Some(retval)
+    }
+
     /// Clears all of the items with a given key in the queue.
     /// If there are n keys in the queue, this is a O(n) operation.
     ///
@@ -130,47 +148,69 @@ where
         self.0.iter().find(|kv| kv.0 == key).is_some()
     }
 
-    pub fn iter<'a>(&'a self) -> MusicQueueIterator<'a, K, V> {
-        MusicQueueIterator {
+    fn index_iter<'a>(&'a self) -> MusicQueueIndexer<'a, K, V> {
+        MusicQueueIndexer {
             queue: self,
             key_idx: 0,
             bucket_idx: 0,
             max_bucket_idx: self.0.iter().map(|kv| kv.1.len()).max().unwrap_or(0),
         }
     }
+
+    pub fn iter<'a>(&'a self) -> MusicQueueIterator<'a, K, V> {
+        MusicQueueIterator {
+            indexer: self.index_iter(),
+        }
+    }
 }
 
-pub struct MusicQueueIterator<'a, K, V> {
+struct MusicQueueIndexer<'a, K, V> {
     queue: &'a MusicQueue<K, V>,
     key_idx: usize,
     bucket_idx: usize,
     max_bucket_idx: usize,
 }
 
-impl<'a, K: Copy, V> Iterator for MusicQueueIterator<'a, K, V> {
-    type Item = QueueItem<K, &'a V>;
+pub struct MusicQueueIterator<'a, K, V> {
+    indexer: MusicQueueIndexer<'a, K, V>,
+}
+
+impl<'a, K: Copy, V> Iterator for MusicQueueIndexer<'a, K, V> {
+    type Item = (usize, usize);
     fn next(&mut self) -> Option<Self::Item> {
         if self.bucket_idx > self.max_bucket_idx {
             return None;
         }
         loop {
-            let item = self.queue.0.get(self.key_idx).and_then(|kv| {
-                kv.1.get(self.bucket_idx).map(|v| QueueItem {
-                    key: kv.0,
-                    value: v,
-                })
-            });
+            let item = self
+                .queue
+                .0
+                .get(self.key_idx)
+                .and_then(|kv| kv.1.get(self.bucket_idx));
+            let retval = item.map(|_| (self.key_idx, self.bucket_idx));
             self.key_idx += 1;
             if self.key_idx >= self.queue.0.len() {
                 self.key_idx = 0;
                 self.bucket_idx += 1;
             }
-            if item.is_some() {
-                return item;
+            if retval.is_some() {
+                return retval;
             } else if self.bucket_idx > self.max_bucket_idx {
                 return None;
             }
         }
+    }
+}
+
+impl<'a, K: Copy, V> Iterator for MusicQueueIterator<'a, K, V> {
+    type Item = QueueItem<K, &'a V>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let (k, b) = self.indexer.next()?;
+        let (key, bucket) = self.indexer.queue.0.get(k).unwrap();
+        Some(QueueItem {
+            key: *key,
+            value: bucket.get(b).unwrap(),
+        })
     }
 }
 
@@ -247,6 +287,72 @@ mod test {
         assert_eq!(queue.count(20), None);
         assert_eq!(queue.count(40), None);
         assert_eq!(queue.count(60), None);
+    }
+
+    #[test]
+    fn test_queue_get() {
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        queue.push(20, 20);
+        queue.push(10, 10);
+        queue.push(5, 30);
+        queue.push(10, 15);
+        queue.push(20, 40);
+        queue.push(20, 60);
+        assert_eq!(
+            queue.get(0),
+            Some(QueueItem {
+                key: 20,
+                value: &20
+            })
+        );
+        assert_eq!(
+            queue.get(1),
+            Some(QueueItem {
+                key: 10,
+                value: &10
+            })
+        );
+        assert_eq!(queue.get(2), Some(QueueItem { key: 5, value: &30 }));
+        assert_eq!(
+            queue.get(3),
+            Some(QueueItem {
+                key: 20,
+                value: &40
+            })
+        );
+        assert_eq!(
+            queue.get(4),
+            Some(QueueItem {
+                key: 10,
+                value: &15
+            })
+        );
+        assert_eq!(
+            queue.get(5),
+            Some(QueueItem {
+                key: 20,
+                value: &60
+            })
+        );
+        assert_eq!(queue.get(6), None);
+        assert_eq!(queue.get(7), None);
+        assert_eq!(queue.len(), 6);
+    }
+
+    #[test]
+    fn test_queue_remove() {
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        queue.push(20, 20);
+        queue.push(10, 10);
+        queue.push(5, 30);
+        queue.push(10, 15);
+        queue.push(20, 40);
+        queue.push(20, 60);
+        assert_eq!(queue.remove(3), Some(40));
+        assert_eq!(queue.count(20), Some(2));
+        assert_eq!(queue.count(10), Some(2));
+        assert_eq!(queue.count(5), Some(1));
+        assert_eq!(queue.remove(300), None);
     }
 
     #[test]

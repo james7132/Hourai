@@ -1,42 +1,51 @@
+use super::CommandError;
+use anyhow::Result;
 use std::iter::Peekable;
 use std::str::FromStr;
 use twilight_command_parser::Arguments;
 
-trait ArgumentsExt {
-    fn parse_next<T: FromArgument>(&mut self) -> Result<Option<T>, <T as FromArgument>::Err>;
+pub type PeekableArguments<'a> = Peekable<Arguments<'a>>;
+
+pub trait ArgumentsExt {
+    fn parse_next<T: FromArgument>(&mut self) -> Result<T>;
+
+    fn parse_next_opt<T: FromArgument>(&mut self) -> Option<T> {
+        self.parse_next().ok()
+    }
 
     /// Parses until either the stream is done or the next argument cannot be parsed.
     fn parse_until<T: FromArgument>(&mut self) -> Vec<T> {
         let mut values = Vec::new();
-        while let Ok(arg) = self.parse_next::<T>() {
-            if let Some(value) = arg {
-                values.push(value);
-            } else {
-                break;
-            }
+        while let Ok(value) = self.parse_next::<T>() {
+            values.push(value);
         }
         values
     }
 }
 
-trait FromArgument: Sized {
-    type Err;
+pub trait FromArgument: Sized {
+    type Err: std::error::Error + Send + Sync + 'static;
     fn parse_as(arg: impl AsRef<str>) -> Result<Self, Self::Err>;
 }
 
-impl ArgumentsExt for Peekable<Arguments<'_>> {
-    fn parse_next<T: FromArgument>(&mut self) -> Result<Option<T>, <T as FromArgument>::Err> {
-        if let Some(arg) = self.peek() {
-            let result = T::parse_as(*arg)?;
-            self.next();
-            Ok(Some(result))
+impl<'a, I, S> ArgumentsExt for I
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    fn parse_next<T: FromArgument>(&mut self) -> Result<T> {
+        if let Some(arg) = self.next() {
+            Ok(T::parse_as(arg.as_ref())?)
         } else {
-            Ok(None)
+            anyhow::bail!(CommandError::MissingArgument)
         }
     }
 }
 
-impl<T: FromStr> FromArgument for T {
+impl<T: FromStr> FromArgument for T
+where
+    <T as FromStr>::Err: std::error::Error + Send + Sync + 'static,
+{
     type Err = <T as FromStr>::Err;
     fn parse_as(arg: impl AsRef<str>) -> Result<Self, Self::Err> {
         arg.as_ref().parse()

@@ -30,4 +30,8 @@ pub enum CommandError {
     InvalidArgument(String),
     #[error("Something went wrong: {}", .0)]
     GenericFailure(&'static str),
+    #[error("Too many arguments")]
+    ExcessArguments,
+    #[error("Missing argument")]
+    MissingArgument,
 }
