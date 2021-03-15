@@ -22,10 +22,16 @@ impl MessageUI {
     {
         let (tx, mut rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
-            while let Ok(_) = ui.update().await {
-                match rx.try_recv() {
-                    Err(TryRecvError::Empty) => tokio::time::sleep(update_interval).await,
-                    _ => break,
+            loop {
+                match ui.update().await {
+                    Ok(_) => match rx.try_recv() {
+                        Err(TryRecvError::Empty) => tokio::time::sleep(update_interval).await,
+                        _ => break,
+                    },
+                    Err(err) => {
+                        tracing::error!("Terminating message UI: {}", err);
+                        break;
+                    }
                 }
             }
         });
@@ -119,22 +125,26 @@ impl EmbedUIBuilder for NowPlayingUI {
     }
 
     fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed> {
-        let track = match ui.client.currently_playing(ui.guild_id) {
-            Some(track) => track,
-            None => return not_playing_embed(),
-        };
-
-        Ok(EmbedBuilder::new()
-            .author(
-                EmbedAuthorBuilder::new()
-                    .name(track.requestor.display_name())?
-                    .icon_url(ImageSource::url(track.requestor.avatar_url())?),
-            )
-            .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))?
-            .description(build_progress_bar(&ui))?
-            .url(track.info.uri.clone())
-            .build()?)
+        build_np_embed(ui)
     }
+}
+
+fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
+    let track = match ui.client.currently_playing(ui.guild_id) {
+        Some(track) => track,
+        None => return not_playing_embed(),
+    };
+
+    Ok(EmbedBuilder::new()
+        .author(
+            EmbedAuthorBuilder::new()
+                .name(track.requestor.display_name())?
+                .icon_url(ImageSource::url(track.requestor.avatar_url())?),
+        )
+        .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))?
+        .description(build_progress_bar(&ui))?
+        .url(track.info.uri.clone())
+        .build()?)
 }
 
 impl EmbedUIBuilder for QueueUI {
@@ -161,10 +171,11 @@ impl EmbedUIBuilder for QueueUI {
     fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed> {
         fn format_track(idx: usize, track: &Track) -> String {
             format!(
-                "`{}.` `[{}]` **{} - <@{}>**",
+                "`{}.` `[{}]` **[{}]({})** - <@{}>",
                 idx,
                 format_duration(track.info.length),
                 track.info,
+                track.info.uri,
                 track.requestor.id
             )
         }
@@ -186,36 +197,54 @@ impl EmbedUIBuilder for QueueUI {
                     .join("\n")
             })
             .unwrap();
-        let footer = format!("Page {}/{}", self.page + 1, pages + 1);
-        Ok(EmbedBuilder::new()
-            .description(description)?
-            .footer(EmbedFooterBuilder::new(footer)?)
-            .build()?)
+        if description.is_empty() {
+            build_np_embed(&ui)
+        } else {
+            let footer = format!("Page {}/{}", self.page + 1, pages + 1);
+            Ok(EmbedBuilder::new()
+                .description(description)?
+                .footer(EmbedFooterBuilder::new(footer)?)
+                .build()?)
+        }
     }
 }
 
 fn build_progress_bar<T: EmbedUIBuilder + Default>(ui: &EmbedUI<T>) -> String {
-    let (complete, paused) = match ui.client.lavalink.players().get(&ui.guild_id) {
+    let (pos, time, paused) = match ui.client.lavalink.players().get(&ui.guild_id) {
         Some(kv) => {
             let player = kv.value();
-            let pos = player.position() as f64;
-            let time = player.time_ref() as f64;
-            if time == 0.0 {
-                (f64::INFINITY, player.paused())
+            let pos = player.position();
+            let time = player.time_ref();
+            if time == 0 {
+                (0, i64::MAX, player.paused())
             } else {
-                (pos / time, player.paused())
+                (pos, time, player.paused())
             }
         }
-        None => (f64::INFINITY, true),
+        None => (0, i64::MAX, true),
     };
 
+    let complete = (pos as f64) / (time as f64);
     let prefix = if paused {
         ":pause_button:"
     } else {
         ":arrow_forward:"
     };
     let suffix = if paused { ":mute:" } else { ":loud_sound:" };
-    format!("{}{}{}", prefix, progress_bar(complete), suffix)
+    let time_display = if pos == i64::MAX {
+        "LIVE".to_owned()
+    } else {
+        let pos_str = format_duration(Duration::from_millis(pos as u64));
+        let time_str = format_duration(Duration::from_millis(time as u64));
+        format!("{}/{}", pos_str, time_str)
+    };
+    format!(
+        "{}{}`[{}]`{}",
+        prefix,
+        progress_bar(complete),
+        time_display,
+        suffix
+    )
 }
 
 fn not_playing_embed() -> Result<Embed> {
