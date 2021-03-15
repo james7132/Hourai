@@ -113,7 +113,7 @@ macro_rules! require_playing {
             .get_mut(&require_in_guild(&$ctx)?)
             .ok_or_else(|| CommandError::FailedPrecondition("No music is currently playing."))
             .and_then(|state| {
-                if state.value().currently_playing().is_some() {
+                if state.value().is_playing() {
                     Ok(state)
                 } else {
                     Err(CommandError::FailedPrecondition(

@@ -253,6 +253,14 @@ impl Client<'static> {
         Ok(())
     }
 
+    /// Gets the currently playing track in a given guild.
+    /// If not playing, return None.
+    pub fn currently_playing(&self, guild_id: GuildId) -> Option<Track> {
+        self.states
+            .get(&guild_id)
+            .and_then(|kv| kv.value().currently_playing().map(|cp| cp.1))
+    }
+
     /// Gets which voice channel the bot is currently connected to in
     /// a guild.
     pub fn get_channel(&self, guild_id: GuildId) -> Option<ChannelId> {
@@ -298,8 +306,7 @@ impl Client<'static> {
     }
 
     pub async fn start_playing(&self, guild_id: GuildId) -> Result<()> {
-        let track = self.states.get(&guild_id).unwrap().currently_playing();
-        if let Some((_, track)) = track {
+        if let Some(track) = self.currently_playing(guild_id) {
             self.play(guild_id, &track).await?;
         }
         Ok(())
@@ -308,13 +315,15 @@ impl Client<'static> {
     /// Plays the next item in the queue.
     /// Panics if a player does not exist.
     pub async fn play_next(&self, guild_id: GuildId) -> Result<Option<TrackInfo>> {
-        let (prev, cp) = {
-            let mut state = self.states.get_mut(&guild_id).unwrap();
-            let prev = state.queue.pop().map(|kv| kv.value.info);
-            (prev, state.currently_playing())
+        let prev = {
+            if let Some(state) = self.states.get_mut(&guild_id) {
+                state.queue.pop().map(|kv| kv.value.info)
+            } else {
+                return Ok(None);
+            }
         };
         // Must be done seperately to avoid a deadlock.
-        if let Some((_, track)) = &cp {
+        if let Some(track) = self.currently_playing() {
             self.play(guild_id, track).await?;
         } else {
             self.disconnect(guild_id).await?;

@@ -13,6 +13,10 @@ impl PlayerState {
     pub fn currently_playing(&self) -> Option<(UserId, Track)> {
         self.queue.peek().map(|item| (item.key, item.value.clone()))
     }
+
+    pub fn is_playing(&self) -> bool {
+        self.queue.peek().is_some()
+    }
 }
 
 pub trait PlayerExt {
