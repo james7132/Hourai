@@ -423,7 +423,7 @@ async fn volume(
 
 async fn queue(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
     let guild_id = require_in_guild(&ctx)?;
-    let ui = EmbedUI::<NowPlayingUI>::create(client.clone(), ctx).await?;
+    let ui = EmbedUI::<QueueUI>::create(client.clone(), ctx).await?;
     client.mutate_state(guild_id, move |state| {
         state
             .now_playing_ui
@@ -434,7 +434,7 @@ async fn queue(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<(
 
 async fn now_playing(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
     let guild_id = require_in_guild(&ctx)?;
-    let ui = EmbedUI::<QueueUI>::create(client.clone(), ctx).await?;
+    let ui = EmbedUI::<NowPlayingUI>::create(client.clone(), ctx).await?;
     client.mutate_state(guild_id, move |state| {
         state
             .queue_ui

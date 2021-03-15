@@ -104,7 +104,7 @@ impl<T: EmbedUIBuilder> Updateable for EmbedUI<T> {
             .content(self.builder.build_content(self))?
             .embed(self.builder.build_embed(self)?)?
             .await?;
-        if self.expiration < Instant::now() {
+        if self.expiration > Instant::now() {
             Ok(())
         } else {
             bail!("Expired.")
@@ -210,33 +210,30 @@ impl EmbedUIBuilder for QueueUI {
 }
 
 fn build_progress_bar<T: EmbedUIBuilder + Default>(ui: &EmbedUI<T>) -> String {
-    let (pos, time, paused) = match ui.client.lavalink.players().get(&ui.guild_id) {
+    let (pos, paused) = match ui.client.lavalink.players().get(&ui.guild_id) {
         Some(kv) => {
             let player = kv.value();
-            let pos = player.position();
-            let time = player.time_ref();
-            if time == 0 {
-                (0, i64::MAX, player.paused())
-            } else {
-                (pos, time, player.paused())
-            }
+            (player.position(), player.paused())
         }
-        None => (0, i64::MAX, true),
+        None => (0, true),
     };
 
-    let complete = (pos as f64) / (time as f64);
+    let length = match ui.client.currently_playing(ui.guild_id) {
+        Some(track) => track.info.length,
+        None => Duration::from_millis(i64::MAX as u64),
+    };
+    let pos = Duration::from_millis(pos as u64);
+    let complete = (pos.as_millis() as f64) / (length.as_millis() as f64);
     let prefix = if paused {
         ":pause_button:"
     } else {
         ":arrow_forward:"
     };
     let suffix = if paused { ":mute:" } else { ":loud_sound:" };
-    let time_display = if pos == i64::MAX {
+    let time_display = if pos.as_millis() as i64 == i64::MAX {
         "LIVE".to_owned()
     } else {
-        let pos_str = format_duration(Duration::from_millis(pos as u64));
-        let time_str = format_duration(Duration::from_millis(time as u64));
-        format!("{}/{}", pos_str, time_str)
+        format!("{}/{}", format_duration(pos), format_duration(length))
     };
     format!(
         "{}{}`[{}]`{}",
