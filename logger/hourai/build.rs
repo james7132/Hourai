@@ -25,6 +25,7 @@ fn protobuf_codegen(src_dir: &str, out_dir: &str) {
     }
     protobuf_codegen_pure::Codegen::new()
         .customize(protobuf_codegen_pure::Customize {
+            serde_derive: Some(true),
             gen_mod_rs: Some(true),
             ..Default::default()
         })

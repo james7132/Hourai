@@ -4,9 +4,13 @@ version = "0.1.0"
 authors = ["james7132 <contact@jamessliu.com>"]
 edition = "2018"
 
+[features]
+default = ["with-serde"]
+with-serde = ["protobuf/with-serde"]
+
 [build-dependencies]
 walkdir = "2.3.1"
-protobuf-codegen-pure = "2.18.0"
+protobuf-codegen-pure = "2.22.0"
 
 [dependencies]
 anyhow = "1.0.38"
