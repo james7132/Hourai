@@ -7,6 +7,7 @@ use crate::{models::*, Client};
 use anyhow::Result;
 use futures::lock::Mutex;
 use hourai::models::channel::embed::Embed;
+use hourai_sql::sql_types::chrono::{DateTime, NaiveDateTime, Utc};
 use http::status::StatusCode;
 use models::SubmissionListing;
 use reqwest::Response;
@@ -113,7 +114,7 @@ async fn push_posts(feed: &Feed, response: Response, client: &Client) -> Result<
     // Reddit reports creation time in seconds unix time.
     // Feeds are done with millisecond accuracy, so this ratio is to account for that difference.
     let mut update_time = feed.last_updated;
-    let min_time = update_time / 1000;
+    let min_time = update_time;
 
     let mut text = response.text().await?;
     simd_json::serde::from_str::<SubmissionListing>(text.as_mut_str())?
@@ -123,8 +124,11 @@ async fn push_posts(feed: &Feed, response: Response, client: &Client) -> Result<
         .rev()
         .map(|thing| thing.data)
         .filter(|sub| {
-            update_time = std::cmp::max(update_time, (sub.created_utc * 1000.0) as i64);
-            sub.created_utc > min_time as f64
+            let ts = sub.created_utc as i64;
+            let timestamp = NaiveDateTime::from_timestamp(ts, 0);
+            let post_time = DateTime::<Utc>::from_utc(timestamp, Utc);
+            update_time = std::cmp::max(update_time, post_time);
+            post_time > min_time
         })
         .filter_map(|sub| make_post(feed, sub).ok())
         .for_each(|post| {

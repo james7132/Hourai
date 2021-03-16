@@ -11,5 +11,5 @@ protobuf = "2.22"
 
 [dependencies.sqlx]
 default-features = false
-features = ["runtime-tokio-rustls", "postgres", "macros"]
+features = ["runtime-tokio-rustls", "postgres", "macros", "chrono"]
 version = "0.5.1"
