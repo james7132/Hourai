@@ -18,8 +18,5 @@ Pint==0.16.1
 texttable==1.6.3
 pytimeparse==1.1.8
 
-# Third Party Integrations
-dblpy==0.4.0
-
 # For music bot features
 wavelink==0.9.8

@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
-use std::time::{Instant, Duration};
 use std::str::FromStr;
+use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub struct RateLimiter {
@@ -26,8 +26,11 @@ impl RateLimiter {
             return;
         }
         let diff = (self.reset_time - now).div_f64(self.remaining as f64);
-        tracing::debug!("Waiting {} seconds to keep the rate limit steady. Remaining requests: {}",
-                        diff.as_secs_f64(), self.remaining);
+        tracing::debug!(
+            "Waiting {} seconds to keep the rate limit steady. Remaining requests: {}",
+            diff.as_secs_f64(),
+            self.remaining
+        );
         tokio::time::sleep(diff).await;
     }
 
@@ -46,12 +49,17 @@ impl RateLimiter {
     }
 
     fn get_header<T>(response: &reqwest::Response, header: &str) -> Result<T>
-        where T: FromStr, <T as FromStr>::Err: Sync + Send + std::error::Error + 'static
+    where
+        T: FromStr,
+        <T as FromStr>::Err: Sync + Send + std::error::Error + 'static,
     {
         if let Some(header) = response.headers().get(header) {
             Ok(header.to_str()?.parse::<T>()?)
         } else {
-            tracing::debug!("Could not find header '{}' in the response from Reddit.", header);
+            tracing::debug!(
+                "Could not find header '{}' in the response from Reddit.",
+                header
+            );
             bail!("Header not found.")
         }
     }

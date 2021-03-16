@@ -1,5 +1,7 @@
+use crate::types;
 use hourai::models::{guild::Ban as TwilightBan, guild::Member as TwilightMember, id::*, UserLike};
 use std::convert::TryInto;
+use sqlx::types::chrono::{DateTime, Utc};
 
 pub type SqlDatabase = sqlx::Postgres;
 pub type SqlQuery<'a> = sqlx::query::Query<
@@ -14,17 +16,10 @@ pub type SqlQueryAs<'a, O> = sqlx::query::QueryAs<
     <SqlDatabase as sqlx::database::HasArguments<'a>>::Arguments,
 >;
 
-fn get_unix_millis() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-        .expect("It's past 01/01/1970. This should be a positive value.")
-        .as_millis() as u64
-}
-
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Username {
     pub user_id: i64,
-    pub timestamp: i64,
+    pub timestamp: DateTime<Utc>,
     pub name: String,
     pub discriminator: Option<u32>,
 }
@@ -33,7 +28,7 @@ impl Username {
     pub fn new(user: &impl UserLike) -> Self {
         Self {
             user_id: user.id().0 as i64,
-            timestamp: get_unix_millis() as i64,
+            timestamp: Utc::now(),
             name: user.name().to_owned(),
             discriminator: Some(user.discriminator() as u32),
         }
@@ -43,14 +38,14 @@ impl Username {
         if let Some(max) = limit {
             sqlx::query_as(
                 "SELECT user_id, timestamp, name, discriminator \
-                            FROM usernames WHERE user_id = $1 LIMIT $2",
+                 FROM usernames WHERE user_id = $1 LIMIT $2",
             )
             .bind(user_id.0 as i64)
             .bind(max as i64)
         } else {
             sqlx::query_as(
                 "SELECT user_id, timestamp, name, discriminator \
-                            FROM usernames WHERE user_id = $1",
+                 FROM usernames WHERE user_id = $1",
             )
             .bind(user_id.0 as i64)
         }
@@ -58,31 +53,28 @@ impl Username {
 
     pub fn insert(&self) -> SqlQuery {
         sqlx::query(
-            "INSERT INTO usernames (user_id, timestamp, name, discriminator) \
-                     VALUES ($1, $2, $3, $4) \
+            "INSERT INTO usernames (user_id, name, discriminator) \
+                     VALUES ($1, $2, $3) \
                      ON CONFLICT ON CONSTRAINT idx_unique_username \
                      DO NOTHING",
         )
         .bind(self.user_id)
-        .bind(self.timestamp)
         .bind(self.name.clone())
         .bind(self.discriminator)
     }
 
     pub fn bulk_insert<'a>(usernames: Vec<Self>) -> SqlQuery<'a> {
         let user_ids: Vec<i64> = usernames.iter().map(|u| u.user_id).collect();
-        let timestamps: Vec<i64> = usernames.iter().map(|u| u.timestamp).collect();
         let names: Vec<String> = usernames.iter().map(|u| u.name.clone()).collect();
         let discriminator: Vec<Option<u32>> = usernames.iter().map(|u| u.discriminator).collect();
         sqlx::query(
-            "INSERT INTO usernames (user_id, timestamp, name, discriminator) \
-                     SELECT * FROM UNNEST ($1, $2, $3, $4) \
-                     AS t(user_id, timestamp, name, discriminator) \
-                     ON CONFLICT ON CONSTRAINT idx_unique_username \
-                     DO NOTHING",
+            "INSERT INTO usernames (user_id, name, discriminator) \
+             SELECT * FROM UNNEST ($1, $2, $3) \
+             AS t(user_id, name, discriminator) \
+             ON CONFLICT ON CONSTRAINT idx_unique_username \
+             DO NOTHING",
         )
         .bind(user_ids)
-        .bind(timestamps)
         .bind(names)
         .bind(discriminator)
     }

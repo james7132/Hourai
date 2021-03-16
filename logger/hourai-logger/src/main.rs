@@ -1,3 +1,4 @@
+mod listings;
 mod message_logging;
 
 use anyhow::Result;
@@ -50,7 +51,6 @@ const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
     ResourceType::ROLE.bits()
         | ResourceType::GUILD.bits()
         | ResourceType::PRESENCE.bits()
-        | ResourceType::USER_CURRENT.bits(),
 );
 
 #[tokio::main]
@@ -71,17 +71,30 @@ async fn main() {
         .await
         .expect("Failed to connect to the Discord gateway");
 
-    let client = Client {
-        http_client,
-        gateway: gateway.clone(),
-        cache: cache.clone(),
-        sql,
-        redis: redis.clone(),
+    let client = {
+        let user = http_client
+            .current_user()
+            .await
+            .expect("User should not fail to load.");
+        Client {
+            user_id: user.id,
+            http_client,
+            gateway: gateway.clone(),
+            cache: cache.clone(),
+            sql,
+            redis: redis.clone(),
+        }
     };
 
     info!("Starting gateway...");
     gateway.up().await;
     info!("Client started.");
+
+    tokio::spawn(listings::run_push_listings(
+        client.clone(),
+        config.clone(),
+        Duration::from_secs(300),
+    ));
 
     // Setup background tasks
     tokio::spawn(client.clone().log_bans());
@@ -122,7 +135,8 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
 }
 
 #[derive(Clone)]
-struct Client {
+pub struct Client {
+    pub user_id: UserId,
     pub http_client: hourai::http::Client,
     pub gateway: Cluster,
     pub cache: InMemoryCache,
@@ -131,10 +145,6 @@ struct Client {
 }
 
 impl Client {
-    fn user_id(&self) -> UserId {
-        self.cache.current_user().unwrap().id
-    }
-
     async fn log_bans(self) {
         loop {
             info!("Refreshing bans...");
@@ -242,7 +252,7 @@ impl Client {
         self.log_users(vec![evt.user.clone()]).await?;
 
         let perms = self
-            .fetch_guild_permissions(evt.guild_id, self.user_id())
+            .fetch_guild_permissions(evt.guild_id, self.user_id)
             .await?;
         if perms.contains(Permissions::BAN_MEMBERS) {
             if let Some(ban) = self.http_client.ban(evt.guild_id, evt.user.id).await? {
@@ -402,9 +412,7 @@ impl Client {
     }
 
     async fn refresh_bans(&self, guild_id: GuildId) -> Result<()> {
-        let perms = self
-            .fetch_guild_permissions(guild_id, self.user_id())
-            .await?;
+        let perms = self.fetch_guild_permissions(guild_id, self.user_id).await?;
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);

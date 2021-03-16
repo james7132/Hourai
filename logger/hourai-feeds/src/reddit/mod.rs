@@ -5,13 +5,14 @@ mod rate_limiter;
 use self::models::*;
 use crate::{models::*, Client};
 use anyhow::Result;
+use futures::lock::Mutex;
 use hourai::models::channel::embed::Embed;
+use hourai_sql::sql_types::chrono::{DateTime, NaiveDateTime, Utc};
+use http::status::StatusCode;
 use models::SubmissionListing;
+use reqwest::Response;
 use tracing::error;
 use twilight_embed_builder::*;
-use http::status::StatusCode;
-use futures::lock::Mutex;
-use reqwest::Response;
 
 const SUBREDDITS_PER_PAGE: u64 = 60;
 
@@ -33,7 +34,10 @@ impl RedditClient {
             self.rate_limiter.lock().await.wait().await;
         }
         let token = self.auth.get_token().await?;
-        let url = format!("https://oauth.reddit.com/r/{}/new.json?limit=100", subreddit);
+        let url = format!(
+            "https://oauth.reddit.com/r/{}/new.json?limit=100",
+            subreddit
+        );
         let response = self.http().get(url).bearer_auth(token).send().await?;
         {
             self.rate_limiter.lock().await.update(&response);
@@ -49,13 +53,14 @@ impl RedditClient {
 pub async fn start(client: Client, config: hourai::config::RedditConfig) {
     tracing::info!("Starting reddit feeds...");
     let auth = auth::RedditAuth::login(config)
-        .await.expect("Failed to authorize with Reddit");
+        .await
+        .expect("Failed to authorize with Reddit");
     let mut reddit_client = RedditClient::new(auth);
     let mut cursor: u64 = 0;
     while !client.tx.is_closed() {
         let query = Feed::fetch_page("REDDIT", SUBREDDITS_PER_PAGE, cursor)
-                .fetch_all(&client.sql)
-                .await;
+            .fetch_all(&client.sql)
+            .await;
         let feeds = match query {
             Ok(feeds) => feeds,
             Err(err) => {
@@ -96,18 +101,20 @@ async fn push_posts(feed: &Feed, response: Response, client: &Client) -> Result<
     match response.status() {
         StatusCode::NOT_FOUND => feed.delete(&client.sql).await?,
         StatusCode::FORBIDDEN => feed.delete(&client.sql).await?,
-        code if code.is_success() => {},
-        code if code.is_client_error() =>
-            anyhow::bail!("Reddit returned a client error: {:?}", response),
-        code if code.is_server_error() =>
-            anyhow::bail!("Reddit returned a server error: {:?}", response),
+        code if code.is_success() => {}
+        code if code.is_client_error() => {
+            anyhow::bail!("Reddit returned a client error: {:?}", response)
+        }
+        code if code.is_server_error() => {
+            anyhow::bail!("Reddit returned a server error: {:?}", response)
+        }
         _ => anyhow::bail!("Unexpected response from Reddit: {:?}", response),
     }
 
     // Reddit reports creation time in seconds unix time.
     // Feeds are done with millisecond accuracy, so this ratio is to account for that difference.
     let mut update_time = feed.last_updated;
-    let min_time = update_time / 1000;
+    let min_time = update_time;
 
     let mut text = response.text().await?;
     simd_json::serde::from_str::<SubmissionListing>(text.as_mut_str())?
@@ -117,8 +124,11 @@ async fn push_posts(feed: &Feed, response: Response, client: &Client) -> Result<
         .rev()
         .map(|thing| thing.data)
         .filter(|sub| {
-            update_time = std::cmp::max(update_time, (sub.created_utc * 1000.0) as i64);
-            sub.created_utc > min_time as f64
+            let ts = sub.created_utc as i64;
+            let timestamp = NaiveDateTime::from_timestamp(ts, 0);
+            let post_time = DateTime::<Utc>::from_utc(timestamp, Utc);
+            update_time = std::cmp::max(update_time, post_time);
+            post_time > min_time
         })
         .filter_map(|sub| make_post(feed, sub).ok())
         .for_each(|post| {

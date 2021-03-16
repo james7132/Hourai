@@ -15,5 +15,5 @@ ENV RUST_LOG=info
 ENV HOURAI_CONFIG=/opt/hourai.jsonnet
 ENV HOURAI_ENV=dev
 
-COPY --from=build /home/rust/src/hourai-feeds .
+COPY --from=build /home/rust/src/target/x86_64-unknown-linux-musl/release/hourai-feeds .
 CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && /hourai-feeds

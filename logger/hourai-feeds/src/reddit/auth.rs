@@ -1,7 +1,7 @@
 use anyhow::Result;
 use hourai::config::*;
-use std::time::{Instant, Duration};
 use serde::Deserialize;
+use std::time::{Duration, Instant};
 
 pub struct RedditAuth {
     pub http: reqwest::Client,
@@ -60,5 +60,4 @@ impl AuthResponse {
     fn expiration(&self) -> Instant {
         Instant::now() + Duration::from_secs(self.expires_in)
     }
-
 }

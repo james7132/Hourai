@@ -7,8 +7,9 @@ edition = "2018"
 [dependencies]
 hourai = { path = "../../hourai" }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
+protobuf = "2.22"
 
 [dependencies.sqlx]
 default-features = false
-features = ["runtime-tokio-rustls", "postgres", "macros"]
+features = ["runtime-tokio-rustls", "postgres", "macros", "chrono"]
 version = "0.5.1"

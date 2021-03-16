@@ -18,6 +18,7 @@ pub struct HouraiConfig {
     pub web: WebConfig,
     pub metrics: MetricsConfig,
     pub reddit: RedditConfig,
+    pub third_party: ThirdPartyConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -62,6 +63,13 @@ pub struct RedditConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct ThirdPartyConfig {
+    pub discord_boats_token: Option<String>,
+    pub discord_bots_token: Option<String>,
+    pub top_gg_token: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct WebhookConfig {
     pub bot_log: String,
 }
@@ -81,5 +89,4 @@ pub fn get_config_path() -> Box<Path> {
         .to_lowercase();
     buffer.push(execution_env);
     buffer.into_boxed_path()
-
 }
