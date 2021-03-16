@@ -8,6 +8,10 @@ pub type JsonResult<T> = WebResult<web::Json<T>>;
 
 #[derive(Error, Debug)]
 pub enum WebError {
+    #[error("Generic response error: {}", .0)]
+    ResponseError(Box<dyn ResponseError>),
+    #[error("HTTP Error: {}", .0)]
+    GenericHTTPError(StatusCode),
     #[error("Redis Error: {}", .0)]
     RedisError(#[from] redis::RedisError),
     #[error("SQL Error: {}", .0)]
@@ -15,20 +19,39 @@ pub enum WebError {
 }
 
 impl WebError {
-    pub fn is_server_error(&self) -> bool{
-        match self {
-            _ => true
-        }
-    }
+    pub const UNAUTHORIZED: WebError = WebError::GenericHTTPError(StatusCode::UNAUTHORIZED);
+    pub const NOT_FOUND: WebError = WebError::GenericHTTPError(StatusCode::UNAUTHORIZED);
 
     pub fn message(&self) -> String {
-        if self.is_server_error() {
-            "Internal server error.".to_owned()
+        if self.status_code().is_server_error() {
+            self.status_code()
+                .canonical_reason()
+                .map(|r| r.to_owned())
+                .unwrap_or_else(|| String::new())
         } else {
             self.to_string()
         }
     }
 }
+
+impl From<StatusCode> for WebError {
+    fn from(value: StatusCode) -> Self {
+        WebError::GenericHTTPError(value)
+    }
+}
+
+macro_rules! box_error {
+    ($type:ty) => {
+        impl From<$type> for WebError {
+            fn from(value: $type) -> Self {
+                WebError::ResponseError(Box::new(value))
+            }
+        }
+    }
+}
+
+box_error!(actix_web::client::JsonPayloadError);
+box_error!(actix_web::client::SendRequestError);
 
 impl ResponseError for WebError {
     fn error_response(&self) -> HttpResponse {
@@ -43,6 +66,8 @@ impl ResponseError for WebError {
 
     fn status_code(&self) -> StatusCode {
         match self {
+            Self::ResponseError(err) => err.status_code(),
+            Self::GenericHTTPError(code) => *code,
            _ => StatusCode::INTERNAL_SERVER_ERROR
         }
     }
