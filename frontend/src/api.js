@@ -6,11 +6,13 @@ class Resource {
         api,
         endpoint,
         supportedMethods,
+        baseUrl,
         requiresAuth
     }) {
         this.api = api
         this.endpoint = endpoint
         this.supportedMethods = supportedMethods || null
+        this.baseUrl = baseUrl || null
         this.requiresAuth = true
         if (typeof requiresAuth !== 'undefined') {
             this.requiresAuth = requiresAuth
@@ -42,7 +44,11 @@ class Resource {
         let cacheKey = `${method}:${this.endpoint}:${JSON.stringify(params)}`
         let request = this.api.promiseCache[cacheKey]
         if (!request) {
-          request = this.api.axios.get(this.endpoint, params)
+          let axios_params = { url: this.endpoint, params }
+          if this.baseUrl {
+            axios_params.baseUrl = this.baseUrl
+          }
+          request = this.api.axios(axios_params)
           this.api.promiseCache[cacheKey] = request
         }
         let result = await request
@@ -53,7 +59,11 @@ class Resource {
     async post(data = undefined, params = {}) {
         await this.checkAuth()
         this.checkSupportedMethods('POST')
-        return await this.api.axios.post(this.endpoint, data, params)
+        let axios_params = { method: 'POST', url: this.endpoint, data, params }
+        if this.baseUrl {
+          axios_params.baseUrl = this.baseUrl
+        }
+        return await this.api.axios(axios_params)
     }
 
 }
@@ -100,22 +110,26 @@ export default class Api {
         })
     }
 
+    // OAuth API endpoints are not vesioned
     authToken() {
-        return this.createResource('/oauth/discord/refresh', {
+        return this.createResource('/oauth/refresh', {
+            baseURL: `${this.domain}/api`
             requiresAuth: false,
             supportedMethods: ['GET']
         })
     }
 
     oauthLogin() {
-        return this.createResource('/oauth/discord/token', {
+        return this.createResource('/oauth/token', {
+            baseURL: `${this.domain}/api`
             requiresAuth: false,
             supportedMethods: ['POST']
         })
     }
 
     oauthLogout() {
-        return this.createResource('/oauth/discord/logout', {
+        return this.createResource('/oauth/logout', {
+            baseURL: `${this.domain}/api`
             requiresAuth: false,
             supportedMethods: ['POST']
         })

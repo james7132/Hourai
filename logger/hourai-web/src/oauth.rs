@@ -110,7 +110,7 @@ async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> WebResult<
     Ok(HttpResponse::Ok().json(response))
 }
 
-#[get("/logout")]
+#[post("/logout")]
 async fn logout(request: HttpRequest) -> WebResult<HttpResponse> {
     // TODO(james7132): Remove token from database.
     if let Some(ref refresh_token) = request.cookie(COOKIE_KEY) {
