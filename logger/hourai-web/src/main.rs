@@ -1,41 +1,26 @@
-#[macro_use]
-extern crate lazy_static;
-
-mod oauth;
 mod guild_config;
+mod oauth;
+mod prelude;
+mod status;
 
 use hourai::{init, config};
-use serde::Serialize;
-use actix_web::{web, get, App, HttpServer, Responder};
-
-#[derive(Serialize)]
-struct BotStatus {
-    shards: Vec<ShardStatus>
-}
-
-#[derive(Serialize)]
-struct ShardStatus {
-    shard_id: u16,
-    guilds: i64,
-    members: i64
-}
-
-#[get("/api/v1/bot/status")]
-async fn bot_status(data: web::Data<AppState>) -> Result<web::Json<BotStatus>, sqlx::Error> {
-    Ok(web::Json(BotStatus {
-        shards: vec![ShardStatus {
-            shard_id: 0,
-            guilds: hourai_sql::Member::count_guilds().fetch_one(&data.sql).await?.0,
-            members: hourai_sql::Member::count_members().fetch_one(&data.sql).await?.0,
-        }]
-    })
-}
+use actix_web::{web, App, HttpServer};
 
 pub(crate) struct AppState {
     config: hourai::config::HouraiConfig,
-    hyper: hyper::Client<hyper::client::HttpConnector, hyper::Body>,
+    http: actix_web::client::Client,
     sql: hourai_sql::SqlPool,
     redis: hourai_redis::RedisPool
+}
+
+pub fn api(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/v1")
+            .service(web::scope("/bot").configure(status::scoped_config))
+            .service(web::scope("/guilds").configure(guild_config::scoped_config))
+    );
+    // OAuth is not versioned
+    cfg.service(web::scope("/oauth").configure(oauth::scoped_config));
 }
 
 #[actix_web::main]
@@ -45,18 +30,19 @@ async fn main() -> std::io::Result<()> {
 
     let sql = hourai_sql::init(&config).await;
     let redis = hourai_redis::init(&config).await;
+    let port = config.web.port;
 
     HttpServer::new(move || {
         App::new()
             .data(AppState {
-                config,
-                hyper: hyper::Client::new(),
+                config: config.clone(),
+                http: actix_web::client::Client::new(),
                 sql: sql.clone(),
                 redis: redis.clone()
             })
-            .service(bot_status)
+            .service(web::scope("/api").configure(api))
     })
-    .bind(format!("127.0.0.1:{}", config.web.port))?
+    .bind(format!("127.0.0.1:{}", port))?
     .run()
     .await
 }

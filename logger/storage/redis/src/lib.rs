@@ -67,7 +67,7 @@ impl GuildConfig {
     pub async fn fetch<T: ::protobuf::Message + CachedGuildConfig>(
         id: GuildId,
         conn: &mut RedisPool,
-    ) -> Result<T> {
+    ) -> std::result::Result<T, redis::RedisError> {
         let key = CacheKey(CachePrefix::GuildConfigs, id.0);
         let response: Option<Compressed<Protobuf<T>>> = redis::Cmd::hget(key, vec![T::SUBKEY])
             .query_async(conn)
