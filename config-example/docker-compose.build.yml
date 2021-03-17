@@ -25,8 +25,13 @@ services:
     build:
       context: ..
       dockerfile: logger/hourai-music/Dockerfile
+  feeds:
+    image: james7132/hourai:latest-feeds
+    build:
+      context: ..
+      dockerfile: logger/hourai-feeds/Dockerfile
   web:
-    image: james7132/hourai:latest-music
+    image: james7132/hourai:latest-web
     build:
       context: ..
       dockerfile: logger/hourai-web/Dockerfile

@@ -14,10 +14,7 @@ impl PendingAction {
         sqlx::query_as("SELECT id, data FROM pending_actions WHERE ts < now()")
     }
 
-    pub fn schedule<'a>(
-        action: Action,
-        timestamp: impl Into<DateTime<Utc>>,
-    ) -> SqlQuery<'a> {
+    pub fn schedule<'a>(action: Action, timestamp: impl Into<DateTime<Utc>>) -> SqlQuery<'a> {
         sqlx::query("INSERT INTO pending_actions (timestamp, data) VALUES ($1, $2)")
             .bind(timestamp.into())
             .bind(types::Protobuf(action))

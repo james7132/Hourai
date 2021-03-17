@@ -6,13 +6,13 @@ class Resource {
         api,
         endpoint,
         supportedMethods,
-        baseUrl,
+        axiosParams,
         requiresAuth
     }) {
         this.api = api
         this.endpoint = endpoint
         this.supportedMethods = supportedMethods || null
-        this.baseUrl = baseUrl || null
+        this.axiosParams = axiosParams || {}
         this.requiresAuth = true
         if (typeof requiresAuth !== 'undefined') {
             this.requiresAuth = requiresAuth
@@ -44,11 +44,8 @@ class Resource {
         let cacheKey = `${method}:${this.endpoint}:${JSON.stringify(params)}`
         let request = this.api.promiseCache[cacheKey]
         if (!request) {
-          let axios_params = { url: this.endpoint, params }
-          if (this.baseUrl) {
-            axios_params.baseUrl = this.baseUrl
-          }
-          request = this.api.axios(axios_params)
+          let axiosParams = { url: this.endpoint, params, ...this.axiosParams}
+          request = this.api.axios(axiosParams)
           this.api.promiseCache[cacheKey] = request
         }
         let result = await request
@@ -59,11 +56,14 @@ class Resource {
     async post(data = undefined, params = {}) {
         await this.checkAuth()
         this.checkSupportedMethods('POST')
-        let axios_params = { method: 'POST', url: this.endpoint, data, params }
-        if (this.baseUrl) {
-          axios_params.baseUrl = this.baseUrl
+        let axiosParams = {
+          method: 'POST',
+          url: this.endpoint,
+          data,
+          params,
+          ...this.axiosParams
         }
-        return await this.api.axios(axios_params)
+        return await this.api.axios(axiosParams)
     }
 
 }
@@ -71,10 +71,10 @@ class Resource {
 export default class Api {
     constructor(host, version) {
         this.store = null
-        let domain = `${consts.api.protocol}//${host}`
+        this.domain = `${consts.api.protocol}//${host}`
         this.promiseCache = {}
         this.axios = axios.create({
-            baseURL: `${domain}/api/v${version}`
+            baseURL: `${this.domain}/api/v${version}`
         })
     }
 
@@ -113,7 +113,7 @@ export default class Api {
     // OAuth API endpoints are not vesioned
     authToken() {
         return this.createResource('/oauth/refresh', {
-            baseURL: `${this.domain}/api`,
+            axiosParams: { baseURL: `${this.domain}/api` },
             requiresAuth: false,
             supportedMethods: ['GET']
         })
@@ -121,7 +121,7 @@ export default class Api {
 
     oauthLogin() {
         return this.createResource('/oauth/token', {
-            baseURL: `${this.domain}/api`,
+            axiosParams: { baseURL: `${this.domain}/api` },
             requiresAuth: false,
             supportedMethods: ['POST']
         })
@@ -129,7 +129,7 @@ export default class Api {
 
     oauthLogout() {
         return this.createResource('/oauth/logout', {
-            baseURL: `${this.domain}/api`,
+            axiosParams: { baseURL: `${this.domain}/api` },
             requiresAuth: false,
             supportedMethods: ['POST']
         })

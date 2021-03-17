@@ -1,6 +1,6 @@
 use hourai::models::{guild::Ban as TwilightBan, guild::Member as TwilightMember, id::*, UserLike};
-use std::convert::TryInto;
 use sqlx::types::chrono::{DateTime, Utc};
+use std::convert::TryInto;
 
 pub type SqlDatabase = sqlx::Postgres;
 pub type SqlQuery<'a> = sqlx::query::Query<

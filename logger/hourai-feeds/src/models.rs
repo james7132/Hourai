@@ -1,7 +1,10 @@
 use anyhow::Result;
 use hourai::http::Error as HttpError;
 use hourai::models::{channel::embed::Embed, id::ChannelId};
-use hourai_sql::{SqlQuery, SqlQueryAs, sql_types::chrono::{DateTime, Utc}};
+use hourai_sql::{
+    sql_types::chrono::{DateTime, Utc},
+    SqlQuery, SqlQueryAs,
+};
 use http::status::StatusCode;
 use tracing::error;
 

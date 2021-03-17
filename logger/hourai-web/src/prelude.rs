@@ -1,6 +1,6 @@
-use actix_web::{web, HttpResponse};
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
+use actix_web::{web, HttpResponse};
 use thiserror::Error;
 
 pub type WebResult<T> = Result<T, WebError>;
@@ -47,11 +47,12 @@ macro_rules! box_error {
                 WebError::ResponseError(Box::new(value))
             }
         }
-    }
+    };
 }
 
-box_error!(actix_web::client::JsonPayloadError);
-box_error!(actix_web::client::SendRequestError);
+box_error!(awc::error::JsonPayloadError);
+box_error!(awc::error::PayloadError);
+box_error!(awc::error::SendRequestError);
 
 impl ResponseError for WebError {
     fn error_response(&self) -> HttpResponse {
@@ -68,7 +69,7 @@ impl ResponseError for WebError {
         match self {
             Self::ResponseError(err) => err.status_code(),
             Self::GenericHTTPError(code) => *code,
-           _ => StatusCode::INTERNAL_SERVER_ERROR
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

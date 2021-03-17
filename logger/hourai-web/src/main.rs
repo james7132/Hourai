@@ -1,23 +1,24 @@
 mod guild_config;
+mod logger;
 mod oauth;
 mod prelude;
 mod status;
 
-use hourai::{init, config};
 use actix_web::{web, App, HttpServer};
+use hourai::{config, init};
 
 pub(crate) struct AppState {
     config: hourai::config::HouraiConfig,
-    http: actix_web::client::Client,
+    http: awc::Client,
     sql: hourai_sql::SqlPool,
-    redis: hourai_redis::RedisPool
+    redis: hourai_redis::RedisPool,
 }
 
 pub fn api(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/v1")
             .service(web::scope("/bot").configure(status::scoped_config))
-            .service(web::scope("/guilds").configure(guild_config::scoped_config))
+            .service(web::scope("/guilds").configure(guild_config::scoped_config)),
     );
     // OAuth is not versioned
     cfg.service(web::scope("/oauth").configure(oauth::scoped_config));
@@ -34,15 +35,16 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(logger::TracingLogger)
             .data(AppState {
                 config: config.clone(),
-                http: actix_web::client::Client::new(),
+                http: awc::Client::new(),
                 sql: sql.clone(),
-                redis: redis.clone()
+                redis: redis.clone(),
             })
             .service(web::scope("/api").configure(api))
     })
-    .bind(format!("127.0.0.1:{}", port))?
+    .bind(format!("0.0.0.0:{}", port))?
     .run()
     .await
 }
