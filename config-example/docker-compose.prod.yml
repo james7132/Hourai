@@ -33,6 +33,58 @@ services:
       - postgres
       - redis
       - http-proxy
+  music:
+    image: james7132/hourai:latest-music
+    container_name: music
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=dev
+      - RUST_BACKTRACE=1
+      - RUST_LOG=debug
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
+    depends_on:
+      - redis
+      - http-proxy
+      - lavalink
+      - gateway-queue
+  feeds:
+    image: james7132/hourai:latest-feeds
+    container_name: feeds
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=prod
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info,sqlx=warn
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
+    expose:
+      - 9090
+    depends_on:
+      - postgres
+      - http-proxy
+      - gateway-queue
+  web:
+    image: james7132/hourai:latest-web
+    container_name: web
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=prod
+      - RUST_BACKTRACE=1
+      - RUST_LOG=debug,sqlx=warn
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
+    expose:
+      - 8080
+      - 9090
+    depends_on:
+      - postgres
+      - redis
   http-proxy:
     image: twilightrs/http-proxy
     container_name: http-proxy
