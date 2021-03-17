@@ -1,6 +1,5 @@
 import enum
 from . import proto
-from datetime import datetime, timezone
 from sqlalchemy import types
 from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy.schema import Table, ForeignKey, Index
@@ -42,7 +41,7 @@ class PendingAction(Base):
     __tablename__ = 'pending_actions'
 
     id = Column(types.Integer, primary_key=True)
-    timestamp = Column(types.TIMESTAMP, nullable=False)
+    timestamp = Column(types.DateTime(timezone=True), nullable=False)
     data = Column(Protobuf(proto.Action), nullable=False)
 
 
@@ -63,7 +62,7 @@ class EscalationEntry(Base):
     authorizer_id = Column(types.BigInteger, nullable=False)
     authorizer_name = Column(types.String(255), nullable=False)
     display_name = Column(types.String(2000), nullable=False)
-    timestamp = Column(types.TIMESTAMP, nullable=False)
+    timestamp = Column(types.DateTime(timezone=True), nullable=False)
     action = Column(Protobuf(proto.ActionSet), nullable=False)
     level_delta = Column(types.Integer, nullable=False)
 
@@ -82,7 +81,7 @@ class PendingDeescalation(Base):
 
     user_id = Column(types.BigInteger, primary_key=True)
     guild_id = Column(types.BigInteger, primary_key=True)
-    expiration = Column(types.TIMESTAMP, nullable=False)
+    expiration = Column(types.DateTime(timezone=True), nullable=False)
     amount = Column(types.BigInteger, nullable=False)
 
     entry_id = Column(types.Integer, ForeignKey("escalation_histories.id"),
@@ -103,7 +102,7 @@ class Username(Base):
     __tablename__ = 'usernames'
 
     user_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    timestamp = Column(types.TIMESTAMP, primary_key=True)
+    timestamp = Column(types.DateTime(timezone=True), primary_key=True)
     name = Column(types.String(32), nullable=False)
     discriminator = Column(types.Integer)
 
@@ -135,7 +134,7 @@ class Feed(Base):
     id = Column(types.Integer, primary_key=True, autoincrement=True)
     _type = Column('type', types.String(255), nullable=False)
     source = Column(types.String(8192), nullable=False)
-    last_updated = Column(types.TIMESTAMP, nullable=False)
+    last_updated = Column(types.DateTime(timezone=True), nullable=False)
     channels = relationship("FeedChannel", back_populates="feed")
 
     @property
@@ -149,7 +148,6 @@ class Feed(Base):
 
     def get_channels(self, bot):
         """ Returns a generator for all channels in the feed. """
-
         return (ch.get_resource(bot) for ch in self.channels)
 
 
