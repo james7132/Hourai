@@ -49,7 +49,7 @@ CREATE TABLE public.escalation_histories (
     authorizer_id bigint NOT NULL,
     authorizer_name character varying(255) NOT NULL,
     display_name character varying(2000) NOT NULL,
-    "timestamp" bigint NOT NULL,
+    "timestamp" timestamp with time zone NOT NULL,
     action bytea NOT NULL,
     level_delta integer NOT NULL
 );
@@ -88,9 +88,18 @@ CREATE TABLE public.members (
     guild_id bigint NOT NULL,
     user_id bigint NOT NULL,
     role_ids bigint[] NOT NULL,
-    nickname character varying(32)
+    nickname character varying(32),
+    present boolean DEFAULT false NOT NULL,
+    last_seen timestamp with time zone DEFAULT now() NOT NULL
 );
 ALTER TABLE public.members OWNER TO hourai;
+CREATE TABLE public.oauth (
+    refresh_token text NOT NULL,
+    user_id bigint NOT NULL,
+    access_token text NOT NULL,
+    expiration timestamp without time zone NOT NULL
+);
+ALTER TABLE public.oauth OWNER TO hourai;
 CREATE TABLE public.pending_actions (
     id integer NOT NULL,
     "timestamp" timestamp with time zone NOT NULL,
@@ -147,6 +156,8 @@ ALTER TABLE ONLY public.usernames
     ADD CONSTRAINT idx_unique_username UNIQUE (user_id, name, discriminator);
 ALTER TABLE ONLY public.members
     ADD CONSTRAINT members_pkey PRIMARY KEY (guild_id, user_id);
+ALTER TABLE ONLY public.oauth
+    ADD CONSTRAINT oauth_pkey PRIMARY KEY (refresh_token);
 ALTER TABLE ONLY public.pending_actions
     ADD CONSTRAINT pending_actions_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.pending_deescalations
