@@ -195,7 +195,7 @@ impl Ban {
 
     /// Constructs a query to clear a all bans from a given shard.
     pub fn clear_shard<'a>(shard_id: u64, shard_total: u64) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM bans WHERE (guild_id >> 22) % $1 = $2")
+        sqlx::query("DELETE FROM bans WHERE (guild_id >> 22) % $2 = $1")
             .bind(shard_id as i64)
             .bind(shard_total as i64)
     }
@@ -255,12 +255,21 @@ impl Member {
             .map(|id| RoleId(id.clone().try_into().unwrap()))
     }
 
+    pub fn set_present<'a>(guild_id: GuildId, user_id: UserId, present: bool) -> SqlQuery<'a> {
+        sqlx::query("UPDATE members SET present = $1, last_seen = now() \
+                     WHERE guild_id = $2 AND user_id = $3")
+        .bind(present)
+        .bind(guild_id.0 as i64)
+        .bind(user_id.0 as i64)
+    }
+
     pub fn insert<'a>(self) -> SqlQuery<'a> {
         sqlx::query(
-            "INSERT INTO members (guild_id, user_id, role_ids, nickname) \
-                     VALUES ($1, $2, $3, $4) \
+            "INSERT INTO members (guild_id, user_id, role_ids, nickname, present) \
+                     VALUES ($1, $2, $3, $4, true) \
                      ON CONFLICT ON CONSTRAINT members_pkey \
-                     DO UPDATE SET role_ids = excluded.role_ids, nickname = excluded.nickname",
+                     DO UPDATE SET role_ids = excluded.role_ids, nickname = excluded.nickname, \
+                     last_seen = now(), present = true",
         )
         .bind(self.guild_id)
         .bind(self.user_id)
@@ -280,6 +289,13 @@ impl Member {
         sqlx::query_as("SELECT * FROM members WHERE guild_id = $1 AND user_id = $2")
             .bind(guild_id.0 as i64)
             .bind(user_id.0 as i64)
+    }
+
+    /// Marks all members as not present in preparation for repopulating the column.
+    pub fn clear_present_shard<'a>(shard_id: u64, shard_total: u64) -> SqlQuery<'a> {
+        sqlx::query("UPDATE members SET present = false WHERE (guild_id >> 22) % $2 = $1")
+            .bind(shard_id as i64)
+            .bind(shard_total as i64)
     }
 
     /// Clears all of the records for a server

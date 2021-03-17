@@ -240,9 +240,12 @@ impl Client {
     }
 
     async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
-        Ban::clear_shard(shard_id, self.total_shards())
-            .execute(&self.sql)
-            .await?;
+        futures::join!(
+            Ban::clear_shard(shard_id, self.total_shards())
+                .execute(&self.sql),
+            hourai_sql::Member::clear_present_shard(shard_id, self.total_shards())
+                .execute(&self.sql)
+        );
         Ok(())
     }
 
@@ -283,7 +286,11 @@ impl Client {
     }
 
     async fn on_member_remove(self, evt: MemberRemove) -> Result<()> {
-        self.log_users(vec![evt.user]).await?;
+        futures::join!(
+            hourai_sql::Member::set_present(evt.guild_id, evt.user.id, false)
+                .execute(&self.sql),
+            self.log_users(vec![evt.user])
+        );
         Ok(())
     }
 
