@@ -2,6 +2,7 @@ use crate::config::HouraiConfig;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tracing::debug;
+use std::{convert::TryFrom, pin::Pin, future::Future, sync::Arc};
 
 pub fn start_logging() {
     tracing_subscriber::fmt()
@@ -32,6 +33,17 @@ pub fn init(config: &HouraiConfig) {
     );
 }
 
+pub fn cluster(config: &HouraiConfig, intents: twilight_gateway::Intents) ->
+    twilight_gateway::cluster::ClusterBuilder {
+    let cluster = twilight_gateway::Cluster::builder(&config.discord.bot_token, intents);
+    if let Some(ref uri) = config.discord.gateway_queue {
+        let queue = GatewayQueue(hyper::Uri::try_from(uri.clone()).unwrap());
+        cluster.queue(Arc::new(Box::new(queue)))
+    } else {
+        cluster
+    }
+}
+
 pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
     debug!("Creating Discord HTTP client");
     // Use the twilight HTTP proxy when configured
@@ -43,5 +55,22 @@ pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
             .build()
     } else {
         twilight_http::Client::new(&config.discord.bot_token)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GatewayQueue(hyper::Uri);
+
+impl twilight_gateway::queue::Queue for GatewayQueue {
+    fn request<'a>(&'a self, shard_id: [u64; 2]) ->
+        Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+        tracing::debug!("Queueing to IDENTIFY with the gateway...");
+        Box::pin(async move {
+            if let Err(err) = hyper::Client::new().get(self.0.clone()).await {
+                tracing::error!("Error while querying the shared gateway queue: {}", err);
+            } else {
+                tracing::debug!("Finished waiting to re-IDENTIFY with the Discord gateway.");
+            }
+        })
     }
 }

@@ -21,6 +21,7 @@ metrics-exporter-prometheus = "0.3"
 protobuf = "2.22"
 serde = "1.0"
 thiserror = "1.0"
+hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = "0.2.15"
 twilight-model = "0.3"

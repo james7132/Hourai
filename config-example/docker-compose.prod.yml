@@ -33,6 +33,7 @@ services:
       - postgres
       - redis
       - http-proxy
+      - gateway-queue
   music:
     image: james7132/hourai:latest-music
     container_name: music
@@ -66,7 +67,6 @@ services:
     depends_on:
       - postgres
       - http-proxy
-      - gateway-queue
   web:
     image: james7132/hourai:latest-web
     container_name: web

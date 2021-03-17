@@ -81,7 +81,7 @@ async fn main() {
     let cache = InMemoryCache::builder()
         .resource_types(CACHED_RESOURCES)
         .build();
-    let gateway = Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
+    let gateway = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
         .build()

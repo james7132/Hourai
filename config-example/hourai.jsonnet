@@ -49,7 +49,8 @@ local env(suffix) = {
       client_id: error "Must override client_id",
       client_secret: error "Must override client_secret",
       bot_token: error "Must override bot_token.",
-      proxy: null
+      proxy: null,
+      gateway_queue: null,
   },
 
   reddit: {
@@ -90,6 +91,8 @@ local env(suffix) = {
       client_secret: "ddDa",
       redirect_uri: "https://hourai.gg/login",
       bot_token: "ddDa",
+      proxy: "http://http-proxy/"
+      gateway-queue: "http://gateway-queue/",
     },
   },
   dev: env("dev") {
@@ -99,7 +102,8 @@ local env(suffix) = {
       client_secret: "ddDa",
       redirect_uri: "http://localhost:8080/login",
       bot_token: "ddDa",
-      proxy: "http://http-proxy/"
+      proxy: null,
+      gateway-queue: null,
     },
 
     logging: {
