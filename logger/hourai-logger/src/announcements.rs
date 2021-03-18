@@ -1,5 +1,6 @@
 use crate::Client;
 use anyhow::Result;
+use hourai::models::voice::VoiceState;
 use hourai::models::user::User;
 use hourai::models::gateway::payload::{BanAdd, MemberRemove};
 use hourai::models::id::*;
@@ -34,6 +35,37 @@ pub async fn on_member_ban(mut client: Client, evt: BanAdd) -> Result<()> {
         let msg = format!("**{}** has been banned.", evt.user.name);
         broadcast(client, config.get_bans(), msg);
     }
+    Ok(())
+}
+
+pub async fn on_voice_update(
+    mut client: Client,
+    state: VoiceState,
+    before: Option<ChannelId>
+) -> Result<()> {
+    let guild = match state.guild_id {
+        Some(guild) => guild,
+        None => return Ok(()),
+    };
+    let before_channel = before.and_then(|id| client.cache.guild_channel(id));
+    let after_channel = state.channel_id.and_then(|id| client.cache.guild_channel(id));
+    let user = match state.member {
+        Some(member) => member.user.name,
+        None => return Ok(()),
+    };
+    if let Some(config) = get_config(&mut client, guild).await? {
+        // TODO(james7132): let this be customizable.
+        let msg = match (before_channel, after_channel) {
+            (Some(b), Some(a)) => format!("**{}** moved from **{}** to **{}**.",
+                                          user, b.name, a.name),
+            (None, Some(ch)) => format!("**{}** joined **{}**.", user, ch.name),
+            (Some(ch), None) => format!("**{}** left **{}**.", user, ch.name),
+            (None, None) => return Ok(()),
+        };
+
+        broadcast(client, config.get_voice(), msg);
+    }
+
     Ok(())
 }
 

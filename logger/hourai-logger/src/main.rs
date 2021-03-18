@@ -101,13 +101,11 @@ async fn main() {
 
     let mut events = gateway.some_events(BOT_EVENTS);
     while let Some((shard_id, evt)) = events.next().await {
-        if let Event::MemberUpdate(evt) = &evt {
-            if cache.is_pending(evt.guild_id, evt.user.id) && !evt.pending {
-                announcements::on_member_join(client.clone(), evt.guild_id, evt.user.clone()).await;
-            }
-        }
-        cache.update(&evt);
-        if evt.kind() != EventType::PresenceUpdate {
+        if evt.kind() == EventType::PresenceUpdate {
+            cache.update(&evt);
+        } else {
+            client.pre_cache_event(&evt).await;
+            cache.update(&evt);
             tokio::spawn(client.clone().consume_event(shard_id, evt));
         }
     }
@@ -208,6 +206,34 @@ impl Client {
         }
     }
 
+    /// Handle events before the cache is updated.
+    async fn pre_cache_event(&self, event: &Event) -> () {
+        let kind = event.kind();
+        let result = match event {
+            Event::MemberUpdate(ref evt) => {
+                if self.cache.is_pending(evt.guild_id, evt.user.id) && !evt.pending {
+                    announcements::on_member_join(self.clone(), evt.guild_id,
+                                                  evt.user.clone()).await
+                } else {
+                    Ok(())
+                }
+            },
+            Event::VoiceStateUpdate(ref evt) => {
+                if let Some(guild_id) = evt.0.guild_id {
+                    let channel = self.cache.voice_state(guild_id, evt.0.user_id);
+                    announcements::on_voice_update(self.clone(), evt.0.clone(), channel).await
+                } else {
+                    Ok(())
+                }
+            },
+            _ => Ok(())
+        };
+
+        if let Err(err) = result {
+            error!("Error while running event with {:?}: {}", kind, err);
+        }
+    }
+
     async fn consume_event(self, shard_id: u64, event: Event) -> () {
         let kind = event.kind();
         let result = match event {
@@ -241,7 +267,7 @@ impl Client {
         };
 
         if let Err(err) = result {
-            error!("Error while running event with {:?}: {:?}", kind, err);
+            error!("Error while running event with {:?}: {}", kind, err);
         }
     }
 
