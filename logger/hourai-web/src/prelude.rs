@@ -1,10 +1,18 @@
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use thiserror::Error;
 
 pub type WebResult<T> = Result<T, WebError>;
 pub type JsonResult<T> = WebResult<web::Json<T>>;
+
+pub fn require_header<'a>(request: &'a HttpRequest, key: &str) -> WebResult<&'a str> {
+    if let Some(value) = request.headers().get(key) {
+        value.to_str().map_err(|_| WebError::MissingHeader(key.to_owned()))
+    } else {
+        Err(WebError::MissingHeader(key.to_owned()))
+    }
+}
 
 #[derive(Error, Debug)]
 pub enum WebError {
@@ -16,6 +24,10 @@ pub enum WebError {
     RedisError(#[from] redis::RedisError),
     #[error("SQL Error: {}", .0)]
     SqlError(#[from] sqlx::Error),
+    #[error("Missing Header: {}", .0)]
+    MissingHeader(String),
+    #[error("Invalid request signature.")]
+    FailedVerification,
 }
 
 impl WebError {
@@ -32,6 +44,7 @@ impl WebError {
             self.to_string()
         }
     }
+
 }
 
 impl From<StatusCode> for WebError {
@@ -58,7 +71,7 @@ impl ResponseError for WebError {
     fn error_response(&self) -> HttpResponse {
         let status = self.status_code();
         HttpResponse::build(status)
-            .header("Content-Type", "application/json")
+            .append_header(("Content-Type", "application/json"))
             .json(serde_json::json!({
                 "status": status.as_u16(),
                 "message": self.message()
@@ -69,6 +82,8 @@ impl ResponseError for WebError {
         match self {
             Self::ResponseError(err) => err.status_code(),
             Self::GenericHTTPError(code) => *code,
+            Self::MissingHeader(_) => StatusCode::BAD_REQUEST,
+            Self::FailedVerification => StatusCode::UNAUTHORIZED,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

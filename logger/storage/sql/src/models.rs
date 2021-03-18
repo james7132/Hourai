@@ -256,8 +256,10 @@ impl Member {
     }
 
     pub fn set_present<'a>(guild_id: GuildId, user_id: UserId, present: bool) -> SqlQuery<'a> {
-        sqlx::query("UPDATE members SET present = $1, last_seen = now() \
-                     WHERE guild_id = $2 AND user_id = $3")
+        sqlx::query(
+            "UPDATE members SET present = $1, last_seen = now() \
+                     WHERE guild_id = $2 AND user_id = $3",
+        )
         .bind(present)
         .bind(guild_id.0 as i64)
         .bind(user_id.0 as i64)

@@ -19,23 +19,21 @@ where
     Ok(response)
 }
 
+fn add_config<T: protobuf::Message + CachedGuildConfig + serde::Serialize>(
+    cfg: &mut web::ServiceConfig,
+    endpoint: &str,
+) {
+    cfg.service(
+        web::resource(format!("/{{guild_id}}/{}", endpoint).as_str())
+            .route(web::get().to(get_config::<T>)),
+    );
+}
+
 pub fn scoped_config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::resource("/{guild_id}/announce")
-            .route(web::get().to(get_config::<AnnouncementConfig>)),
-    );
-    cfg.service(web::resource("/{guild_id}/auto").route(web::get().to(get_config::<AutoConfig>)));
-    cfg.service(
-        web::resource("/{guild_id}/moderation")
-            .route(web::get().to(get_config::<ModerationConfig>)),
-    );
-    cfg.service(
-        web::resource("/{guild_id}/logging").route(web::get().to(get_config::<LoggingConfig>)),
-    );
-    cfg.service(web::resource("/{guild_id}/music").route(web::get().to(get_config::<MusicConfig>)));
-    cfg.service(web::resource("/{guild_id}/role").route(web::get().to(get_config::<RoleConfig>)));
-    cfg.service(
-        web::resource("/{guild_id}/validation")
-            .route(web::get().to(get_config::<ValidationConfig>)),
-    );
+    add_config::<AnnouncementConfig>(cfg, "announce");
+    add_config::<AutoConfig>(cfg, "auto");
+    add_config::<ModerationConfig>(cfg, "moderation");
+    add_config::<LoggingConfig>(cfg, "logging");
+    add_config::<RoleConfig>(cfg, "roles");
+    add_config::<ValidationConfig>(cfg, "validation");
 }
