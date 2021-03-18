@@ -166,6 +166,14 @@ impl InMemoryCache {
         value.update(self);
     }
 
+    /// Checks if a member is pending in a speciifc guild.
+    /// This runs O(1) time.
+    pub fn is_pending(&self, guild_id: GuildId, user_id: UserId) -> bool {
+        self.0
+            .pending_members
+            .contains(&(guild_id, user_id))
+    }
+
     /// Finds which voice channel a user is in for a given Guild.
     /// This runs O(1) time.
     pub fn voice_state(&self, guild_id: GuildId, user_id: UserId) -> Option<ChannelId> {

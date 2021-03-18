@@ -1,3 +1,4 @@
+mod announcements;
 mod listings;
 mod message_logging;
 
@@ -100,6 +101,11 @@ async fn main() {
 
     let mut events = gateway.some_events(BOT_EVENTS);
     while let Some((shard_id, evt)) = events.next().await {
+        if let Event::MemberUpdate(evt) = &evt {
+            if cache.is_pending(evt.guild_id, evt.user.id) && !evt.pending {
+                announcements::on_member_join(client.clone(), evt.guild_id, evt.user.clone()).await;
+            }
+        }
         cache.update(&evt);
         if evt.kind() != EventType::PresenceUpdate {
             tokio::spawn(client.clone().consume_event(shard_id, evt));
@@ -249,7 +255,10 @@ impl Client {
     }
 
     async fn on_ban_add(self, evt: BanAdd) -> Result<()> {
-        self.log_users(vec![evt.user.clone()]).await?;
+        futures::join!(
+            self.log_users(vec![evt.user.clone()]),
+            announcements::on_member_ban(self.clone(), evt.clone())
+        );
 
         let perms = self
             .fetch_guild_permissions(evt.guild_id, self.user_id)
@@ -275,7 +284,11 @@ impl Client {
     }
 
     async fn on_member_add(self, evt: MemberAdd) -> Result<()> {
-        self.log_members(&vec![evt.0]).await?;
+        let members = vec![evt.0.clone()];
+        futures::join!(
+            self.log_members(&members),
+            announcements::on_member_join(self.clone(), evt.0.guild_id, evt.0.user)
+        );
         Ok(())
     }
 
@@ -287,7 +300,8 @@ impl Client {
     async fn on_member_remove(self, evt: MemberRemove) -> Result<()> {
         futures::join!(
             hourai_sql::Member::set_present(evt.guild_id, evt.user.id, false).execute(&self.sql),
-            self.log_users(vec![evt.user])
+            self.log_users(vec![evt.user.clone()]),
+            announcements::on_member_leave(self.clone(), evt)
         );
         Ok(())
     }

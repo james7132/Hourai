@@ -2,7 +2,7 @@ import asyncio
 import discord
 import logging
 from . import approvers, rejectors
-from .context import ValidationContext
+from .context import VerificationContext
 from discord.ext import commands
 from datetime import datetime, timedelta
 from hourai import utils
@@ -29,14 +29,14 @@ def load_list(name):
     return hourai_config.load_list(hourai_config.get_config(), name)
 
 
-# TODO(james7132): Add per-server validation configuration.
+# TODO(james7132): Add per-server verification configuration.
 # TODO(james7132): Add filter for pornographic or violent avatars
-# Validators are applied in order from first to last. If a later validator has
+# Verifiers are applied in order from first to last. If a later verifier has
 # an approval reason, it overrides all previous rejection reasons.
-VALIDATORS = (
+verifierS = (
     # ---------------------------------------------------------------
-    # Suspicion Level Validators
-    #     Validators here are mostly for suspicious characteristics.
+    # Suspicion Level Verifiers
+    #     Verifiers here are mostly for suspicious characteristics.
     #     These are designed with a high-recall, low precision methdology.
     #     False positives from these are more likely.  These are low severity
     #     checks.
@@ -63,8 +63,8 @@ VALIDATORS = (
     approvers.NitroApprover(),
 
     # -----------------------------------------------------------------
-    # Questionable Level Validators
-    #     Validators here are mostly for red flags of unruly or
+    # Questionable Level Verifiers
+    #     Verifiers here are mostly for red flags of unruly or
     #     potentially troublesome.  These are designed with a
     #     high-recall, high-precision methdology. False positives from
     #     these are more likely to occur.
@@ -107,8 +107,8 @@ VALIDATORS = (
     # TODO(james7132): Reenable wide unicode character filter
 
     # -----------------------------------------------------------------
-    # Malicious Level Validators
-    #     Validators here are mostly for known offenders.
+    # Malicious Level Verifiers
+    #     Verifiers here are mostly for known offenders.
     #     These are designed with a low-recall, high precision
     #     methdology. False positives from these are far less likely to
     #     occur.
@@ -129,9 +129,9 @@ VALIDATORS = (
     rejectors.LockdownRejector(),
 
     # -----------------------------------------------------------------
-    # Override Level Validators
-    #     Validators here are made to explictly override previous
-    #     validators. These are specifically targetted at a small
+    # Override Level Verifiers
+    #     Verifiers here are made to explictly override previous
+    #     verifiers. These are specifically targetted at a small
     #     specific group of individiuals. False positives and negatives
     #     at this level are very unlikely if not impossible.
     # -----------------------------------------------------------------
@@ -140,7 +140,7 @@ VALIDATORS = (
 )
 
 
-class Validation(cogs.BaseCog):
+class Verification(cogs.BaseCog):
 
     def __init__(self, bot):
         super().__init__()
@@ -162,7 +162,7 @@ class Validation(cogs.BaseCog):
         invite.guild.invites.remove(invite)
 
     async def purge_guild(self, guild, cutoff_time, dry_run=True):
-        role = guild.validation_role
+        role = guild.verification_role
         if role is None or not guild.me.guild_permissions.kick_members:
             return
 
@@ -213,18 +213,18 @@ class Validation(cogs.BaseCog):
             ctx.guild.name,
             channel.mention if channel is not None else 'None'))
 
-    @commands.group()
+    @commands.group(name="validation")
     @commands.guild_only()
     @checks.is_moderator()
-    async def validation(self, ctx):
+    async def verification(self, ctx):
         pass
 
-    @validation.group(name='purge')
+    @verification.group(name='purge')
     @commands.bot_has_permissions(kick_members=True)
-    async def validation_purge(self, ctx, lookback: utils.human_timedelta):
+    async def verification_purge(self, ctx, lookback: utils.human_timedelta):
         """Mass kicks unverified users from the server. This isn't useful
-        unless validation is enabled and a role is assigned. See
-        "~help validation setup" for more information. Users newer than
+        unless verification is enabled and a role is assigned. See
+        "~help verification setup" for more information. Users newer than
         "lookback" will not be kicked.
 
         Example Usage:
@@ -232,7 +232,7 @@ class Validation(cogs.BaseCog):
         ~validation purge 1h
         ~validation purge 1d
         """
-        if ctx.guild.validation_role is None:
+        if ctx.guild.verification_role is None:
             await ctx.send('No role has been configured. '
                            'Please configure and propagate a role first.')
         check_time = datetime.utcnow()
@@ -251,11 +251,11 @@ class Validation(cogs.BaseCog):
         else:
             await ctx.send('Purged cancelled', delete_after=60)
 
-    @validation.group(name='lockdown')
-    async def validation_lockdown(self, ctx, time: utils.human_timedelta):
+    @verification.group(name='lockdown')
+    async def verification_lockdown(self, ctx, time: utils.human_timedelta):
         """Manually locks down the server. Forces manual verification of almost
         all users joining the server for the duration. This isn't useful unless
-        validation is enabled. See "~help validation setup" for more
+        verification is enabled. See "~help verification setup" for more
         information. A lockdown can be lifted via "~valdiation lockdown lift".
 
         Example Usage:
@@ -268,9 +268,9 @@ class Validation(cogs.BaseCog):
         await ctx.send(
             f'Lockdown enabled. Will be automatically lifted at {expiration}')
 
-    @validation_lockdown.command(name='lift')
-    async def validation_lockdown_lift(self, ctx):
-        """Lifts a lockdown from the server. See "~help validation lockdown" for
+    @verification_lockdown.command(name='lift')
+    async def verification_lockdown_lift(self, ctx):
+        """Lifts a lockdown from the server. See "~help verification lockdown" for
         more information.
 
         Warning: this is currently non-persistent. If the bot is restarted
@@ -282,64 +282,64 @@ class Validation(cogs.BaseCog):
         await ctx.guild.clear_lockdown()
         await ctx.send('Lockdown disabled.')
 
-    @validation.command(name='verify')
-    async def validation_verify(self, ctx, member: discord.Member):
+    @verification.command(name='verify')
+    async def verification_verify(self, ctx, member: discord.Member):
         """Runs verification on a provided user.
         Must be a moderator or owner of the server to use this command.
-        Validation must be enabled on a server before running this. See
-        "~help validation setup" for more information.
+        Verification must be enabled on a server before running this. See
+        "~help verification setup" for more information.
 
         Example Usage:
         ~validation verify @Bob
         ~validation verify Alice
         """
-        config = ctx.guild.config.validation
+        config = ctx.guild.config.verification
         if not config.enabled:
-            await ctx.send('Validation has not been setup. Please see '
-                           '`~help validation` for more details.')
+            await ctx.send('Verification has not been setup. Please see '
+                           '`~help verification` for more details.')
             return
 
-        validation_ctx = ValidationContext(ctx.bot, member, config)
-        await validation_ctx.validate_member(VALIDATORS)
-        await validation_ctx.send_log_message(ctx, include_invite=False)
+        verification_ctx = VerificationContext(ctx.bot, member, config)
+        await verification_ctx.verify_member(verifierS)
+        await verification_ctx.send_log_message(ctx, include_invite=False)
 
-    @validation.command(name="setup")
-    async def validation_setup(self, ctx, role: discord.Role = None):
-        config = ctx.guild.config.validation
+    @verification.command(name="setup")
+    async def verification_setup(self, ctx, role: discord.Role = None):
+        config = ctx.guild.config.verification
         config.enabled = True
         if role is not None:
             config.role_id = role.id
         else:
             config.ClearField('role_id')
         await ctx.guild.flush_config()
-        await ctx.send('Validation configuration complete! Please run '
-                       '`~validation propagate` to'
+        await ctx.send('Verification configuration complete! Please run '
+                       '`~verification propagate` to'
                        ' complete setup.')
 
-    @validation.command(name="disable")
-    async def validation_disable(self, ctx):
-        ctx.guild.config.validation.enabled = False
+    @verification.command(name="disable")
+    async def verification_disable(self, ctx):
+        ctx.guild.config.verification.enabled = False
         await ctx.guild.flush_config()
-        await ctx.send('Validation disabled. To reenable, rerun `~validation '
+        await ctx.send('Verification disabled. To reenable, rerun `~verification '
                        'setup`.')
 
-    @validation.command(name="propagate")
+    @verification.command(name="propagate")
     @commands.bot_has_permissions(manage_roles=True)
-    async def validation_propagate(self, ctx):
-        config = ctx.guild.config.validation
+    async def verification_propagate(self, ctx):
+        config = ctx.guild.config.verification
         if not config.HasField('role_id'):
-            await ctx.send('No validation config was found. Please run '
+            await ctx.send('No verification config was found. Please run '
                            '`~valdiation setup`')
             return
 
         role = ctx.guild.get_role(config.role_id)
         if role is None:
             await ctx.send("Verification role not found.")
-            config.ClearField('kick_unvalidated_users_after')
+            config.ClearField('kick_unverifyd_users_after')
             await ctx.guild.flush_config()
             return
 
-        msg = await ctx.send('Propagating validation role...!')
+        msg = await ctx.send('Propagating verification role...!')
         last_update = float('-inf')
         total_processed = 0
         updated = 0
@@ -365,12 +365,12 @@ class Validation(cogs.BaseCog):
             await self.on_join(after)
 
     async def on_join(self, member):
-        config = member.guild.config.validation
+        config = member.guild.config.verification
         if config is None or not config.enabled:
             return
 
-        ctx = ValidationContext(self.bot, member, config)
-        await ctx.validate_member(VALIDATORS)
+        ctx = VerificationContext(self.bot, member, config)
+        await ctx.verify_member(verifierS)
         await self.verify_member(ctx)
 
         msg = await ctx.send_modlog_message()
@@ -427,7 +427,7 @@ class Validation(cogs.BaseCog):
             await func(guild, user, target)
 
     async def approve_member_by_reaction(self, guild, user, target):
-        ctx = ValidationContext(self.bot, target, guild.config.validation)
+        ctx = VerificationContext(self.bot, target, guild.config.verification)
         try:
             await self.verify_member(ctx)
             await guild.modlog.send(
@@ -492,4 +492,4 @@ class Validation(cogs.BaseCog):
 
 
 def setup(bot):
-    bot.add_cog(Validation(bot))
+    bot.add_cog(Verification(bot))

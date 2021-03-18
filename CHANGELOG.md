@@ -42,17 +42,17 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
    rejoining servers. Useful for giving users back their roles or keeping
    punishment roles applied.
    * Enabled/disabled on a per-role basis.
-   * Ignores the validation role if validation is enabled on the server.
+   * Ignores the verification role if verification is enabled on the server.
    * Currently does not have a timeout to rejoin the server, but may have one
      introduced in the future.
  * [Logging] Added function to log edited messages. Use `~log edited` to
    enable/disable logging of edited messages.
- * [Validation] `~validation` commands have been documented on the documentation
+ * [Verification] `~validation` commands have been documented on the documentation
    site.
- * [Validation] `~validation lockdown` now persists between bot restarts.
- * [Validation] Added `~validation disable` for servers that wish to disable
-   validation.
- * [Validation] Fixed a modlog error where validation results will say that the
+ * [Verification] `~validation lockdown` now persists between bot restarts.
+ * [Verification] Added `~validation disable` for servers that wish to disable
+   verification.
+ * [Verification] Fixed a modlog error where verification results will say that the
    a user joined via a vanity URL when the creator of the real invite link has
    deleted their Discord account.
  * [Logging] Logging of deleted/edited messages can be separated from the
@@ -69,7 +69,7 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
  * [Moderation] `~ban` and other moderation commands now support adding a reason
    to the ban. Regardless of whether a reason is provided , the bot will log who
    used the command as a part of the reason.
- * [Validation] Validation messages will now include information about which
+ * [Verification] Verification messages will now include information about which
    instant invite a user used to join. This will also work with servers with
    vanity URLs. This is only available when the bot has the `Manage Server`
    permissions due to Discord API restrictions.
@@ -83,47 +83,47 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
    `~pingmod`)
  * [Feeds] `~announce join/leave/ban` have been fixed and will toggle the correct
    announcements in the target channels.
- * [Validation] Removed any potential for false positives in detecting Discord
+ * [Verification] Removed any potential for false positives in detecting Discord
    Staff or Discord Partners.
- * [Validation] The bot will now approve all Verified Bot Developers as
+ * [Verification] The bot will now approve all Verified Bot Developers as
    distinguished users (like Discord Staff or Partners). This is done as verified
    bot developers strict identity verification and require developing a bot that
    is on more than 75 servers. This is sufficient to pass most forms of
-   validation.
- * [Validation] Expanded approval check for Nitro include users with the Early
+   verification.
+ * [Verification] Expanded approval check for Nitro include users with the Early
    Supporter badges.
- * [Validation] Expanded approval check for Nitro to include users with custom
+ * [Verification] Expanded approval check for Nitro to include users with custom
    statuses with custom emoji, which can only be set by users with Nitro.
- * [Validation] Attempts to bypass username filters by using non-ASCII characters
+ * [Verification] Attempts to bypass username filters by using non-ASCII characters
    to avoid direct matches will now fail. (i.e. using the username "ＦＵＣＣＫ"
    will still the match the "fuck" username filter). This applies to the
    following checks:
    - Sexually Inapproriate Usernames
    - Offensive Usernames
    - Banned User Names
- * [Validation] The bot will now reject any user with wide-width unicode
+ * [Verification] The bot will now reject any user with wide-width unicode
    character usernames as these tend to be disruptive to other users. Examples
    of these kinds of characters can be seen
    [here](https://www.reddit.com/r/Unicode/comments/5qa7e7/widestlongest_unicode_characters_list/).
- * [Validation] The three reaction buttons will now operate as expected:
+ * [Verification] The three reaction buttons will now operate as expected:
    - White Check Mark: Verify User. User reacting needs Manage Roles.
    - Red X: Kick User. User reacting needs Kick Users.
    - Skull and Cross Bones: Ban User. User reacting needs Ban Members.
- * [Validation] Actions taken by pressing the reaction buttons on validation logs
+ * [Verification] Actions taken by pressing the reaction buttons on verification logs
    will be logged in the modlog.
 
 ## v1.3.0 (06/17/2020)
 
  * [General] Command will now give more complete explainations when they fail to
    run.
- * [Validation] Removed redundant reasons in validation reports.
- * [Validation] Users that have an exact avatar match with a banned user will now
+ * [Verification] Removed redundant reasons in verification reports.
+ * [Verification] Users that have an exact avatar match with a banned user will now
    be rejected.
- * [Validation] Modlog output for rejected users will now use a mention of
+ * [Verification] Modlog output for rejected users will now use a mention of
    the user to make it easier to pull up the user's profile.
- * [Validation] Cross server ban checks will now state how many servers a user
+ * [Verification] Cross server ban checks will now state how many servers a user
    has been banned from.
- * [Validation] Added "~validation purge" command to mass remove unverified
+ * [Verification] Added "~validation purge" command to mass remove unverified
    users. A potential substitute for pruning servers.
  * [Music] When users leave the voice channel, their queued music will now be
    cleared 5 minutes after leaving the channel if they do not return.
@@ -141,10 +141,10 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
    bot are now documented via the [GitHub
    wiki](https://github.com/james7132/Hourai/wiki). This will be moved to a
    seperate documentation site in the future.
- * [Validation] Automatic validation will now reject users with username
+ * [Verification] Automatic verification will now reject users with username
    histories that may suggest fake account deletion (making it look like they
    deleted their accounts without actually triggering account deletion).
- * [Validation] `~valdiation lockdown` - Temporarily force manual validation for
+ * [Verification] `~valdiation lockdown` - Temporarily force manual verification for
    all new joins. Useful during raids.
  * [Modedration] **Beta feature: Escalation.** A customizable way of codifying
    progressive moderation action to reduce moderation mental overhead. Full
@@ -166,8 +166,8 @@ just yet. These need to be manually enabled and configured by the bot owner(s).
    Will be used to communicate important information regarding the bot to server
    owners and moderators in the future.
  * [General] Improved `~help` documentation on multiple commands.
- * [Validation] Added `~validation verify` for running out-of-band validation.
- * [Validation] Added an Override level approver for approving owners of
+ * [Verification] Added `~validation verify` for running out-of-band verification.
+ * [Verification] Added an Override level approver for approving owners of
    Partnered or Verified servers.
  * [Music] Fixed bug where non-DJ users could use `~stop`.
  * [Music] Improved stability of music bot features. Music bot should be able to

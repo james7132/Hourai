@@ -8,7 +8,9 @@ pub type JsonResult<T> = WebResult<web::Json<T>>;
 
 pub fn require_header<'a>(request: &'a HttpRequest, key: &str) -> WebResult<&'a str> {
     if let Some(value) = request.headers().get(key) {
-        value.to_str().map_err(|_| WebError::MissingHeader(key.to_owned()))
+        value
+            .to_str()
+            .map_err(|_| WebError::MissingHeader(key.to_owned()))
     } else {
         Err(WebError::MissingHeader(key.to_owned()))
     }
@@ -44,7 +46,6 @@ impl WebError {
             self.to_string()
         }
     }
-
 }
 
 impl From<StatusCode> for WebError {

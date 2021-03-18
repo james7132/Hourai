@@ -6,11 +6,11 @@ from hourai import utils
 from hourai.utils import embed, format
 from hourai.db import models
 
-log = logging.getLogger('hourai.validation')
+log = logging.getLogger('hourai.verification')
 Username = collections.namedtuple('Username', 'name discriminator timestamp')
 
 
-class ValidationContext:
+class VerificationContext:
 
     def __init__(self, bot, member, guild_config):
         assert member is not None
@@ -30,11 +30,11 @@ class ValidationContext:
 
     @property
     def config(self):
-        return self.guild.config.validation
+        return self.guild.config.verification
 
     @property
     def role(self):
-        return self.guild.validation_role
+        return self.guild.verification_role
 
     @property
     def usernames(self):
@@ -88,13 +88,13 @@ class ValidationContext:
                     f'Verified {self.member.mention}, but bot is missing '
                     f' permissions to give them the role')
 
-    async def validate_member(self, validators):
-        for validator in validators:
+    async def verify_member(self, verifiers):
+        for verifier in verifiers:
             try:
-                await validator.validate_member(self)
+                await verifier.verify_member(self)
             except Exception as error:
                 # TODO(james7132) Handle the error
-                self.bot.dispatch('log_error', 'Validation', error)
+                self.bot.dispatch('log_error', 'Verification', error)
         return self.approved
 
     async def send_modlog_message(self):

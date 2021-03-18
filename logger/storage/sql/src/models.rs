@@ -80,14 +80,14 @@ impl Username {
 }
 
 #[derive(Debug, sqlx::FromRow)]
-pub struct ValidationBan {
+pub struct VerificationBan {
     pub user_id: i64,
     pub reason: Option<String>,
     pub name: String,
     pub discriminator: String,
 }
 
-impl ValidationBan {
+impl VerificationBan {
     pub fn fetch_by_name<'a>(guild_id: GuildId, name: impl Into<String>) -> SqlQueryAs<'a, Self> {
         let mut name = name.into().clone();
         name.make_ascii_lowercase();

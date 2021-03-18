@@ -7,7 +7,7 @@ use hourai::{
     cache::InMemoryCache,
     models::{user::User, Snowflake},
 };
-use hourai_sql::{Ban, SqlPool, Username, ValidationBan};
+use hourai_sql::{Ban, SqlPool, Username, VerificationBan};
 use regex::Regex;
 
 lazy_static! {
@@ -22,8 +22,8 @@ fn is_user_deleted(user: &User) -> bool {
 struct DeletedUserRejector(SqlPool);
 
 #[async_trait]
-impl Validator for DeletedUserRejector {
-    async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()> {
+impl Verifier for DeletedUserRejector {
+    async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         if is_user_deleted(&ctx.member().user) {
             ctx.add_rejection_reason(
                 "Deleted users cannot be active on Discord. User has been \
@@ -67,8 +67,8 @@ struct BannedUserRejector {
 }
 
 #[async_trait]
-impl Validator for BannedUserRejector {
-    async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()> {
+impl Verifier for BannedUserRejector {
+    async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         let bans: Vec<Ban> = Ban::fetch_user_bans(ctx.member().user.id)
             .fetch_all(&self.sql)
             .await?;
@@ -106,10 +106,10 @@ impl Validator for BannedUserRejector {
 struct BannedUsernameRejector(SqlPool);
 
 #[async_trait]
-impl Validator for BannedUsernameRejector {
-    async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()> {
+impl Verifier for BannedUsernameRejector {
+    async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         let name_bans =
-            ValidationBan::fetch_by_name(ctx.member().guild_id, ctx.member().user.name.as_str())
+            VerificationBan::fetch_by_name(ctx.member().guild_id, ctx.member().user.name.as_str())
                 .fetch_all(&self.0)
                 .await?;
         for ban in name_bans {
@@ -127,7 +127,7 @@ impl Validator for BannedUsernameRejector {
             return Ok(());
         }
 
-        let avatar_bans = ValidationBan::fetch_by_name(
+        let avatar_bans = VerificationBan::fetch_by_name(
             ctx.member().guild_id,
             ctx.member().user.avatar.as_ref().unwrap(),
         )
@@ -152,18 +152,18 @@ impl Validator for BannedUsernameRejector {
 pub trait StringMatchRejector: Sync {
     type Key;
     fn regexes(&self) -> Vec<(Self::Key, Regex)>;
-    async fn criteria(&self, ctx: &context::ValidationContext) -> Result<Vec<String>>;
+    async fn criteria(&self, ctx: &context::VerificationContext) -> Result<Vec<String>>;
     fn reason(&self, key: &Self::Key, matched: &str) -> String;
 }
 
 #[async_trait]
-impl<T: StringMatchRejector> Validator for T {
-    async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()> {
+impl<T: StringMatchRejector> Verifier for T {
+    async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         let criteria = self.criteria(&ctx).await?;
         let regexes = self.regexes();
         for check in criteria {
             for (key, regex) in &regexes {
-                if let Some(reg_match) = regex.find(check.as_str()) {
+                if let Some(_) = regex.find(check.as_str()) {
                     let reason = self.reason(&key, check.as_str());
                     ctx.add_rejection_reason(reason);
                 }
@@ -224,7 +224,7 @@ impl StringMatchRejector for UsernameMatchRejector {
             .collect()
     }
 
-    async fn criteria(&self, ctx: &context::ValidationContext) -> Result<Vec<String>> {
+    async fn criteria(&self, ctx: &context::VerificationContext) -> Result<Vec<String>> {
         Ok(Username::fetch(ctx.member().user.id, Some(20))
             .fetch_all(&self.sql)
             .await?
@@ -238,16 +238,16 @@ impl StringMatchRejector for UsernameMatchRejector {
     }
 }
 
-pub(super) fn new_account(lookback: Duration) -> BoxedValidator {
+pub(super) fn new_account(lookback: Duration) -> BoxedVerifier {
     let human_lookback = humantime::format_duration(lookback.to_std().unwrap());
-    GenericValidator::new_rejector(
+    GenericVerifier::new_rejector(
         format!("Account created less than {} ago.", human_lookback),
         move |ctx| Ok(ctx.member().created_at() - Utc::now() < lookback),
     )
 }
 
-pub(super) fn no_avatar() -> BoxedValidator {
-    GenericValidator::new_rejector("User has no avatar.", move |ctx| {
+pub(super) fn no_avatar() -> BoxedVerifier {
+    GenericVerifier::new_rejector("User has no avatar.", move |ctx| {
         Ok(ctx.member().user.avatar.is_none())
     })
 }
@@ -256,7 +256,7 @@ pub(super) fn banned_user(
     sql: SqlPool,
     cache: InMemoryCache,
     min_guild_size: u64,
-) -> BoxedValidator {
+) -> BoxedVerifier {
     Box::new(BannedUserRejector {
         sql,
         cache,
@@ -264,10 +264,10 @@ pub(super) fn banned_user(
     })
 }
 
-pub(super) fn banned_username(sql: SqlPool) -> BoxedValidator {
+pub(super) fn banned_username(sql: SqlPool) -> BoxedVerifier {
     Box::new(BannedUsernameRejector(sql))
 }
 
-pub(super) fn deleted_user(sql: SqlPool) -> BoxedValidator {
+pub(super) fn deleted_user(sql: SqlPool) -> BoxedVerifier {
     Box::new(DeletedUserRejector(sql))
 }
