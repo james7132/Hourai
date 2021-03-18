@@ -3,22 +3,14 @@ use bitflags::bitflags;
 bitflags! {
     /// A set of bitflags which can be used to specify what resource to process
     /// into the cache.
-    ///
-    /// For example, specifying [`CHANNEL`] but not [`MESSAGE`] will cache
-    /// created channels, channel updates, and channel deletes, but not their
-    /// messages.
-    pub struct ResourceType: u64 {
+    pub struct ResourceType: u8 {
         const CHANNEL = 1;
-        const EMOJI = 1 << 1;
         const GUILD = 1 << 2;
         const MEMBER = 1 << 3;
-        const MESSAGE = 1 << 4;
-        const PRESENCE = 1 << 5;
-        const REACTION = 1 << 6;
-        const ROLE = 1 << 7;
-        const USER_CURRENT = 1 << 8;
-        const USER = 1 << 9;
-        const VOICE_STATE = 1 << 10;
+        const PRESENCE = 1 << 4;
+        const ROLE = 1 << 5;
+        const USER_CURRENT = 1 << 6;
+        const VOICE_STATE = 1 << 7;
     }
 }
 
@@ -69,16 +61,12 @@ mod tests {
     #[allow(clippy::cognitive_complexity)]
     fn test_resource_type_const_values() {
         assert_eq!(1, ResourceType::CHANNEL.bits());
-        assert_eq!(1 << 1, ResourceType::EMOJI.bits());
         assert_eq!(1 << 2, ResourceType::GUILD.bits());
         assert_eq!(1 << 3, ResourceType::MEMBER.bits());
-        assert_eq!(1 << 4, ResourceType::MESSAGE.bits());
-        assert_eq!(1 << 5, ResourceType::PRESENCE.bits());
-        assert_eq!(1 << 6, ResourceType::REACTION.bits());
-        assert_eq!(1 << 7, ResourceType::ROLE.bits());
-        assert_eq!(1 << 8, ResourceType::USER_CURRENT.bits());
-        assert_eq!(1 << 9, ResourceType::USER.bits());
-        assert_eq!(1 << 10, ResourceType::VOICE_STATE.bits());
+        assert_eq!(1 << 4, ResourceType::PRESENCE.bits());
+        assert_eq!(1 << 5, ResourceType::ROLE.bits());
+        assert_eq!(1 << 6, ResourceType::USER_CURRENT.bits());
+        assert_eq!(1 << 7, ResourceType::VOICE_STATE.bits());
     }
 
     #[test]

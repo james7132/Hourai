@@ -13,17 +13,16 @@ pub use self::{
 use self::model::*;
 use dashmap::{mapref::entry::Entry, DashMap, DashSet};
 use std::{
-    borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashSet},
+    collections::HashSet,
     hash::Hash,
     sync::{Arc, Mutex},
 };
 use twilight_model::{
     channel::{Group, GuildChannel, PrivateChannel},
     gateway::presence::{Presence, Status, UserOrId},
-    guild::{Emoji, Guild, Member, PartialMember, Permissions, Role},
-    id::{ChannelId, EmojiId, GuildId, MessageId, RoleId, UserId},
-    user::{CurrentUser, User},
+    guild::{Guild, Member, Permissions, Role},
+    id::{ChannelId, GuildId, RoleId, UserId},
+    user::CurrentUser,
     voice::VoiceState,
 };
 
@@ -83,24 +82,19 @@ fn upsert_item<K: Eq + Hash, V: PartialEq>(map: &DashMap<K, Arc<V>>, k: K, v: V)
 #[derive(Debug, Default)]
 struct InMemoryCacheRef {
     config: Arc<Config>,
-    channels_guild: DashMap<ChannelId, GuildItem<GuildChannel>>,
+    channels_guild: DashMap<ChannelId, GuildItem<CachedChannel>>,
     channels_private: DashMap<ChannelId, Arc<PrivateChannel>>,
     // So long as the lock isn't held across await or panic points this is fine.
     current_user: Mutex<Option<Arc<CurrentUser>>>,
-    emojis: DashMap<EmojiId, GuildItem<CachedEmoji>>,
     groups: DashMap<ChannelId, Arc<Group>>,
     guilds: DashMap<GuildId, Arc<CachedGuild>>,
     guild_channels: DashMap<GuildId, HashSet<ChannelId>>,
-    guild_emojis: DashMap<GuildId, HashSet<EmojiId>>,
-    guild_members: DashMap<GuildId, HashSet<UserId>>,
     guild_presences: DashMap<GuildId, HashSet<UserId>>,
     guild_roles: DashMap<GuildId, HashSet<RoleId>>,
-    members: DashMap<(GuildId, UserId), Arc<CachedMember>>,
-    messages: DashMap<ChannelId, BTreeMap<MessageId, Arc<CachedMessage>>>,
     roles: DashMap<RoleId, GuildItem<Role>>,
     unavailable_guilds: DashSet<GuildId>,
-    users: DashMap<UserId, (Arc<User>, BTreeSet<GuildId>)>,
     voice_states: DashMap<(GuildId, UserId), ChannelId>,
+    pending_members: DashSet<(GuildId, UserId)>,
 }
 
 /// A thread-safe, in-memory-process cache of Discord data. It can be cloned and
@@ -200,7 +194,7 @@ impl InMemoryCache {
     /// This is an O(1) operation. This requires the [`GUILDS`] intent.
     ///
     /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
-    pub fn guild_channel(&self, channel_id: ChannelId) -> Option<Arc<GuildChannel>> {
+    pub fn guild_channel(&self, channel_id: ChannelId) -> Option<Arc<CachedChannel>> {
         self.0
             .channels_guild
             .get(&channel_id)
@@ -216,15 +210,6 @@ impl InMemoryCache {
             .lock()
             .expect("current user poisoned")
             .clone()
-    }
-
-    /// Gets an emoji by ID.
-    ///
-    /// This is an O(1) operation. This requires the [`GUILD_EMOJIS`] intent.
-    ///
-    /// [`GUILD_EMOJIS`]: ::twilight_model::gateway::Intents::GUILD_EMOJIS
-    pub fn emoji(&self, emoji_id: EmojiId) -> Option<Arc<CachedEmoji>> {
-        self.0.emojis.get(&emoji_id).map(|x| Arc::clone(&x.data))
     }
 
     /// Gets a group by ID.
@@ -268,35 +253,6 @@ impl InMemoryCache {
             .map(|r| r.value().clone())
     }
 
-    /// Gets the set of emojis in a guild.
-    ///
-    /// This is a O(m) operation, where m is the amount of emojis in the guild.
-    /// This requires both the [`GUILDS`] and [`GUILD_EMOJIS`] intents.
-    ///
-    /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
-    /// [`GUILD_EMOJIS`]: ::twilight_model::gateway::Intents::GUILD_EMOJIS
-    pub fn guild_emojis(&self, guild_id: GuildId) -> Option<HashSet<EmojiId>> {
-        self.0
-            .guild_emojis
-            .get(&guild_id)
-            .map(|r| r.value().clone())
-    }
-
-    /// Gets the set of members in a guild.
-    ///
-    /// This list may be incomplete if not all members have been cached.
-    ///
-    /// This is a O(m) operation, where m is the amount of members in the guild.
-    /// This requires the [`GUILD_MEMBERS`] intent.
-    ///
-    /// [`GUILD_MEMBERS`]: ::twilight_model::gateway::Intents::GUILD_MEMBERS
-    pub fn guild_members(&self, guild_id: GuildId) -> Option<HashSet<UserId>> {
-        self.0
-            .guild_members
-            .get(&guild_id)
-            .map(|r| r.value().clone())
-    }
-
     /// Gets the set of presences in a guild.
     ///
     /// This list may be incomplete if not all members have been cached.
@@ -320,35 +276,6 @@ impl InMemoryCache {
     /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
     pub fn guild_roles(&self, guild_id: GuildId) -> Option<HashSet<RoleId>> {
         self.0.guild_roles.get(&guild_id).map(|r| r.value().clone())
-    }
-
-    /// Gets a member by guild ID and user ID.
-    ///
-    /// This is an O(1) operation. This requires the [`GUILD_MEMBERS`] intent.
-    ///
-    /// [`GUILD_MEMBERS`]: ::twilight_model::gateway::Intents::GUILD_MEMBERS
-    pub fn member(&self, guild_id: GuildId, user_id: UserId) -> Option<Arc<CachedMember>> {
-        self.0
-            .members
-            .get(&(guild_id, user_id))
-            .map(|r| Arc::clone(r.value()))
-    }
-
-    /// Gets a message by channel ID and message ID.
-    ///
-    /// This is an O(log n) operation. This requires one or both of the
-    /// [`GUILD_MESSAGES`] or [`DIRECT_MESSAGES`] intents.
-    ///
-    /// [`GUILD_MESSAGES`]: ::twilight_model::gateway::Intents::GUILD_MESSAGES
-    /// [`DIRECT_MESSAGES`]: ::twilight_model::gateway::Intents::DIRECT_MESSAGES
-    pub fn message(
-        &self,
-        channel_id: ChannelId,
-        message_id: MessageId,
-    ) -> Option<Arc<CachedMessage>> {
-        let channel = self.0.messages.get(&channel_id)?;
-
-        channel.get(&message_id).cloned()
     }
 
     /// Gets a presence by, optionally, guild ID, and user ID.
@@ -388,15 +315,6 @@ impl InMemoryCache {
             .map(|role| Arc::clone(&role.data))
     }
 
-    /// Gets a user by ID.
-    ///
-    /// This is an O(1) operation. This requires the [`GUILD_MEMBERS`] intent.
-    ///
-    /// [`GUILD_MEMBERS`]: ::twilight_model::gateway::Intents::GUILD_MEMBERS
-    pub fn user(&self, user_id: UserId) -> Option<Arc<User>> {
-        self.0.users.get(&user_id).map(|r| Arc::clone(&r.0))
-    }
-
     /// Clear the state of the Cache.
     ///
     /// This is equal to creating a new empty cache.
@@ -408,20 +326,15 @@ impl InMemoryCache {
             .lock()
             .expect("current user poisoned")
             .take();
-        self.0.emojis.clear();
         self.0.groups.clear();
         self.0.guilds.clear();
         self.0.guild_channels.clear();
-        self.0.guild_emojis.clear();
-        self.0.guild_members.clear();
         self.0.guild_presences.clear();
         self.0.guild_roles.clear();
-        self.0.members.clear();
-        self.0.messages.clear();
         self.0.roles.clear();
         self.0.unavailable_guilds.clear();
-        self.0.users.clear();
         self.0.voice_states.clear();
+        self.0.pending_members.clear();
     }
 
     /// Gets the guild-level permissions for a given member.
@@ -490,7 +403,7 @@ impl InMemoryCache {
         &self,
         guild_id: GuildId,
         mut channel: GuildChannel,
-    ) -> Arc<GuildChannel> {
+    ) -> Arc<CachedChannel> {
         match channel {
             GuildChannel::Category(ref mut c) => {
                 c.guild_id.replace(guild_id);
@@ -510,70 +423,12 @@ impl InMemoryCache {
             .or_default()
             .insert(id);
 
-        upsert_guild_item(&self.0.channels_guild, guild_id, id, channel)
-    }
-
-    fn cache_emoji(&self, guild_id: GuildId, emoji: Emoji) -> Arc<CachedEmoji> {
-        match self.0.emojis.get(&emoji.id) {
-            Some(e) if *e.data == emoji => return Arc::clone(&e.data),
-            Some(_) | None => {}
-        }
-
-        let user = match emoji.user {
-            Some(u) => Some(self.cache_user(Cow::Owned(u), Some(guild_id))),
-            None => None,
+        let cached_channel = CachedChannel {
+            id: channel.id(),
+            name: channel.name().to_owned(),
         };
 
-        let cached = Arc::new(CachedEmoji {
-            id: emoji.id,
-            animated: emoji.animated,
-            name: emoji.name,
-            managed: emoji.managed,
-            require_colons: emoji.require_colons,
-            roles: emoji.roles,
-            user,
-            available: emoji.available,
-        });
-
-        self.0.emojis.insert(
-            cached.id,
-            GuildItem {
-                data: Arc::clone(&cached),
-                guild_id,
-            },
-        );
-
-        self.0
-            .guild_emojis
-            .entry(guild_id)
-            .or_default()
-            .insert(emoji.id);
-
-        cached
-    }
-
-    fn cache_emojis(&self, guild_id: GuildId, emojis: Vec<Emoji>) {
-        if let Some(mut guild_emojis) = self.0.guild_emojis.get_mut(&guild_id) {
-            let incoming: Vec<EmojiId> = emojis.iter().map(|e| e.id).collect();
-
-            let removal_filter: Vec<EmojiId> = guild_emojis
-                .iter()
-                .copied()
-                .filter(|e| !incoming.contains(e))
-                .collect();
-
-            for to_remove in &removal_filter {
-                guild_emojis.remove(to_remove);
-            }
-
-            for to_remove in &removal_filter {
-                self.0.emojis.remove(to_remove);
-            }
-        }
-
-        for emoji in emojis {
-            self.cache_emoji(guild_id, emoji);
-        }
+        upsert_guild_item(&self.0.channels_guild, guild_id, id, cached_channel)
     }
 
     fn cache_group(&self, group: Group) -> Arc<Group> {
@@ -588,13 +443,7 @@ impl InMemoryCache {
             self.cache_guild_channels(guild.id, guild.channels);
         }
 
-        if self.wants(ResourceType::EMOJI) {
-            self.0.guild_emojis.insert(guild.id, HashSet::new());
-            self.cache_emojis(guild.id, guild.emojis);
-        }
-
         if self.wants(ResourceType::MEMBER) {
-            self.0.guild_members.insert(guild.id, HashSet::new());
             self.cache_members(guild.id, guild.members);
         }
 
@@ -630,72 +479,18 @@ impl InMemoryCache {
         self.0.guilds.insert(guild.id, Arc::new(guild));
     }
 
-    fn cache_member(&self, guild_id: GuildId, member: Member) -> Arc<CachedMember> {
-        let member_id = member.user.id;
-        let id = (guild_id, member_id);
-        match self.0.members.get(&id) {
-            Some(m) if **m == member => return Arc::clone(&m),
-            Some(_) | None => {}
+    fn cache_member(&self, guild_id: GuildId, member: &Member) {
+        let id = (guild_id, member.user.id);
+        if member.pending {
+            self.0.pending_members.insert(id);
+        } else {
+            self.0.pending_members.remove(&id);
         }
-
-        let user = self.cache_user(Cow::Owned(member.user), Some(guild_id));
-        let cached = Arc::new(CachedMember {
-            deaf: member.deaf,
-            guild_id,
-            joined_at: member.joined_at,
-            mute: member.mute,
-            nick: member.nick,
-            pending: member.pending,
-            premium_since: member.premium_since,
-            roles: member.roles,
-            user,
-        });
-        self.0.members.insert(id, Arc::clone(&cached));
-        self.0
-            .guild_members
-            .entry(guild_id)
-            .or_default()
-            .insert(member_id);
-        cached
-    }
-
-    fn cache_borrowed_partial_member(
-        &self,
-        guild_id: GuildId,
-        member: &PartialMember,
-        user: Arc<User>,
-    ) -> Arc<CachedMember> {
-        let id = (guild_id, user.id);
-        match self.0.members.get(&id) {
-            Some(m) if **m == member => return Arc::clone(&m),
-            Some(_) | None => {}
-        }
-
-        self.0
-            .guild_members
-            .entry(guild_id)
-            .or_default()
-            .insert(user.id);
-
-        let cached = Arc::new(CachedMember {
-            deaf: member.deaf,
-            guild_id,
-            joined_at: member.joined_at.to_owned(),
-            mute: member.mute,
-            nick: member.nick.to_owned(),
-            pending: false,
-            premium_since: None,
-            roles: member.roles.to_owned(),
-            user,
-        });
-        self.0.members.insert(id, Arc::clone(&cached));
-
-        cached
     }
 
     fn cache_members(&self, guild_id: GuildId, members: impl IntoIterator<Item = Member>) {
         for member in members {
-            self.cache_member(guild_id, member);
+            self.cache_member(guild_id, &member);
         }
     }
 
@@ -756,29 +551,6 @@ impl InMemoryCache {
         upsert_guild_item(&self.0.roles, guild_id, role.id, role)
     }
 
-    fn cache_user(&self, user: Cow<'_, User>, guild_id: Option<GuildId>) -> Arc<User> {
-        match self.0.users.get_mut(&user.id) {
-            Some(mut u) if *u.0 == *user => {
-                if let Some(guild_id) = guild_id {
-                    u.1.insert(guild_id);
-                }
-
-                return Arc::clone(&u.value().0);
-            }
-            Some(_) | None => {}
-        }
-        let user = Arc::new(user.into_owned());
-        if let Some(guild_id) = guild_id {
-            let mut guild_id_set = BTreeSet::new();
-            guild_id_set.insert(guild_id);
-            self.0
-                .users
-                .insert(user.id, (Arc::clone(&user), guild_id_set));
-        }
-
-        user
-    }
-
     fn cache_voice_states(
         &self,
         guild_id: GuildId,
@@ -814,7 +586,7 @@ impl InMemoryCache {
     ///
     /// The guild channel data itself and the channel entry in its guild's list
     /// of channels will be deleted.
-    fn delete_guild_channel(&self, channel_id: ChannelId) -> Option<Arc<GuildChannel>> {
+    fn delete_guild_channel(&self, channel_id: ChannelId) -> Option<Arc<CachedChannel>> {
         let GuildItem { data, guild_id } = self.0.channels_guild.remove(&channel_id)?.1;
 
         if let Some(mut guild_channels) = self.0.guild_channels.get_mut(&guild_id) {
@@ -881,19 +653,6 @@ mod tests {
         }
     }
 
-    fn emoji(id: EmojiId, user: Option<User>) -> Emoji {
-        Emoji {
-            animated: false,
-            available: true,
-            id,
-            managed: false,
-            name: "test".to_owned(),
-            require_colons: true,
-            roles: Vec::new(),
-            user,
-        }
-    }
-
     fn member(id: UserId, guild_id: GuildId) -> Member {
         Member {
             deaf: false,
@@ -953,138 +712,12 @@ mod tests {
     }
 
     #[test]
-    fn test_guild_create_channels_have_guild_ids() {
-        let mut channels = Vec::new();
-        channels.push(GuildChannel::Text(TextChannel {
-            id: ChannelId(111),
-            guild_id: None,
-            kind: ChannelType::GuildText,
-            last_message_id: None,
-            last_pin_timestamp: None,
-            name: "guild channel with no guild id".to_owned(),
-            nsfw: true,
-            permission_overwrites: Vec::new(),
-            parent_id: None,
-            position: 1,
-            rate_limit_per_user: None,
-            topic: None,
-        }));
-
-        let guild = Guild {
-            id: GuildId(123),
-            afk_channel_id: None,
-            afk_timeout: 300,
-            application_id: None,
-            banner: None,
-            channels,
-            default_message_notifications: DefaultMessageNotificationLevel::Mentions,
-            description: None,
-            discovery_splash: None,
-            emojis: Vec::new(),
-            explicit_content_filter: ExplicitContentFilter::AllMembers,
-            features: vec![],
-            icon: None,
-            joined_at: Some("".to_owned()),
-            large: false,
-            lazy: Some(true),
-            max_members: Some(50),
-            max_presences: Some(100),
-            member_count: Some(25),
-            members: Vec::new(),
-            mfa_level: MfaLevel::Elevated,
-            name: "this is a guild".to_owned(),
-            owner: Some(false),
-            owner_id: UserId(456),
-            permissions: Some(Permissions::SEND_MESSAGES),
-            preferred_locale: "en-GB".to_owned(),
-            premium_subscription_count: Some(0),
-            premium_tier: PremiumTier::None,
-            presences: Vec::new(),
-            region: "us-east".to_owned(),
-            roles: Vec::new(),
-            splash: None,
-            system_channel_id: None,
-            system_channel_flags: SystemChannelFlags::SUPPRESS_JOIN_NOTIFICATIONS,
-            rules_channel_id: None,
-            unavailable: false,
-            verification_level: VerificationLevel::VeryHigh,
-            voice_states: Vec::new(),
-            vanity_url_code: None,
-            widget_channel_id: None,
-            widget_enabled: None,
-            max_video_channel_users: None,
-            approximate_member_count: None,
-            approximate_presence_count: None,
-        };
-
-        let cache = InMemoryCache::new();
-        cache.cache_guild(guild);
-
-        let channel = cache.guild_channel(ChannelId(111)).unwrap();
-
-        // The channel was given to the cache without a guild ID, but because
-        // it's part of a guild create, the cache can automatically attach the
-        // guild ID to it. So now, the channel's guild ID is present with the
-        // correct value.
-        match *channel {
-            GuildChannel::Text(ref c) => {
-                assert_eq!(Some(GuildId(123)), c.guild_id);
-            }
-            _ => panic!("{:?}", channel),
-        }
-    }
-
-    #[test]
     fn test_syntax_update() {
         let cache = InMemoryCache::new();
         cache.update(&RoleDelete {
             guild_id: GuildId(0),
             role_id: RoleId(1),
         });
-    }
-
-    #[test]
-    fn test_cache_user_guild_state() {
-        let user_id = UserId(2);
-        let cache = InMemoryCache::new();
-        cache.cache_user(Cow::Owned(user(user_id)), Some(GuildId(1)));
-
-        // Test the guild's ID is the only one in the user's set of guilds.
-        {
-            let user = cache.0.users.get(&user_id).unwrap();
-            assert!(user.1.contains(&GuildId(1)));
-            assert_eq!(1, user.1.len());
-        }
-
-        // Test that a second guild will cause 2 in the set.
-        cache.cache_user(Cow::Owned(user(user_id)), Some(GuildId(3)));
-
-        {
-            let user = cache.0.users.get(&user_id).unwrap();
-            assert!(user.1.contains(&GuildId(3)));
-            assert_eq!(2, user.1.len());
-        }
-
-        // Test that removing a user from a guild will cause the ID to be
-        // removed from the set, leaving the other ID.
-        cache.update(&MemberRemove {
-            guild_id: GuildId(3),
-            user: user(user_id),
-        });
-
-        {
-            let user = cache.0.users.get(&user_id).unwrap();
-            assert!(!user.1.contains(&GuildId(3)));
-            assert_eq!(1, user.1.len());
-        }
-
-        // Test that removing the user from its last guild removes the user's
-        // entry.
-        cache.update(&MemberRemove {
-            guild_id: GuildId(1),
-            user: user(user_id),
-        });
-        assert!(!cache.0.users.contains_key(&user_id));
     }
 
     #[test]
@@ -1140,194 +773,5 @@ mod tests {
                 .into_iter()
                 .all(|role| *cache.role(role.id).expect("Role missing from cache") == role))
         }
-    }
-
-    #[test]
-    fn test_cache_guild_member() {
-        let cache = InMemoryCache::new();
-
-        // Single inserts
-        {
-            let guild_1_user_ids = (1..=10).map(UserId).collect::<Vec<_>>();
-            let guild_1_members = guild_1_user_ids
-                .iter()
-                .copied()
-                .map(|id| member(id, GuildId(1)))
-                .collect::<Vec<_>>();
-
-            for member in guild_1_members {
-                cache.cache_member(GuildId(1), member);
-            }
-
-            // Check for the cached guild members ids
-            let cached_roles = cache.guild_members(GuildId(1)).unwrap();
-            assert_eq!(cached_roles.len(), guild_1_user_ids.len());
-            assert!(guild_1_user_ids.iter().all(|id| cached_roles.contains(id)));
-
-            // Check for the cached members
-            assert!(guild_1_user_ids
-                .iter()
-                .all(|id| cache.member(GuildId(1), *id).is_some()));
-
-            // Check for the cached users
-            assert!(guild_1_user_ids.iter().all(|id| cache.user(*id).is_some()));
-        }
-
-        // Bulk inserts
-        {
-            let guild_2_user_ids = (1..=10).map(UserId).collect::<Vec<_>>();
-            let guild_2_members = guild_2_user_ids
-                .iter()
-                .copied()
-                .map(|id| member(id, GuildId(2)))
-                .collect::<Vec<_>>();
-            cache.cache_members(GuildId(2), guild_2_members);
-
-            // Check for the cached guild members ids
-            let cached_roles = cache.guild_members(GuildId(1)).unwrap();
-            assert_eq!(cached_roles.len(), guild_2_user_ids.len());
-            assert!(guild_2_user_ids.iter().all(|id| cached_roles.contains(id)));
-
-            // Check for the cached members
-            assert!(guild_2_user_ids
-                .iter()
-                .copied()
-                .all(|id| cache.member(GuildId(1), id).is_some()));
-
-            // Check for the cached users
-            assert!(guild_2_user_ids.iter().all(|id| cache.user(*id).is_some()));
-        }
-    }
-
-    #[test]
-    fn test_cache_emoji() {
-        let cache = InMemoryCache::new();
-
-        // The user to do some of the inserts
-        fn user_mod(id: EmojiId) -> Option<User> {
-            if id.0 % 2 == 0 {
-                // Only use user for half
-                Some(user(UserId(1)))
-            } else {
-                None
-            }
-        }
-
-        // Single inserts
-        {
-            let guild_1_emoji_ids = (1..=10).map(EmojiId).collect::<Vec<_>>();
-            let guild_1_emoji = guild_1_emoji_ids
-                .iter()
-                .copied()
-                .map(|id| emoji(id, user_mod(id)))
-                .collect::<Vec<_>>();
-
-            for emoji in guild_1_emoji {
-                cache.cache_emoji(GuildId(1), emoji);
-            }
-
-            for id in guild_1_emoji_ids.iter().cloned() {
-                let global_emoji = cache.emoji(id);
-                assert!(global_emoji.is_some());
-            }
-
-            // Ensure the emoji has been added to the per-guild lookup map to prevent
-            // issues like #551 from returning
-            let guild_emojis = cache.guild_emojis(GuildId(1));
-            assert!(guild_emojis.is_some());
-            let guild_emojis = guild_emojis.unwrap();
-
-            assert_eq!(guild_1_emoji_ids.len(), guild_emojis.len());
-            assert!(guild_1_emoji_ids.iter().all(|id| guild_emojis.contains(id)));
-        }
-
-        // Bulk inserts
-        {
-            let guild_2_emoji_ids = (11..=20).map(EmojiId).collect::<Vec<_>>();
-            let guild_2_emojis = guild_2_emoji_ids
-                .iter()
-                .copied()
-                .map(|id| emoji(id, user_mod(id)))
-                .collect::<Vec<_>>();
-            cache.cache_emojis(GuildId(2), guild_2_emojis);
-
-            for id in guild_2_emoji_ids.iter().cloned() {
-                let global_emoji = cache.emoji(id);
-                assert!(global_emoji.is_some());
-            }
-
-            let guild_emojis = cache.guild_emojis(GuildId(2));
-
-            assert!(guild_emojis.is_some());
-            let guild_emojis = guild_emojis.unwrap();
-            assert_eq!(guild_2_emoji_ids.len(), guild_emojis.len());
-            assert!(guild_2_emoji_ids.iter().all(|id| guild_emojis.contains(id)));
-        }
-    }
-
-    #[test]
-    fn test_clear() {
-        let cache = InMemoryCache::new();
-        cache.cache_emoji(GuildId(1), emoji(EmojiId(3), None));
-        cache.cache_member(GuildId(2), member(UserId(4), GuildId(2)));
-        cache.clear();
-        assert!(cache.0.emojis.is_empty());
-        assert!(cache.0.members.is_empty());
-    }
-
-    #[test]
-    fn test_emoji_removal() {
-        let cache = InMemoryCache::new();
-
-        let guild_id = GuildId(1);
-
-        let emote = emoji(EmojiId(1), None);
-        let emote_2 = emoji(EmojiId(2), None);
-        let emote_3 = emoji(EmojiId(3), None);
-
-        cache.cache_emoji(guild_id, emote.clone());
-        cache.cache_emoji(guild_id, emote_2.clone());
-        cache.cache_emoji(guild_id, emote_3.clone());
-
-        cache.update(&GuildEmojisUpdate {
-            emojis: vec![emote.clone(), emote_3.clone()],
-            guild_id,
-        });
-
-        assert_eq!(cache.0.emojis.len(), 2);
-        assert_eq!(cache.0.guild_emojis.get(&guild_id).unwrap().len(), 2);
-        assert!(cache.emoji(emote.id).is_some());
-        assert!(cache.emoji(emote_2.id).is_none());
-        assert!(cache.emoji(emote_3.id).is_some());
-
-        cache.update(&GuildEmojisUpdate {
-            emojis: vec![emote.clone()],
-            guild_id,
-        });
-
-        assert_eq!(cache.0.emojis.len(), 1);
-        assert_eq!(cache.0.guild_emojis.get(&guild_id).unwrap().len(), 1);
-        assert!(cache.emoji(emote.id).is_some());
-        assert!(cache.emoji(emote_2.id).is_none());
-
-        let emote_4 = emoji(EmojiId(4), None);
-
-        cache.update(&GuildEmojisUpdate {
-            emojis: vec![emote_4.clone()],
-            guild_id,
-        });
-
-        assert_eq!(cache.0.emojis.len(), 1);
-        assert_eq!(cache.0.guild_emojis.get(&guild_id).unwrap().len(), 1);
-        assert!(cache.emoji(emote_4.id).is_some());
-        assert!(cache.emoji(emote.id).is_none());
-
-        cache.update(&GuildEmojisUpdate {
-            emojis: vec![],
-            guild_id,
-        });
-
-        assert!(cache.0.emojis.is_empty());
-        assert!(cache.0.guild_emojis.get(&guild_id).unwrap().is_empty());
     }
 }
