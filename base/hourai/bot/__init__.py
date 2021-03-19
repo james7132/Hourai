@@ -19,13 +19,6 @@ from .guild import HouraiGuild
 log = logging.getLogger(__name__)
 
 
-class CounterKeys(enum.Enum):
-    MESSAGES_RECIEVED = 0x100             # noqa: E221
-
-    def __repr__(self):
-        return self.name
-
-
 class HouraiConnectionState(discord.state.AutoShardedConnectionState):
 
     def __init__(self, *args, **kwargs):
@@ -36,10 +29,6 @@ class HouraiConnectionState(discord.state.AutoShardedConnectionState):
         guild = HouraiGuild(data=guild, state=self)
         self._add_guild(guild)
         return guild
-
-    def parse_guild_member_remove(self, data):
-        super().parse_guild_member_remove(data)
-        self.dispatch('raw_member_remove', data)
 
 
 class Hourai(commands.AutoShardedBot):
@@ -88,10 +77,6 @@ class Hourai(commands.AutoShardedBot):
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)
 
-        # Counters
-        self.bot_counters = collections.defaultdict(collections.Counter)
-        self.guild_counters = collections.defaultdict(collections.Counter)
-
     def _get_state(self, **options):
         return HouraiConnectionState(
                 storage=self.storage, dispatch=self.dispatch,
@@ -100,10 +85,6 @@ class Hourai(commands.AutoShardedBot):
 
     def create_storage_session(self):
         return self.storage.create_session()
-
-    def dispatch(self, event, *args, **kwargs):
-        self.bot_counters['events_dispatched'][event] += 1
-        super().dispatch(event, *args, **kwargs)
 
     async def get_member_async(self, guild: discord.Guild, user_id: int) \
             -> discord.Member:
@@ -127,23 +108,6 @@ class Hourai(commands.AutoShardedBot):
 
         guild._add_member(member, force=True)
         return member
-
-    async def _run_event(self, coro, event_name, *args, **kwargs):
-        if event_name.startswith('on_'):
-            event_name = event_name[3:]
-        self.bot_counters['events_run'][event_name] += 1
-        start = time.time()
-        try:
-            await coro(*args, **kwargs)
-        except asyncio.CancelledError:
-            pass
-        except Exception:
-            try:
-                await self.on_error(event_name, *args, **kwargs)
-            except asyncio.CancelledError:
-                pass
-        runtime = time.time() - start
-        self.bot_counters['event_total_runtime'][event_name] += runtime
 
     def run(self, *args, **kwargs):
         if self.config.use_uv_loop:
