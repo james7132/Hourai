@@ -63,7 +63,7 @@ class Hourai(commands.AutoShardedBot):
             'member_cache_flags': discord.MemberCacheFlags(
                 online=False,
                 joined=True,
-                voice=True),
+                voice=False),
             'allowed_mentions': discord.AllowedMentions(
                 everyone=False,
                 users=True,
@@ -76,8 +76,8 @@ class Hourai(commands.AutoShardedBot):
                 messages=True,
                 presences=False,
                 reactions=True,
-                typing=True,
-                voice_states=True,
+                typing=False,
+                voice_states=False,
                 emojis=False,
                 integrations=False,
                 webhooks=False),
