@@ -26,7 +26,6 @@ impl UpdateCache for Event {
             ChannelUpdate(v) => c.update(v),
             GuildCreate(v) => c.update(v.deref()),
             GuildDelete(v) => c.update(v.deref()),
-            GuildIntegrationsUpdate(v) => c.update(v),
             GuildUpdate(v) => c.update(v.deref()),
             MemberAdd(v) => c.update(v.deref()),
             MemberRemove(v) => c.update(v),
@@ -37,12 +36,10 @@ impl UpdateCache for Event {
             RoleCreate(v) => c.update(v),
             RoleDelete(v) => c.update(v),
             RoleUpdate(v) => c.update(v),
-            TypingStart(v) => c.update(v.deref()),
             UnavailableGuild(v) => c.update(v),
             UserUpdate(v) => c.update(v),
             VoiceServerUpdate(v) => c.update(v),
             VoiceStateUpdate(v) => c.update(v.deref()),
-            WebhooksUpdate(v) => c.update(v),
             _ => {},
         }
     }
