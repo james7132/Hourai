@@ -180,7 +180,7 @@ async fn load_tracks(
             load_type: LoadType::LoadFailed,
             ..
         } => {
-            error!("Failed to load query `{}`", query);
+            er3ror!("Failed to load query `{}`", query);
             vec![]
         }
         _ => vec![],
