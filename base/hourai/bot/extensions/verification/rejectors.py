@@ -4,15 +4,15 @@ from unidecode import unidecode
 from datetime import datetime
 from hourai import utils
 from hourai.db import models
-from .common import Validator, generalize_filter, split_camel_case
+from .common import Verifier, generalize_filter, split_camel_case
 
 
 LOOSE_DELETED_USERNAME_MATCH = re.compile(r'(?i).*Deleted.*User.*')
 TRANSFORMS = (lambda x: x, unidecode)
 
 
-class NameMatchRejector(Validator):
-    """A suspicion level validator that rejects users for username proximity to
+class NameMatchRejector(Verifier):
+    """A suspicion level verifier that rejects users for username proximity to
     other users already on the server.
     """
     __slots__ = ("filter", "prefix", "subfield", "member_selector",
@@ -26,7 +26,7 @@ class NameMatchRejector(Validator):
         self.member_selector = member_selector or (lambda m: m.name)
         self.min_match_length = min_match_length
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         member_names = {}
         for guild_member in filter(self.filter, ctx.guild.members):
             name = self.member_selector(guild_member) or ''
@@ -47,8 +47,8 @@ class NameMatchRejector(Validator):
         return split_name
 
 
-class StringFilterRejector(Validator):
-    """A general validator that rejects users that have a field that matches
+class StringFilterRejector(Verifier):
+    """A general verifier that rejects users that have a field that matches
     a set of predefined list of regexes.
     """
     __slots__ = ("filters", "prefix", "match_func", "subfield",
@@ -66,7 +66,7 @@ class StringFilterRejector(Validator):
         else:
             self.match_func = lambda r: r.search
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         transforms = TRANSFORMS if self.use_transforms else (lambda x: x,)
         for field_value in self.subfield(ctx):
             for filter_name, regex in self.filters:
@@ -77,8 +77,8 @@ class StringFilterRejector(Validator):
                             self.prefix + f'Matches: `{filter_name}`')
 
 
-class NewAccountRejector(Validator):
-    """A suspicion level validator that rejects users that were recently
+class NewAccountRejector(Verifier):
+    """A suspicion level verifier that rejects users that were recently
     created.
     """
     __slots__ = ("lookback")
@@ -86,20 +86,20 @@ class NewAccountRejector(Validator):
     def __init__(self, *, lookback):
         self.lookback = lookback
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         if ctx.member.created_at > datetime.utcnow() - self.lookback:
             lookback_naturalized = humanize.naturaltime(self.lookback)
             ctx.add_rejection_reason(
                 f"Account created less than {lookback_naturalized}")
 
 
-class DeletedAccountRejector(Validator):
-    """A suspicion level validator that rejects users that are deleted or have
+class DeletedAccountRejector(Verifier):
+    """A suspicion level verifier that rejects users that are deleted or have
     tell-tale warning signs of faking a deleted account in the past.
     """
     __slots__ = ()
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         if utils.is_deleted_user(ctx.member):
             ctx.add_rejection_reason(
                 "Deleted users cannot be active on Discord. User has been "
@@ -122,17 +122,17 @@ class DeletedAccountRejector(Validator):
                     f'User may have attempted to fake account deletion.')
 
 
-class NoAvatarRejector(Validator):
-    """A suspicion level validator that rejects users without avatars."""
+class NoAvatarRejector(Verifier):
+    """A suspicion level verifier that rejects users without avatars."""
     __slots__ = ()
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         if ctx.member.avatar is None:
             ctx.add_rejection_reason("User has no avatar.")
 
 
-class BannedUserRejector(Validator):
-    """A malice level validator that rejects users that are banned on other
+class BannedUserRejector(Verifier):
+    """A malice level verifier that rejects users that are banned on other
     servers.
     """
     __slots__ = ("min_guild_size")
@@ -140,7 +140,7 @@ class BannedUserRejector(Validator):
     def __init__(self, *, min_guild_size):
         self.min_guild_size = min_guild_size
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         bans = ctx.bot.storage.bans.get_user_bans(ctx.member.id)
         valid_bans = list(filter(self._is_valid_ban, bans))
         if len(valid_bans) <= 0:
@@ -157,15 +157,15 @@ class BannedUserRejector(Validator):
         return not ban.guild_blocked and ban.guild_size >= self.min_guild_size
 
 
-class BannedUsernameRejector(Validator):
-    """A malice level validator that rejects users that share characteristics
+class BannedUsernameRejector(Verifier):
+    """A malice level verifier that rejects users that share characteristics
     with banned users on the server:
      - Exact username matches (ignoring repeated whitespace and casing).
      - Exact avatar matches.
     """
     __slots__ = ()
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         if not ctx.guild.me.guild_permissions.ban_members:
             return
         bans = ctx.bot.storage.bans.get_guild_bans(ctx.guild.id)
@@ -221,13 +221,13 @@ class BannedUsernameRejector(Validator):
         return " ".join(val.casefold().split())
 
 
-class LockdownRejector(Validator):
-    """A malice level validator that rejects all users if the guild has been put
+class LockdownRejector(Verifier):
+    """A malice level verifier that rejects all users if the guild has been put
     into lockdown.
     """
     __slots__ = ()
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         if ctx.guild.is_locked_down:
             ctx.add_rejection_reason(
                 'Lockdown enabled. All new joins must be manually verified.')

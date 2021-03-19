@@ -1,6 +1,9 @@
 build:
 	docker-compose -p hourai -f config/docker-compose.build.yml build
 
+push:
+	docker push -a james7132/hourai
+
 pull:
 	docker-compose -p hourai -f config/docker-compose.prod.yml pull
 

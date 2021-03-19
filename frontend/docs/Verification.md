@@ -1,22 +1,22 @@
-# Validation
+# Verification
 
-The main focus of the validation feature is on isolating potentially troublesome
+The main focus of the verification feature is on isolating potentially troublesome
 users before they have a chance to cause chaos on servers, and provide a "herd
-immunity" style of protection. Upon joining a server where Hourai's validation
+immunity" style of protection. Upon joining a server where Hourai's verification
 feature is enabled, Hourai will run through a silo of criteria to determine if a
 user is considered a potential issue. If the user passes all of these checks,
-they are given a validation role, which can be any aribtrary Discord role.
+they are given a verification role, which can be any aribtrary Discord role.
 Typically, the lack of this role will prevent the user from being able to see
 most channels in the server, but this is dependent on how the role's Discord
 permissions are set up.
 
-Hourai's validation process is tuned to be high precision, low recall. If
+Hourai's verification process is tuned to be high precision, low recall. If
 configured to run automatically, the vast majority of users will not be
 conscious of the process. At the time of writing, of the 7,200 members on the
 largest server with the feature enabled, only 100 or so have needed to deal with
-validation (~1.38% of the population).
+verification (~1.38% of the population).
 
-Part of the validation process includes cross-checks against the banlists of
+Part of the verification process includes cross-checks against the banlists of
 other servers that Hourai is on. This provides a form of herd-immunity by
 failing to verify users that have been banned from other servers. To prevent
 potential abuse, Hourai only sources ban information from servers with more than
@@ -29,25 +29,25 @@ banlist is internally refreshed every few minutes, so it may not be up to date
 in realtime. To avoid providing this information to Hourai, disable the Ban
 Members permission for the bot.
 
-## Enabling Validation
+## Enabling Verification
 
-?> If you only want Hourai to provide validation context, and not perform
-automatic validation, you only need to do steps 3 and 4. This is useful if you
+?> If you only want Hourai to provide verification context, and not perform
+automatic verification, you only need to do steps 3 and 4. This is useful if you
 don't want to lockdown your server, or if you want to manually verify all
-incoming users regardless of automatic validation status.
+incoming users regardless of automatic verification status.
 
-### Step 1: Creating a Validation Role
+### Step 1: Creating a Verification Role
 
 Create a new role, name it whatever you feel like. Common names include
 "Verified", checkmarks, etc. Make sure it mirrors all of the permissions the
-@everyone role has, because at the end of this, the new validation role will be
+@everyone role has, because at the end of this, the new verification role will be
 replacing the @everyone role.
 
 ### Step 2: Creating a Landing Channel
 
 This is a channel visible only to unverified users. Create a text channel and
 deny read and send permissions to the @everyone role, along with overrides for
-the validation role that do allow for it. This makes it the only channel visible
+the verification role that do allow for it. This makes it the only channel visible
 to unverified users. You may want to explicitly deny embed permissions to avoid
 unverified users from spamming the channel. Ensure that mods and admins have
 access to this channel, as it will be used as an isolation area for interacting
@@ -55,33 +55,33 @@ with unverified users.
 
 It's recommended to leave a message in that channel that prompts new joins to
 answer some preliminary questions. This avoids letting scraping user boots,
-which usually do not interact with people in text chat, through the validation
+which usually do not interact with people in text chat, through the verification
 process.
 
 You may need someone to test this permission scheme before proceeding.
 
-### Step 3: Enabling Validation
+### Step 3: Enabling Verification
 
-Enable validation with the following command and the created validation role.
+Enable verification with the following command and the created verification role.
 
 ```
-~validation setup <role>
+~verification setup <role>
 ```
 
 If you don't want to lockdown your server, omit the role from the command.
 
-### Step 4: Setting up a Validation Log (Optional)
+### Step 4: Setting up a Verification Log (Optional)
 
 This is an optional but highly recommended step. To get a better understanding
 of why Hourai rejected a user, it is useful to set up a modlog channel where
-Hourai can output the validation details. Either create a text channel or use a
+Hourai can output the verification details. Either create a text channel or use a
 preexisting one with the following command to set the modlog for your server:
 
 ```
 ~setmodlog <channel>
 ```
 
-This will output detailed information regarding the validation results of every
+This will output detailed information regarding the verification results of every
 new user that joins the server.
 
 Normal users will appear as follows:
@@ -102,7 +102,7 @@ The next step is to ensure that everyone who should have the role has it. Run
 the following command to give everyone the role.
 
 ```
-~validation propagate
+~verification propagate
 ```
 
 This will run Hourai's verification checks on every member currently on the
@@ -155,15 +155,15 @@ call of whether to approve them or not.
 
 Sometimes, it's necessary to lock down the server to prevent all new people
 joining from interacting in the server proper. To temporarily lockdown a server,
-use the `~validation lockdown <time>` command. This will force all validations
+use the `~verification lockdown <time>` command. This will force all verifications
 to be manual until the time passes. This lockdown is either lifted as the time
-expires, or manually via `~validation lockdown lift`. This can be useful when
+expires, or manually via `~verification lockdown lift`. This can be useful when
 the server is being raided.
 
-## Disabling Validation
-If the feature is no longer necessary, use `~validation disable` to disable
-validation. To reenable it, rerun `~validation setup <role>` as if you were
-setting up validation from scratch.
+## Disabling Verification
+If the feature is no longer necessary, use `~verification disable` to disable
+verification. To reenable it, rerun `~verification setup <role>` as if you were
+setting up verification from scratch.
 
 ## Appendix: Verification Criteria
 

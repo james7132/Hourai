@@ -1,5 +1,5 @@
-use crate::types;
 use hourai::models::{guild::Ban as TwilightBan, guild::Member as TwilightMember, id::*, UserLike};
+use sqlx::types::chrono::{DateTime, Utc};
 use std::convert::TryInto;
 
 pub type SqlDatabase = sqlx::Postgres;
@@ -18,7 +18,7 @@ pub type SqlQueryAs<'a, O> = sqlx::query::QueryAs<
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Username {
     pub user_id: i64,
-    pub timestamp: types::UnixTimestamp,
+    pub timestamp: DateTime<Utc>,
     pub name: String,
     pub discriminator: Option<u32>,
 }
@@ -27,7 +27,7 @@ impl Username {
     pub fn new(user: &impl UserLike) -> Self {
         Self {
             user_id: user.id().0 as i64,
-            timestamp: types::UnixTimestamp::now(),
+            timestamp: Utc::now(),
             name: user.name().to_owned(),
             discriminator: Some(user.discriminator() as u32),
         }
@@ -37,14 +37,14 @@ impl Username {
         if let Some(max) = limit {
             sqlx::query_as(
                 "SELECT user_id, timestamp, name, discriminator \
-                            FROM usernames WHERE user_id = $1 LIMIT $2",
+                 FROM usernames WHERE user_id = $1 LIMIT $2",
             )
             .bind(user_id.0 as i64)
             .bind(max as i64)
         } else {
             sqlx::query_as(
                 "SELECT user_id, timestamp, name, discriminator \
-                            FROM usernames WHERE user_id = $1",
+                 FROM usernames WHERE user_id = $1",
             )
             .bind(user_id.0 as i64)
         }
@@ -52,45 +52,42 @@ impl Username {
 
     pub fn insert(&self) -> SqlQuery {
         sqlx::query(
-            "INSERT INTO usernames (user_id, timestamp, name, discriminator) \
-                     VALUES ($1, $2, $3, $4) \
+            "INSERT INTO usernames (user_id, name, discriminator) \
+                     VALUES ($1, $2, $3) \
                      ON CONFLICT ON CONSTRAINT idx_unique_username \
                      DO NOTHING",
         )
         .bind(self.user_id)
-        .bind(self.timestamp)
         .bind(self.name.clone())
         .bind(self.discriminator)
     }
 
     pub fn bulk_insert<'a>(usernames: Vec<Self>) -> SqlQuery<'a> {
         let user_ids: Vec<i64> = usernames.iter().map(|u| u.user_id).collect();
-        let timestamps: Vec<i64> = usernames.iter().map(|u| u.timestamp.into()).collect();
         let names: Vec<String> = usernames.iter().map(|u| u.name.clone()).collect();
         let discriminator: Vec<Option<u32>> = usernames.iter().map(|u| u.discriminator).collect();
         sqlx::query(
-            "INSERT INTO usernames (user_id, timestamp, name, discriminator) \
-                     SELECT * FROM UNNEST ($1, $2, $3, $4) \
-                     AS t(user_id, timestamp, name, discriminator) \
-                     ON CONFLICT ON CONSTRAINT idx_unique_username \
-                     DO NOTHING",
+            "INSERT INTO usernames (user_id, name, discriminator) \
+             SELECT * FROM UNNEST ($1, $2, $3) \
+             AS t(user_id, name, discriminator) \
+             ON CONFLICT ON CONSTRAINT idx_unique_username \
+             DO NOTHING",
         )
         .bind(user_ids)
-        .bind(timestamps)
         .bind(names)
         .bind(discriminator)
     }
 }
 
 #[derive(Debug, sqlx::FromRow)]
-pub struct ValidationBan {
+pub struct VerificationBan {
     pub user_id: i64,
     pub reason: Option<String>,
     pub name: String,
     pub discriminator: String,
 }
 
-impl ValidationBan {
+impl VerificationBan {
     pub fn fetch_by_name<'a>(guild_id: GuildId, name: impl Into<String>) -> SqlQueryAs<'a, Self> {
         let mut name = name.into().clone();
         name.make_ascii_lowercase();
@@ -198,7 +195,7 @@ impl Ban {
 
     /// Constructs a query to clear a all bans from a given shard.
     pub fn clear_shard<'a>(shard_id: u64, shard_total: u64) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM bans WHERE (guild_id >> 22) % $1 = $2")
+        sqlx::query("DELETE FROM bans WHERE (guild_id >> 22) % $2 = $1")
             .bind(shard_id as i64)
             .bind(shard_total as i64)
     }
@@ -258,12 +255,23 @@ impl Member {
             .map(|id| RoleId(id.clone().try_into().unwrap()))
     }
 
+    pub fn set_present<'a>(guild_id: GuildId, user_id: UserId, present: bool) -> SqlQuery<'a> {
+        sqlx::query(
+            "UPDATE members SET present = $1, last_seen = now() \
+                     WHERE guild_id = $2 AND user_id = $3",
+        )
+        .bind(present)
+        .bind(guild_id.0 as i64)
+        .bind(user_id.0 as i64)
+    }
+
     pub fn insert<'a>(self) -> SqlQuery<'a> {
         sqlx::query(
-            "INSERT INTO members (guild_id, user_id, role_ids, nickname) \
-                     VALUES ($1, $2, $3, $4) \
+            "INSERT INTO members (guild_id, user_id, role_ids, nickname, present) \
+                     VALUES ($1, $2, $3, $4, true) \
                      ON CONFLICT ON CONSTRAINT members_pkey \
-                     DO UPDATE SET role_ids = excluded.role_ids, nickname = excluded.nickname",
+                     DO UPDATE SET role_ids = excluded.role_ids, nickname = excluded.nickname, \
+                     last_seen = now(), present = true",
         )
         .bind(self.guild_id)
         .bind(self.user_id)
@@ -283,6 +291,13 @@ impl Member {
         sqlx::query_as("SELECT * FROM members WHERE guild_id = $1 AND user_id = $2")
             .bind(guild_id.0 as i64)
             .bind(user_id.0 as i64)
+    }
+
+    /// Marks all members as not present in preparation for repopulating the column.
+    pub fn clear_present_shard<'a>(shard_id: u64, shard_total: u64) -> SqlQuery<'a> {
+        sqlx::query("UPDATE members SET present = false WHERE (guild_id >> 22) % $2 = $1")
+            .bind(shard_id as i64)
+            .bind(shard_total as i64)
     }
 
     /// Clears all of the records for a server

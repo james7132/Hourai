@@ -5,55 +5,58 @@ mod approvers;
 mod context;
 mod rejectors;
 
-use self::context::ValidationContext;
+use self::context::VerificationContext;
 use anyhow::Result;
 use async_trait::async_trait;
 
-pub type BoxedValidator = Box<dyn Validator + Sync + 'static>;
+pub type BoxedVerifier = Box<dyn Verifier + Sync + 'static>;
 
 #[async_trait]
-pub trait Validator {
-    async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()>;
+pub trait Verifier {
+    async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()>;
 }
 
 #[async_trait]
-impl Validator for Vec<BoxedValidator> {
-    async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()> {
-        for validator in self.iter() {
-            validator.validate(ctx).await?;
+impl Verifier for Vec<BoxedVerifier> {
+    async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
+        for verifier in self.iter() {
+            verifier.verify(ctx).await?;
         }
         Ok(())
     }
 }
 
-pub struct GenericValidator {
-    pub reason: context::ValidationReason,
-    pub pred: Box<dyn Fn(&ValidationContext) -> Result<bool> + Sync + 'static>,
+pub struct GenericVerifier {
+    pub reason: context::VerificationReason,
+    pub pred: Box<dyn Fn(&VerificationContext) -> Result<bool> + Sync + 'static>,
 }
 
-impl GenericValidator {
-    pub fn new_approver<T: Fn(&ValidationContext) -> Result<bool> + Sync + 'static>(
+impl GenericVerifier {
+    pub fn new_approver<T: Fn(&VerificationContext) -> Result<bool> + Sync + 'static>(
         reason: impl Into<String>,
         approver: T,
-    ) -> BoxedValidator {
-        Self::new(context::ValidationReason::Approval(reason.into()), approver)
-    }
-
-    pub fn new_rejector<T: Fn(&ValidationContext) -> Result<bool> + Sync + 'static>(
-        reason: impl Into<String>,
-        approver: T,
-    ) -> BoxedValidator {
+    ) -> BoxedVerifier {
         Self::new(
-            context::ValidationReason::Rejection(reason.into()),
+            context::VerificationReason::Approval(reason.into()),
             approver,
         )
     }
 
-    fn new<T: Fn(&ValidationContext) -> Result<bool> + Sync + 'static>(
-        reason: context::ValidationReason,
+    pub fn new_rejector<T: Fn(&VerificationContext) -> Result<bool> + Sync + 'static>(
+        reason: impl Into<String>,
         approver: T,
-    ) -> BoxedValidator {
-        Box::new(GenericValidator {
+    ) -> BoxedVerifier {
+        Self::new(
+            context::VerificationReason::Rejection(reason.into()),
+            approver,
+        )
+    }
+
+    fn new<T: Fn(&VerificationContext) -> Result<bool> + Sync + 'static>(
+        reason: context::VerificationReason,
+        approver: T,
+    ) -> BoxedVerifier {
+        Box::new(GenericVerifier {
             reason: reason,
             pred: Box::new(approver),
         })
@@ -61,8 +64,8 @@ impl GenericValidator {
 }
 
 #[async_trait]
-impl Validator for GenericValidator {
-    async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()> {
+impl Verifier for GenericVerifier {
+    async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         let pred = &self.pred;
         if pred(ctx)? {
             ctx.add_reason(self.reason.clone());

@@ -33,7 +33,7 @@ fn message_diff_embed(before: &impl MessageLike, after: &impl MessageLike) -> Re
 }
 
 async fn get_logging_config(client: &mut Client, guild_id: GuildId) -> Result<LoggingConfig> {
-    GuildConfig::fetch(guild_id, &mut client.redis).await
+    Ok(GuildConfig::fetch_or_default(guild_id, &mut client.redis).await?)
 }
 
 fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {

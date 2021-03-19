@@ -1,7 +1,10 @@
 use anyhow::Result;
 use hourai::http::Error as HttpError;
 use hourai::models::{channel::embed::Embed, id::ChannelId};
-use hourai_sql::{SqlQuery, SqlQueryAs};
+use hourai_sql::{
+    sql_types::chrono::{DateTime, Utc},
+    SqlQuery, SqlQueryAs,
+};
 use http::status::StatusCode;
 use tracing::error;
 
@@ -73,7 +76,7 @@ impl Post {
 pub struct Feed {
     pub id: i32,
     pub source: String,
-    pub last_updated: i64,
+    pub last_updated: DateTime<Utc>,
     pub channel_ids: Vec<i64>,
 }
 
@@ -105,9 +108,9 @@ impl Feed {
     }
 
     /// Creates a query to update the database
-    pub fn update<'a>(&self, latest_time: i64) -> SqlQuery<'a> {
+    pub fn update<'a>(&self, latest_time: impl Into<DateTime<Utc>>) -> SqlQuery<'a> {
         sqlx::query("UPDATE feeds SET last_updated = $1 WHERE id = $2")
-            .bind(latest_time)
+            .bind(latest_time.into())
             .bind(self.id)
     }
 

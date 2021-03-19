@@ -1,12 +1,12 @@
 use hourai::models::guild::Member;
 
 #[derive(Debug, Clone)]
-pub enum ValidationReason {
+pub enum VerificationReason {
     Approval(String),
     Rejection(String),
 }
 
-impl ValidationReason {
+impl VerificationReason {
     pub fn is_approval(&self) -> bool {
         self.approval_reason().is_some()
     }
@@ -17,25 +17,25 @@ impl ValidationReason {
 
     pub fn approval_reason(&self) -> Option<&str> {
         match self {
-            ValidationReason::Approval(reason) => Some(reason.as_str()),
+            VerificationReason::Approval(reason) => Some(reason.as_str()),
             _ => None,
         }
     }
 
     pub fn rejection_reason(&self) -> Option<&str> {
         match self {
-            ValidationReason::Rejection(reason) => Some(reason.as_str()),
+            VerificationReason::Rejection(reason) => Some(reason.as_str()),
             _ => None,
         }
     }
 }
 
-pub struct ValidationContext {
+pub struct VerificationContext {
     member: Member,
-    reasons: Vec<ValidationReason>,
+    reasons: Vec<VerificationReason>,
 }
 
-impl ValidationContext {
+impl VerificationContext {
     pub fn new(member: Member) -> Self {
         Self {
             member: member,
@@ -48,15 +48,16 @@ impl ValidationContext {
     }
 
     pub fn add_approval_reason(&mut self, reason: impl Into<String>) {
-        self.reasons.push(ValidationReason::Approval(reason.into()));
+        self.reasons
+            .push(VerificationReason::Approval(reason.into()));
     }
 
     pub fn add_rejection_reason(&mut self, reason: impl Into<String>) {
         self.reasons
-            .push(ValidationReason::Rejection(reason.into()));
+            .push(VerificationReason::Rejection(reason.into()));
     }
 
-    pub fn add_reason(&mut self, reason: ValidationReason) {
+    pub fn add_reason(&mut self, reason: VerificationReason) {
         self.reasons.push(reason);
     }
 

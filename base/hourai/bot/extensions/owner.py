@@ -13,7 +13,7 @@ from discord.ext import commands
 from google.protobuf import text_format
 from hourai.bot import CounterKeys, extensions, cogs
 from hourai.db import models, proto
-from hourai.utils import hastebin, format
+from hourai.utils import hastebin, format, fake
 
 
 def regex_multi_attr_match(context, regex, attrs):
@@ -87,6 +87,7 @@ class Owner(cogs.BaseCog):
             'dms': ctx.bot.private_channels,
             'members': ctx.bot.get_all_members(),
             'channels': ctx.bot.get_all_channels(),
+            'fake': fake,
         }}
         try:
             result = eval(expr, {}, global_vars)

@@ -1,18 +1,18 @@
 //! Models built for utilizing efficient caching.
 
-mod emoji;
+mod channel;
 mod guild;
 mod member;
 mod message;
 
 pub use self::{
-    emoji::CachedEmoji, guild::CachedGuild, member::CachedMember, message::CachedMessage,
+    guild::CachedGuild, member::CachedMember, message::CachedMessage, channel::CachedChannel
 };
 
 #[cfg(tests)]
 mod tests {
     #[test]
     fn test_reexports() {
-        use super::{CachedEmoji, CachedGuild, CachedMember, CachedVoiceState};
+        use super::{CachedGuild, CachedMember, CachedVoiceState, CachedChannel};
     }
 }

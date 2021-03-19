@@ -1,11 +1,11 @@
 import re
 
 
-class Validator():
-    """Base class for all validators."""
+class Verifier():
+    """Base class for all verifiers."""
     __slots__ = ()
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         pass
 
 

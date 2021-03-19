@@ -109,11 +109,11 @@ All of the commands in this module require the following permissions:
 |`~reddit remove <subreddit>`|Manage Guild (User)|Removes a subreddit feed from the current channel|
 |`~reddit list`|None|Lists all of the subreddits that have feed in the current channel.|
 
-## Validation Commands
+## Verification Commands
 
 These commands control validation, a system for running background checks on new
 joins into a server. For more detailed information, please see
-[Validation](Validation.md).
+[Verification](Verification.md).
 
 |Command|Permissions|Description|
 |:------|:----------|:----------|

@@ -1,13 +1,13 @@
-from .common import Validator
+from .common import Verifier
 from hourai import utils
 
 
-class NitroApprover(Validator):
-    """A suspicion level validator that approves users that have Nitro.
+class NitroApprover(Verifier):
+    """A suspicion level verifier that approves users that have Nitro.
 
     Note: there is currently no way to confirm if a user has Nitro or not
     directly from the API. The only way to confirm it is through peripheral
-    effects (i.e. animated avatars), so this validator has a higher chance of
+    effects (i.e. animated avatars), so this verifier has a higher chance of
     false negatives.
 
     Uses the following attributes only Nitro users have access to:
@@ -17,31 +17,31 @@ class NitroApprover(Validator):
      - Third-Party Emotes (not implemented)
     """
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         if utils.has_nitro(ctx.bot, ctx.member):
             ctx.add_approval_reason('User currently has or has had Nitro. '
                                     'Probably not a user bot.')
 
 
-class BotApprover(Validator):
-    """A override level validator that approves other bots."""
+class BotApprover(Verifier):
+    """A override level verifier that approves other bots."""
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         if ctx.member.bot:
             ctx.add_approval_reason(
                 'User is an OAuth2 bot that can only be manually added.')
 
 
-class BotOwnerApprover(Validator):
-    """An override level validator that approves the owner of the bot or part of
+class BotOwnerApprover(Verifier):
+    """An override level verifier that approves the owner of the bot or part of
     the team that owns the bot."""
 
-    async def validate_member(self, ctx):
+    async def verify_member(self, ctx):
         if (await ctx.bot.is_owner(ctx.member)):
             ctx.add_approval_reason("User owns this bot.")
 
 
-class DistinguishedUserApprover(Validator):
+class DistinguishedUserApprover(Verifier):
     """A malice level approver that approves distinguished users. Approves the
     following:
     - Discord Staff
@@ -63,17 +63,17 @@ class DistinguishedUserApprover(Validator):
         "VERIFIED": 'User is owner of verfied server: "{}"'
     }
 
-    async def validate_member(self, ctx):
-        self.__validate_via_user_flags(ctx)
-        self.__validate_via_server_ownership(ctx)
+    async def verify_member(self, ctx):
+        self.__verify_via_user_flags(ctx)
+        self.__verify_via_server_ownership(ctx)
 
-    def __validate_via_user_flags(self, ctx):
+    def __verify_via_user_flags(self, ctx):
         flags = ctx.member.public_flags
         for attr, reason in self.FLAG_MATCHES.items():
             if getattr(flags, attr):
                 ctx.add_approval_reason(reason)
 
-    def __validate_via_server_ownership(self, ctx):
+    def __verify_via_server_ownership(self, ctx):
         # FIXME: This will not scale to multiple processes/nodes
         owned_guilds = [guild for guild in ctx.bot.guilds
                         if guild.owner == ctx.member]

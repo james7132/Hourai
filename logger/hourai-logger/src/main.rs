@@ -1,3 +1,4 @@
+mod announcements;
 mod listings;
 mod message_logging;
 
@@ -48,9 +49,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
 );
 
 const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
-    ResourceType::ROLE.bits()
-        | ResourceType::GUILD.bits()
-        | ResourceType::PRESENCE.bits()
+    ResourceType::ROLE.bits() | ResourceType::GUILD.bits() | ResourceType::PRESENCE.bits(),
 );
 
 #[tokio::main]
@@ -64,7 +63,7 @@ async fn main() {
     let cache = InMemoryCache::builder()
         .resource_types(CACHED_RESOURCES)
         .build();
-    let gateway = Cluster::builder(&config.discord.bot_token, BOT_INTENTS)
+    let gateway = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
         .build()
@@ -102,8 +101,11 @@ async fn main() {
 
     let mut events = gateway.some_events(BOT_EVENTS);
     while let Some((shard_id, evt)) = events.next().await {
-        cache.update(&evt);
-        if evt.kind() != EventType::PresenceUpdate {
+        if evt.kind() == EventType::PresenceUpdate {
+            cache.update(&evt);
+        } else {
+            client.pre_cache_event(&evt).await;
+            cache.update(&evt);
             tokio::spawn(client.clone().consume_event(shard_id, evt));
         }
     }
@@ -204,6 +206,34 @@ impl Client {
         }
     }
 
+    /// Handle events before the cache is updated.
+    async fn pre_cache_event(&self, event: &Event) -> () {
+        let kind = event.kind();
+        let result = match event {
+            Event::MemberUpdate(ref evt) => {
+                if self.cache.is_pending(evt.guild_id, evt.user.id) && !evt.pending {
+                    announcements::on_member_join(self.clone(), evt.guild_id,
+                                                  evt.user.clone()).await
+                } else {
+                    Ok(())
+                }
+            },
+            Event::VoiceStateUpdate(ref evt) => {
+                if let Some(guild_id) = evt.0.guild_id {
+                    let channel = self.cache.voice_state(guild_id, evt.0.user_id);
+                    announcements::on_voice_update(self.clone(), evt.0.clone(), channel).await
+                } else {
+                    Ok(())
+                }
+            },
+            _ => Ok(())
+        };
+
+        if let Err(err) = result {
+            error!("Error while running event with {:?}: {}", kind, err);
+        }
+    }
+
     async fn consume_event(self, shard_id: u64, event: Event) -> () {
         let kind = event.kind();
         let result = match event {
@@ -237,19 +267,24 @@ impl Client {
         };
 
         if let Err(err) = result {
-            error!("Error while running event with {:?}: {:?}", kind, err);
+            error!("Error while running event with {:?}: {}", kind, err);
         }
     }
 
     async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
-        Ban::clear_shard(shard_id, self.total_shards())
-            .execute(&self.sql)
-            .await?;
+        futures::join!(
+            Ban::clear_shard(shard_id, self.total_shards()).execute(&self.sql),
+            hourai_sql::Member::clear_present_shard(shard_id, self.total_shards())
+                .execute(&self.sql)
+        );
         Ok(())
     }
 
     async fn on_ban_add(self, evt: BanAdd) -> Result<()> {
-        self.log_users(vec![evt.user.clone()]).await?;
+        futures::join!(
+            self.log_users(vec![evt.user.clone()]),
+            announcements::on_member_ban(self.clone(), evt.clone())
+        );
 
         let perms = self
             .fetch_guild_permissions(evt.guild_id, self.user_id)
@@ -275,7 +310,11 @@ impl Client {
     }
 
     async fn on_member_add(self, evt: MemberAdd) -> Result<()> {
-        self.log_members(&vec![evt.0]).await?;
+        let members = vec![evt.0.clone()];
+        futures::join!(
+            self.log_members(&members),
+            announcements::on_member_join(self.clone(), evt.0.guild_id, evt.0.user)
+        );
         Ok(())
     }
 
@@ -285,7 +324,11 @@ impl Client {
     }
 
     async fn on_member_remove(self, evt: MemberRemove) -> Result<()> {
-        self.log_users(vec![evt.user]).await?;
+        futures::join!(
+            hourai_sql::Member::set_present(evt.guild_id, evt.user.id, false).execute(&self.sql),
+            self.log_users(vec![evt.user.clone()]),
+            announcements::on_member_leave(self.clone(), evt)
+        );
         Ok(())
     }
 

@@ -1,6 +1,7 @@
 use crate::models::{SqlQuery, SqlQueryAs};
 use crate::types;
 use hourai::proto::action::Action;
+use sqlx::types::chrono::{DateTime, Utc};
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct PendingAction {
@@ -10,16 +11,12 @@ pub struct PendingAction {
 
 impl PendingAction {
     pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
-        let now = types::UnixTimestamp::now();
-        sqlx::query_as("SELECT id, data FROM pending_actions WHERE timestamp < $1").bind(now.0)
+        sqlx::query_as("SELECT id, data FROM pending_actions WHERE ts < now()")
     }
 
-    pub fn schedule<'a>(
-        action: Action,
-        timestamp: impl Into<types::UnixTimestamp>,
-    ) -> SqlQuery<'a> {
+    pub fn schedule<'a>(action: Action, timestamp: impl Into<DateTime<Utc>>) -> SqlQuery<'a> {
         sqlx::query("INSERT INTO pending_actions (timestamp, data) VALUES ($1, $2)")
-            .bind(timestamp.into().0)
+            .bind(timestamp.into())
             .bind(types::Protobuf(action))
     }
 

@@ -9,11 +9,11 @@ lazy_static! {
     static ref VERIFIED_FEATURE: String = "VERIFIED".to_owned();
 }
 
-struct DistinguishedUserValidator(InMemoryCache);
+struct DistinguishedUserVerifier(InMemoryCache);
 
 #[async_trait]
-impl Validator for DistinguishedUserValidator {
-    async fn validate(&self, ctx: &mut context::ValidationContext) -> Result<()> {
+impl Verifier for DistinguishedUserVerifier {
+    async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         let flags = ctx.member().user.flags.unwrap_or(UserFlags::empty());
         if flags.contains(UserFlags::DISCORD_EMPLOYEE) {
             ctx.add_approval_reason("User is Discord Staff.");
@@ -50,27 +50,27 @@ pub fn user_has_nitro(user: &User) -> bool {
     flag || animated
 }
 
-pub(super) fn nitro() -> BoxedValidator {
-    GenericValidator::new_approver(
+pub(super) fn nitro() -> BoxedVerifier {
+    GenericVerifier::new_approver(
         "User currently has or has had Nitro. Probably not a user bot.",
         |ctx| Ok(user_has_nitro(&ctx.member().user)),
     )
 }
 
-pub(super) fn bot_owners(owners: impl IntoIterator<Item = UserId>) -> BoxedValidator {
+pub(super) fn bot_owners(owners: impl IntoIterator<Item = UserId>) -> BoxedVerifier {
     let owner_ids: HashSet<UserId> = owners.into_iter().collect();
-    GenericValidator::new_approver("User is an owner of this bot.", move |ctx| {
+    GenericVerifier::new_approver("User is an owner of this bot.", move |ctx| {
         Ok(owner_ids.contains(&ctx.member().user.id))
     })
 }
 
-pub(super) fn bot() -> BoxedValidator {
-    GenericValidator::new_approver(
+pub(super) fn bot() -> BoxedVerifier {
+    GenericVerifier::new_approver(
         "User is an OAuth2 bot that can only be manually added by moderators.",
         |ctx| Ok(ctx.member().user.bot),
     )
 }
 
-pub(super) fn distinguished_user(cache: InMemoryCache) -> BoxedValidator {
-    Box::new(DistinguishedUserValidator(cache))
+pub(super) fn distinguished_user(cache: InMemoryCache) -> BoxedVerifier {
+    Box::new(DistinguishedUserVerifier(cache))
 }

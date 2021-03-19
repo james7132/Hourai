@@ -1,7 +1,7 @@
 use hourai::config::HouraiConfig;
 use hourai::models::id::UserId;
-use serde_json::json;
 use reqwest::RequestBuilder;
+use serde_json::json;
 use std::time::Duration;
 
 pub async fn run_push_listings(client: crate::Client, config: HouraiConfig, interval: Duration) {
@@ -24,24 +24,49 @@ pub async fn run_push_listings(client: crate::Client, config: HouraiConfig, inte
     }
 }
 
-fn post_discord_bots(http: &reqwest::Client, user_id: UserId, config: &HouraiConfig,
-                     count: usize) -> RequestBuilder {
-    let token = config.third_party.discord_bots_token.as_ref().unwrap().as_str();
-    http.post(format!("https://discord.bots.gg/api/v1/bots/{}/stats", user_id))
-        .header("Authorization", token)
-        .json(&json!({ "guildCount": count }))
+fn post_discord_bots(
+    http: &reqwest::Client,
+    user_id: UserId,
+    config: &HouraiConfig,
+    count: usize,
+) -> RequestBuilder {
+    let token = config
+        .third_party
+        .discord_bots_token
+        .as_ref()
+        .unwrap()
+        .as_str();
+    http.post(format!(
+        "https://discord.bots.gg/api/v1/bots/{}/stats",
+        user_id
+    ))
+    .header("Authorization", token)
+    .json(&json!({ "guildCount": count }))
 }
 
-fn post_discord_boats(http: &reqwest::Client, user_id: UserId, config: &HouraiConfig,
-                      count: usize) -> RequestBuilder {
-    let token = config.third_party.discord_boats_token.as_ref().unwrap().as_str();
+fn post_discord_boats(
+    http: &reqwest::Client,
+    user_id: UserId,
+    config: &HouraiConfig,
+    count: usize,
+) -> RequestBuilder {
+    let token = config
+        .third_party
+        .discord_boats_token
+        .as_ref()
+        .unwrap()
+        .as_str();
     http.post(format!("https://discord.boats/api/bot/{}", user_id))
         .header("Authorization", token)
         .json(&json!({ "server_count": count }))
 }
 
-fn post_top_gg(http: &reqwest::Client, user_id: UserId, config: &HouraiConfig,
-               count: usize) -> RequestBuilder {
+fn post_top_gg(
+    http: &reqwest::Client,
+    user_id: UserId,
+    config: &HouraiConfig,
+    count: usize,
+) -> RequestBuilder {
     let token = config.third_party.top_gg_token.as_ref().unwrap().as_str();
     http.post(format!("https://top.gg/api/bots/{}/stats", user_id))
         .header("Authorization", token)

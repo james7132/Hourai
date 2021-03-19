@@ -1,0 +1,187 @@
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+CREATE DATABASE hourai WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.utf8' LC_CTYPE = 'en_US.utf8';
+ALTER DATABASE hourai OWNER TO hourai;
+\connect hourai
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+SET default_tablespace = '';
+SET default_table_access_method = heap;
+CREATE TABLE public.admin_configs (
+    id bigint NOT NULL,
+    source_bans boolean NOT NULL,
+    is_blocked boolean NOT NULL
+);
+ALTER TABLE public.admin_configs OWNER TO hourai;
+CREATE TABLE public.aliases (
+    guild_id bigint NOT NULL,
+    name character varying(2000) NOT NULL,
+    content character varying(2000)
+);
+ALTER TABLE public.aliases OWNER TO hourai;
+CREATE UNLOGGED TABLE public.bans (
+    guild_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    reason text,
+    avatar text
+);
+ALTER TABLE public.bans OWNER TO hourai;
+CREATE TABLE public.escalation_histories (
+    id integer NOT NULL,
+    guild_id bigint NOT NULL,
+    subject_id bigint NOT NULL,
+    authorizer_id bigint NOT NULL,
+    authorizer_name character varying(255) NOT NULL,
+    display_name character varying(2000) NOT NULL,
+    "timestamp" timestamp with time zone NOT NULL,
+    action bytea NOT NULL,
+    level_delta integer NOT NULL
+);
+ALTER TABLE public.escalation_histories OWNER TO hourai;
+CREATE SEQUENCE public.escalation_histories_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER TABLE public.escalation_histories_id_seq OWNER TO hourai;
+ALTER SEQUENCE public.escalation_histories_id_seq OWNED BY public.escalation_histories.id;
+CREATE TABLE public.feed_channels (
+    feed_id bigint,
+    channel_id bigint
+);
+ALTER TABLE public.feed_channels OWNER TO hourai;
+CREATE TABLE public.feeds (
+    id integer NOT NULL,
+    type character varying(255) NOT NULL,
+    source character varying(8192) NOT NULL,
+    last_updated timestamp with time zone NOT NULL
+);
+ALTER TABLE public.feeds OWNER TO hourai;
+CREATE SEQUENCE public.feeds_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER TABLE public.feeds_id_seq OWNER TO hourai;
+ALTER SEQUENCE public.feeds_id_seq OWNED BY public.feeds.id;
+CREATE TABLE public.members (
+    guild_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    role_ids bigint[] NOT NULL,
+    nickname character varying(32),
+    present boolean DEFAULT false NOT NULL,
+    last_seen timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE public.members OWNER TO hourai;
+CREATE TABLE public.oauth (
+    refresh_token text NOT NULL,
+    user_id bigint NOT NULL,
+    access_token text NOT NULL,
+    expiration timestamp without time zone NOT NULL
+);
+ALTER TABLE public.oauth OWNER TO hourai;
+CREATE TABLE public.pending_actions (
+    id integer NOT NULL,
+    "timestamp" timestamp with time zone NOT NULL,
+    data bytea NOT NULL,
+    ts timestamp without time zone NOT NULL
+);
+ALTER TABLE public.pending_actions OWNER TO hourai;
+CREATE SEQUENCE public.pending_actions_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER TABLE public.pending_actions_id_seq OWNER TO hourai;
+ALTER SEQUENCE public.pending_actions_id_seq OWNED BY public.pending_actions.id;
+CREATE TABLE public.pending_deescalations (
+    user_id bigint NOT NULL,
+    guild_id bigint NOT NULL,
+    expiration timestamp with time zone NOT NULL,
+    amount bigint NOT NULL,
+    entry_id integer NOT NULL
+);
+ALTER TABLE public.pending_deescalations OWNER TO hourai;
+CREATE TABLE public.tags (
+    guild_id bigint NOT NULL,
+    tag character varying(2000) NOT NULL,
+    response character varying(2000) NOT NULL
+);
+ALTER TABLE public.tags OWNER TO hourai;
+CREATE TABLE public.usernames (
+    user_id bigint NOT NULL,
+    "timestamp" timestamp with time zone DEFAULT now() NOT NULL,
+    name character varying(32) NOT NULL,
+    discriminator integer
+);
+ALTER TABLE public.usernames OWNER TO hourai;
+ALTER TABLE ONLY public.escalation_histories ALTER COLUMN id SET DEFAULT nextval('public.escalation_histories_id_seq'::regclass);
+ALTER TABLE ONLY public.feeds ALTER COLUMN id SET DEFAULT nextval('public.feeds_id_seq'::regclass);
+ALTER TABLE ONLY public.pending_actions ALTER COLUMN id SET DEFAULT nextval('public.pending_actions_id_seq'::regclass);
+ALTER TABLE ONLY public.admin_configs
+    ADD CONSTRAINT admin_configs_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.aliases
+    ADD CONSTRAINT aliases_pkey PRIMARY KEY (guild_id, name);
+ALTER TABLE ONLY public.bans
+    ADD CONSTRAINT bans_pkey PRIMARY KEY (guild_id, user_id);
+ALTER TABLE ONLY public.escalation_histories
+    ADD CONSTRAINT escalation_histories_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.feeds
+    ADD CONSTRAINT feeds_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.feeds
+    ADD CONSTRAINT feeds_type_source_key UNIQUE (type, source);
+ALTER TABLE ONLY public.usernames
+    ADD CONSTRAINT idx_unique_username UNIQUE (user_id, name, discriminator);
+ALTER TABLE ONLY public.members
+    ADD CONSTRAINT members_pkey PRIMARY KEY (guild_id, user_id);
+ALTER TABLE ONLY public.oauth
+    ADD CONSTRAINT oauth_pkey PRIMARY KEY (refresh_token);
+ALTER TABLE ONLY public.pending_actions
+    ADD CONSTRAINT pending_actions_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.pending_deescalations
+    ADD CONSTRAINT pending_deescalations_pkey PRIMARY KEY (user_id, guild_id);
+ALTER TABLE ONLY public.tags
+    ADD CONSTRAINT tags_pkey PRIMARY KEY (guild_id, tag);
+ALTER TABLE ONLY public.usernames
+    ADD CONSTRAINT usernames_pkey PRIMARY KEY (user_id, "timestamp");
+CREATE INDEX bans_guild_id_idx ON public.bans USING btree (guild_id);
+CREATE INDEX bans_user_id_idx ON public.bans USING btree (user_id);
+CREATE INDEX idx_username_user_id ON public.usernames USING btree (user_id);
+ALTER TABLE ONLY public.feed_channels
+    ADD CONSTRAINT feed_channels_feed_id_fkey FOREIGN KEY (feed_id) REFERENCES public.feeds(id);
+ALTER TABLE ONLY public.pending_deescalations
+    ADD CONSTRAINT pending_deescalations_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES public.escalation_histories(id);
+REVOKE CONNECT,TEMPORARY ON DATABASE hourai FROM PUBLIC;
+GRANT SELECT ON TABLE public.admin_configs TO grafana;
+GRANT SELECT ON TABLE public.aliases TO grafana;
+GRANT SELECT ON TABLE public.bans TO grafana;
+GRANT SELECT ON TABLE public.escalation_histories TO grafana;
+GRANT SELECT ON TABLE public.feed_channels TO grafana;
+GRANT SELECT ON TABLE public.feeds TO grafana;
+GRANT SELECT ON TABLE public.members TO grafana;
+GRANT SELECT ON TABLE public.pending_actions TO grafana;
+GRANT SELECT ON TABLE public.pending_deescalations TO grafana;
+GRANT SELECT ON TABLE public.tags TO grafana;
+GRANT SELECT ON TABLE public.usernames TO grafana;

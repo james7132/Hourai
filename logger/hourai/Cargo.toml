@@ -4,9 +4,13 @@ version = "0.1.0"
 authors = ["james7132 <contact@jamessliu.com>"]
 edition = "2018"
 
+[features]
+default = ["with-serde"]
+with-serde = ["protobuf/with-serde"]
+
 [build-dependencies]
 walkdir = "2.3.1"
-protobuf-codegen-pure = "2.18.0"
+protobuf-codegen-pure = "2.22.0"
 
 [dependencies]
 anyhow = "1.0.38"
@@ -17,6 +21,7 @@ metrics-exporter-prometheus = "0.3"
 protobuf = "2.22"
 serde = "1.0"
 thiserror = "1.0"
+hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = "0.2.15"
 twilight-model = "0.3"

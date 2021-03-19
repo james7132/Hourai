@@ -50,6 +50,7 @@ pub struct MusicNode {
 pub struct DiscordConfig {
     pub client_id: String,
     pub client_secret: String,
+    pub redirect_uri: String,
     pub bot_token: String,
     pub proxy: Option<String>,
     pub gateway_queue: Option<String>,
