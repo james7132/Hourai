@@ -20,7 +20,6 @@ impl UpdateCache for Event {
         use Event::*;
 
         match self {
-            _ => {},
             ChannelCreate(v) => c.update(v),
             ChannelDelete(v) => c.update(v),
             ChannelPinsUpdate(v) => c.update(v),
@@ -44,6 +43,7 @@ impl UpdateCache for Event {
             VoiceServerUpdate(v) => c.update(v),
             VoiceStateUpdate(v) => c.update(v.deref()),
             WebhooksUpdate(v) => c.update(v),
+            _ => {},
         }
     }
 }
