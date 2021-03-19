@@ -48,10 +48,6 @@ impl UpdateCache for Event {
     }
 }
 
-impl UpdateCache for BanAdd {}
-
-impl UpdateCache for BanRemove {}
-
 impl UpdateCache for ChannelCreate {
     fn update(&self, cache: &InMemoryCache) {
         if !cache.wants(ResourceType::CHANNEL) {
@@ -187,8 +183,6 @@ impl UpdateCache for GuildDelete {
         }
     }
 }
-
-impl UpdateCache for GuildIntegrationsUpdate {}
 
 impl UpdateCache for GuildUpdate {
     fn update(&self, cache: &InMemoryCache) {
@@ -332,8 +326,6 @@ impl UpdateCache for RoleUpdate {
     }
 }
 
-impl UpdateCache for TypingStart {}
-
 impl UpdateCache for UnavailableGuild {
     fn update(&self, cache: &InMemoryCache) {
         if !cache.wants(ResourceType::GUILD) {
@@ -370,8 +362,6 @@ impl UpdateCache for VoiceStateUpdate {
         }
     }
 }
-
-impl UpdateCache for WebhooksUpdate {}
 
 #[cfg(test)]
 mod tests {

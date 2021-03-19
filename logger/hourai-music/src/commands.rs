@@ -143,13 +143,16 @@ async fn load_tracks(
         Err(_) => return vec![],
     };
 
+    if response.tracks.len() == 0 {
+        return vec![];
+    }
+
     let tracks = match response {
         LoadedTracks {
             load_type: LoadType::TrackLoaded,
             tracks,
             ..
         } => {
-            assert!(tracks.len() > 0);
             vec![tracks[0].clone()]
         }
         LoadedTracks {
@@ -159,7 +162,6 @@ async fn load_tracks(
         } => {
             // TODO(james7132): This could be improved by doing a edit distance from
             // the query for similarity matching.
-            assert!(tracks.len() > 0);
             vec![tracks[0].clone()]
         }
         LoadedTracks {
