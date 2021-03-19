@@ -96,6 +96,7 @@ async fn main() {
 
     let shard_count = gateway.config().shard_config().shard()[1];
     let lavalink = Lavalink::new(current_user.id, shard_count);
+    let redis = hourai_redis::init(&config).await;
     let client = Client {
         user_id: current_user.id,
         http_client,
@@ -261,7 +262,9 @@ impl Client<'static> {
     /// Gets the music config for a server.
     pub async fn get_config(&self, guild_id: GuildId) -> Result<MusicConfig> {
         let mut conn = self.redis.clone();
-        GuildConfig::fetch::<MusicConfig>(guild_id, &mut conn).await
+        let config = GuildConfig::fetch_or_default::<MusicConfig>(guild_id, &mut conn)
+            .await?;
+        Ok(config)
     }
 
     /// Sets the music config for the sever.
