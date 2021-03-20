@@ -141,17 +141,16 @@ async fn require_dj(client: &Client<'static>, ctx: &commands::Context<'_>) -> Re
 
 async fn load_tracks(
     client: &Client<'static>,
-    author: &User,
     node: &Node,
     query: &str,
-) -> Vec<Track> {
+) -> Option<Vec<twilight_lavalink::http::Track>> {
     let response = match client.load_tracks(node, query).await {
         Ok(tracks) => tracks,
-        Err(_) => return vec![],
+        Err(_) => return None
     };
 
     if response.tracks.len() == 0 {
-        return vec![];
+        return None;
     }
 
     let tracks = match response {
@@ -177,26 +176,23 @@ async fn load_tracks(
             playlist_info,
             ..
         } => {
-            if let Some(idx) = playlist_info.selected_track {
-                vec![tracks[idx as usize].clone()]
-            } else {
-                tracks
-            }
+            playlist_info
+                .selected_track
+                .and_then(|idx| tracks.get(idx as usize))
+                .map(|track| vec![track.clone()])
+                .unwrap_or_else(|| tracks)
         }
         LoadedTracks {
             load_type: LoadType::LoadFailed,
             ..
         } => {
             error!("Failed to load query `{}`", query);
-            vec![]
+            return None;
         }
-        _ => vec![],
+        _ => return None
     };
 
-    tracks
-        .into_iter()
-        .filter_map(|t| Track::try_from((author.clone(), t)).ok())
-        .collect()
+    Some(tracks)
 }
 
 async fn play(
@@ -221,8 +217,11 @@ async fn play(
     let node = client.get_node(guild_id).await?;
     let mut queue: Vec<Track> = Vec::new();
     for subquery in queries {
-        queue = load_tracks(client, &ctx.message.author, &node, subquery.as_str()).await;
-        if queue.len() > 0 {
+        if let Some(results) = load_tracks(client, &node, subquery.as_str()).await {
+            queue = results
+                .into_iter()
+                .filter_map(|t| Track::try_from((ctx.message.author.clone(), t)).ok())
+                .collect();
             break;
         }
     }

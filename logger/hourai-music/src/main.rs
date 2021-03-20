@@ -317,17 +317,19 @@ impl Client<'static> {
     }
 
     // HTTP requests to the Lavalink nodes
-    pub async fn load_tracks(&self, node: &Node, query: impl AsRef<str>) -> Result<LoadedTracks> {
-        let config = node.config().clone();
+    pub async fn load_tracks(&self, node: &Node, query: &str) -> Result<LoadedTracks> {
+        let config = node.config();
         let (parts, body) = twilight_lavalink::http::load_track(
             config.address,
-            query.as_ref(),
+            query,
             &config.authorization,
         )?
         .into_parts();
         let req = Request::from_parts(parts, Body::from(body));
         let res = self.hyper.request(req).await?;
         let response_bytes = hyper::body::to_bytes(res.into_body()).await?;
+        tracing::debug!("Recieved response when loading tracks for query \"{}\": {:?}",
+                        query, response_bytes);
         Ok(serde_json::from_slice::<LoadedTracks>(&response_bytes)?)
     }
 
