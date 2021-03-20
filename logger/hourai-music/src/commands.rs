@@ -3,9 +3,10 @@ use crate::{player::PlayerState, queue::MusicQueue, track::Track, ui::*, Client}
 use anyhow::{bail, Result};
 use hourai::{
     commands::{self, precondition::*, prelude::*, CommandError},
+    proto::guild_configs::MusicConfig,
     models::{
         channel::Message,
-        id::{ChannelId, GuildId},
+        id::{ChannelId, GuildId, RoleId},
         user::User,
         UserLike,
     },
@@ -21,6 +22,10 @@ macro_rules! get_player {
 }
 
 pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<()> {
+    if evt.author.bot {
+        return Ok(());
+    }
+
     if let Some(command) = client.parser.parse(evt.content.as_str()) {
         let ctx = commands::Context {
             message: &evt,
@@ -115,16 +120,18 @@ fn require_playing(client: &Client<'static>, ctx: &commands::Context<'_>) -> Res
     Ok(guild_id)
 }
 
+fn is_dj(config: &MusicConfig, roles: &Vec<RoleId>) -> bool {
+    let dj_roles = config.get_dj_role_id();
+    roles.iter().any(|id| dj_roles.contains(&id.0))
+}
+
 /// Requires that the author is a DJ on the server to use the command.
 async fn require_dj(client: &Client<'static>, ctx: &commands::Context<'_>) -> Result<()> {
     let (guild_id, _) = require_in_voice_channel(client, &ctx)?;
     if let Some(member) = &ctx.message.member {
         let config = client.get_config(guild_id).await?;
-        let dj_roles = config.get_dj_role_id();
-        for role_id in member.roles.iter() {
-            if dj_roles.contains(&role_id.0) {
-                return Ok(());
-            }
+        if is_dj(&config, &member.roles) {
+            return Ok(());
         }
     }
     bail!(CommandError::FailedPrecondition(
@@ -180,7 +187,7 @@ async fn load_tracks(
             load_type: LoadType::LoadFailed,
             ..
         } => {
-            er3ror!("Failed to load query `{}`", query);
+            error!("Failed to load query `{}`", query);
             vec![]
         }
         _ => vec![],
@@ -286,15 +293,16 @@ async fn stop(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
 async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
     let guild_id = require_playing(client, &ctx)?;
     require_in_voice_channel(client, &ctx)?;
-    let (votes, required) = client
+    let (votes, required, requestor) = client
         .mutate_state(guild_id, |state| {
+            let (requestor, _) = state.currently_playing().unwrap();
             state.skip_votes.insert(ctx.message.author.id);
             let listeners = client.count_listeners(guild_id);
-            (state.skip_votes.len(), listeners / 2)
+            (state.skip_votes.len(), listeners / 2, requestor)
         })
         .unwrap();
 
-    let response = if votes >= required {
+    let response = if votes >= required || requestor == ctx.message.author.id {
         format!("Skipped `{}`", client.play_next(guild_id).await?.unwrap())
     } else {
         format!("Total votes: `{}/{}`.", votes, required)
@@ -304,7 +312,6 @@ async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
     Ok(())
 }
 
-// TODO(james7132): Properly implmement
 async fn remove(
     client: &Client<'static>,
     ctx: commands::Context<'_>,
@@ -323,11 +330,14 @@ async fn remove(
         return Ok(());
     }
 
+    let config = client.get_config(guild_id).await?;
+    let dj = is_dj(&config, &ctx.message.member.as_ref().unwrap().roles);
+
     let author = ctx.message.author.id;
     let response = client
         .mutate_state(guild_id, |state| {
             match state.queue.get(idx).map(|kv| kv.value.clone()) {
-                Some(track) if author == track.requestor.id => {
+                Some(track) if author == track.requestor.id || dj => {
                     state.queue.remove(idx);
                     format!("Removed `{}` from the queue.", track.info)
                 }
