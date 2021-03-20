@@ -43,9 +43,9 @@ class RoleLogging(cogs.BaseCog):
                    utils.can_manage_role(guild.me, role):
                     roles.add(role)
 
-        # Exclude the validation role if validation is enabled.
-        if guild.config.validation.enabled:
-            roles.discard(guild.validation_role)
+        # Exclude the verification role if verification is enabled.
+        if guild.config.verification.enabled:
+            roles.discard(guild.verification_role)
 
         if len(roles) > 0:
             await member.add_roles(

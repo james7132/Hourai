@@ -174,17 +174,17 @@ class HouraiGuild(discord.Guild):
 
     @property
     def is_locked_down(self):
-        if not self.config.validation.HasField('lockdown_expiration'):
+        if not self.config.verification.HasField('lockdown_expiration'):
             return False
         expiration = datetime.fromtimestamp(
-                self.config.validation.lockdown_expiration)
+                self.config.verification.lockdown_expiration)
         return datetime.utcnow() <= expiration
 
     @property
-    def validation_role(self):
-        if not self.config.validation.HasField('role_id'):
+    def verification_role(self):
+        if not self.config.verification.HasField('role_id'):
             return None
-        return self.get_role(self.config.validation.role_id)
+        return self.get_role(self.config.verification.role_id)
 
     def should_cache_member(self, member):
         # Cache if the member is:
@@ -214,7 +214,7 @@ class HouraiGuild(discord.Guild):
             logger.info(f'Saved config for guild {self.id}')
 
     async def set_lockdown(self, expiration=datetime.max):
-        self.config.validation.lockdown_expiration = \
+        self.config.verification.lockdown_expiration = \
                 int(expiration.replace(tzinfo=timezone.utc).timestamp())
         await self.flush_config()
 

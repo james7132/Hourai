@@ -35,5 +35,5 @@ pub fn scoped_config(cfg: &mut web::ServiceConfig) {
     add_config::<ModerationConfig>(cfg, "moderation");
     add_config::<LoggingConfig>(cfg, "logging");
     add_config::<RoleConfig>(cfg, "roles");
-    add_config::<ValidationConfig>(cfg, "validation");
+    add_config::<VerificationConfig>(cfg, "validation");
 }
