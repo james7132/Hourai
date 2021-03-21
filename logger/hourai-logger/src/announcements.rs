@@ -7,30 +7,31 @@ use hourai::models::id::*;
 use hourai::proto::guild_configs::*;
 use hourai_redis::GuildConfig;
 
-async fn get_config(client: &mut Client, guild_id: GuildId) -> Result<Option<AnnouncementConfig>> {
-    Ok(GuildConfig::fetch(guild_id, &mut client.redis).await?)
+async fn get_config(client: &Client, guild_id: GuildId) -> Result<Option<AnnouncementConfig>> {
+    let mut redis = client.redis.clone();
+    Ok(GuildConfig::fetch(guild_id, &mut redis).await?)
 }
 
-pub async fn on_member_join(mut client: Client, guild: GuildId, user: User) -> Result<()> {
-    if let Some(config) = get_config(&mut client, guild).await? {
+pub async fn on_member_join(client: &Client, guild: GuildId, user: User) -> Result<()> {
+    if let Some(config) = get_config(client, guild).await? {
         // TODO(james7132): let this be customizable.
-        let msg = format!("**{}** has joined the server.", user.name);
+        let msg = format!("<@{}> has joined the server.", user.id);
         broadcast(client, config.get_leaves(), msg);
     }
     Ok(())
 }
 
-pub async fn on_member_leave(mut client: Client, evt: MemberRemove) -> Result<()> {
-    if let Some(config) = get_config(&mut client, evt.guild_id).await? {
+pub async fn on_member_leave(client: &Client, evt: MemberRemove) -> Result<()> {
+    if let Some(config) = get_config(&client, evt.guild_id).await? {
         // TODO(james7132): let this be customizable.
-        let msg = format!("**{}** has joined the server.", evt.user.name);
+        let msg = format!("**{}** has left the server.", evt.user.name);
         broadcast(client, config.get_leaves(), msg);
     }
     Ok(())
 }
 
-pub async fn on_member_ban(mut client: Client, evt: BanAdd) -> Result<()> {
-    if let Some(config) = get_config(&mut client, evt.guild_id).await? {
+pub async fn on_member_ban(client: &Client, evt: BanAdd) -> Result<()> {
+    if let Some(config) = get_config(client, evt.guild_id).await? {
         // TODO(james7132): let this be customizable.
         let msg = format!("**{}** has been banned.", evt.user.name);
         broadcast(client, config.get_bans(), msg);
@@ -39,7 +40,7 @@ pub async fn on_member_ban(mut client: Client, evt: BanAdd) -> Result<()> {
 }
 
 pub async fn on_voice_update(
-    mut client: Client,
+    client: &Client,
     state: VoiceState,
     before: Option<ChannelId>
 ) -> Result<()> {
@@ -53,7 +54,7 @@ pub async fn on_voice_update(
         Some(member) => member.user.name,
         None => return Ok(()),
     };
-    if let Some(config) = get_config(&mut client, guild).await? {
+    if let Some(config) = get_config(client, guild).await? {
         // TODO(james7132): let this be customizable.
         let msg = match (before_channel, after_channel) {
             (Some(b), Some(a)) => format!("**{}** moved from **{}** to **{}**.",
@@ -63,14 +64,14 @@ pub async fn on_voice_update(
             (None, None) => return Ok(()),
         };
 
-        broadcast(client, config.get_voice(), msg);
+        broadcast(&client, config.get_voice(), msg);
     }
 
     Ok(())
 }
 
 pub fn broadcast(
-    client: Client,
+    client: &Client,
     config: &AnnouncementTypeConfig,
     message: String,
 ) {

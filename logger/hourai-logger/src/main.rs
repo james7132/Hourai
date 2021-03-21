@@ -1,6 +1,7 @@
 mod announcements;
 mod listings;
 mod message_logging;
+mod roles;
 
 use anyhow::Result;
 use core::time::Duration;
@@ -212,8 +213,21 @@ impl Client {
         let result = match event {
             Event::MemberUpdate(ref evt) => {
                 if self.cache.is_pending(evt.guild_id, evt.user.id) && !evt.pending {
-                    announcements::on_member_join(self.clone(), evt.guild_id,
-                                                  evt.user.clone()).await
+                    let member = Member {
+                        guild_id: evt.guild_id,
+                        nick: evt.nick.clone(),
+                        pending: false,
+                        premium_since: evt.premium_since.clone(),
+                        roles: evt.roles.clone(),
+                        user: evt.user.clone(),
+                        joined_at: Some(evt.joined_at.clone()),
+
+                        // Unknown/dummy fields.
+                        hoisted_role: None,
+                        deaf: false,
+                        mute: false,
+                    };
+                    self.on_member_add(member).await
                 } else {
                     Ok(())
                 }
@@ -221,7 +235,7 @@ impl Client {
             Event::VoiceStateUpdate(ref evt) => {
                 if let Some(guild_id) = evt.0.guild_id {
                     let channel = self.cache.voice_state(guild_id, evt.0.user_id);
-                    announcements::on_voice_update(self.clone(), evt.0.clone(), channel).await
+                    announcements::on_voice_update(&self, evt.0.clone(), channel).await
                 } else {
                     Ok(())
                 }
@@ -249,7 +263,7 @@ impl Client {
                     Ok(())
                 }
             }
-            Event::MemberAdd(evt) => self.on_member_add(*evt).await,
+            Event::MemberAdd(evt) => self.on_member_add(evt.0).await,
             Event::MemberChunk(evt) => self.on_member_chunk(evt).await,
             Event::MemberRemove(evt) => self.on_member_remove(evt).await,
             Event::MemberUpdate(evt) => self.on_member_update(*evt).await,
@@ -283,7 +297,7 @@ impl Client {
     async fn on_ban_add(self, evt: BanAdd) -> Result<()> {
         futures::join!(
             self.log_users(vec![evt.user.clone()]),
-            announcements::on_member_ban(self.clone(), evt.clone())
+            announcements::on_member_ban(&self, evt.clone())
         );
 
         let perms = self
@@ -309,12 +323,14 @@ impl Client {
         Ok(())
     }
 
-    async fn on_member_add(self, evt: MemberAdd) -> Result<()> {
-        let members = vec![evt.0.clone()];
-        futures::join!(
-            self.log_members(&members),
-            announcements::on_member_join(self.clone(), evt.0.guild_id, evt.0.user)
-        );
+    async fn on_member_add(&self, member: Member) -> Result<()> {
+        if !member.pending {
+            let res = roles::on_member_join(&self, &member).await;
+            let members = vec![member.clone()];
+            self.log_members(&members).await?;
+            res?;
+        }
+        announcements::on_member_join(&self, member.guild_id, member.user).await?;
         Ok(())
     }
 
@@ -327,7 +343,7 @@ impl Client {
         futures::join!(
             hourai_sql::Member::set_present(evt.guild_id, evt.user.id, false).execute(&self.sql),
             self.log_users(vec![evt.user.clone()]),
-            announcements::on_member_leave(self.clone(), evt)
+            announcements::on_member_leave(&self, evt)
         );
         Ok(())
     }

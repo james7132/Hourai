@@ -3,6 +3,7 @@ mod models;
 mod types;
 
 pub use self::models::*;
+pub use sqlx::*;
 pub use sqlx::types as sql_types;
 use tracing::debug;
 

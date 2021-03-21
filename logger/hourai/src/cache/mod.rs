@@ -345,18 +345,28 @@ impl InMemoryCache {
         self.0.pending_members.clear();
     }
 
+    /// Given a list of role IDs, finds the highest among them.
+    /// Returns None if role_ids is empty.
+    pub fn highest_role(
+        &self,
+        role_ids: impl Iterator<Item = RoleId>,
+    ) -> i64 {
+        role_ids
+            .filter_map(|id| self.role(id))
+            .map(|role| role.position)
+            .max()
+            .unwrap_or(i64::MIN)
+    }
+
     /// Gets the guild-level permissions for a given member.
     /// If the guild or any of the roles are not present, this will return
     /// Permissions::empty.
-    pub fn guild_permissions<T>(
+    pub fn guild_permissions(
         &self,
         guild_id: GuildId,
         user_id: UserId,
-        role_ids: T,
-    ) -> Permissions
-    where
-        T: Iterator<Item = RoleId>,
-    {
+        role_ids: impl Iterator<Item = RoleId>,
+    ) -> Permissions {
         // The owner has all permissions.
         if let Some(guild) = self.guild(guild_id) {
             if guild.owner_id == user_id {

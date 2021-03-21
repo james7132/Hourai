@@ -64,7 +64,7 @@ pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
 pub struct GatewayQueue(hyper::Uri);
 
 impl twilight_gateway::queue::Queue for GatewayQueue {
-    fn request<'a>(&'a self, shard_id: [u64; 2]) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+    fn request<'a>(&'a self, _: [u64; 2]) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
         tracing::debug!("Queueing to IDENTIFY with the gateway...");
         Box::pin(async move {
             if let Err(err) = hyper::Client::new().get(self.0.clone()).await {

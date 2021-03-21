@@ -5,9 +5,7 @@ use hourai::models::id::UserId;
 use hourai::models::user::{User, UserFlags};
 use std::collections::HashSet;
 
-lazy_static! {
-    static ref VERIFIED_FEATURE: String = "VERIFIED".to_owned();
-}
+const VERIFIED_FEATURE: &str = "VERIFIED";
 
 struct DistinguishedUserVerifier(InMemoryCache);
 
@@ -28,7 +26,8 @@ impl Verifier for DistinguishedUserVerifier {
         let member_id = ctx.member().user.id;
         for guild_id in self.0.guilds() {
             if let Some(guild) = self.0.guild(guild_id) {
-                if guild.owner_id == member_id && guild.features.contains(&VERIFIED_FEATURE) {
+                let verified = guild.features.iter().any(|feat| feat.as_str() == VERIFIED_FEATURE);
+                if guild.owner_id == member_id && verified {
                     ctx.add_approval_reason("User is the owner of a verified server.");
                 }
             }

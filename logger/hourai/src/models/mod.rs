@@ -24,6 +24,14 @@ pub trait Snowflake<I: SnowflakeId> {
     }
 }
 
+bitflags::bitflags! {
+    pub struct RoleFlags : u64 {
+        const DJ = 1;
+        const MODERATOR = 1 << 2;
+        const RESTORABLE = 1 << 3;
+    }
+}
+
 pub trait SnowflakeId: Clone + Copy {
     fn as_u64(&self) -> u64;
 }
