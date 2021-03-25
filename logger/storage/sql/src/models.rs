@@ -304,8 +304,8 @@ impl Member {
                      DO UPDATE SET \
                         role_ids = excluded.role_ids, \
                         nickname = excluded.nickname, \
-                        premium_since = excluded.premium_since \
-                        bot = excluded.bot \
+                        premium_since = excluded.premium_since, \
+                        bot = excluded.bot, \
                         last_seen = now(), \
                         present = true",
         )

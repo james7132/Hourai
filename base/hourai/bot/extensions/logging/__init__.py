@@ -1,6 +1,7 @@
 from .owner_logging import OwnerLogging
-from .role_logging import RoleLogging
-
+from discord.ext import commands
+from hourai.bot import cogs
+from hourai.utils import checks
 
 
 class ModLogging(cogs.BaseCog):

@@ -314,7 +314,7 @@ class Standard(cogs.BaseCog):
                 feed = models.Feed(_type="REDDIT", source=sub, last_updated=now)
                 ctx.session.add(feed)
 
-            if not any(ch.id == ctx.channel.id for ch in feed.channels):
+            if not any(ch.channel_id == ctx.channel.id for ch in feed.channels):
                 feed.channels.append(FeedChannel(channel_id=ctx.channel.id))
 
         ctx.session.commit()
@@ -340,9 +340,15 @@ class Standard(cogs.BaseCog):
     @reddit.command(name="list")
     async def reddit_list(self, ctx):
         """Lists all of the subreddits that feed into this channel"""
-        channel = ctx.session.query(models.Channel).get(ctx.channel.id)
-        if channel is None:
+        feeds = ctx.session.query(models.Feed) \
+                   .join(models.Feed.channels) \
+                   .filter(models.Feed._type == "REDDIT" and
+                           models.FeedChannel.channel_id == ctx.channel.id) \
+                   .all()
+        if not channel:
             await ctx.send("No reddit feeds are configured for this channel.")
+            return
+        await ctx.send(", ".join(f"/r/{f.source}" for f in feeds))
 
 
 def setup(bot):

@@ -63,8 +63,8 @@ class GuildPrefix(enum.Enum):
     MODERATION_CONFIG = CacheConfig(subprefix=1,
                                     proto_type=proto.ModerationConfig)
     LOGGING_CONFIG = CacheConfig(subprefix=2, proto_type=proto.LoggingConfig)
-    VALIDATION_CONFIG = CacheConfig(subprefix=3,
-                                    proto_type=proto.ValidationConfig)
+    VERIFICATION_CONFIG = CacheConfig(subprefix=3,
+                                      proto_type=proto.VerificationConfig)
     MUSIC_CONFIG = CacheConfig(subprefix=4, proto_type=proto.MusicConfig)
     ANNOUNCE_CONFIG = CacheConfig(subprefix=5,
                                   proto_type=proto.AnnouncementConfig)
