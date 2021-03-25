@@ -286,16 +286,19 @@ impl Client {
     }
 
     async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
-        futures::join!(
+        let (res1, res2) = futures::join!(
             Ban::clear_shard(shard_id, self.total_shards()).execute(&self.sql),
             hourai_sql::Member::clear_present_shard(shard_id, self.total_shards())
                 .execute(&self.sql)
         );
+
+        res1?;
+        res2?;
         Ok(())
     }
 
     async fn on_ban_add(self, evt: BanAdd) -> Result<()> {
-        futures::join!(
+        let (res1, res2) = futures::join!(
             self.log_users(vec![evt.user.clone()]),
             announcements::on_member_ban(&self, evt.clone())
         );
@@ -312,14 +315,19 @@ impl Client {
             }
         }
 
+        res1?;
+        res2?;
         Ok(())
     }
 
     async fn on_ban_remove(self, evt: BanRemove) -> Result<()> {
-        futures::join!(
+        let (res1, res2) = futures::join!(
             self.log_users(vec![evt.user.clone()]),
             Ban::clear_ban(evt.guild_id, evt.user.id).execute(&self.sql)
         );
+
+        res1?;
+        res2?;
         Ok(())
     }
 
@@ -340,11 +348,14 @@ impl Client {
     }
 
     async fn on_member_remove(self, evt: MemberRemove) -> Result<()> {
-        futures::join!(
+        let (res1, res2, res3) = futures::join!(
             hourai_sql::Member::set_present(evt.guild_id, evt.user.id, false).execute(&self.sql),
             self.log_users(vec![evt.user.clone()]),
             announcements::on_member_leave(&self, evt)
         );
+        res1?;
+        res2?;
+        res3?;
         Ok(())
     }
 
@@ -415,10 +426,12 @@ impl Client {
 
     async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
         info!("Left guild {}", evt.id);
-        futures::join!(
+        let (res1, res2) = futures::join!(
             hourai_sql::Member::clear_guild(evt.id).execute(&self.sql),
             Ban::clear_guild(evt.id).execute(&self.sql)
         );
+        res1?;
+        res2?;
         Ok(())
     }
 
@@ -436,12 +449,7 @@ impl Client {
             return Ok(());
         }
 
-        hourai_sql::Member {
-            guild_id: evt.guild_id.0 as i64,
-            user_id: evt.user.id.0 as i64,
-            role_ids: evt.roles.iter().map(|id| id.0 as i64).collect(),
-            nickname: evt.nick,
-        }
+        hourai_sql::Member::from(&evt)
         .insert()
         .execute(&self.sql)
         .await?;
@@ -461,7 +469,7 @@ impl Client {
         Username::bulk_insert(usernames).execute(&self.sql).await?;
         let mut txn = self.sql.begin().await?;
         for member in members {
-            hourai_sql::Member::from(&member)
+            hourai_sql::Member::from(member)
                 .insert()
                 .execute(&mut txn)
                 .await?;

@@ -12,7 +12,7 @@ async fn get_roles(
     guild_id: GuildId,
     user_id: UserId
 ) -> hourai_sql::Result<Vec<RoleId>> {
-    hourai_sql::Member::fetch(guild_id, client.user_id)
+    hourai_sql::Member::fetch(guild_id, user_id)
         .fetch_one(&client.sql)
         .await
         .map(|member| member.role_ids().collect())

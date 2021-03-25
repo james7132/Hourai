@@ -1,4 +1,10 @@
-use hourai::models::{guild::Ban as TwilightBan, guild::Member as TwilightMember, id::*, UserLike};
+use hourai::models::{
+    guild::Ban as TwilightBan,
+    guild::Member as TwilightMember,
+    gateway::payload::MemberUpdate,
+    id::*,
+    UserLike
+};
 use sqlx::types::chrono::{DateTime, Utc};
 use std::convert::TryInto;
 
@@ -229,18 +235,43 @@ pub struct Member {
     pub user_id: i64,
     pub role_ids: Vec<i64>,
     pub nickname: Option<String>,
+    pub bot: bool,
+    pub premium_since: Option<DateTime<Utc>>
 }
 
-impl Member {
-    pub fn from(member: &TwilightMember) -> Self {
+impl From<&TwilightMember> for Member {
+    fn from(member: &TwilightMember) -> Self {
+        let premium = member.premium_since.as_ref().and_then(|p| {
+            p.parse::<DateTime<Utc>>().ok()
+        });
         Self {
             guild_id: member.guild_id.0 as i64,
             user_id: member.user.id.0 as i64,
             role_ids: member.roles.iter().map(|id| id.0 as i64).collect(),
             nickname: member.nick.clone(),
+            bot: member.user.bot,
+            premium_since: premium
         }
     }
+}
 
+impl From<&MemberUpdate> for Member {
+    fn from(member: &MemberUpdate) -> Self {
+        let premium = member.premium_since.as_ref().and_then(|p| {
+            p.parse::<DateTime<Utc>>().ok()
+        });
+        Self {
+            guild_id: member.guild_id.0 as i64,
+            user_id: member.user.id.0 as i64,
+            role_ids: member.roles.iter().map(|id| id.0 as i64).collect(),
+            nickname: member.nick.clone(),
+            bot: member.user.bot,
+            premium_since: premium
+        }
+    }
+}
+
+impl Member {
     pub fn guild_id(&self) -> GuildId {
         GuildId(self.user_id as u64)
     }
@@ -267,16 +298,23 @@ impl Member {
 
     pub fn insert<'a>(self) -> SqlQuery<'a> {
         sqlx::query(
-            "INSERT INTO members (guild_id, user_id, role_ids, nickname, present) \
-                     VALUES ($1, $2, $3, $4, true) \
+            "INSERT INTO members (guild_id, user_id, role_ids, nickname, present, bot, premium_since) \
+                     VALUES ($1, $2, $3, $4, true, $5, $6) \
                      ON CONFLICT ON CONSTRAINT members_pkey \
-                     DO UPDATE SET role_ids = excluded.role_ids, nickname = excluded.nickname, \
-                     last_seen = now(), present = true",
+                     DO UPDATE SET \
+                        role_ids = excluded.role_ids, \
+                        nickname = excluded.nickname, \
+                        premium_since = excluded.premium_since \
+                        bot = excluded.bot \
+                        last_seen = now(), \
+                        present = true",
         )
         .bind(self.guild_id)
         .bind(self.user_id)
         .bind(self.role_ids)
         .bind(self.nickname)
+        .bind(self.bot)
+        .bind(self.premium_since)
     }
 
     pub fn count_guilds<'a>() -> SqlQueryAs<'a, (i64,)> {

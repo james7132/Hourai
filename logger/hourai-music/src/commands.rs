@@ -7,7 +7,6 @@ use hourai::{
     models::{
         channel::Message,
         id::{ChannelId, GuildId, RoleId},
-        user::User,
         UserLike,
     },
 };
