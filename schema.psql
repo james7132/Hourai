@@ -90,7 +90,9 @@ CREATE TABLE public.members (
     role_ids bigint[] NOT NULL,
     nickname character varying(32),
     present boolean DEFAULT false NOT NULL,
-    last_seen timestamp with time zone DEFAULT now() NOT NULL
+    last_seen timestamp with time zone DEFAULT now() NOT NULL,
+    bot boolean DEFAULT false NOT NULL,
+    premium_since timestamp with time zone
 );
 ALTER TABLE public.members OWNER TO hourai;
 CREATE TABLE public.oauth (
