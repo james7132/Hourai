@@ -376,6 +376,7 @@ impl Client {
         res1?;
         res2?;
         res3?;
+
         Ok(())
     }
 
@@ -498,12 +499,14 @@ impl Client {
         hourai_redis::CachedVoiceState::clear_guild(evt.id)
             .query_async(&mut self.redis)
             .await?;
+
         let (res1, res2) = futures::join!(
             hourai_sql::Member::clear_guild(evt.id).execute(&self.sql),
             Ban::clear_guild(evt.id).execute(&self.sql),
         );
         res1?;
         res2?;
+
         Ok(())
     }
 
