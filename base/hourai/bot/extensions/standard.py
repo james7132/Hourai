@@ -355,6 +355,8 @@ class Standard(cogs.BaseCog):
             await ctx.send(", ".join(f"/r/{f[0]}" for f in feeds))
         else:
             await ctx.send("No reddit feeds are configured for this channel.")
+            return
+        await ctx.send(", ".join(f"/r/{f.source}" for f in feeds))
 
     @commands.command()
     @commands.guild_only()
