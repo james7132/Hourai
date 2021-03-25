@@ -96,6 +96,8 @@ class Member(Base):
     user_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
     role_ids = Column(postgresql.ARRAY(types.BigInteger), nullable=False)
     nickname = Column(types.String(32), nullable=True)
+    bot = Column(types.Boolean, nullable=False)
+    premium_since = Column(types.DateTime(timezone=True), nullable=True)
 
 
 class Username(Base):

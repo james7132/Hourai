@@ -40,7 +40,7 @@ class BanStorage:
             ban_proto.user_id = ban.user_id
             ban_proto.guild_size = \
                 session.query(models.Member) \
-                       .filter_by(guild_id=ban.guild_id) \
+                       .filter_by(guild_id=ban.guild_id, bot=False) \
                        .count()
             if ban.reason is not None:
                 ban_proto.reason = ban.reason
