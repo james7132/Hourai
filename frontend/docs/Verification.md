@@ -96,7 +96,7 @@ These messages will also [[ping one random online moderator|Finding Moderators]]
 to try to verify the user that has joined the server. If no moderator is online,
 it will instead ping the server owner.
 
-### Step 3: Propagating the Verified Role
+### Step 5: Propagating the Verified Role
 
 The next step is to ensure that everyone who should have the role has it. Run
 the following command to give everyone the role.
@@ -114,7 +114,7 @@ members have the role.
 Members that fail verification may need to be checked by the server moderation
 team manually.
 
-### Step 4: Removing the permissions from the @everyone Role
+### Step 6: Removing the permissions from the @everyone Role
 
 The final step is to cut off unverified members access to the server. Remove all
 of the basic permissions that have been moved to the Verified role. Typically

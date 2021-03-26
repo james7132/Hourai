@@ -42,8 +42,7 @@ be written into the audit log when provided.
 |`~kick <user(s)> <reason>`|Kick Members|Kicks all provided users from the serverr.|
 |`~ban <user(s)> <reason>`|Ban Members|Bans all provided users from the server.  Can be used with user IDs to ban users outside of the server.|
 |`~ban clean`|Ban Members|Cleans up the server's banlist and removes all deleted users from it.|
-|`~softban <user(s)> <reason>`|Kick Members (User), Ban Members (Bot)|Bans then unbans a user from the server, deleteing the last 7 days of messages from them
-without leaving a lasting ban.|
+|`~softban <user(s)> <reason>`|Kick Members (User), Ban Members (Bot)|Bans then unbans a user from the server, deleteing the last 7 days of messages from them without leaving a lasting ban.|
 |`~mute <user(s)> <reason>`|Mute Members|Server mutes all provided users.|
 |`~unmute <user(s)> <reason>`|Mute Members|Server unmutes all provided users.|
 |`~deafen <user(s)>`|Deafen Members|Server deafen all provided users.|
@@ -53,8 +52,7 @@ without leaving a lasting ban.|
 |`~role add <role> <user(s)>`|Manage Roles|Adds a role to all provided users.|
 |`~role remove <role> <user(s)>`|Manage Roles|Removes a role to all provided users.|
 |`~prune <count>`|Manage Messages|Deletes the last `count` messages. Defaults to 100.\*|
-|`~prune user <user(s)>`|Manage Messages|Deletes all messages from the specified
-users in the last 100 messages.\*|
+|`~prune user <user(s)>`|Manage Messages|Deletes all messages from the specified users in the last 100 messages.\*|
 |`~prune embed <count>`|Manage Messages|Deletes all messages with an embed, attachment, image, or video in the last `count` messages. Defaults to 100.\*|
 |`~prune bot <count>`|Manage Messages|Deletes all messages from a bot in the last `count` messages. Defaults to 100.\*|
 |`~prune mine <count>`|None|Deletes all messages from the command user in the last `count` messages. Defaults to 100.\*|
@@ -81,8 +79,8 @@ these options will be configurable from the control panel.
 |Command|Permissions|Description|
 |:------|:----------|:----------|
 |`~setmodlog <channel>`|Manage Guild (User)|Sets the server's modlog to the specified channel.|
-|`~log deleted`|Manage Guild (User)|Toggles whehter deleted messages are logged to the server's modlog.|
-|`~log edited`|Manage Guild (User)|Toggles whehter edited messages are logged to the server's modlog.|
+|`~log deleted`|Manage Guild (User)|Toggles whether deleted messages are logged to the server's modlog.|
+|`~log edited`|Manage Guild (User)|Toggles whether edited messages are logged to the server's modlog.|
 
 ## Feed Commands
 
@@ -120,8 +118,7 @@ joins into a server. For more detailed information, please see
 |`~validation setup <Role>`|Moderator|Sets up validation.|
 |`~validation propagate`|Moderator| Starts/stops the bot from announcing users leaving from the server in the current channel.|
 |`~validation verify <user>`|Moderator|Runs validation checks on a member who has already joined the server.|
-|`~validation lockdown <timerange>`|Moderator|Temporarily forces all new joins to
-be manually verified. Good for countering raids.|
+|`~validation lockdown <timerange>`|Moderator|Temporarily forces all new joins to be manually verified. Good for countering raids.|
 |`~validation disable`|Moderator|Disables verification on the server.|
 
 ## Music Commands
