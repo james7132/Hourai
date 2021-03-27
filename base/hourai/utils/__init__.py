@@ -229,9 +229,9 @@ async def mention_random_online_mod(bot, guild):
     """
     moderators = await find_online_moderators(guild)
 
-    logging.info(f"Found online moderators: {mods}")
-    if len(mods) > 0:
-        moderator = random.choice(mods)
+    logging.info(f"Found online moderators: {moderators}")
+    if len(moderators) > 0:
+        moderator = random.choice(moderators)
         return moderator, f"<@{moderator}>"
     else:
         return guild.owner, f'<@{guild.owner_id}>, no mods are online!'
