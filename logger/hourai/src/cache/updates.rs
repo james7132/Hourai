@@ -22,7 +22,6 @@ impl UpdateCache for Event {
         match self {
             ChannelCreate(v) => c.update(v),
             ChannelDelete(v) => c.update(v),
-            ChannelPinsUpdate(v) => c.update(v),
             ChannelUpdate(v) => c.update(v),
             GuildCreate(v) => c.update(v.deref()),
             GuildDelete(v) => c.update(v.deref()),
@@ -37,7 +36,6 @@ impl UpdateCache for Event {
             RoleDelete(v) => c.update(v),
             RoleUpdate(v) => c.update(v),
             UnavailableGuild(v) => c.update(v),
-            UserUpdate(v) => c.update(v),
             VoiceServerUpdate(v) => c.update(v),
             VoiceStateUpdate(v) => c.update(v.deref()),
             _ => {},
@@ -52,17 +50,12 @@ impl UpdateCache for ChannelCreate {
         }
 
         match &self.0 {
-            Channel::Group(c) => {
-                super::upsert_item(&cache.0.groups, c.id, c.clone());
-            }
             Channel::Guild(c) => {
                 if let Some(gid) = c.guild_id() {
                     cache.cache_guild_channel(gid, c.clone());
                 }
             }
-            Channel::Private(c) => {
-                cache.cache_private_channel(c.clone());
-            }
+            _ => { }
         }
     }
 }
@@ -74,33 +67,10 @@ impl UpdateCache for ChannelDelete {
         }
 
         match self.0 {
-            Channel::Group(ref c) => {
-                cache.delete_group(c.id);
-            }
             Channel::Guild(ref c) => {
                 cache.delete_guild_channel(c.id());
             }
-            Channel::Private(ref c) => {
-                cache.0.channels_private.remove(&c.id);
-            }
-        }
-    }
-}
-
-impl UpdateCache for ChannelPinsUpdate {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::CHANNEL) {
-            return;
-        }
-
-        if let Some(mut channel) = cache.0.channels_private.get_mut(&self.channel_id) {
-            Arc::make_mut(&mut channel).last_pin_timestamp = self.last_pin_timestamp.clone();
-
-            return;
-        }
-
-        if let Some(mut group) = cache.0.groups.get_mut(&self.channel_id) {
-            Arc::make_mut(&mut group).last_pin_timestamp = self.last_pin_timestamp.clone();
+            _ => {}
         }
     }
 }
@@ -112,17 +82,12 @@ impl UpdateCache for ChannelUpdate {
         }
 
         match self.0.clone() {
-            Channel::Group(c) => {
-                cache.cache_group(c);
-            }
             Channel::Guild(c) => {
                 if let Some(gid) = c.guild_id() {
                     cache.cache_guild_channel(gid, c);
                 }
             }
-            Channel::Private(c) => {
-                cache.cache_private_channel(c);
-            }
+            _ => {}
         }
     }
 }
@@ -189,16 +154,16 @@ impl UpdateCache for GuildUpdate {
 
         if let Some(mut guild) = cache.0.guilds.get_mut(&self.0.id) {
             let mut guild = Arc::make_mut(&mut guild);
-            guild.name = self.name.clone();
-            guild.description = self.description.clone();
-            guild.features = self.features.clone();
-            guild.icon = self.icon.clone();
+            guild.name = self.name.clone().into_boxed_str();
+            guild.description = self.description.clone().map(|s| s.clone().into_boxed_str());
+            guild.features = self.features.iter().map(|s| s.clone().into_boxed_str()).collect();
+            guild.icon = self.icon.clone().map(|s| s.into_boxed_str());
             guild.owner_id = self.owner_id;
             guild.premium_tier = self.premium_tier;
             guild
                 .premium_subscription_count
                 .replace(self.premium_subscription_count.unwrap_or_default());
-            guild.vanity_url_code = self.vanity_url_code.clone();
+            guild.vanity_url_code = self.vanity_url_code.clone().map(|s| s.into_boxed_str());
         };
     }
 }
@@ -269,10 +234,6 @@ impl UpdateCache for PresenceUpdate {
 
 impl UpdateCache for Ready {
     fn update(&self, cache: &InMemoryCache) {
-        if cache.wants(ResourceType::USER_CURRENT) {
-            cache.cache_current_user(self.user.clone());
-        }
-
         if cache.wants(ResourceType::GUILD) {
             for status in &self.guilds {
                 match status {
@@ -294,12 +255,7 @@ impl UpdateCache for RoleCreate {
             return;
         }
 
-        super::upsert_guild_item(
-            &cache.0.roles,
-            self.guild_id,
-            self.role.id,
-            self.role.clone(),
-        );
+        cache.cache_role(self.guild_id, &self.role);
     }
 }
 
@@ -319,7 +275,7 @@ impl UpdateCache for RoleUpdate {
             return;
         }
 
-        cache.cache_role(self.guild_id, self.role.clone());
+        cache.cache_role(self.guild_id, &self.role);
     }
 }
 
@@ -331,16 +287,6 @@ impl UpdateCache for UnavailableGuild {
 
         cache.0.guilds.remove(&self.id);
         cache.0.unavailable_guilds.insert(self.id);
-    }
-}
-
-impl UpdateCache for UserUpdate {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::USER_CURRENT) {
-            return;
-        }
-
-        cache.cache_current_user(self.0.clone());
     }
 }
 
