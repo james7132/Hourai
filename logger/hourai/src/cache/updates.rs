@@ -2,7 +2,6 @@ use super::{config::ResourceType, InMemoryCache};
 use dashmap::DashMap;
 use std::{collections::HashSet, hash::Hash, ops::Deref, sync::Arc};
 use twilight_model::{
-    channel::Channel,
     gateway::{event::Event, payload::*, presence::UserOrId},
     guild::GuildStatus,
     id::GuildId,
@@ -20,9 +19,6 @@ impl UpdateCache for Event {
         use Event::*;
 
         match self {
-            ChannelCreate(v) => c.update(v),
-            ChannelDelete(v) => c.update(v),
-            ChannelUpdate(v) => c.update(v),
             GuildCreate(v) => c.update(v.deref()),
             GuildDelete(v) => c.update(v.deref()),
             GuildUpdate(v) => c.update(v.deref()),
@@ -39,46 +35,6 @@ impl UpdateCache for Event {
             VoiceServerUpdate(v) => c.update(v),
             VoiceStateUpdate(v) => c.update(v.deref()),
             _ => {}
-        }
-    }
-}
-
-impl UpdateCache for ChannelCreate {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::CHANNEL) {
-            return;
-        }
-
-        if let Channel::Guild(ref c) = self.0 {
-            if let Some(gid) = c.guild_id() {
-                cache.cache_guild_channel(gid, c.clone());
-            }
-        }
-    }
-}
-
-impl UpdateCache for ChannelDelete {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::CHANNEL) {
-            return;
-        }
-
-        if let Channel::Guild(ref c) = self.0 {
-            cache.delete_guild_channel(c.id());
-        }
-    }
-}
-
-impl UpdateCache for ChannelUpdate {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::CHANNEL) {
-            return;
-        }
-
-        if let Channel::Guild(ref c) = self.0 {
-            if let Some(gid) = c.guild_id() {
-                cache.cache_guild_channel(gid, c.clone());
-            }
         }
     }
 }
@@ -114,10 +70,6 @@ impl UpdateCache for GuildDelete {
         let id = self.id;
 
         cache.0.guilds.remove(&id);
-
-        if cache.wants(ResourceType::CHANNEL) {
-            remove_ids(&cache.0.guild_channels, &cache.0.channels_guild, id);
-        }
 
         if cache.wants(ResourceType::ROLE) {
             remove_ids(&cache.0.guild_roles, &cache.0.roles, id);
@@ -437,40 +389,6 @@ mod tests {
         assert_eq!(cache.guild(guild.id).unwrap().name, mutation.name);
         assert_eq!(cache.guild(guild.id).unwrap().owner_id, mutation.owner_id);
         assert_eq!(cache.guild(guild.id).unwrap().id, mutation.id);
-    }
-
-    #[test]
-    fn test_channel_delete_guild() {
-        let cache = InMemoryCache::new();
-        let (guild_id, channel_id, channel) = guild_channel_text();
-
-        cache.cache_guild_channel(guild_id, channel.clone());
-        assert_eq!(1, cache.0.channels_guild.len());
-        assert!(cache
-            .0
-            .guild_channels
-            .get(&guild_id)
-            .unwrap()
-            .contains(&channel_id));
-
-        cache.update(&ChannelDelete(Channel::Guild(channel)));
-        assert!(cache.0.channels_guild.is_empty());
-        assert!(cache.0.guild_channels.get(&guild_id).unwrap().is_empty());
-    }
-
-    #[test]
-    fn test_channel_update_guild() {
-        let cache = InMemoryCache::new();
-        let (guild_id, channel_id, channel) = guild_channel_text();
-
-        cache.update(&ChannelUpdate(Channel::Guild(channel)));
-        assert_eq!(1, cache.0.channels_guild.len());
-        assert!(cache
-            .0
-            .guild_channels
-            .get(&guild_id)
-            .unwrap()
-            .contains(&channel_id));
     }
 
     #[test]

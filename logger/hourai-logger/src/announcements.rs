@@ -48,10 +48,17 @@ pub async fn on_voice_update(
         Some(guild) => guild,
         None => return Ok(()),
     };
-    let before_channel = before.and_then(|id| client.cache.guild_channel(id));
-    let after_channel = state
-        .channel_id
-        .and_then(|id| client.cache.guild_channel(id));
+    let mut redis = client.redis.clone();
+    let before_channel = if let Some(id) = before {
+        hourai_redis::CachedGuildChannel::fetch(guild, id, &mut redis).await?
+    } else {
+        None
+    };
+    let after_channel = if let Some(id) = state.channel_id {
+        hourai_redis::CachedGuildChannel::fetch(guild, id, &mut redis).await?
+    } else {
+        None
+    };
     if before_channel == after_channel {
         return Ok(());
     }
@@ -63,10 +70,10 @@ pub async fn on_voice_update(
         // TODO(james7132): let this be customizable.
         let msg = match (before_channel, after_channel) {
             (Some(b), Some(a)) => {
-                format!("**{}** moved from **{}** to **{}**.", user, b.name, a.name)
+                format!("**{}** moved from **{}** to **{}**.", user, b.get_name(), a.get_name())
             }
-            (None, Some(ch)) => format!("**{}** joined **{}**.", user, ch.name),
-            (Some(ch), None) => format!("**{}** left **{}**.", user, ch.name),
+            (None, Some(ch)) => format!("**{}** joined **{}**.", user, ch.get_name()),
+            (Some(ch), None) => format!("**{}** left **{}**.", user, ch.get_name()),
             (None, None) => return Ok(()),
         };
 

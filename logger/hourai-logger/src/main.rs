@@ -12,7 +12,8 @@ use hourai::{
     gateway::{cluster::*, Event, EventType, EventTypeFlags, Intents},
     init,
     models::{
-        channel::Message, gateway::payload::*, guild::member::Member, guild::Permissions, id::*,
+        channel::{Message, Channel}, gateway::payload::*, guild::member::Member,
+        guild::Permissions, id::*,
         user::User,
     },
 };
@@ -254,7 +255,7 @@ impl Client {
         }
     }
 
-    async fn consume_event(self, shard_id: u64, event: Event) {
+    async fn consume_event(mut self, shard_id: u64, event: Event) {
         let kind = event.kind();
         let result = match event {
             Event::Ready(_) => self.on_shard_ready(shard_id).await,
@@ -279,6 +280,9 @@ impl Client {
             Event::MessageDeleteBulk(evt) => self.on_message_bulk_delete(evt).await,
             Event::RoleCreate(_) => Ok(()),
             Event::RoleUpdate(_) => Ok(()),
+            Event::ChannelCreate(evt) => self.on_channel_create(evt).await,
+            Event::ChannelUpdate(evt) => self.on_channel_update(evt).await,
+            Event::ChannelDelete(evt) => self.on_channel_delete(evt).await,
             Event::RoleDelete(evt) => self.on_role_delete(evt).await,
             _ => {
                 error!("Unexpected event type: {:?}", event);
@@ -348,12 +352,25 @@ impl Client {
         Ok(())
     }
 
-    async fn on_member_chunk(self, evt: MemberChunk) -> Result<()> {
+    async fn on_member_chunk(&self, evt: MemberChunk) -> Result<()> {
         self.log_members(&evt.members).await?;
         Ok(())
     }
 
-    async fn on_member_remove(self, evt: MemberRemove) -> Result<()> {
+    async fn on_member_update(&self, evt: MemberUpdate) -> Result<()> {
+        if evt.user.bot {
+            return Ok(());
+        }
+
+        hourai_sql::Member::from(&evt)
+            .insert()
+            .execute(&self.sql)
+            .await?;
+        Username::new(&evt.user).insert().execute(&self.sql).await?;
+        Ok(())
+    }
+
+    async fn on_member_remove(&self, evt: MemberRemove) -> Result<()> {
         let (res1, res2, res3) = futures::join!(
             hourai_sql::Member::set_present(evt.guild_id, evt.user.id, false).execute(&self.sql),
             self.log_users(vec![evt.user.clone()]),
@@ -362,6 +379,37 @@ impl Client {
         res1?;
         res2?;
         res3?;
+        Ok(())
+    }
+
+    async fn on_channel_create(&mut self, evt: ChannelCreate) -> Result<()> {
+        if let Channel::Guild(ref ch) = evt.0 {
+            hourai_redis::CachedGuildChannel::new(ch)
+                .save()
+                .query_async(&mut self.redis)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn on_channel_update(&mut self, evt: ChannelUpdate) -> Result<()> {
+        if let Channel::Guild(ref ch) = evt.0 {
+            hourai_redis::CachedGuildChannel::new(ch)
+                .save()
+                .query_async(&mut self.redis)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn on_channel_delete(mut self, evt: ChannelDelete) -> Result<()> {
+        if let Channel::Guild(ref ch) = evt.0 {
+            if let Some(guild_id) = ch.guild_id() {
+                hourai_redis::CachedGuildChannel::delete(guild_id, ch.id())
+                    .query_async(&mut self.redis)
+                    .await?;
+            }
+        }
         Ok(())
     }
 
@@ -416,7 +464,7 @@ impl Client {
         Ok(())
     }
 
-    async fn on_guild_create(self, evt: GuildCreate) -> Result<()> {
+    async fn on_guild_create(mut self, evt: GuildCreate) -> Result<()> {
         let guild = evt.0;
 
         if guild.unavailable {
@@ -426,15 +474,17 @@ impl Client {
         }
 
         self.chunk_guild(guild.id).await?;
+        hourai_redis::CachedGuildChannel::save_guild(&guild).query_async(&mut self.redis).await?;
 
         Ok(())
     }
 
-    async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
+    async fn on_guild_leave(mut self, evt: GuildDelete) -> Result<()> {
         info!("Left guild {}", evt.id);
+        hourai_redis::CachedGuildChannel::delete_guild(evt.id).query_async(&mut self.redis).await?;
         let (res1, res2) = futures::join!(
             hourai_sql::Member::clear_guild(evt.id).execute(&self.sql),
-            Ban::clear_guild(evt.id).execute(&self.sql)
+            Ban::clear_guild(evt.id).execute(&self.sql),
         );
         res1?;
         res2?;
@@ -447,19 +497,6 @@ impl Client {
             .await;
         self.refresh_bans(evt.guild_id).await?;
         res?;
-        Ok(())
-    }
-
-    async fn on_member_update(self, evt: MemberUpdate) -> Result<()> {
-        if evt.user.bot {
-            return Ok(());
-        }
-
-        hourai_sql::Member::from(&evt)
-            .insert()
-            .execute(&self.sql)
-            .await?;
-        Username::new(&evt.user).insert().execute(&self.sql).await?;
         Ok(())
     }
 

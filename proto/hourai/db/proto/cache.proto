@@ -2,8 +2,15 @@ syntax = "proto2";
 
 package hourai.db.proto;
 
+// NEXT ID: 4
+message CachedGuildChannelProto {
+  optional fixed64 channel_id = 1;
+  optional fixed64 guild_id = 2;
+  optional string name = 3;
+}
+
+// NEXT ID: 6
 message CachedMessageProto {
-  // NEXT ID: 6
   optional fixed64 id = 1;
   optional fixed64 channel_id = 2;
   optional fixed64 guild_id = 3;
@@ -11,8 +18,8 @@ message CachedMessageProto {
   optional string content = 5;
 }
 
+// NEXT ID: 6
 message CachedUserProto {
-  // NEXT ID: 6
   optional fixed64 id = 1;
   optional string username = 2;
   optional uint32 discriminator = 3;

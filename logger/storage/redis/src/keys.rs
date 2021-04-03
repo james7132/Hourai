@@ -12,6 +12,12 @@ pub(super) enum CachePrefix {
     OnlineStatus = 2_u8,
     /// Messages cached.
     Messages = 3_u8,
+    /// Guilds.
+    Guild = 4_u8,
+    /// Roles.
+    Role = 5_8,
+    /// Guild channels.
+    GuildChannels = 6_u8,
 }
 
 /// A prefixed key schema for 64-bit integer keys. Implements ToRedisArgs, so its generically

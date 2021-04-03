@@ -153,3 +153,64 @@ impl CachedMessage {
         redis::Cmd::del(keys)
     }
 }
+
+pub struct CachedGuildChannel {
+    proto: Protobuf<CachedGuildChannelProto>,
+}
+
+impl CachedGuildChannel {
+    pub fn new(channel: &hourai::models::channel::GuildChannel) -> Self {
+        Self { proto: Self::make_proto(channel) }
+    }
+
+    fn make_proto(channel: &hourai::models::channel::GuildChannel) ->
+        Protobuf<CachedGuildChannelProto> {
+        let mut proto = CachedGuildChannelProto::new();
+        proto.set_channel_id(channel.id().0);
+        proto.set_guild_id(channel.guild_id().unwrap().0);
+        proto.set_name(channel.name().to_owned());
+        Protobuf(proto)
+    }
+
+    fn key(guild_id: u64) -> CacheKey<u64> {
+        CacheKey(CachePrefix::GuildChannels, guild_id)
+    }
+
+    pub async fn fetch<C: ConnectionLike>(
+        guild_id: GuildId,
+        channel_id: ChannelId,
+        conn: &mut C,
+    ) -> Result<Option<CachedGuildChannelProto>> {
+        let key = Self::key(guild_id.0);
+        let proto: Option<Protobuf<CachedGuildChannelProto>> =
+            redis::Cmd::hget(key, channel_id.0).query_async(conn).await?;
+        Ok(proto.map(|proto| proto.0))
+    }
+
+    pub fn save(self) -> redis::Cmd {
+        redis::Cmd::hset(Self::key(self.proto.0.get_guild_id()), self.proto.0.get_channel_id(), self.proto)
+    }
+
+    pub fn save_guild(guild: &hourai::models::guild::Guild) -> redis::Pipeline {
+        let guild_channels: Vec<(u64, Protobuf<CachedGuildChannelProto>)> =
+            guild.channels
+                 .iter()
+                 .map(|ch| (ch.id().0, Self::make_proto(ch)))
+                 .collect();
+        let key = Self::key(guild.id.0);
+        let mut pipe = redis::pipe();
+        pipe.atomic().del(key).ignore().hset_multiple(key, &guild_channels).ignore();
+        pipe
+    }
+
+    pub fn delete(guild_id: GuildId, channel_id: ChannelId) -> redis::Cmd {
+        let key = CacheKey(CachePrefix::GuildChannels, guild_id.0);
+        redis::Cmd::hdel(key, channel_id.0)
+    }
+
+    pub fn delete_guild(guild_id: GuildId) -> redis::Cmd {
+        let key = CacheKey(CachePrefix::GuildChannels, guild_id.0);
+        redis::Cmd::del(key)
+    }
+
+}

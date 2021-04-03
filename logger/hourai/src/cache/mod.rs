@@ -14,7 +14,6 @@ use self::model::*;
 use dashmap::{mapref::entry::Entry, DashMap, DashSet};
 use std::{collections::HashSet, hash::Hash, sync::Arc};
 use twilight_model::{
-    channel::GuildChannel,
     gateway::presence::{Presence, Status, UserOrId},
     guild::{Guild, Member, Permissions, Role},
     id::{ChannelId, GuildId, RoleId, UserId},
@@ -59,9 +58,7 @@ fn upsert_guild_item<K: Eq + Hash, V: PartialEq>(
 #[derive(Debug, Default)]
 struct InMemoryCacheRef {
     config: Arc<Config>,
-    channels_guild: DashMap<ChannelId, GuildItem<CachedChannel>>,
     guilds: DashMap<GuildId, Arc<CachedGuild>>,
-    guild_channels: DashMap<GuildId, HashSet<ChannelId>>,
     guild_presences: DashMap<GuildId, HashSet<UserId>>,
     guild_roles: DashMap<GuildId, HashSet<RoleId>>,
     roles: DashMap<RoleId, GuildItem<CachedRole>>,
@@ -168,18 +165,6 @@ impl InMemoryCache {
             .collect()
     }
 
-    /// Gets a channel by ID.
-    ///
-    /// This is an O(1) operation. This requires the [`GUILDS`] intent.
-    ///
-    /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
-    pub fn guild_channel(&self, channel_id: ChannelId) -> Option<Arc<CachedChannel>> {
-        self.0
-            .channels_guild
-            .get(&channel_id)
-            .map(|x| Arc::clone(&x.data))
-    }
-
     /// Gets all of the IDs of the guilds in the cache.
     ///
     /// This is an O(n) operation. This requires the [`GUILDS`] intent.
@@ -196,19 +181,6 @@ impl InMemoryCache {
     /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
     pub fn guild(&self, guild_id: GuildId) -> Option<Arc<CachedGuild>> {
         self.0.guilds.get(&guild_id).map(|r| Arc::clone(r.value()))
-    }
-
-    /// Gets the set of channels in a guild.
-    ///
-    /// This is a O(m) operation, where m is the amount of channels in the
-    /// guild. This requires the [`GUILDS`] intent.
-    ///
-    /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
-    pub fn guild_channels(&self, guild_id: GuildId) -> Option<HashSet<ChannelId>> {
-        self.0
-            .guild_channels
-            .get(&guild_id)
-            .map(|r| r.value().clone())
     }
 
     /// Gets the set of presences in a guild.
@@ -265,9 +237,7 @@ impl InMemoryCache {
     ///
     /// This is equal to creating a new empty cache.
     pub fn clear(&self) {
-        self.0.channels_guild.clear();
         self.0.guilds.clear();
-        self.0.guild_channels.clear();
         self.0.guild_presences.clear();
         self.0.guild_roles.clear();
         self.0.roles.clear();
@@ -321,40 +291,9 @@ impl InMemoryCache {
         }
     }
 
-    fn cache_guild_channels(
-        &self,
-        guild_id: GuildId,
-        guild_channels: impl IntoIterator<Item = GuildChannel>,
-    ) {
-        for channel in guild_channels {
-            self.cache_guild_channel(guild_id, channel);
-        }
-    }
-
-    fn cache_guild_channel(&self, guild_id: GuildId, channel: GuildChannel) -> Arc<CachedChannel> {
-        let id = channel.id();
-        self.0
-            .guild_channels
-            .entry(guild_id)
-            .or_default()
-            .insert(id);
-
-        let cached_channel = CachedChannel {
-            id,
-            name: channel.name().to_owned().into_boxed_str(),
-        };
-
-        upsert_guild_item(&self.0.channels_guild, guild_id, id, cached_channel)
-    }
-
     fn cache_guild(&self, guild: Guild) {
         // The map and set creation needs to occur first, so caching states and
         // objects always has a place to put them.
-        if self.wants(ResourceType::CHANNEL) {
-            self.0.guild_channels.insert(guild.id, HashSet::new());
-            self.cache_guild_channels(guild.id, guild.channels);
-        }
-
         if self.wants(ResourceType::MEMBER) {
             self.cache_members(guild.id, guild.members);
         }
@@ -478,20 +417,6 @@ impl InMemoryCache {
     fn unavailable_guild(&self, guild_id: GuildId) {
         self.0.unavailable_guilds.insert(guild_id);
         self.0.guilds.remove(&guild_id);
-    }
-
-    /// Delete a guild channel from the cache.
-    ///
-    /// The guild channel data itself and the channel entry in its guild's list
-    /// of channels will be deleted.
-    fn delete_guild_channel(&self, channel_id: ChannelId) -> Option<Arc<CachedChannel>> {
-        let GuildItem { data, guild_id } = self.0.channels_guild.remove(&channel_id)?.1;
-
-        if let Some(mut guild_channels) = self.0.guild_channels.get_mut(&guild_id) {
-            guild_channels.remove(&channel_id);
-        }
-
-        Some(data)
     }
 
     fn delete_role(&self, role_id: RoleId) -> Option<Arc<CachedRole>> {
@@ -645,4 +570,5 @@ mod tests {
                 .all(|role| *cache.role(role.id).expect("Role missing from cache") == role))
         }
     }
+
 }
