@@ -291,14 +291,14 @@ class Standard(cogs.BaseCog):
         subreddit = subreddit.replace('/r/', '').lower()
         subreddits = subreddit.split("+")
 
-        url = f"https://reddit.com/r/{subreddit}/new.json"
-        async with ctx.bot.http_session.get(url) as resp:
-            if resp.status >= 400:
+        url = f"https://www.reddit.com/r/{subreddit}/new.json"
+        async with ctx.bot.http_session.get(url, allow_redirects=False) as resp:
+            if resp.status >= 300:
                 await ctx.send(f"Error while finding subreddit: {subreddit}")
                 return
             elif resp.status != 200:
-                await ctx.send(f"Unusual response from Reddit. Subreddit not"
-                               f"added.")
+                await ctx.send(f"Unusual response from Reddit. Subreddit "
+                               f"{subreddit} not added.")
                 return
 
         feeds = ctx.session.query(models.Feed) \
@@ -315,7 +315,7 @@ class Standard(cogs.BaseCog):
                 ctx.session.add(feed)
 
             if not any(ch.channel_id == ctx.channel.id for ch in feed.channels):
-                feed.channels.append(FeedChannel(channel_id=ctx.channel.id))
+                feed.channels.append(models.FeedChannel(channel_id=ctx.channel.id))
 
         ctx.session.commit()
         await ctx.send(f"Set up feed for `/r/{subreddit}` in this channel")
@@ -328,11 +328,15 @@ class Standard(cogs.BaseCog):
         /r/aww).
         Requires: Manage Server permissions.
         """
-        subreddits = set(subreddit.split("+"))
+        subreddits = tuple(subreddit.split("+"))
 
         ctx.session.execute("""
-        DELETE FROM feed_channels WHERE channel_id = :ci AND feed_id IN
-        (SELECT id FROM feeds WHERE type = 'REDDIT' AND source IN :sr)
+        DELETE FROM feed_channels
+        USING feeds
+        WHERE
+            feeds.id = feed_channels.feed_id AND
+            feed_channels.channel_id = :ci AND
+            feeds.source IN :sr
         """, {"ci": ctx.channel.id, "sr": subreddits})
         ctx.session.commit()
         await ctx.send(f"Removed feed for `/r/{subreddit}` from this channel")
@@ -340,15 +344,17 @@ class Standard(cogs.BaseCog):
     @reddit.command(name="list")
     async def reddit_list(self, ctx):
         """Lists all of the subreddits that feed into this channel"""
-        feeds = ctx.session.query(models.Feed) \
-                   .join(models.Feed.channels) \
-                   .filter(models.Feed._type == "REDDIT" and
-                           models.FeedChannel.channel_id == ctx.channel.id) \
-                   .all()
-        if not channel:
+        feeds = ctx.session.execute("""
+        SELECT feeds.source
+        FROM feeds
+        INNER JOIN feed_channels
+        ON feeds.id = feed_channels.feed_id
+        WHERE feeds.type = 'REDDIT' AND feed_channels.channel_id = :ci
+        """, {"ci": ctx.channel.id}).fetchall()
+        if feeds:
+            await ctx.send(", ".join(f"/r/{f[0]}" for f in feeds))
+        else:
             await ctx.send("No reddit feeds are configured for this channel.")
-            return
-        await ctx.send(", ".join(f"/r/{f.source}" for f in feeds))
 
     @commands.command()
     @commands.guild_only()
