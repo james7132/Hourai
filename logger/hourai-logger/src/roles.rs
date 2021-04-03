@@ -1,7 +1,11 @@
-use anyhow::Result;
 use crate::Client;
+use anyhow::Result;
 use hourai::{
-    models::{RoleFlags, guild::{Member, Permissions}, id::*},
+    models::{
+        guild::{Member, Permissions},
+        id::*,
+        RoleFlags,
+    },
     proto::guild_configs::*,
 };
 use hourai_redis::GuildConfig;
@@ -10,7 +14,7 @@ use std::collections::HashMap;
 async fn get_roles(
     client: &Client,
     guild_id: GuildId,
-    user_id: UserId
+    user_id: UserId,
 ) -> hourai_sql::Result<Vec<RoleId>> {
     hourai_sql::Member::fetch(guild_id, user_id)
         .fetch_one(&client.sql)
@@ -20,8 +24,7 @@ async fn get_roles(
 
 async fn get_role_flags(client: &Client, guild_id: GuildId) -> Result<HashMap<RoleId, RoleFlags>> {
     let config =
-        GuildConfig::fetch_or_default::<RoleConfig>(guild_id, &mut client.redis.clone())
-            .await?;
+        GuildConfig::fetch_or_default::<RoleConfig>(guild_id, &mut client.redis.clone()).await?;
     Ok(config
         .get_settings()
         .iter()
@@ -51,7 +54,9 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         Err(err) => anyhow::bail!(err),
     };
 
-    let perms = client.cache.guild_permissions(guild_id, client.user_id, bot_roles.iter().cloned());
+    let perms = client
+        .cache
+        .guild_permissions(guild_id, client.user_id, bot_roles.iter().cloned());
     if !perms.contains(Permissions::MANAGE_ROLES) {
         return Ok(());
     }
@@ -65,16 +70,15 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
     let max_role = client.cache.highest_role(bot_roles.iter().cloned());
 
     let flags = get_role_flags(client, guild_id).await?;
-    let mut restorable: Vec<RoleId> =
-        user_roles
-            .iter()
-            .filter_map(|id| client.cache.role(*id))
-            .filter(|role| {
-                let role_flags = flags.get(&role.id).cloned().unwrap_or(RoleFlags::empty());
-                role.position < max_role && role_flags.contains(RoleFlags::RESTORABLE)
-            })
-            .map(|role| role.id)
-            .collect();
+    let mut restorable: Vec<RoleId> = user_roles
+        .iter()
+        .filter_map(|id| client.cache.role(*id))
+        .filter(|role| {
+            let role_flags = flags.get(&role.id).cloned().unwrap_or(RoleFlags::empty());
+            role.position < max_role && role_flags.contains(RoleFlags::RESTORABLE)
+        })
+        .map(|role| role.id)
+        .collect();
 
     // Do not give out the verification role if it is enabled.
     if let Some(role) = get_verification_role(client, guild_id).await? {
@@ -85,10 +89,11 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         return Ok(());
     }
 
-    client.http_client
-          .update_guild_member(guild_id, member.user.id)
-          .roles(restorable)
-          .await?;
+    client
+        .http_client
+        .update_guild_member(guild_id, member.user.id)
+        .roles(restorable)
+        .await?;
 
     Ok(())
 }

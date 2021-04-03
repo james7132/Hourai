@@ -350,6 +350,19 @@ class Standard(cogs.BaseCog):
             return
         await ctx.send(", ".join(f"/r/{f.source}" for f in feeds))
 
+    @commands.command()
+    @commands.guild_only()
+    @checks.is_moderator()
+    async def setdj(self, ctx, role: discord.Role):
+        """Sets the DJ role for the server.
+
+        Only runnable by moderators.
+        """
+        conf = ctx.guild.config.music
+        conf.dj_role_id[:] = [role.id]
+        await ctx.guild.flush_config()
+        await ctx.send(f"Set **{role}** as the DJ for this server.")
+
 
 def setup(bot):
     standard = Standard()

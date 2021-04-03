@@ -1,4 +1,7 @@
-use twilight_model::{id::RoleId, guild::{Permissions, Role}};
+use twilight_model::{
+    guild::{Permissions, Role},
+    id::RoleId,
+};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct CachedRole {

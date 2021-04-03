@@ -3,8 +3,8 @@ mod models;
 mod types;
 
 pub use self::models::*;
-pub use sqlx::*;
 pub use sqlx::types as sql_types;
+pub use sqlx::*;
 use tracing::debug;
 
 pub type SqlPool = sqlx::Pool<SqlDatabase>;

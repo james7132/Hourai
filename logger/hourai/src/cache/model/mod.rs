@@ -1,17 +1,15 @@
 //! Models built for utilizing efficient caching.
 
 mod channel;
-mod role;
 mod guild;
+mod role;
 
-pub use self::{
-    guild::CachedGuild, channel::CachedChannel, role::CachedRole
-};
+pub use self::{channel::CachedChannel, guild::CachedGuild, role::CachedRole};
 
 #[cfg(tests)]
 mod tests {
     #[test]
     fn test_reexports() {
-        use super::{CachedGuild, CachedChannel, CachedRole};
+        use super::{CachedChannel, CachedGuild, CachedRole};
     }
 }

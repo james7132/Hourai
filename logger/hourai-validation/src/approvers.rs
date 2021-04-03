@@ -26,7 +26,10 @@ impl Verifier for DistinguishedUserVerifier {
         let member_id = ctx.member().user.id;
         for guild_id in self.0.guilds() {
             if let Some(guild) = self.0.guild(guild_id) {
-                let verified = guild.features.iter().any(|feat| feat.as_ref() == VERIFIED_FEATURE);
+                let verified = guild
+                    .features
+                    .iter()
+                    .any(|feat| feat.as_ref() == VERIFIED_FEATURE);
                 if guild.owner_id == member_id && verified {
                     ctx.add_approval_reason("User is the owner of a verified server.");
                 }

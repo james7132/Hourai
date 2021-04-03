@@ -3,12 +3,12 @@ use crate::{player::PlayerState, queue::MusicQueue, track::Track, ui::*, Client}
 use anyhow::{bail, Result};
 use hourai::{
     commands::{self, precondition::*, prelude::*, CommandError},
-    proto::guild_configs::MusicConfig,
     models::{
         channel::Message,
         id::{ChannelId, GuildId, RoleId},
         UserLike,
     },
+    proto::guild_configs::MusicConfig,
 };
 use std::{collections::HashSet, convert::TryFrom};
 use twilight_command_parser::{Arguments, Command};
@@ -145,7 +145,7 @@ async fn load_tracks(
 ) -> Option<Vec<twilight_lavalink::http::Track>> {
     let response = match client.load_tracks(node, query).await {
         Ok(tracks) => tracks,
-        Err(_) => return None
+        Err(_) => return None,
     };
 
     if response.tracks.len() == 0 {
@@ -174,13 +174,11 @@ async fn load_tracks(
             tracks,
             playlist_info,
             ..
-        } => {
-            playlist_info
-                .selected_track
-                .and_then(|idx| tracks.get(idx as usize))
-                .map(|track| vec![track.clone()])
-                .unwrap_or_else(|| tracks)
-        }
+        } => playlist_info
+            .selected_track
+            .and_then(|idx| tracks.get(idx as usize))
+            .map(|track| vec![track.clone()])
+            .unwrap_or_else(|| tracks),
         LoadedTracks {
             load_type: LoadType::LoadFailed,
             ..
@@ -188,7 +186,7 @@ async fn load_tracks(
             error!("Failed to load query `{}`", query);
             return None;
         }
-        _ => return None
+        _ => return None,
     };
 
     Some(tracks)

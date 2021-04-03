@@ -25,7 +25,8 @@ const BOT_INTENTS: Intents = Intents::from_bits_truncate(
         | Intents::GUILD_BANS.bits()
         | Intents::GUILD_MESSAGES.bits()
         | Intents::GUILD_MEMBERS.bits()
-        | Intents::GUILD_PRESENCES.bits(),
+        | Intents::GUILD_PRESENCES.bits()
+        | Intents::GUILD_VOICE_STATES.bits()
 );
 
 const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
@@ -44,13 +45,18 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
         | EventTypeFlags::GUILD_UPDATE.bits()
         | EventTypeFlags::GUILD_DELETE.bits()
         | EventTypeFlags::PRESENCE_UPDATE.bits()
+        | EventTypeFlags::VOICE_STATE_UPDATE.bits()
         | EventTypeFlags::ROLE_CREATE.bits()
         | EventTypeFlags::ROLE_UPDATE.bits()
         | EventTypeFlags::ROLE_DELETE.bits(),
 );
 
 const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
-    ResourceType::ROLE.bits() | ResourceType::GUILD.bits() | ResourceType::PRESENCE.bits(),
+    ResourceType::GUILD.bits()
+        | ResourceType::PRESENCE.bits()
+        | ResourceType::CHANNEL.bits()
+        | ResourceType::ROLE.bits()
+        | ResourceType::VOICE_STATE.bits(),
 );
 
 #[tokio::main]
@@ -231,7 +237,7 @@ impl Client {
                 } else {
                     Ok(())
                 }
-            },
+            }
             Event::VoiceStateUpdate(ref evt) => {
                 if let Some(guild_id) = evt.0.guild_id {
                     let channel = self.cache.voice_state(guild_id, evt.0.user_id);
@@ -239,8 +245,8 @@ impl Client {
                 } else {
                     Ok(())
                 }
-            },
-            _ => Ok(())
+            }
+            _ => Ok(()),
         };
 
         if let Err(err) = result {
@@ -450,9 +456,9 @@ impl Client {
         }
 
         hourai_sql::Member::from(&evt)
-        .insert()
-        .execute(&self.sql)
-        .await?;
+            .insert()
+            .execute(&self.sql)
+            .await?;
         Username::new(&evt.user).insert().execute(&self.sql).await?;
         Ok(())
     }

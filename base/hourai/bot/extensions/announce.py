@@ -42,6 +42,14 @@ class Announce(cogs.BaseCog):
         suffix = 'enabled' if result else 'disabled'
         await ctx.send(f":thumbsup: Ban messages {suffix}")
 
+    @announce.command(name='voice')
+    async def announce_voice(self, ctx):
+        conf = ctx.guild.config.announce
+        result = self.__toggle_channel(ctx, conf.voice)
+        await ctx.guild.flush_config()
+        suffix = 'enabled' if result else 'disabled'
+        await ctx.send(f":thumbsup: Voice messages {suffix}")
+
     def __toggle_channel(self, ctx, config):
         if ctx.channel.id in config.channel_ids:
             config.channel_ids.remove(ctx.channel.id)

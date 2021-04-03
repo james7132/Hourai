@@ -12,11 +12,7 @@ pub use self::{
 
 use self::model::*;
 use dashmap::{mapref::entry::Entry, DashMap, DashSet};
-use std::{
-    collections::HashSet,
-    hash::Hash,
-    sync::Arc,
-};
+use std::{collections::HashSet, hash::Hash, sync::Arc};
 use twilight_model::{
     channel::GuildChannel,
     gateway::presence::{Presence, Status, UserOrId},
@@ -146,9 +142,7 @@ impl InMemoryCache {
     /// Checks if a member is pending in a speciifc guild.
     /// This runs O(1) time.
     pub fn is_pending(&self, guild_id: GuildId, user_id: UserId) -> bool {
-        self.0
-            .pending_members
-            .contains(&(guild_id, user_id))
+        self.0.pending_members.contains(&(guild_id, user_id))
     }
 
     /// Finds which voice channel a user is in for a given Guild.
@@ -284,10 +278,7 @@ impl InMemoryCache {
 
     /// Given a list of role IDs, finds the highest among them.
     /// Returns None if role_ids is empty.
-    pub fn highest_role(
-        &self,
-        role_ids: impl Iterator<Item = RoleId>,
-    ) -> i64 {
+    pub fn highest_role(&self, role_ids: impl Iterator<Item = RoleId>) -> i64 {
         role_ids
             .filter_map(|id| self.role(id))
             .map(|role| role.position)
@@ -343,20 +334,8 @@ impl InMemoryCache {
     fn cache_guild_channel(
         &self,
         guild_id: GuildId,
-        mut channel: GuildChannel,
+        channel: GuildChannel,
     ) -> Arc<CachedChannel> {
-        match channel {
-            GuildChannel::Category(ref mut c) => {
-                c.guild_id.replace(guild_id);
-            }
-            GuildChannel::Text(ref mut c) => {
-                c.guild_id.replace(guild_id);
-            }
-            GuildChannel::Voice(ref mut c) => {
-                c.guild_id.replace(guild_id);
-            }
-        }
-
         let id = channel.id();
         self.0
             .guild_channels
@@ -365,7 +344,7 @@ impl InMemoryCache {
             .insert(id);
 
         let cached_channel = CachedChannel {
-            id: channel.id(),
+            id: id,
             name: channel.name().to_owned().into_boxed_str(),
         };
 
@@ -402,7 +381,11 @@ impl InMemoryCache {
             id: guild.id,
             name: guild.name.into_boxed_str(),
             description: guild.description.map(|s| s.into_boxed_str()),
-            features: guild.features.into_iter().map(|s| s.into_boxed_str()).collect(),
+            features: guild
+                .features
+                .into_iter()
+                .map(|s| s.into_boxed_str())
+                .collect(),
             icon: guild.icon.map(|s| s.into_boxed_str()),
             member_count: guild.member_count,
             owner_id: guild.owner_id,
@@ -551,7 +534,7 @@ mod tests {
             Permissions, PremiumTier, Role, SystemChannelFlags, VerificationLevel,
         },
         id::{ChannelId, EmojiId, GuildId, RoleId, UserId},
-        user::{User},
+        user::User,
         voice::VoiceState,
     };
 

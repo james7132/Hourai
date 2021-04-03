@@ -262,8 +262,7 @@ impl Client<'static> {
     /// Gets the music config for a server.
     pub async fn get_config(&self, guild_id: GuildId) -> Result<MusicConfig> {
         let mut conn = self.redis.clone();
-        let config = GuildConfig::fetch_or_default::<MusicConfig>(guild_id, &mut conn)
-            .await?;
+        let config = GuildConfig::fetch_or_default::<MusicConfig>(guild_id, &mut conn).await?;
         Ok(config)
     }
 
@@ -319,17 +318,17 @@ impl Client<'static> {
     // HTTP requests to the Lavalink nodes
     pub async fn load_tracks(&self, node: &Node, query: &str) -> Result<LoadedTracks> {
         let config = node.config();
-        let (parts, body) = twilight_lavalink::http::load_track(
-            config.address,
-            query,
-            &config.authorization,
-        )?
-        .into_parts();
+        let (parts, body) =
+            twilight_lavalink::http::load_track(config.address, query, &config.authorization)?
+                .into_parts();
         let req = Request::from_parts(parts, Body::from(body));
         let res = self.hyper.request(req).await?;
         let response_bytes = hyper::body::to_bytes(res.into_body()).await?;
-        tracing::debug!("Recieved response when loading tracks for query \"{}\": {:?}",
-                        query, response_bytes);
+        tracing::debug!(
+            "Recieved response when loading tracks for query \"{}\": {:?}",
+            query,
+            response_bytes
+        );
         Ok(serde_json::from_slice::<LoadedTracks>(&response_bytes)?)
     }
 

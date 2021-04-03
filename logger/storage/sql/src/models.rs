@@ -1,9 +1,6 @@
 use hourai::models::{
-    guild::Ban as TwilightBan,
-    guild::Member as TwilightMember,
-    gateway::payload::MemberUpdate,
-    id::*,
-    UserLike
+    gateway::payload::MemberUpdate, guild::Ban as TwilightBan, guild::Member as TwilightMember,
+    id::*, UserLike,
 };
 use sqlx::types::chrono::{DateTime, Utc};
 use std::convert::TryInto;
@@ -236,37 +233,39 @@ pub struct Member {
     pub role_ids: Vec<i64>,
     pub nickname: Option<String>,
     pub bot: bool,
-    pub premium_since: Option<DateTime<Utc>>
+    pub premium_since: Option<DateTime<Utc>>,
 }
 
 impl From<&TwilightMember> for Member {
     fn from(member: &TwilightMember) -> Self {
-        let premium = member.premium_since.as_ref().and_then(|p| {
-            p.parse::<DateTime<Utc>>().ok()
-        });
+        let premium = member
+            .premium_since
+            .as_ref()
+            .and_then(|p| p.parse::<DateTime<Utc>>().ok());
         Self {
             guild_id: member.guild_id.0 as i64,
             user_id: member.user.id.0 as i64,
             role_ids: member.roles.iter().map(|id| id.0 as i64).collect(),
             nickname: member.nick.clone(),
             bot: member.user.bot,
-            premium_since: premium
+            premium_since: premium,
         }
     }
 }
 
 impl From<&MemberUpdate> for Member {
     fn from(member: &MemberUpdate) -> Self {
-        let premium = member.premium_since.as_ref().and_then(|p| {
-            p.parse::<DateTime<Utc>>().ok()
-        });
+        let premium = member
+            .premium_since
+            .as_ref()
+            .and_then(|p| p.parse::<DateTime<Utc>>().ok());
         Self {
             guild_id: member.guild_id.0 as i64,
             user_id: member.user.id.0 as i64,
             role_ids: member.roles.iter().map(|id| id.0 as i64).collect(),
             nickname: member.nick.clone(),
             bot: member.user.bot,
-            premium_since: premium
+            premium_since: premium,
         }
     }
 }

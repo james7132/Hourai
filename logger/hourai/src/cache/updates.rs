@@ -38,7 +38,7 @@ impl UpdateCache for Event {
             UnavailableGuild(v) => c.update(v),
             VoiceServerUpdate(v) => c.update(v),
             VoiceStateUpdate(v) => c.update(v.deref()),
-            _ => {},
+            _ => {}
         }
     }
 }
@@ -55,7 +55,7 @@ impl UpdateCache for ChannelCreate {
                     cache.cache_guild_channel(gid, c.clone());
                 }
             }
-            _ => { }
+            _ => {}
         }
     }
 }
@@ -156,7 +156,11 @@ impl UpdateCache for GuildUpdate {
             let mut guild = Arc::make_mut(&mut guild);
             guild.name = self.name.clone().into_boxed_str();
             guild.description = self.description.clone().map(|s| s.clone().into_boxed_str());
-            guild.features = self.features.iter().map(|s| s.clone().into_boxed_str()).collect();
+            guild.features = self
+                .features
+                .iter()
+                .map(|s| s.clone().into_boxed_str())
+                .collect();
             guild.icon = self.icon.clone().map(|s| s.into_boxed_str());
             guild.owner_id = self.owner_id;
             guild.premium_tier = self.premium_tier;
@@ -198,7 +202,10 @@ impl UpdateCache for MemberRemove {
             return;
         }
 
-        cache.0.pending_members.remove(&(self.guild_id, self.user.id));
+        cache
+            .0
+            .pending_members
+            .remove(&(self.guild_id, self.user.id));
     }
 }
 
