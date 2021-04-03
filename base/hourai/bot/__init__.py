@@ -10,7 +10,7 @@ import sys
 from discord.ext import commands
 from hourai import config
 from hourai.db import storage
-from hourai.utils import fake, uvloop
+from hourai.utils import fake
 from . import actions, extensions
 from .context import HouraiContext
 from .guild import HouraiGuild
@@ -108,12 +108,6 @@ class Hourai(commands.AutoShardedBot):
 
         guild._add_member(member, force=True)
         return member
-
-    def run(self, *args, **kwargs):
-        if self.config.use_uv_loop:
-            log.info('Trying to enable uvloop...')
-            uvloop.try_install()
-        super().run(*args, **kwargs)
 
     async def start(self, *args, **kwargs):
         await self.storage.init()
