@@ -81,7 +81,7 @@ impl UserLike for User {
     }
 
     fn avatar_hash(&self) -> Option<&str> {
-        self.avatar.as_ref().map(|a| a.as_str())
+        self.avatar.as_deref()
     }
 
     fn bot(&self) -> bool {
@@ -99,7 +99,7 @@ impl UserLike for Member {
     }
 
     fn avatar_hash(&self) -> Option<&str> {
-        self.user.avatar.as_ref().map(|a| a.as_str())
+        self.user.avatar.as_deref()
     }
 
     fn bot(&self) -> bool {

@@ -115,11 +115,13 @@ fn require_playing(client: &Client<'static>, ctx: &commands::Context<'_>) -> Res
         .states
         .get(&guild_id)
         .filter(|state| state.value().is_playing())
-        .ok_or_else(|| CommandError::FailedPrecondition("No music is currently playing."))?;
+        .ok_or(CommandError::FailedPrecondition(
+            "No music is currently playing.",
+        ))?;
     Ok(guild_id)
 }
 
-fn is_dj(config: &MusicConfig, roles: &Vec<RoleId>) -> bool {
+fn is_dj(config: &MusicConfig, roles: &[RoleId]) -> bool {
     let dj_roles = config.get_dj_role_id();
     roles.iter().any(|id| dj_roles.contains(&id.0))
 }
@@ -148,7 +150,7 @@ async fn load_tracks(
         Err(_) => return None,
     };
 
-    if response.tracks.len() == 0 {
+    if response.tracks.is_empty() {
         return None;
     }
 
@@ -224,19 +226,16 @@ async fn play(
     }
 
     let duration = format_duration(queue.iter().map(|t| t.info.length).sum());
-    let response = if queue.len() > 1 {
-        format!(
-            ":notes: Added **{}** tracks ({}) to the music queue.",
-            queue.len(),
-            duration
-        )
-    } else if queue.len() == 1 {
-        format!(
+    let response = match queue.len() {
+        0 => format!(":bulb: No results found for `{}`", query),
+        1 => format!(
             ":notes: Added `{}` ({}) to the music queue.",
             &queue[0].info, duration
-        )
-    } else {
-        format!(":bulb: No results found for `{}`", query)
+        ),
+        x => format!(
+            ":notes: Added **{}** tracks ({}) to the music queue.",
+            x, duration
+        ),
     };
 
     if queue.len() > 0 {

@@ -41,7 +41,7 @@ impl Post {
             request = request.content(content.as_str())?;
         }
         if let Some(embed) = embed {
-            request = request.embed(embed.clone())?;
+            request = request.embed(embed)?;
         }
         match request.await {
             Ok(_) => Ok(()),
@@ -129,8 +129,8 @@ impl Feed {
                 .iter()
                 .map(|id| ChannelId(*id as u64))
                 .collect(),
-            content: content,
-            embed: embed,
+            content,
+            embed,
         }
     }
 

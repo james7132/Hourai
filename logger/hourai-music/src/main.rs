@@ -106,7 +106,7 @@ async fn main() {
         states: Arc::new(DashMap::new()),
         hyper: HyperClient::new(),
         resolver: GaiResolver::new(),
-        parser: parser,
+        parser,
         redis,
     };
 
@@ -193,7 +193,7 @@ impl Client<'static> {
         }
     }
 
-    async fn consume_event(self, event: Event) -> () {
+    async fn consume_event(self, event: Event) {
         let kind = event.kind();
         let result = match event {
             Event::Ready(_) => Ok(()),

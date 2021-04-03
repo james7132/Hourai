@@ -57,7 +57,7 @@ impl GenericVerifier {
         approver: T,
     ) -> BoxedVerifier {
         Box::new(GenericVerifier {
-            reason: reason,
+            reason,
             pred: Box::new(approver),
         })
     }

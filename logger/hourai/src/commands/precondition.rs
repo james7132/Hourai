@@ -10,7 +10,7 @@ pub fn require_in_guild(ctx: &Context<'_>) -> Result<GuildId> {
 }
 
 pub fn no_excess_arguments(args: &mut Arguments) -> Result<()> {
-    if let Some(_) = args.next() {
+    if args.next().is_some() {
         return Err(CommandError::ExcessArguments.into());
     }
     Ok(())

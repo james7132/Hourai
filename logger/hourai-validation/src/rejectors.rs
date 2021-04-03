@@ -85,14 +85,14 @@ impl Verifier for BannedUserRejector {
             reasons.push(ban.reason);
         }
 
-        if reasons.len() > 0 {
+        if !reasons.is_empty() {
             let mut reason = format!("Banned from {} servers", reasons.len());
             let list: String = reasons
                 .into_iter()
                 .filter_map(|r| r)
                 .collect::<Vec<String>>()
                 .join("\n");
-            if list.len() > 0 {
+            if !list.is_empty() {
                 reason.push_str(" for the following reasons\n");
                 reason.push_str(list.as_str());
             }
@@ -163,7 +163,7 @@ impl<T: StringMatchRejector> Verifier for T {
         let regexes = self.regexes();
         for check in criteria {
             for (key, regex) in &regexes {
-                if let Some(_) = regex.find(check.as_str()) {
+                if regex.find(check.as_str()).is_some() {
                     let reason = self.reason(&key, check.as_str());
                     ctx.add_rejection_reason(reason);
                 }

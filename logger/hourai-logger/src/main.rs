@@ -26,7 +26,7 @@ const BOT_INTENTS: Intents = Intents::from_bits_truncate(
         | Intents::GUILD_MESSAGES.bits()
         | Intents::GUILD_MEMBERS.bits()
         | Intents::GUILD_PRESENCES.bits()
-        | Intents::GUILD_VOICE_STATES.bits()
+        | Intents::GUILD_VOICE_STATES.bits(),
 );
 
 const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
@@ -214,7 +214,7 @@ impl Client {
     }
 
     /// Handle events before the cache is updated.
-    async fn pre_cache_event(&self, event: &Event) -> () {
+    async fn pre_cache_event(&self, event: &Event) {
         let kind = event.kind();
         let result = match event {
             Event::MemberUpdate(ref evt) => {
@@ -254,7 +254,7 @@ impl Client {
         }
     }
 
-    async fn consume_event(self, shard_id: u64, event: Event) -> () {
+    async fn consume_event(self, shard_id: u64, event: Event) {
         let kind = event.kind();
         let result = match event {
             Event::Ready(_) => self.on_shard_ready(shard_id).await,
@@ -469,7 +469,7 @@ impl Client {
         Ok(())
     }
 
-    async fn log_members(&self, members: &Vec<Member>) -> Result<()> {
+    async fn log_members(&self, members: &[Member]) -> Result<()> {
         let usernames = members.iter().map(|m| Username::new(&m.user)).collect();
 
         Username::bulk_insert(usernames).execute(&self.sql).await?;

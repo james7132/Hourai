@@ -15,7 +15,7 @@ where
     let mut redis = data.redis.clone();
     let response = GuildConfig::fetch::<T>(guild_id, &mut redis)
         .await?
-        .map(|config| web::Json(config));
+        .map(web::Json);
     Ok(response)
 }
 

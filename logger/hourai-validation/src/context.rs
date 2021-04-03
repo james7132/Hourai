@@ -38,7 +38,7 @@ pub struct VerificationContext {
 impl VerificationContext {
     pub fn new(member: Member) -> Self {
         Self {
-            member: member,
+            member,
             reasons: Vec::new(),
         }
     }

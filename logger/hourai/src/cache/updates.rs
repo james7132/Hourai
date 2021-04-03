@@ -49,13 +49,10 @@ impl UpdateCache for ChannelCreate {
             return;
         }
 
-        match &self.0 {
-            Channel::Guild(c) => {
-                if let Some(gid) = c.guild_id() {
-                    cache.cache_guild_channel(gid, c.clone());
-                }
+        if let Channel::Guild(ref c) = self.0 {
+            if let Some(gid) = c.guild_id() {
+                cache.cache_guild_channel(gid, c.clone());
             }
-            _ => {}
         }
     }
 }
@@ -66,11 +63,8 @@ impl UpdateCache for ChannelDelete {
             return;
         }
 
-        match self.0 {
-            Channel::Guild(ref c) => {
-                cache.delete_guild_channel(c.id());
-            }
-            _ => {}
+        if let Channel::Guild(ref c) = self.0 {
+            cache.delete_guild_channel(c.id());
         }
     }
 }
@@ -81,13 +75,10 @@ impl UpdateCache for ChannelUpdate {
             return;
         }
 
-        match self.0.clone() {
-            Channel::Guild(c) => {
-                if let Some(gid) = c.guild_id() {
-                    cache.cache_guild_channel(gid, c);
-                }
+        if let Channel::Guild(ref c) = self.0 {
+            if let Some(gid) = c.guild_id() {
+                cache.cache_guild_channel(gid, c.clone());
             }
-            _ => {}
         }
     }
 }
@@ -155,7 +146,7 @@ impl UpdateCache for GuildUpdate {
         if let Some(mut guild) = cache.0.guilds.get_mut(&self.0.id) {
             let mut guild = Arc::make_mut(&mut guild);
             guild.name = self.name.clone().into_boxed_str();
-            guild.description = self.description.clone().map(|s| s.clone().into_boxed_str());
+            guild.description = self.description.clone().map(|s| s.into_boxed_str());
             guild.features = self
                 .features
                 .iter()

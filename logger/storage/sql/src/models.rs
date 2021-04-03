@@ -92,7 +92,7 @@ pub struct VerificationBan {
 
 impl VerificationBan {
     pub fn fetch_by_name<'a>(guild_id: GuildId, name: impl Into<String>) -> SqlQueryAs<'a, Self> {
-        let mut name = name.into().clone();
+        let mut name = name.into();
         name.make_ascii_lowercase();
         sqlx::query_as(
             "SELECT \
@@ -112,7 +112,7 @@ impl VerificationBan {
         guild_id: GuildId,
         avatar: impl Into<String>,
     ) -> SqlQueryAs<'a, Self> {
-        let mut avatar = avatar.into().clone();
+        let mut avatar = avatar.into();
         avatar.make_ascii_lowercase();
         sqlx::query_as(
             "SELECT \

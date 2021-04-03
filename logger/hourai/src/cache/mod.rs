@@ -306,7 +306,7 @@ impl InMemoryCache {
         let everyone_perms = self
             .role(RoleId(guild_id.0))
             .map(|role| role.permissions)
-            .unwrap_or_else(|| Permissions::empty());
+            .unwrap_or_else(Permissions::empty);
         let perms = role_ids
             .map(|id| self.role(id))
             .filter_map(|role| role)
@@ -331,11 +331,7 @@ impl InMemoryCache {
         }
     }
 
-    fn cache_guild_channel(
-        &self,
-        guild_id: GuildId,
-        channel: GuildChannel,
-    ) -> Arc<CachedChannel> {
+    fn cache_guild_channel(&self, guild_id: GuildId, channel: GuildChannel) -> Arc<CachedChannel> {
         let id = channel.id();
         self.0
             .guild_channels
@@ -344,7 +340,7 @@ impl InMemoryCache {
             .insert(id);
 
         let cached_channel = CachedChannel {
-            id: id,
+            id,
             name: channel.name().to_owned().into_boxed_str(),
         };
 

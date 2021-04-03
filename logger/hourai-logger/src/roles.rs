@@ -74,7 +74,10 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         .iter()
         .filter_map(|id| client.cache.role(*id))
         .filter(|role| {
-            let role_flags = flags.get(&role.id).cloned().unwrap_or(RoleFlags::empty());
+            let role_flags = flags
+                .get(&role.id)
+                .cloned()
+                .unwrap_or_else(RoleFlags::empty);
             role.position < max_role && role_flags.contains(RoleFlags::RESTORABLE)
         })
         .map(|role| role.id)

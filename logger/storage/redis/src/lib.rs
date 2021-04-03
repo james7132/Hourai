@@ -79,9 +79,7 @@ impl GuildConfig {
         id: GuildId,
         conn: &mut RedisPool,
     ) -> std::result::Result<T, redis::RedisError> {
-        Ok(Self::fetch::<T>(id, conn)
-            .await?
-            .unwrap_or_else(|| T::new()))
+        Ok(Self::fetch::<T>(id, conn).await?.unwrap_or_else(T::new))
     }
 
     pub fn set<T: ::protobuf::Message + CachedGuildConfig>(id: GuildId, value: T) -> redis::Cmd {

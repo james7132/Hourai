@@ -44,7 +44,7 @@ impl<T: ToRedisArgs + FromRedisValue> FromRedisValue for Compressed<T> {
     fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
         use redis::{ErrorKind, RedisError, Value};
         if let Value::Data(data) = value {
-            let inner = if data.len() < 1 {
+            let inner = if data.is_empty() {
                 T::from_redis_value(&value)?
             } else {
                 let buf = &data[1..];

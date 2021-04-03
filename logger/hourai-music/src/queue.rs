@@ -78,10 +78,7 @@ where
             self.0.pop_front();
         }
 
-        Some(QueueItem {
-            key: key,
-            value: value,
-        })
+        Some(QueueItem { key, value })
     }
 
     /// Gets the total number of items in the queue. If there are n keys and k values in the queue

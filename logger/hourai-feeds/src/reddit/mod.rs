@@ -24,7 +24,7 @@ pub struct RedditClient {
 impl RedditClient {
     pub fn new(auth: auth::RedditAuth) -> Self {
         Self {
-            auth: auth,
+            auth,
             rate_limiter: Mutex::new(rate_limiter::RateLimiter::default()),
         }
     }

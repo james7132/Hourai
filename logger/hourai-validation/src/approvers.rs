@@ -12,7 +12,7 @@ struct DistinguishedUserVerifier(InMemoryCache);
 #[async_trait]
 impl Verifier for DistinguishedUserVerifier {
     async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
-        let flags = ctx.member().user.flags.unwrap_or(UserFlags::empty());
+        let flags = ctx.member().user.flags.unwrap_or_else(UserFlags::empty);
         if flags.contains(UserFlags::DISCORD_EMPLOYEE) {
             ctx.add_approval_reason("User is Discord Staff.");
         }

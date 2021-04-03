@@ -40,7 +40,7 @@ fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {
     if filter.denylist.contains(&id) {
         return false;
     }
-    if filter.allowlist.len() > 0 && filter.allowlist.contains(&id) {
+    if !filter.allowlist.is_empty() && filter.allowlist.contains(&id) {
         return true;
     }
     return true;
