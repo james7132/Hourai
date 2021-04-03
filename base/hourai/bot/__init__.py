@@ -66,7 +66,7 @@ class Hourai(commands.AutoShardedBot):
                 presences=False,
                 reactions=True,
                 typing=False,
-                voice_states=False,
+                voice_states=True,
                 emojis=False,
                 integrations=False,
                 webhooks=False),

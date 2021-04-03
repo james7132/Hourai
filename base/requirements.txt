@@ -9,9 +9,6 @@ protobuf==3.14.0
 py-coders==1.1.5
 unidecode==1.2.0
 
-# Configuration management
-jsonnet==0.17.0
-
 # Utility requirements
 humanize==3.2.0
 Pint==0.16.1
