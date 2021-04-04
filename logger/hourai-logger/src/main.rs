@@ -12,8 +12,11 @@ use hourai::{
     gateway::{cluster::*, Event, EventType, EventTypeFlags, Intents},
     init,
     models::{
-        channel::{Message, Channel}, gateway::payload::*, guild::member::Member,
-        guild::Permissions, id::*,
+        channel::{Channel, GuildChannel, Message},
+        gateway::payload::*,
+        guild::member::Member,
+        guild::{Permissions, Role},
+        id::*,
         user::User,
     },
 };
@@ -278,8 +281,8 @@ impl Client {
             Event::MessageUpdate(evt) => self.on_message_update(*evt).await,
             Event::MessageDelete(evt) => self.on_message_delete(evt).await,
             Event::MessageDeleteBulk(evt) => self.on_message_bulk_delete(evt).await,
-            Event::RoleCreate(_) => Ok(()),
-            Event::RoleUpdate(_) => Ok(()),
+            Event::RoleCreate(evt) => self.on_role_create(evt).await,
+            Event::RoleUpdate(evt) => self.on_role_update(evt).await,
             Event::ChannelCreate(evt) => self.on_channel_create(evt).await,
             Event::ChannelUpdate(evt) => self.on_channel_update(evt).await,
             Event::ChannelDelete(evt) => self.on_channel_delete(evt).await,
@@ -384,20 +387,22 @@ impl Client {
 
     async fn on_channel_create(&mut self, evt: ChannelCreate) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
-            hourai_redis::CachedGuildChannel::new(ch)
-                .save()
-                .query_async(&mut self.redis)
-                .await?;
+            if let Some(guild_id) = ch.guild_id() {
+                hourai_redis::CachedGuild::save_resource(guild_id, ch.id(), ch)
+                    .query_async(&mut self.redis)
+                    .await?;
+            }
         }
         Ok(())
     }
 
     async fn on_channel_update(&mut self, evt: ChannelUpdate) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
-            hourai_redis::CachedGuildChannel::new(ch)
-                .save()
-                .query_async(&mut self.redis)
-                .await?;
+            if let Some(guild_id) = ch.guild_id() {
+                hourai_redis::CachedGuild::save_resource(guild_id, ch.id(), ch)
+                    .query_async(&mut self.redis)
+                    .await?;
+            }
         }
         Ok(())
     }
@@ -405,7 +410,7 @@ impl Client {
     async fn on_channel_delete(mut self, evt: ChannelDelete) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
-                hourai_redis::CachedGuildChannel::delete(guild_id, ch.id())
+                hourai_redis::CachedGuild::delete_resource::<GuildChannel>(guild_id, ch.id())
                     .query_async(&mut self.redis)
                     .await?;
             }
@@ -474,14 +479,18 @@ impl Client {
         }
 
         self.chunk_guild(guild.id).await?;
-        hourai_redis::CachedGuildChannel::save_guild(&guild).query_async(&mut self.redis).await?;
+        hourai_redis::CachedGuild::save(&guild)
+            .query_async(&mut self.redis)
+            .await?;
 
         Ok(())
     }
 
     async fn on_guild_leave(mut self, evt: GuildDelete) -> Result<()> {
         info!("Left guild {}", evt.id);
-        hourai_redis::CachedGuildChannel::delete_guild(evt.id).query_async(&mut self.redis).await?;
+        hourai_redis::CachedGuild::delete(evt.id)
+            .query_async(&mut self.redis)
+            .await?;
         let (res1, res2) = futures::join!(
             hourai_sql::Member::clear_guild(evt.id).execute(&self.sql),
             Ban::clear_guild(evt.id).execute(&self.sql),
@@ -491,12 +500,30 @@ impl Client {
         Ok(())
     }
 
-    async fn on_role_delete(self, evt: RoleDelete) -> Result<()> {
+    async fn on_role_create(mut self, evt: RoleCreate) -> Result<()> {
+        hourai_redis::CachedGuild::save_resource(evt.guild_id, evt.role.id, &evt.role)
+            .query_async(&mut self.redis)
+            .await?;
+        Ok(())
+    }
+
+    async fn on_role_update(mut self, evt: RoleUpdate) -> Result<()> {
+        hourai_redis::CachedGuild::save_resource(evt.guild_id, evt.role.id, &evt.role)
+            .query_async(&mut self.redis)
+            .await?;
+        Ok(())
+    }
+
+    async fn on_role_delete(mut self, evt: RoleDelete) -> Result<()> {
         let res = hourai_sql::Member::clear_role(evt.guild_id, evt.role_id)
             .execute(&self.sql)
             .await;
+        let res2 = hourai_redis::CachedGuild::delete_resource::<Role>(evt.guild_id, evt.role_id)
+            .query_async(&mut self.redis)
+            .await;
         self.refresh_bans(evt.guild_id).await?;
         res?;
+        res2?;
         Ok(())
     }
 

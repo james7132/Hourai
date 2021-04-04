@@ -570,5 +570,4 @@ mod tests {
                 .all(|role| *cache.role(role.id).expect("Role missing from cache") == role))
         }
     }
-
 }

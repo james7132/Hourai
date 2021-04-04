@@ -2,27 +2,44 @@ syntax = "proto2";
 
 package hourai.db.proto;
 
-// NEXT ID: 4
+// NEXT ID: 7
+message CachedGuildProto {
+  optional /* actually required */ fixed64 id = 1;
+  optional /* actually required */ string name = 2;
+  optional string description = 3;
+  repeated string features = 4;
+  optional /* actually required */ fixed64 owner_id = 5;
+  optional string vanity_url_code = 6;
+}
+
+// NEXT ID: 5
+message CachedRoleProto {
+  optional /* actually required */ fixed64 role_id = 1;
+  optional /* actually required */ string name = 2;
+  optional /* actually required */ int64 position = 3;
+  optional /* actually required */ fixed64 permissions = 4;
+}
+
+// NEXT ID: 2
 message CachedGuildChannelProto {
-  optional fixed64 channel_id = 1;
-  optional fixed64 guild_id = 2;
-  optional string name = 3;
+  optional /* actually required */ fixed64 channel_id = 1;
+  optional /* actually required */ string name = 2;
 }
 
 // NEXT ID: 6
 message CachedMessageProto {
-  optional fixed64 id = 1;
-  optional fixed64 channel_id = 2;
+  optional /* actually required */ fixed64 id = 1;
+  optional /* actually required */ fixed64 channel_id = 2;
   optional fixed64 guild_id = 3;
-  optional CachedUserProto author = 4;
+  optional /* actually required */ CachedUserProto author = 4;
   optional string content = 5;
 }
 
 // NEXT ID: 6
 message CachedUserProto {
-  optional fixed64 id = 1;
-  optional string username = 2;
-  optional uint32 discriminator = 3;
+  optional /* actually required */ fixed64 id = 1;
+  optional /* actually required */ string username = 2;
+  optional /* actually required */ uint32 discriminator = 3;
   optional string avatar = 4;
-  optional bool bot = 5;
+  optional /* actually required */ bool bot = 5;
 }

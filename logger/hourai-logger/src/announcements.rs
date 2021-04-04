@@ -1,5 +1,6 @@
 use crate::Client;
 use anyhow::Result;
+use hourai::models::channel::GuildChannel;
 use hourai::models::gateway::payload::{BanAdd, MemberRemove};
 use hourai::models::id::*;
 use hourai::models::user::User;
@@ -50,12 +51,12 @@ pub async fn on_voice_update(
     };
     let mut redis = client.redis.clone();
     let before_channel = if let Some(id) = before {
-        hourai_redis::CachedGuildChannel::fetch(guild, id, &mut redis).await?
+        hourai_redis::CachedGuild::fetch_resource::<GuildChannel>(guild, id, &mut redis).await?
     } else {
         None
     };
     let after_channel = if let Some(id) = state.channel_id {
-        hourai_redis::CachedGuildChannel::fetch(guild, id, &mut redis).await?
+        hourai_redis::CachedGuild::fetch_resource::<GuildChannel>(guild, id, &mut redis).await?
     } else {
         None
     };
@@ -70,7 +71,12 @@ pub async fn on_voice_update(
         // TODO(james7132): let this be customizable.
         let msg = match (before_channel, after_channel) {
             (Some(b), Some(a)) => {
-                format!("**{}** moved from **{}** to **{}**.", user, b.get_name(), a.get_name())
+                format!(
+                    "**{}** moved from **{}** to **{}**.",
+                    user,
+                    b.get_name(),
+                    a.get_name()
+                )
             }
             (None, Some(ch)) => format!("**{}** joined **{}**.", user, ch.get_name()),
             (Some(ch), None) => format!("**{}** left **{}**.", user, ch.get_name()),
