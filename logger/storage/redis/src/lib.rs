@@ -131,13 +131,21 @@ impl CachedMessage {
         let key = CachePrefix::Messages.make_key((channel_id.0, message_id.0));
         let proto: Option<Protobuf<CachedMessageProto>> =
             redis::Cmd::get(key).query_async(conn).await?;
-        Ok(proto.map(|proto| proto.0))
+        Ok(proto.map(|msg| {
+            let mut cached_message = msg.0;
+            cached_message.set_id(message_id.0);
+            cached_message.set_channel_id(channel_id.0);
+            cached_message
+        }))
     }
 
-    pub fn flush(self) -> redis::Cmd {
+    pub fn flush(mut self) -> redis::Cmd {
         let channel_id = self.proto.0.get_channel_id();
         let id = self.proto.0.get_id();
         let key = CachePrefix::Messages.make_key((channel_id, id));
+        // Remove IDs to save space, as it's in the key.
+        self.proto.0.clear_id();
+        self.proto.0.clear_channel_id();
         // Keep 1 day's worth of messages cached.
         redis::Cmd::set_ex(key, self.proto, 86400)
     }
