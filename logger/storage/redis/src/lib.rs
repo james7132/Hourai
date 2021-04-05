@@ -134,14 +134,12 @@ impl CachedMessage {
         Ok(proto.map(|proto| proto.0))
     }
 
-    pub fn flush(self) -> redis::Pipeline {
+    pub fn flush(self) -> redis::Cmd {
         let channel_id = self.proto.0.get_channel_id();
         let id = self.proto.0.get_id();
         let key = CachePrefix::Messages.make_key((channel_id, id));
-        let mut pipeline = redis::pipe();
         // Keep 1 day's worth of messages cached.
-        pipeline.atomic().set(key, self.proto).expire(key, 86400);
-        pipeline
+        redis::Cmd::set_ex(key, self.proto, 86400)
     }
 
     pub fn delete(channel_id: ChannelId, id: MessageId) -> redis::Cmd {

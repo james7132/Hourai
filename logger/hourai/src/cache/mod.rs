@@ -167,6 +167,7 @@ impl InMemoryCache {
             self.cache_presences(guild.id, guild.presences);
         }
 
+        self.0.guilds.insert(guild.id);
         self.0.unavailable_guilds.remove(&guild.id);
     }
 
