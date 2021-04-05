@@ -723,7 +723,7 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     @prune.command(name="user")
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def prune_user(self, ctx, *user: discord.User):
+    async def prune_user(self, ctx, *users: discord.User):
         """Prunes messages in the current channel that belong to specific users.
 
         Up to 100 messages will be deleted.

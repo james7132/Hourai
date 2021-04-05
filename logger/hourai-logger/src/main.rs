@@ -283,10 +283,11 @@ impl Client {
             Event::MessageDeleteBulk(evt) => self.on_message_bulk_delete(evt).await,
             Event::RoleCreate(evt) => self.on_role_create(evt).await,
             Event::RoleUpdate(evt) => self.on_role_update(evt).await,
+            Event::RoleDelete(evt) => self.on_role_delete(evt).await,
             Event::ChannelCreate(evt) => self.on_channel_create(evt).await,
             Event::ChannelUpdate(evt) => self.on_channel_update(evt).await,
             Event::ChannelDelete(evt) => self.on_channel_delete(evt).await,
-            Event::RoleDelete(evt) => self.on_role_delete(evt).await,
+            Event::VoiceStateUpdate(_) =>  Ok(()),
             _ => {
                 error!("Unexpected event type: {:?}", event);
                 Ok(())
