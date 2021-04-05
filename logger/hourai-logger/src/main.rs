@@ -14,8 +14,7 @@ use hourai::{
     models::{
         channel::{Channel, GuildChannel, Message},
         gateway::payload::*,
-        guild::member::Member,
-        guild::{Permissions, Role},
+        guild::{member::Member, GuildStatus, Permissions, Role},
         id::*,
         user::User,
     },
@@ -262,11 +261,11 @@ impl Client {
     async fn consume_event(mut self, shard_id: u64, event: Event) {
         let kind = event.kind();
         let result = match event {
-            Event::Ready(_) => self.on_shard_ready(shard_id).await,
+            Event::Ready(evt) => self.on_shard_ready(shard_id, *evt).await,
             Event::BanAdd(evt) => self.on_ban_add(evt).await,
             Event::BanRemove(evt) => self.on_ban_remove(evt).await,
             Event::GuildCreate(evt) => self.on_guild_create(*evt).await,
-            Event::GuildUpdate(_) => Ok(()),
+            Event::GuildUpdate(evt) => self.on_guild_update(*evt).await,
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
                     self.on_guild_leave(*evt).await
@@ -299,7 +298,7 @@ impl Client {
         }
     }
 
-    async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
+    async fn on_shard_ready(mut self, shard_id: u64, evt: Ready) -> Result<()> {
         let (res1, res2) = futures::join!(
             Ban::clear_shard(shard_id, self.total_shards()).execute(&self.sql),
             hourai_sql::Member::clear_present_shard(shard_id, self.total_shards())
@@ -308,6 +307,15 @@ impl Client {
 
         res1?;
         res2?;
+
+        for guild in evt.guilds {
+            if let GuildStatus::Online(g) = guild {
+                hourai_redis::CachedGuild::save(&g)
+                    .query_async(&mut self.redis)
+                    .await?;
+            }
+        }
+
         Ok(())
     }
 
@@ -484,6 +492,13 @@ impl Client {
             .query_async(&mut self.redis)
             .await?;
 
+        Ok(())
+    }
+
+    async fn on_guild_update(mut self, evt: GuildUpdate) -> Result<()> {
+        hourai_redis::CachedGuild::save_resource(evt.0.id, evt.0.id, &evt.0)
+            .query_async(&mut self.redis)
+            .await?;
         Ok(())
     }
 

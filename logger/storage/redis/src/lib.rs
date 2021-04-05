@@ -10,7 +10,7 @@ use self::protobuf::Protobuf;
 use anyhow::Result;
 use hourai::models::{
     channel::GuildChannel,
-    guild::{Guild, Permissions, Role},
+    guild::{Guild, PartialGuild, Permissions, Role},
     id::*,
     MessageLike, Snowflake, UserLike,
 };
@@ -313,6 +313,26 @@ impl GuildResource for Guild {
 }
 
 impl ToProto for Guild {
+    type Proto = CachedGuildProto;
+    fn to_proto(&self) -> Self::Proto {
+        let mut proto = Self::Proto::new();
+        proto.set_id(self.id.0);
+        proto.set_name(self.name.clone());
+        proto.features = ::protobuf::RepeatedField::from_vec(self.features.clone());
+        proto.set_owner_id(self.owner_id.0);
+        if let Some(ref code) = self.vanity_url_code {
+            proto.set_vanity_url_code(code.clone());
+        }
+        proto
+    }
+}
+
+impl GuildResource for PartialGuild {
+    type Id = GuildId;
+    type Subkey = ();
+}
+
+impl ToProto for PartialGuild {
     type Proto = CachedGuildProto;
     fn to_proto(&self) -> Self::Proto {
         let mut proto = Self::Proto::new();
