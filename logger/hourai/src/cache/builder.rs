@@ -26,15 +26,6 @@ impl InMemoryCacheBuilder {
 
         self
     }
-
-    /// Sets the number of messages to cache per channel.
-    ///
-    /// Defaults to 100.
-    pub fn message_cache_size(mut self, message_cache_size: usize) -> Self {
-        self.0.message_cache_size = message_cache_size;
-
-        self
-    }
 }
 
 #[cfg(test)]

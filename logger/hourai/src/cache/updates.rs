@@ -1,10 +1,8 @@
 use super::{config::ResourceType, InMemoryCache};
-use dashmap::DashMap;
-use std::{collections::HashSet, hash::Hash, ops::Deref, sync::Arc};
+use std::ops::Deref;
 use twilight_model::{
     gateway::{event::Event, payload::*, presence::UserOrId},
     guild::GuildStatus,
-    id::GuildId,
 };
 
 pub trait UpdateCache {
@@ -21,16 +19,12 @@ impl UpdateCache for Event {
         match self {
             GuildCreate(v) => c.update(v.deref()),
             GuildDelete(v) => c.update(v.deref()),
-            GuildUpdate(v) => c.update(v.deref()),
             MemberAdd(v) => c.update(v.deref()),
             MemberRemove(v) => c.update(v),
             MemberUpdate(v) => c.update(v.deref()),
             MemberChunk(v) => c.update(v),
             PresenceUpdate(v) => c.update(v.deref()),
             Ready(v) => c.update(v.deref()),
-            RoleCreate(v) => c.update(v),
-            RoleDelete(v) => c.update(v),
-            RoleUpdate(v) => c.update(v),
             UnavailableGuild(v) => c.update(v),
             VoiceServerUpdate(v) => c.update(v),
             VoiceStateUpdate(v) => c.update(v.deref()),
@@ -51,28 +45,10 @@ impl UpdateCache for GuildCreate {
 
 impl UpdateCache for GuildDelete {
     fn update(&self, cache: &InMemoryCache) {
-        fn remove_ids<T: Eq + Hash, U>(
-            guild_map: &DashMap<GuildId, HashSet<T>>,
-            container: &DashMap<T, U>,
-            guild_id: GuildId,
-        ) {
-            if let Some((_, ids)) = guild_map.remove(&guild_id) {
-                for id in ids {
-                    container.remove(&id);
-                }
-            }
-        }
-
-        if !cache.wants(ResourceType::GUILD) {
-            return;
-        }
-
         let id = self.id;
 
-        cache.0.guilds.remove(&id);
-
-        if cache.wants(ResourceType::ROLE) {
-            remove_ids(&cache.0.guild_roles, &cache.0.roles, id);
+        if cache.wants(ResourceType::GUILD) {
+            cache.0.guilds.remove(&id);
         }
 
         if cache.wants(ResourceType::VOICE_STATE) {
@@ -86,32 +62,6 @@ impl UpdateCache for GuildDelete {
         if cache.wants(ResourceType::PRESENCE) {
             cache.0.guild_presences.remove(&id);
         }
-    }
-}
-
-impl UpdateCache for GuildUpdate {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::GUILD) {
-            return;
-        }
-
-        if let Some(mut guild) = cache.0.guilds.get_mut(&self.0.id) {
-            let mut guild = Arc::make_mut(&mut guild);
-            guild.name = self.name.clone().into_boxed_str();
-            guild.description = self.description.clone().map(|s| s.into_boxed_str());
-            guild.features = self
-                .features
-                .iter()
-                .map(|s| s.clone().into_boxed_str())
-                .collect();
-            guild.icon = self.icon.clone().map(|s| s.into_boxed_str());
-            guild.owner_id = self.owner_id;
-            guild.premium_tier = self.premium_tier;
-            guild
-                .premium_subscription_count
-                .replace(self.premium_subscription_count.unwrap_or_default());
-            guild.vanity_url_code = self.vanity_url_code.clone().map(|s| s.into_boxed_str());
-        };
     }
 }
 
@@ -199,36 +149,6 @@ impl UpdateCache for Ready {
     }
 }
 
-impl UpdateCache for RoleCreate {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::ROLE) {
-            return;
-        }
-
-        cache.cache_role(self.guild_id, &self.role);
-    }
-}
-
-impl UpdateCache for RoleDelete {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::ROLE) {
-            return;
-        }
-
-        cache.delete_role(self.role_id);
-    }
-}
-
-impl UpdateCache for RoleUpdate {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::ROLE) {
-            return;
-        }
-
-        cache.cache_role(self.guild_id, &self.role);
-    }
-}
-
 impl UpdateCache for UnavailableGuild {
     fn update(&self, cache: &InMemoryCache) {
         if !cache.wants(ResourceType::GUILD) {
@@ -294,101 +214,6 @@ mod tests {
         });
 
         (guild_id, channel_id, channel)
-    }
-
-    #[test]
-    fn test_guild_update() {
-        let cache = InMemoryCache::new();
-        let guild = Guild {
-            afk_channel_id: None,
-            afk_timeout: 0,
-            application_id: None,
-            approximate_member_count: None,
-            approximate_presence_count: None,
-            banner: None,
-            channels: Vec::new(),
-            default_message_notifications: DefaultMessageNotificationLevel::Mentions,
-            description: None,
-            discovery_splash: None,
-            emojis: Vec::new(),
-            explicit_content_filter: ExplicitContentFilter::None,
-            features: Vec::new(),
-            icon: None,
-            id: GuildId(1),
-            joined_at: None,
-            large: false,
-            lazy: None,
-            max_members: None,
-            max_presences: None,
-            max_video_channel_users: None,
-            member_count: None,
-            members: Vec::new(),
-            mfa_level: MfaLevel::None,
-            name: "test".to_owned(),
-            owner_id: UserId(1),
-            owner: None,
-            permissions: None,
-            preferred_locale: "en_us".to_owned(),
-            premium_subscription_count: None,
-            premium_tier: PremiumTier::None,
-            presences: Vec::new(),
-            region: "us".to_owned(),
-            roles: Vec::new(),
-            rules_channel_id: None,
-            splash: None,
-            system_channel_flags: SystemChannelFlags::empty(),
-            system_channel_id: None,
-            unavailable: false,
-            vanity_url_code: None,
-            verification_level: VerificationLevel::VeryHigh,
-            voice_states: Vec::new(),
-            widget_channel_id: None,
-            widget_enabled: None,
-        };
-
-        cache.update(&GuildCreate(guild.clone()));
-
-        let mutation = PartialGuild {
-            id: guild.id,
-            afk_channel_id: guild.afk_channel_id,
-            afk_timeout: guild.afk_timeout,
-            application_id: guild.application_id,
-            banner: guild.banner,
-            default_message_notifications: guild.default_message_notifications,
-            description: guild.description,
-            discovery_splash: guild.discovery_splash,
-            emojis: guild.emojis,
-            explicit_content_filter: guild.explicit_content_filter,
-            features: guild.features,
-            icon: guild.icon,
-            max_members: guild.max_members,
-            max_presences: guild.max_presences,
-            member_count: guild.member_count,
-            mfa_level: guild.mfa_level,
-            name: "test2222".to_owned(),
-            owner_id: UserId(2),
-            owner: guild.owner,
-            permissions: guild.permissions,
-            preferred_locale: guild.preferred_locale,
-            premium_subscription_count: guild.premium_subscription_count,
-            premium_tier: guild.premium_tier,
-            region: guild.region,
-            roles: guild.roles,
-            rules_channel_id: guild.rules_channel_id,
-            splash: guild.splash,
-            system_channel_flags: guild.system_channel_flags,
-            system_channel_id: guild.system_channel_id,
-            verification_level: guild.verification_level,
-            vanity_url_code: guild.vanity_url_code,
-            widget_channel_id: guild.widget_channel_id,
-            widget_enabled: guild.widget_enabled,
-        };
-
-        cache.update(&GuildUpdate(mutation.clone()));
-
-        assert_eq!(cache.guild(guild.id).unwrap().name, mutation.name);
-        assert_eq!(cache.guild(guild.id).unwrap().owner_id, mutation.owner_id);
-        assert_eq!(cache.guild(guild.id).unwrap().id, mutation.id);
     }
 
     #[test]

@@ -3,10 +3,7 @@ use async_trait::async_trait;
 use chrono::offset::Utc;
 use chrono::Duration;
 use dashmap::DashMap;
-use hourai::{
-    cache::InMemoryCache,
-    models::{user::User, Snowflake},
-};
+use hourai::models::{user::User, Snowflake};
 use hourai_sql::{Ban, SqlPool, Username, VerificationBan};
 use regex::Regex;
 
@@ -62,7 +59,6 @@ impl Verifier for DeletedUserRejector {
 
 struct BannedUserRejector {
     sql: SqlPool,
-    cache: InMemoryCache,
     min_guild_size: u64,
 }
 
@@ -75,14 +71,15 @@ impl Verifier for BannedUserRejector {
 
         let mut reasons: Vec<Option<String>> = Vec::new();
         for ban in bans {
-            if let Some(guild) = self.cache.guild(ban.guild_id()) {
-                if guild.member_count.unwrap_or(0) < self.min_guild_size {
-                    continue;
-                }
-            } else {
-                continue;
+            let count = hourai_sql::Member::count_guild_members(
+                ban.guild_id(),
+                /*include_bots=*/ false,
+            )
+            .fetch_one(&self.sql)
+            .await?;
+            if count.0 as u64 >= self.min_guild_size {
+                reasons.push(ban.reason);
             }
-            reasons.push(ban.reason);
         }
 
         if !reasons.is_empty() {
@@ -252,14 +249,9 @@ pub(super) fn no_avatar() -> BoxedVerifier {
     })
 }
 
-pub(super) fn banned_user(
-    sql: SqlPool,
-    cache: InMemoryCache,
-    min_guild_size: u64,
-) -> BoxedVerifier {
+pub(super) fn banned_user(sql: SqlPool, min_guild_size: u64) -> BoxedVerifier {
     Box::new(BannedUserRejector {
         sql,
-        cache,
         min_guild_size,
     })
 }

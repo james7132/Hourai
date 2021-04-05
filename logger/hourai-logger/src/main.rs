@@ -56,11 +56,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
 );
 
 const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
-    ResourceType::GUILD.bits()
-        | ResourceType::PRESENCE.bits()
-        | ResourceType::CHANNEL.bits()
-        | ResourceType::ROLE.bits()
-        | ResourceType::VOICE_STATE.bits(),
+    ResourceType::GUILD.bits() | ResourceType::PRESENCE.bits() | ResourceType::VOICE_STATE.bits(),
 );
 
 #[tokio::main]
@@ -202,10 +198,15 @@ impl Client {
         let local_member = hourai_sql::Member::fetch(guild_id, user_id)
             .fetch_one(&self.sql)
             .await;
+        let mut redis = self.redis.clone();
         if let Ok(member) = local_member {
-            Ok(self
-                .cache
-                .guild_permissions(guild_id, user_id, member.role_ids()))
+            hourai_redis::CachedGuild::guild_permissions(
+                guild_id,
+                user_id,
+                member.role_ids(),
+                &mut redis,
+            )
+            .await
         } else {
             let roles = self
                 .http_client
@@ -213,7 +214,7 @@ impl Client {
                 .await?
                 .into_iter()
                 .flat_map(|m| m.roles);
-            Ok(self.cache.guild_permissions(guild_id, user_id, roles))
+            hourai_redis::CachedGuild::guild_permissions(guild_id, user_id, roles, &mut redis).await
         }
     }
 

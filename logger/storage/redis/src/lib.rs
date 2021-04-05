@@ -10,7 +10,7 @@ use self::protobuf::Protobuf;
 use anyhow::Result;
 use hourai::models::{
     channel::GuildChannel,
-    guild::{Guild, Role},
+    guild::{Guild, Permissions, Role},
     id::*,
     MessageLike, Snowflake, UserLike,
 };
@@ -185,6 +185,7 @@ impl CachedGuild {
         redis::Cmd::del(CachePrefix::Guild.make_key(guild_id.0))
     }
 
+    /// Gets a cached resource from the cache.
     pub async fn fetch_resource<T: GuildResource>(
         guild_id: GuildId,
         resource_id: T::Id,
@@ -199,6 +200,27 @@ impl CachedGuild {
             .query_async(conn)
             .await?;
         Ok(proto.map(|proto| proto.0))
+    }
+
+    /// Fetches multiple resources from the cache.
+    pub async fn fetch_resources<T: GuildResource>(
+        guild_id: GuildId,
+        resource_ids: &[T::Id],
+        conn: &mut RedisPool,
+    ) -> Result<Vec<T::Proto>>
+    where
+        GuildKey<T::Subkey>: ToRedisArgs,
+    {
+        let guild_key = CachePrefix::Guild.make_key(guild_id.0);
+        let resource_keys: Vec<GuildKey<T::Subkey>> =
+            resource_ids.iter().map(|id| id.clone().into()).collect();
+        let protos: Vec<Option<Protobuf<T::Proto>>> = redis::Cmd::hget(guild_key, resource_keys)
+            .query_async(conn)
+            .await?;
+        Ok(protos
+            .into_iter()
+            .filter_map(|p| p.map(|proto| proto.0))
+            .collect())
     }
 
     /// Saves a resoruce into the cache.
@@ -223,6 +245,56 @@ impl CachedGuild {
         let guild_key = CachePrefix::Guild.make_key(guild_id.0);
         redis::Cmd::hdel(guild_key, resource_id.into())
     }
+
+    /// Given a list of role IDs, finds the highest among them.
+    /// Returns None if role_ids is empty.
+    pub async fn highest_role(
+        guild_id: GuildId,
+        role_ids: &[RoleId],
+        conn: &mut RedisPool,
+    ) -> Result<i64> {
+        Ok(Self::fetch_resources::<Role>(guild_id, role_ids, conn)
+            .await?
+            .into_iter()
+            .map(|role| role.get_position())
+            .max()
+            .unwrap_or(i64::MIN))
+    }
+
+    /// Gets the guild-level permissions for a given member.
+    /// If the guild or any of the roles are not present, this will return
+    /// Permissions::empty.
+    pub async fn guild_permissions(
+        guild_id: GuildId,
+        user_id: UserId,
+        role_ids: impl Iterator<Item = RoleId>,
+        conn: &mut RedisPool,
+    ) -> Result<Permissions> {
+        // The owner has all permissions.
+        if let Some(guild) = Self::fetch_resource::<Guild>(guild_id, guild_id, conn).await? {
+            if guild.get_owner_id() == user_id.0 {
+                return Ok(Permissions::all());
+            }
+        } else {
+            return Ok(Permissions::empty());
+        }
+
+        // The everyone role ID is the same as the guild ID.
+        let mut role_ids: Vec<RoleId> = role_ids.collect();
+        role_ids.push(RoleId(guild_id.0));
+        let perms = Self::fetch_resources::<Role>(guild_id, &role_ids, conn)
+            .await?
+            .into_iter()
+            .map(|role| Permissions::from_bits_truncate(role.get_permissions()))
+            .fold(Permissions::empty(), |acc, perm| acc | perm);
+
+        // Administrators by default have every permission enabled.
+        Ok(if perms.contains(Permissions::ADMINISTRATOR) {
+            Permissions::all()
+        } else {
+            perms
+        })
+    }
 }
 
 pub trait ToProto {
@@ -231,7 +303,7 @@ pub trait ToProto {
 }
 
 pub trait GuildResource: ToProto {
-    type Id: Into<GuildKey<Self::Subkey>>;
+    type Id: Into<GuildKey<Self::Subkey>> + Copy;
     type Subkey;
 }
 

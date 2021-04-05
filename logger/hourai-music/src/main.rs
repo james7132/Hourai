@@ -52,12 +52,8 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
         | EventTypeFlags::VOICE_STATE_UPDATE.bits(),
 );
 
-const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
-    ResourceType::GUILD.bits()
-        | ResourceType::CHANNEL.bits()
-        | ResourceType::ROLE.bits()
-        | ResourceType::VOICE_STATE.bits(),
-);
+const CACHED_RESOURCES: ResourceType =
+    ResourceType::from_bits_truncate(ResourceType::GUILD.bits() | ResourceType::VOICE_STATE.bits());
 
 #[tokio::main]
 async fn main() {

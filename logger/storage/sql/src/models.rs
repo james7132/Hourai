@@ -324,6 +324,21 @@ impl Member {
         sqlx::query_as("SELECT count(*) FROM members")
     }
 
+    pub fn count_guild_members<'a>(
+        guild_id: GuildId,
+        include_bots: bool,
+    ) -> SqlQueryAs<'a, (i64,)> {
+        if include_bots {
+            sqlx::query_as("SELECT count(*) FROM members WHERE guild_id = $1 AND present")
+                .bind(guild_id.0 as i64)
+        } else {
+            sqlx::query_as(
+                "SELECT count(*) FROM members WHERE guild_id = $1 AND present AND NOT bot",
+            )
+            .bind(guild_id.0 as i64)
+        }
+    }
+
     pub fn fetch<'a>(guild_id: GuildId, user_id: UserId) -> SqlQueryAs<'a, Self> {
         sqlx::query_as("SELECT * FROM members WHERE guild_id = $1 AND user_id = $2")
             .bind(guild_id.0 as i64)
