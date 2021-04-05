@@ -55,7 +55,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
 );
 
 const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
-    ResourceType::GUILD.bits() | ResourceType::PRESENCE.bits(),
+    ResourceType::GUILD.bits() | ResourceType::MEMBER.bits() | ResourceType::PRESENCE.bits(),
 );
 
 #[tokio::main]
