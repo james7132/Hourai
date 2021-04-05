@@ -7,7 +7,6 @@ bitflags! {
         const GUILD = 1;
         const MEMBER = 1 << 1;
         const PRESENCE = 1 << 2;
-        const VOICE_STATE = 1 << 3;
     }
 }
 
@@ -49,7 +48,6 @@ mod tests {
         assert_eq!(1, ResourceType::GUILD.bits());
         assert_eq!(1 << 1, ResourceType::MEMBER.bits());
         assert_eq!(1 << 2, ResourceType::PRESENCE.bits());
-        assert_eq!(1 << 3, ResourceType::VOICE_STATE.bits());
     }
 
     #[test]

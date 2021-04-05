@@ -15,7 +15,6 @@ use anyhow::{bail, Result};
 use dashmap::DashMap;
 use futures::stream::StreamExt;
 use hourai::{
-    cache::{InMemoryCache, ResourceType},
     config,
     gateway::{cluster::*, Event, EventTypeFlags, Intents},
     init,
@@ -32,7 +31,7 @@ use hyper::{
     service::Service,
     Body, Request,
 };
-use std::{convert::TryFrom, str::FromStr};
+use std::{convert::TryFrom, str::FromStr, collections::HashMap};
 use twilight_command_parser::{CommandParserConfig, Parser};
 use twilight_lavalink::{model::*, Lavalink};
 
@@ -51,9 +50,6 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
         | EventTypeFlags::VOICE_SERVER_UPDATE.bits()
         | EventTypeFlags::VOICE_STATE_UPDATE.bits(),
 );
-
-const CACHED_RESOURCES: ResourceType =
-    ResourceType::from_bits_truncate(ResourceType::GUILD.bits() | ResourceType::VOICE_STATE.bits());
 
 #[tokio::main]
 async fn main() {
@@ -80,9 +76,6 @@ async fn main() {
 
     let http_client = init::http_client(&config);
     let current_user = http_client.current_user().await.unwrap();
-    let cache = InMemoryCache::builder()
-        .resource_types(CACHED_RESOURCES)
-        .build();
     let gateway = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
@@ -97,7 +90,6 @@ async fn main() {
         user_id: current_user.id,
         http_client,
         lavalink: lavalink.clone(),
-        cache: cache.clone(),
         gateway: gateway.clone(),
         states: Arc::new(DashMap::new()),
         hyper: HyperClient::new(),
@@ -117,7 +109,6 @@ async fn main() {
 
     let mut events = gateway.some_events(BOT_EVENTS);
     while let Some((_, evt)) = events.next().await {
-        cache.update(&evt);
         if let Err(err) = lavalink.process(&evt).await {
             error!("Error while handling Lavalink event: {}", err);
         }
@@ -135,7 +126,6 @@ pub struct Client<'a> {
     pub http_client: hourai::http::Client,
     pub hyper: HyperClient<HttpConnector>,
     pub gateway: Cluster,
-    pub cache: InMemoryCache,
     pub lavalink: twilight_lavalink::Lavalink,
     pub states: Arc<DashMap<GuildId, PlayerState>>,
     pub resolver: GaiResolver,
@@ -298,10 +288,16 @@ impl Client<'static> {
 
     /// Counts the number of users in the same voice channel as the bot.
     /// If not in a voice channel, returns 0.
-    pub fn count_listeners(&self, guild_id: GuildId) -> usize {
-        self.get_channel(guild_id)
-            .map(|id| self.cache.voice_channel_users(id).len())
-            .unwrap_or(0)
+    pub async fn count_listeners(&self, guild_id: GuildId) -> Result<usize> {
+        Ok(if let Some(channel_id) = self.get_channel(guild_id) {
+            let mut redis = self.redis.clone();
+            let states: HashMap<u64, u64> = hourai_redis::CachedVoiceState::get_channels(guild_id)
+                .query_async(&mut redis)
+                .await?;
+            states.into_iter().filter(|(_, v)| *v == channel_id.0).count()
+        } else {
+            0
+        })
     }
 
     pub async fn get_node(&self, guild_id: GuildId) -> Result<twilight_lavalink::Node> {

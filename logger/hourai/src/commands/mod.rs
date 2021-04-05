@@ -1,7 +1,6 @@
 pub mod precondition;
 pub mod prelude;
 
-use crate::cache::InMemoryCache;
 use thiserror::Error;
 use twilight_http::request::channel::message::*;
 use twilight_model::channel::Message;
@@ -10,7 +9,6 @@ use twilight_model::channel::Message;
 pub struct Context<'a> {
     pub message: &'a Message,
     pub http: twilight_http::Client,
-    pub cache: InMemoryCache,
 }
 
 impl Context<'_> {

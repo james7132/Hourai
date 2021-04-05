@@ -15,6 +15,8 @@ pub enum CachePrefix {
     Messages = 3_u8,
     /// Cached guild data.
     Guild = 4_u8,
+    /// Cached voice state data.
+    VoiceState = 5_u8,
 }
 
 impl CachePrefix {

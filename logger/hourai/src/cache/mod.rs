@@ -13,8 +13,7 @@ use std::{collections::HashSet, sync::Arc};
 use twilight_model::{
     gateway::presence::{Presence, Status, UserOrId},
     guild::{Guild, Member},
-    id::{ChannelId, GuildId, UserId},
-    voice::VoiceState,
+    id::{GuildId, UserId},
 };
 
 #[derive(Debug)]
@@ -31,7 +30,6 @@ struct InMemoryCacheRef {
     guilds: DashSet<GuildId>,
     guild_presences: DashMap<GuildId, HashSet<UserId>>,
     unavailable_guilds: DashSet<GuildId>,
-    voice_states: DashMap<(GuildId, UserId), ChannelId>,
     pending_members: DashSet<(GuildId, UserId)>,
 }
 
@@ -110,29 +108,6 @@ impl InMemoryCache {
         self.0.pending_members.contains(&(guild_id, user_id))
     }
 
-    /// Finds which voice channel a user is in for a given Guild.
-    /// This runs O(1) time.
-    pub fn voice_state(&self, guild_id: GuildId, user_id: UserId) -> Option<ChannelId> {
-        self.0
-            .voice_states
-            .get(&(guild_id, user_id))
-            .map(|kv| *kv.value())
-    }
-
-    /// Finds all of the users in a given voice channel.
-    /// This runs O(n) time if n is the number of the number of user voice states cached.
-    ///
-    /// This linear time scaling is generally fine since the number of users in voice channels is
-    /// signifgantly lower than the sum total of all users visible to the bot.
-    pub fn voice_channel_users(&self, channel_id: ChannelId) -> Vec<UserId> {
-        self.0
-            .voice_states
-            .iter()
-            .filter(|kv| *kv.value() == channel_id)
-            .map(|kv| kv.key().1)
-            .collect()
-    }
-
     /// Gets all of the IDs of the guilds in the cache.
     ///
     /// This is an O(n) operation. This requires the [`GUILDS`] intent.
@@ -177,7 +152,6 @@ impl InMemoryCache {
         self.0.guilds.clear();
         self.0.guild_presences.clear();
         self.0.unavailable_guilds.clear();
-        self.0.voice_states.clear();
         self.0.pending_members.clear();
     }
 
@@ -191,10 +165,6 @@ impl InMemoryCache {
         if self.wants(ResourceType::PRESENCE) {
             self.0.guild_presences.insert(guild.id, HashSet::new());
             self.cache_presences(guild.id, guild.presences);
-        }
-
-        if self.wants(ResourceType::VOICE_STATE) {
-            self.cache_voice_states(guild.id, guild.voice_states);
         }
 
         self.0.unavailable_guilds.remove(&guild.id);
@@ -238,28 +208,6 @@ impl InMemoryCache {
             }
         }
         online
-    }
-
-    fn cache_voice_states(
-        &self,
-        guild_id: GuildId,
-        voice_states: impl IntoIterator<Item = VoiceState>,
-    ) {
-        for voice_state in voice_states {
-            self.cache_voice_state(guild_id, voice_state.user_id, voice_state.channel_id);
-        }
-    }
-
-    fn cache_voice_state(&self, guild_id: GuildId, user_id: UserId, channel_id: Option<ChannelId>) {
-        let key = (guild_id, user_id);
-        match channel_id {
-            Some(id) => {
-                self.0.voice_states.insert(key, id);
-            }
-            None => {
-                self.0.voice_states.remove(&key);
-            }
-        }
     }
 
     fn unavailable_guild(&self, guild_id: GuildId) {

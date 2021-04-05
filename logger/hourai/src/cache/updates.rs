@@ -26,8 +26,6 @@ impl UpdateCache for Event {
             PresenceUpdate(v) => c.update(v.deref()),
             Ready(v) => c.update(v.deref()),
             UnavailableGuild(v) => c.update(v),
-            VoiceServerUpdate(v) => c.update(v),
-            VoiceStateUpdate(v) => c.update(v.deref()),
             _ => {}
         }
     }
@@ -49,10 +47,6 @@ impl UpdateCache for GuildDelete {
 
         if cache.wants(ResourceType::GUILD) {
             cache.0.guilds.remove(&id);
-        }
-
-        if cache.wants(ResourceType::VOICE_STATE) {
-            cache.0.voice_states.retain(|(g, _), _| *g != id);
         }
 
         if cache.wants(ResourceType::MEMBER) {
@@ -160,22 +154,6 @@ impl UpdateCache for UnavailableGuild {
     }
 }
 
-impl UpdateCache for VoiceServerUpdate {
-    fn update(&self, _: &InMemoryCache) {}
-}
-
-impl UpdateCache for VoiceStateUpdate {
-    fn update(&self, cache: &InMemoryCache) {
-        if !cache.wants(ResourceType::VOICE_STATE) {
-            return;
-        }
-
-        if let Some(guild_id) = &self.0.guild_id {
-            cache.cache_voice_state(*guild_id, self.0.user_id, self.0.channel_id);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::config::ResourceType;
@@ -192,7 +170,6 @@ mod tests {
         },
         id::{ChannelId, GuildId, MessageId, UserId},
         user::User,
-        voice::VoiceState,
     };
 
     fn guild_channel_text() -> (GuildId, ChannelId, GuildChannel) {
@@ -216,25 +193,4 @@ mod tests {
         (guild_id, channel_id, channel)
     }
 
-    #[test]
-    fn test_voice_states_with_no_cached_guilds() {
-        let cache = InMemoryCache::builder()
-            .resource_types(ResourceType::VOICE_STATE)
-            .build();
-
-        cache.update(&VoiceStateUpdate(VoiceState {
-            channel_id: None,
-            deaf: false,
-            guild_id: Some(GuildId(1)),
-            member: None,
-            mute: false,
-            self_deaf: false,
-            self_mute: false,
-            self_stream: false,
-            session_id: "38fj3jfkh3pfho3prh2".to_string(),
-            suppress: false,
-            token: None,
-            user_id: UserId(1),
-        }));
-    }
 }

@@ -11,7 +11,7 @@ use anyhow::Result;
 use hourai::models::{
     channel::GuildChannel,
     guild::{Guild, PartialGuild, Permissions, Role},
-    id::*,
+    id::*, voice::VoiceState,
     MessageLike, Snowflake, UserLike,
 };
 use hourai::proto::cache::*;
@@ -158,6 +158,45 @@ impl CachedMessage {
             .collect();
         redis::Cmd::del(keys)
     }
+}
+
+pub struct CachedVoiceState;
+
+impl CachedVoiceState {
+
+    pub fn update_guild(guild: &Guild) -> redis::Pipeline {
+        let key = CachePrefix::VoiceState.make_key(guild.id.0);
+        let mut pipe = redis::pipe();
+        pipe.atomic().del(key).ignore();
+        for state in guild.voice_states.iter() {
+            pipe.add_command(Self::save(state)).ignore();
+        }
+        pipe
+    }
+
+    pub fn get_channel(guild_id: GuildId, user_id: UserId) -> redis::Cmd {
+        let key = CachePrefix::VoiceState.make_key(guild_id.0);
+        redis::Cmd::hget(key, user_id.0)
+    }
+
+    pub fn get_channels(guild_id: GuildId) -> redis::Cmd {
+        redis::Cmd::hgetall(CachePrefix::VoiceState.make_key(guild_id.0))
+    }
+
+    pub fn save(state: &VoiceState) -> redis::Cmd {
+        let guild_id = state.guild_id.expect("Only voice states in guilds should be cached");
+        let key = CachePrefix::VoiceState.make_key(guild_id.0);
+        if let Some(channel_id) = state.channel_id {
+            redis::Cmd::hset(key, state.user_id.0, channel_id.0)
+        } else {
+            redis::Cmd::hdel(key, state.user_id.0)
+        }
+    }
+
+    pub fn clear_guild(guild_id: GuildId) -> redis::Cmd {
+        redis::Cmd::del(CachePrefix::VoiceState.make_key(guild_id.0))
+    }
+
 }
 
 pub struct CachedGuild;

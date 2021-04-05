@@ -29,7 +29,6 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
         let ctx = commands::Context {
             message: &evt,
             http: client.http_client.clone(),
-            cache: client.cache.clone(),
         };
 
         let result = match command {
@@ -88,13 +87,17 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
     Ok(())
 }
 
-fn require_in_voice_channel(
+async fn require_in_voice_channel(
     client: &Client<'static>,
     ctx: &commands::Context<'_>,
 ) -> Result<(GuildId, ChannelId)> {
     let guild_id = require_in_guild(&ctx)?;
 
-    let user = client.cache.voice_state(guild_id, ctx.message.author.id);
+    let mut redis = client.redis.clone();
+    let user: Option<u64> = hourai_redis::CachedVoiceState::get_channel(guild_id, ctx.message.author.id)
+        .query_async(&mut redis)
+        .await?;
+    let user = user.map(ChannelId);
     let bot = client.get_channel(guild_id);
     if bot.is_some() && user != bot {
         bail!(CommandError::FailedPrecondition(
@@ -128,7 +131,7 @@ fn is_dj(config: &MusicConfig, roles: &[RoleId]) -> bool {
 
 /// Requires that the author is a DJ on the server to use the command.
 async fn require_dj(client: &Client<'static>, ctx: &commands::Context<'_>) -> Result<()> {
-    let (guild_id, _) = require_in_voice_channel(client, &ctx)?;
+    let (guild_id, _) = require_in_voice_channel(client, &ctx).await?;
     if let Some(member) = &ctx.message.member {
         let config = client.get_config(guild_id).await?;
         if is_dj(&config, &member.roles) {
@@ -199,7 +202,7 @@ async fn play(
     ctx: commands::Context<'_>,
     query: Option<&str>,
 ) -> Result<()> {
-    let (guild_id, channel_id) = require_in_voice_channel(client, &ctx)?;
+    let (guild_id, channel_id) = require_in_voice_channel(client, &ctx).await?;
 
     if query.is_none() {
         return pause(client, ctx, false).await;
@@ -287,12 +290,12 @@ async fn stop(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
 
 async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
     let guild_id = require_playing(client, &ctx)?;
-    require_in_voice_channel(client, &ctx)?;
+    require_in_voice_channel(client, &ctx).await?;
+    let listeners = client.count_listeners(guild_id).await?;
     let (votes, required, requestor) = client
         .mutate_state(guild_id, |state| {
             let (requestor, _) = state.currently_playing().unwrap();
             state.skip_votes.insert(ctx.message.author.id);
-            let listeners = client.count_listeners(guild_id);
             (state.skip_votes.len(), listeners / 2, requestor)
         })
         .unwrap();
@@ -313,7 +316,7 @@ async fn remove(
     arguments: &mut Arguments<'_>,
 ) -> Result<()> {
     let guild_id = require_playing(client, &ctx)?;
-    require_in_voice_channel(client, &ctx)?;
+    require_in_voice_channel(client, &ctx).await?;
     let idx = arguments.parse_next::<usize>()?;
     commands::precondition::no_excess_arguments(arguments)?;
 
@@ -353,7 +356,7 @@ async fn remove(
 
 async fn remove_all(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
     let guild_id = require_playing(client, &ctx)?;
-    require_in_voice_channel(client, &ctx)?;
+    require_in_voice_channel(client, &ctx).await?;
     let response = client
         .mutate_state(guild_id, |state| {
             if let Some(count) = state.queue.clear_key(ctx.message.author.id) {
@@ -369,7 +372,7 @@ async fn remove_all(client: &Client<'static>, ctx: commands::Context<'_>) -> Res
 
 async fn shuffle(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()> {
     let guild_id = require_playing(client, &ctx)?;
-    require_in_voice_channel(client, &ctx)?;
+    require_in_voice_channel(client, &ctx).await?;
     let response = client
         .mutate_state(guild_id, |state| {
             if let Some(count) = state.queue.shuffle(ctx.message.author.id) {

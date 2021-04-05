@@ -55,7 +55,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
 );
 
 const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
-    ResourceType::GUILD.bits() | ResourceType::PRESENCE.bits() | ResourceType::VOICE_STATE.bits(),
+    ResourceType::GUILD.bits() | ResourceType::PRESENCE.bits(),
 );
 
 #[tokio::main]
@@ -242,14 +242,6 @@ impl Client {
                     Ok(())
                 }
             }
-            Event::VoiceStateUpdate(ref evt) => {
-                if let Some(guild_id) = evt.0.guild_id {
-                    let channel = self.cache.voice_state(guild_id, evt.0.user_id);
-                    announcements::on_voice_update(&self, evt.0.clone(), channel).await
-                } else {
-                    Ok(())
-                }
-            }
             _ => Ok(()),
         };
 
@@ -287,7 +279,7 @@ impl Client {
             Event::ChannelCreate(evt) => self.on_channel_create(evt).await,
             Event::ChannelUpdate(evt) => self.on_channel_update(evt).await,
             Event::ChannelDelete(evt) => self.on_channel_delete(evt).await,
-            Event::VoiceStateUpdate(_) =>  Ok(()),
+            Event::VoiceStateUpdate(evt) =>  self.on_voice_state_update(*evt).await,
             _ => {
                 error!("Unexpected event type: {:?}", event);
                 Ok(())
@@ -312,6 +304,9 @@ impl Client {
         for guild in evt.guilds {
             if let GuildStatus::Online(g) = guild {
                 hourai_redis::CachedGuild::save(&g)
+                    .query_async(&mut self.redis)
+                    .await?;
+                hourai_redis::CachedVoiceState::update_guild(&g)
                     .query_async(&mut self.redis)
                     .await?;
             }
@@ -492,6 +487,9 @@ impl Client {
         hourai_redis::CachedGuild::save(&guild)
             .query_async(&mut self.redis)
             .await?;
+        hourai_redis::CachedVoiceState::update_guild(&guild)
+            .query_async(&mut self.redis)
+            .await?;
 
         Ok(())
     }
@@ -506,6 +504,9 @@ impl Client {
     async fn on_guild_leave(mut self, evt: GuildDelete) -> Result<()> {
         info!("Left guild {}", evt.id);
         hourai_redis::CachedGuild::delete(evt.id)
+            .query_async(&mut self.redis)
+            .await?;
+        hourai_redis::CachedVoiceState::clear_guild(evt.id)
             .query_async(&mut self.redis)
             .await?;
         let (res1, res2) = futures::join!(
@@ -541,6 +542,23 @@ impl Client {
         self.refresh_bans(evt.guild_id).await?;
         res?;
         res2?;
+        Ok(())
+    }
+
+    async fn on_voice_state_update(mut self, evt: VoiceStateUpdate) -> Result<()> {
+        let guild_id = match evt.0.guild_id {
+            Some(id) => id,
+            None => return Ok(()),
+        };
+        let channel_id: Option<u64> =
+            hourai_redis::CachedVoiceState::get_channel(guild_id, evt.0.user_id)
+                .query_async(&mut self.redis)
+                .await?;
+        let channel_id = channel_id.map(ChannelId);
+        announcements::on_voice_update(&self, evt.0.clone(), channel_id).await?;
+        hourai_redis::CachedVoiceState::save(&evt.0)
+            .query_async(&mut self.redis)
+            .await?;
         Ok(())
     }
 
