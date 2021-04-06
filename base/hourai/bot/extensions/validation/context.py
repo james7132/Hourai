@@ -119,8 +119,12 @@ class ValidationContext:
         if self.approved:
             message.append(f"Verified user: {member.mention} ({member.id}).")
         else:
-            message.append(f"{ping_target}. User {member.mention} "
-                           f"({member.id}) requires manual verification.")
+            if ping_target != '':
+                message.append(f"{ping_target}. User {member.mention} "
+                               f"({member.id}) requires manual verification.")
+            else:
+                message.append(f"User {member.mention} "
+                               f"({member.id}) requires manual verification.")
 
         if include_invite:
             invite, vanity = await self.get_join_invite()
