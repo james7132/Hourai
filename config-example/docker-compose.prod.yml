@@ -21,6 +21,8 @@ services:
     image: james7132/hourai:logger
     container_name: logger
     restart: unless-stopped
+    expose:
+      - 9090
     environment:
       - HOURAI_CONFIG=/opt/hourai.jsonnet
       - HOURAI_ENV=prod
@@ -31,6 +33,58 @@ services:
       - postgres
       - redis
       - http-proxy
+      - gateway-queue
+  music:
+    image: james7132/hourai:latest-music
+    container_name: music
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=dev
+      - RUST_BACKTRACE=1
+      - RUST_LOG=debug
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
+    depends_on:
+      - redis
+      - http-proxy
+      - lavalink
+      - gateway-queue
+  feeds:
+    image: james7132/hourai:latest-feeds
+    container_name: feeds
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=prod
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info,sqlx=warn
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
+    expose:
+      - 9090
+    depends_on:
+      - postgres
+      - http-proxy
+  web:
+    image: james7132/hourai:latest-web
+    container_name: web
+    restart: unless-stopped
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=prod
+      - RUST_BACKTRACE=1
+      - RUST_LOG=debug,sqlx=warn
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
+    expose:
+      - 8080
+      - 9090
+    depends_on:
+      - postgres
+      - redis
   http-proxy:
     image: twilightrs/http-proxy
     container_name: http-proxy
@@ -83,11 +137,31 @@ services:
       - ./lavalink.yml:/opt/Lavalink/application.yml
     expose:
       - 2333
+  grafana:
+    image: grafana/grafana:master
+    restart: unless-stopped
+    container_name: grafana
+    volumes:
+      - ./grafana.ini:/etc/grafana/grafana.ini
+      - grafana-data:/var/lib/grafana
+    expose:
+      - 3000
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
 volumes:
   db-data:
     name: "db-data"
   redis-data:
     name: "redis-data"
+  grafana-data:
+    name: "grafana-data"
+  prometheus-data:
+    name: prometheus-data-prod
 networks:
   default:
     name: "hourai"

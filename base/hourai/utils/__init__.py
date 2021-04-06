@@ -206,7 +206,7 @@ def find_moderators(guild):
     with session:
         for role in find_moderator_roles(guild):
             query = (f"SELECT user_id FROM members "
-                     f"WHERE {role.id} = ANY(role_ids)")
+                     f"WHERE {role.id} = ANY(role_ids) AND NOT bot")
             for row in session.execute(query).fetchall():
                 user_ids.update(row.values())
     logging.info(f"Found moderators: {user_ids}")
@@ -228,13 +228,10 @@ async def mention_random_online_mod(bot, guild):
     Returns a tuple of (Member, str).
     """
     moderators = await find_online_moderators(guild)
-    mods = await asyncio.gather(
-            *[bot.fetch_user(mod_id) for mod_id in moderators])
-    mods = [mod.id for mod in mods if mod is not None and not mod.bot]
 
-    logging.info(f"Found online moderators: {mods}")
+    logging.info(f"Found online moderators: {moderators}")
     if len(moderators) > 0:
-        moderator = random.choice(mods)
+        moderator = random.choice(moderators)
         return moderator, f"<@{moderator}>"
     else:
         return guild.owner, f'<@{guild.owner_id}>, no mods are online!'

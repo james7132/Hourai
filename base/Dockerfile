@@ -13,11 +13,16 @@ RUN protoc $(find /app -type f -regex ".*\.proto") \
 
 FROM base
 WORKDIR /app
-RUN apk add --no-cache libstdc++ postgresql-dev
-# Run as non-root user
 RUN addgroup -g 969 -S hourai && \
-    adduser -u 969 -S hourai -G hourai
-USER hourai
+    adduser -u 969 -S hourai -G hourai && \
+    apk add --no-cache libstdc++ postgresql-dev jsonnet && \
+    mkdir /etc/hourai && \
+    chown 969:969 /etc/hourai
+USER 969
+
+ENV HOURAI_CONFIG=/opt/hourai.jsonnet
+ENV HOURAI_ENV=dev
+
 COPY --from=builder /install /usr/local
 COPY --from=builder /app /app
-CMD ["python", "launcher.py", "run"]
+CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && python launcher.py run

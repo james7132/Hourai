@@ -4,7 +4,7 @@
   - [Commands](Commands.md)
   - [Music](Music.md)
 - **Advanced Features**
-  - [Validation](Validation.md)
+  - [Verification](Verification.md)
   - [Automation](Automation.md)
   - [Escalation](Escalation.md)
   - [Community Moderation](Community-Moderation.md)

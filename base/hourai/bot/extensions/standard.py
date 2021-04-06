@@ -275,6 +275,101 @@ class Standard(cogs.BaseCog):
         await ctx.send(embed=embed.make_whois_embed(ctx, user))
 
 
+    @commands.group(name="reddit")
+    async def reddit(self, ctx):
+        """A group of commands for setting up reddit feeds."""
+        pass
+
+    @reddit.command(name="add")
+    @commands.has_permissions(manage_guild=True)
+    async def reddit_add(self, ctx, *, subreddit: str):
+        """Adds a subreddit feed from the current channel.
+        Supports a multireddit feed: (i.e. "funny+aww" for both /r/funny and
+        /r/aww).
+        Requires: Manage Server permissions.
+        """
+        subreddit = subreddit.replace('/r/', '').lower()
+        subreddits = subreddit.split("+")
+
+        url = f"https://www.reddit.com/r/{subreddit}/new.json"
+        async with ctx.bot.http_session.get(url, allow_redirects=False) as resp:
+            if resp.status >= 300:
+                await ctx.send(f"Error while finding subreddit: {subreddit}")
+                return
+            elif resp.status != 200:
+                await ctx.send(f"Unusual response from Reddit. Subreddit "
+                               f"{subreddit} not added.")
+                return
+
+        feeds = ctx.session.query(models.Feed) \
+                   .filter_by(_type="REDDIT") \
+                   .filter(models.Feed.source.in_(subreddits)) \
+                   .all()
+        seen_subs = {f.source: f for f in feeds}
+        now = datetime.utcnow()
+        for sub in subreddits:
+            if sub in seen_subs:
+                feed = seen_subs[sub]
+            else:
+                feed = models.Feed(_type="REDDIT", source=sub, last_updated=now)
+                ctx.session.add(feed)
+
+            if not any(ch.channel_id == ctx.channel.id for ch in feed.channels):
+                feed.channels.append(models.FeedChannel(channel_id=ctx.channel.id))
+
+        ctx.session.commit()
+        await ctx.send(f"Set up feed for `/r/{subreddit}` in this channel")
+
+    @reddit.command(name="remove")
+    @commands.has_permissions(manage_guild=True)
+    async def reddit_remove(self, ctx, *, subreddit: str):
+        """Removes a subreddit feed from the current channel.
+        Supports multireddits (i.e. "funny+aww" for both /r/funny and
+        /r/aww).
+        Requires: Manage Server permissions.
+        """
+        subreddits = tuple(subreddit.split("+"))
+
+        ctx.session.execute("""
+        DELETE FROM feed_channels
+        USING feeds
+        WHERE
+            feeds.id = feed_channels.feed_id AND
+            feed_channels.channel_id = :ci AND
+            feeds.source IN :sr
+        """, {"ci": ctx.channel.id, "sr": subreddits})
+        ctx.session.commit()
+        await ctx.send(f"Removed feed for `/r/{subreddit}` from this channel")
+
+    @reddit.command(name="list")
+    async def reddit_list(self, ctx):
+        """Lists all of the subreddits that feed into this channel"""
+        feeds = ctx.session.execute("""
+        SELECT feeds.source
+        FROM feeds
+        INNER JOIN feed_channels
+        ON feeds.id = feed_channels.feed_id
+        WHERE feeds.type = 'REDDIT' AND feed_channels.channel_id = :ci
+        """, {"ci": ctx.channel.id}).fetchall()
+        if feeds:
+            await ctx.send(", ".join(f"/r/{f[0]}" for f in feeds))
+        else:
+            await ctx.send("No reddit feeds are configured for this channel.")
+
+    @commands.command()
+    @commands.guild_only()
+    @checks.is_moderator()
+    async def setdj(self, ctx, role: discord.Role):
+        """Sets the DJ role for the server.
+
+        Only runnable by moderators.
+        """
+        conf = ctx.guild.config.music
+        conf.dj_role_id[:] = [role.id]
+        await ctx.guild.flush_config()
+        await ctx.send(f"Set **{role}** as the DJ for this server.")
+
+
 def setup(bot):
     standard = Standard()
     bot.add_cog(standard)

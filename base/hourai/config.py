@@ -1,4 +1,3 @@
-import _jsonnet
 import json
 import logging
 import os
@@ -12,16 +11,15 @@ __CONFIG = None
 __LOADED_LISTS = {}
 
 
-def load_config(file_path, env):
+def load_config(file_path):
     global __CONFIG
-    conf = _jsonnet.evaluate_file(file_path)
-    config = json.loads(conf)
-    config = config[env]
-    conform(config, __make_configuration_template())
-    __CONFIG = tupperware(config)
-    __configure_logging(__CONFIG)
-    logging.debug(json.dumps(json.loads(conf)[env], indent=2))
-    return __CONFIG
+    with open(file_path, 'r') as f:
+        config = json.load(f)
+        conform(config, __make_configuration_template())
+        __CONFIG = tupperware(config)
+        __configure_logging(__CONFIG)
+        logging.debug(json.dumps(config, indent=2))
+        return __CONFIG
 
 
 def get_config():
@@ -102,7 +100,6 @@ def __make_configuration_template():
         "disabled_extensions": [""],
 
         "list_directory": "",
-        "use_uv_loop": True,
 
         "web": {
             "port": 0
@@ -136,8 +133,6 @@ def __make_configuration_template():
             "user_agent": "",
             "client_id": "",
             "client_secret": "",
-            "username": "",
-            "password": "",
         },
 
         # Logging can be arbitrary

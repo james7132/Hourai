@@ -1,0 +1,22 @@
+[package]
+name = "hourai-logger"
+version = "0.1.0"
+authors = ["james7132 <contact@jamessliu.com>"]
+edition = "2018"
+
+[dependencies]
+hourai = { path = "../hourai" }
+hourai-sql = { path = "../storage/sql" }
+hourai-redis = { path = "../storage/redis" }
+anyhow = "1.0"
+chrono = "0.4"
+reqwest = { version = "0.11", features = ["json"] }
+serde_json = "1.0"
+tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
+futures = { default-features = false, version = "0.3.12" }
+twilight-embed-builder = { git = "https://github.com/james7132/twilight", branch = "lavalink-state-fix" }
+
+[dependencies.tokio]
+default-features = false
+version = "1.0"
+features = ["macros", "rt"]

@@ -9,7 +9,7 @@ import "hourai/db/proto/util.proto";
 
 message GuildConfig {
   optional LoggingConfig logging = 1;
-  optional ValidationConfig validation = 2;
+  optional VerificationConfig verification = 2;
   optional AutoConfig auto = 3;
   optional ModerationConfig moderation = 4;
   optional MusicConfig music = 5;
@@ -164,14 +164,15 @@ message AnnouncementTypeConfig {
 }
 
 // ------------------------------------------------------------------------------
-// Validation Configs
+// Verification Configs
 // ------------------------------------------------------------------------------
 
-message ValidationConfig {
-  // If set to true, validation as a whole is enabled.
+message VerificationConfig {
+  // If set to true, verification as a whole is enabled.
   optional bool enabled = 1;
 
-  // Optional: The role to use for validation. If not set, no role will be given.
+  // Optional: The role to use for verification. If not set, no role will be
+  // given.
   optional uint64 role_id = 2;
 
   // Optional: If set, unvalildated users are kicked after the number of seconds
@@ -190,19 +191,19 @@ message ValidationConfig {
 
   // Optional: aspect specific configurations. If not set, the default values are
   // used.
-  optional AvatarValidationConfig avatar = 5;
-  optional UsernameValidationConfig username = 6;
-  optional CrossGuildValidationConfig cross_server = 7;
+  optional AvatarVerificationConfig avatar = 5;
+  optional UsernameVerificationConfig username = 6;
+  optional CrossGuildVerificationConfig cross_server = 7;
 }
 
-message AvatarValidationConfig {
+message AvatarVerificationConfig {
   optional bool reject_default_avatars = 1 [default = true];
-  // TODO(james7132): Enable this when adding further avatar validation.
+  // TODO(james7132): Enable this when adding further avatar verification.
   //optional bool reject_sexual_avatars = 1 [default = true];
   //optional bool reject_violent_avatars = 1 [default = true];
 }
 
-message UsernameValidationConfig {
+message UsernameVerificationConfig {
   // Optional: The blacklist applies first. If any matches, the user is rejected,
   // unless the any entry in the whitelist applies. Both are lists of regexes.
   optional FilterSettings username_filter = 1;
@@ -212,7 +213,7 @@ message UsernameValidationConfig {
   optional bool reject_likely_user_bots = 4 [default = true];
 }
 
-message CrossGuildValidationConfig {
+message CrossGuildVerificationConfig {
   // Optional: If set to true, users banned from other servers
   optional bool reject_banned_users = 1 [default = true];
   // Optional: This marks the minimum size of other servers to check against. If

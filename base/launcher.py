@@ -3,9 +3,9 @@ import logging
 import hourai.config
 from hourai.bot import Hourai
 
-config_path = os.environ.get('HOURAI_CONFIG', 'config/hourai.jsonnet')
 env = os.environ.get('HOURAI_ENV', 'dev')
-conf = hourai.config.load_config(config_path, env)
+config_path = os.path.join('/etc/hourai', env)
+conf = hourai.config.load_config(config_path)
 logging.info(f"Loaded config from {config_path}. (Environment: {env})")
 logging.debug(str(conf))
 hourai_bot = Hourai(config=conf)

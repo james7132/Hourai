@@ -11,9 +11,9 @@ import traceback
 import typing
 from discord.ext import commands
 from google.protobuf import text_format
-from hourai.bot import CounterKeys, extensions, cogs
+from hourai.bot import extensions, cogs
 from hourai.db import models, proto
-from hourai.utils import hastebin, format
+from hourai.utils import hastebin, format, fake
 
 
 def regex_multi_attr_match(context, regex, attrs):
@@ -75,35 +75,6 @@ class Owner(cogs.BaseCog):
             broadcast_msg(guild) for guild in ctx.bot.guilds])
 
     @commands.command()
-    async def reload(self, ctx,  *, extension: str):
-        """Reloads the specified bot module."""
-        extension = f'{extensions.__name__}.{extension}'
-        try:
-            ctx.bot.unload_extension(extension)
-        except Exception:
-            pass
-        try:
-            ctx.bot.load_extension(extension)
-        except Exception as e:
-            trace = utils.format.ellipsize(traceback.format_exc())
-            err_type = type(e).__name__
-            await ctx.send(f'**ERROR**: {err_type} - {e}\n```{trace}```')
-        else:
-            await utils.success(ctx)
-
-    @commands.command()
-    async def repeat(self, ctx, times: int, *, command):
-        """Repeats a command a specified number of times."""
-        msg = copy.copy(ctx.message)
-        msg.content = command
-
-        new_ctx = await ctx.bot.get_context(msg)
-        new_ctx.db = ctx.db
-
-        for i in range(times):
-            await new_ctx.reinvoke()
-
-    @commands.command()
     async def eval(self, ctx, *, expr: str):
         """Evaluates a Python snippet and returns it."""
         global_vars = {**globals(), **{
@@ -116,6 +87,7 @@ class Owner(cogs.BaseCog):
             'dms': ctx.bot.private_channels,
             'members': ctx.bot.get_all_members(),
             'channels': ctx.bot.get_all_channels(),
+            'fake': fake,
         }}
         try:
             result = eval(expr, {}, global_vars)
@@ -170,51 +142,12 @@ class Owner(cogs.BaseCog):
                 file=utils.str_to_discord_file(output, filename=filename))
 
     @commands.command()
-    async def extractids(self, ctx, *, input_str: str):
-        """Extracts all IDs from a provided string."""
-        ids = re.findall(r'\d+', input_str)
-        await ctx.send(format.vertical_list(ids))
-
-    @commands.command()
-    async def leave(self, ctx, *, guild_ids: int):
-        for id in guild_ids:
-            guild = ctx.bot.get_guild(id)
-            if guild is None:
-                continue
-            await guild.leave()
-
-    @commands.command()
-    async def events(self, ctx):
-        """Provides debug informatioo about the events run by the bot."""
-        counters = ctx.bot.bot_counters
-        columns = ('Event', '# Dispatched', '# Run', 'Total Runtime',
-                   'Average Time')
-        keys = set()
-        for key in ('events_dispatched', 'events_run', 'event_total_runtime'):
-            keys.update(counters[key].keys())
-
-        table = texttable.Texttable()
-        table.set_deco(texttable.Texttable.HEADER | texttable.Texttable.VLINES)
-        table.set_cols_align(["r"] * len(columns))
-        table.set_cols_valign(["t"] + ["i"] * (len(columns) - 1))
-        table.header(columns)
-        for key in sorted(keys):
-            runtime = counters['event_total_runtime'][key]
-            run_count = counters['events_run'][key]
-            avg_runtime = runtime / run_count if run_count else "N/A"
-            table.add_row([key, counters['events_dispatched'][key],
-                           run_count, runtime, avg_runtime])
-
-        output = await hastebin.str_or_hastebin_link(ctx.bot, table.draw())
-        await ctx.send(format.multiline_code(output))
-
-    @commands.command()
     async def stats(self, ctx):
         """Provides statistics for each shard of the bot."""
         output = []
         latencies = dict(ctx.bot.latencies)
         columns = ('Shard', 'Guilds', 'Total Members', 'Loaded Members',
-                   'Music', 'Messages', 'Latency')
+                   'Music', 'Latency')
         shard_stats = {shard_id: Owner.get_shard_stats(ctx, shard_id)
                        for shard_id in latencies.keys()}
         table = texttable.Texttable()
@@ -238,11 +171,9 @@ class Owner(cogs.BaseCog):
         for guild in ctx.bot.guilds:
             if guild.shard_id != shard_id:
                 continue
-            guild_counts = ctx.bot.guild_counters[guild.id]
             counters['Guilds'] += 1
             counters['Total Members'] += guild.member_count
             counters['Loaded Members'] += len(guild.members)
-            counters['Messages'] += guild_counts[CounterKeys.MESSAGES_RECIEVED]
             if any(guild.me.id in vc.voice_states
                    for vc in guild.voice_channels):
                 counters['Music'] += 1

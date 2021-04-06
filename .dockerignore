@@ -5,10 +5,10 @@
 *.md
 *_test.py
 *.sqlite
-Dockerfile
+**/Dockerfile
 web/
 venv/
 config/
-logger/Cargo.lock
-logger/target/
+**/Cargo.lock
+**/target/
 node_modules/

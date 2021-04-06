@@ -224,7 +224,7 @@ class ActionExecutor:
         return self.bot.get_member_async(guild, action.user_id)
 
 
-def _invert_ban(self, action: proto.Action) -> proto.Action:
+def _invert_ban(action: proto.Action) -> proto.Action:
     action.ban.type = {
         proto.BanMember.BAN: proto.BanMember.UNBAN,
         proto.BanMember.UNBAN: proto.BanMember.BAN,

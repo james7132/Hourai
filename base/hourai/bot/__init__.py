@@ -8,22 +8,15 @@ import logging
 import pkgutil
 import sys
 from discord.ext import commands
-from hourai import config, web
+from hourai import config
 from hourai.db import storage
-from hourai.utils import fake, uvloop
+from hourai.utils import fake
 from . import actions, extensions
 from .context import HouraiContext
 from .guild import HouraiGuild
 
 
 log = logging.getLogger(__name__)
-
-
-class CounterKeys(enum.Enum):
-    MESSAGES_RECIEVED = 0x100             # noqa: E221
-
-    def __repr__(self):
-        return self.name
 
 
 class HouraiConnectionState(discord.state.AutoShardedConnectionState):
@@ -36,10 +29,6 @@ class HouraiConnectionState(discord.state.AutoShardedConnectionState):
         guild = HouraiGuild(data=guild, state=self)
         self._add_guild(guild)
         return guild
-
-    def parse_guild_member_remove(self, data):
-        super().parse_guild_member_remove(data)
-        self.dispatch('raw_member_remove', data)
 
 
 class Hourai(commands.AutoShardedBot):
@@ -63,7 +52,7 @@ class Hourai(commands.AutoShardedBot):
             'member_cache_flags': discord.MemberCacheFlags(
                 online=False,
                 joined=True,
-                voice=True),
+                voice=False),
             'allowed_mentions': discord.AllowedMentions(
                 everyone=False,
                 users=True,
@@ -76,7 +65,7 @@ class Hourai(commands.AutoShardedBot):
                 messages=True,
                 presences=False,
                 reactions=True,
-                typing=True,
+                typing=False,
                 voice_states=True,
                 emojis=False,
                 integrations=False,
@@ -88,12 +77,6 @@ class Hourai(commands.AutoShardedBot):
         self.http_session = aiohttp.ClientSession(loop=self.loop)
         self.action_manager = actions.ActionManager(self)
 
-        # Counters
-        self.bot_counters = collections.defaultdict(collections.Counter)
-        self.guild_counters = collections.defaultdict(collections.Counter)
-
-        self.web_app_runner = None
-
     def _get_state(self, **options):
         return HouraiConnectionState(
                 storage=self.storage, dispatch=self.dispatch,
@@ -102,10 +85,6 @@ class Hourai(commands.AutoShardedBot):
 
     def create_storage_session(self):
         return self.storage.create_session()
-
-    def dispatch(self, event, *args, **kwargs):
-        self.bot_counters['events_dispatched'][event] += 1
-        super().dispatch(event, *args, **kwargs)
 
     async def get_member_async(self, guild: discord.Guild, user_id: int) \
             -> discord.Member:
@@ -130,57 +109,14 @@ class Hourai(commands.AutoShardedBot):
         guild._add_member(member, force=True)
         return member
 
-    async def _run_event(self, coro, event_name, *args, **kwargs):
-        if event_name.startswith('on_'):
-            event_name = event_name[3:]
-        self.bot_counters['events_run'][event_name] += 1
-        start = time.time()
-        try:
-            await coro(*args, **kwargs)
-        except asyncio.CancelledError:
-            pass
-        except Exception:
-            try:
-                await self.on_error(event_name, *args, **kwargs)
-            except asyncio.CancelledError:
-                pass
-        runtime = time.time() - start
-        self.bot_counters['event_total_runtime'][event_name] += runtime
-
-    def run(self, *args, **kwargs):
-        if self.config.use_uv_loop:
-            log.info('Trying to enable uvloop...')
-            uvloop.try_install()
-        super().run(*args, **kwargs)
-
     async def start(self, *args, **kwargs):
-        try:
-            await self.storage.init()
-            await self.http_session.__aenter__()
-            await self.start_web_api()
-        except Exception:
-            log.exception("Failed to set up web API.")
-            raise
+        await self.storage.init()
+        await self.http_session.__aenter__()
         log.info('Starting bot...')
         await super().start(*args, **kwargs)
 
-    async def start_web_api(self):
-        app = await web.create_app(self.config, bot=self)
-
-        web_app_kwargs = {}
-        log_format = self.config.logging.access_log_format
-        if log_format:
-            web_app_kwargs['access_log_format'] = log_format
-
-        self.web_app_runner = aiohttp.web.AppRunner(app, **web_app_kwargs)
-        port = self.config.web.port
-        await self.web_app_runner.setup()
-        await aiohttp.web.TCPSite(self.web_app_runner, port=port).start()
-
     async def close(self):
         await super().close()
-        if self.web_app_runner is not None:
-            await self.web_app_runner.cleanup()
         await self.http_session.__aexit__(None, None, None)
 
     async def on_guild_available(self, guild):
