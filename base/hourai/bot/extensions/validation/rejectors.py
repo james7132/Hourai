@@ -74,7 +74,7 @@ class StringFilterRejector(Validator):
                     transformed = transform(field_value)
                     if self.match_func(regex)(transformed):
                         ctx.add_rejection_reason(
-                            self.prefix + f'Matches: `{filter_name}`')
+                            self.prefix + f"Matches: '{filter_name}'")
 
 
 class NewAccountRejector(Validator):
