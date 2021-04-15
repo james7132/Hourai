@@ -24,22 +24,22 @@ thiserror = "1.0"
 hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = "0.2.15"
-twilight-model = { git = "https://github.com/james7132/twilight", branch = "lavalink-state-fix" }
+twilight-model = { git = "https://github.com/james7132/twilight", branch = "v0.4" }
 # Avoid breaking change
 funty = "=1.1.0"
 # Feature based optional dependencies
-twilight-command-parser= { git = "https://github.com/james7132/twilight", branch = "lavalink-state-fix" }
+twilight-command-parser= { git = "https://github.com/james7132/twilight", branch = "v0.4" }
 
 [dependencies.twilight-gateway]
 default-features = true
 git = "https://github.com/james7132/twilight"
-branch = "lavalink-state-fix"
+branch = "v0.4"
 features = ['simd-json', 'rustls', 'metrics']
 
 [dependencies.twilight-http]
 default-features = true
 git = "https://github.com/james7132/twilight"
-branch = "lavalink-state-fix"
+branch = "v0.4"
 features = ['simd-json', 'rustls']
 
 [dependencies.simd-json]

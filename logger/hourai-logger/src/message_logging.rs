@@ -14,22 +14,22 @@ fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
     let author = message.author();
     Ok(EmbedBuilder::new()
         .footer(
-            EmbedFooterBuilder::new(format!("{} ({})", author.display_name(), author.id()))?
+            EmbedFooterBuilder::new(format!("{} ({})", author.display_name(), author.id()))
                 .icon_url(ImageSource::url(author.avatar_url())?),
         )
-        .title(format!("ID: {}", message.id()))?
+        .title(format!("ID: {}", message.id()))
         .url(message.message_link())
         .timestamp(Utc::now().to_rfc3339()))
 }
 
 fn message_to_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
-    Ok(message_base_embed(message)?.description(message.content())?)
+    Ok(message_base_embed(message)?.description(message.content()))
 }
 
 fn message_diff_embed(before: &impl MessageLike, after: &impl MessageLike) -> Result<EmbedBuilder> {
     Ok(message_base_embed(before)?
-        .field(EmbedFieldBuilder::new("Before", before.content())?)
-        .field(EmbedFieldBuilder::new("After", after.content())?))
+        .field(EmbedFieldBuilder::new("Before", before.content()))
+        .field(EmbedFieldBuilder::new("After", after.content())))
 }
 
 async fn get_logging_config(client: &mut Client, guild_id: GuildId) -> Result<LoggingConfig> {
@@ -87,7 +87,7 @@ pub(super) async fn on_message_update(
             ))?
             .embed(
                 message_diff_embed(&before, &after)?
-                    .color(0xa84300)? // Dark orange
+                    .color(0xa84300) // Dark orange
                     .build()?,
             )?
             .await?;
@@ -116,7 +116,7 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
                 ))?
                 .embed(
                     message_to_embed(&msg)?
-                        .color(0x992d22)? // Dark red
+                        .color(0x992d22) // Dark red
                         .build()?,
                 )?
                 .await?;

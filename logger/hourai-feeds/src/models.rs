@@ -1,5 +1,5 @@
 use anyhow::Result;
-use hourai::http::Error as HttpError;
+use hourai::http::error::ErrorType as HttpErrorType;
 use hourai::models::{channel::embed::Embed, id::ChannelId};
 use hourai_sql::{
     sql_types::chrono::{DateTime, Utc},
@@ -43,18 +43,20 @@ impl Post {
         if let Some(embed) = embed {
             request = request.embed(embed)?;
         }
-        match request.await {
-            Ok(_) => Ok(()),
-            Err(HttpError::Response {
-                status: StatusCode::NOT_FOUND,
-                ..
-            }) => Self::delete_channel(channel_id, &client).await,
-            Err(HttpError::Response {
-                status: StatusCode::FORBIDDEN,
-                ..
-            }) => Self::delete_channel(channel_id, &client).await,
-            Err(err) => Err(anyhow::anyhow!(err)),
+        if let Err(err) = request.await {
+            return match err.kind() {
+                HttpErrorType::Response {
+                    status: StatusCode::NOT_FOUND,
+                    ..
+                } => Self::delete_channel(channel_id, &client).await,
+                HttpErrorType::Response {
+                    status: StatusCode::FORBIDDEN,
+                    ..
+                } => Self::delete_channel(channel_id, &client).await,
+                _ => Err(anyhow::anyhow!(err)),
+            };
         }
+        Ok(())
     }
 
     async fn delete_channel(channel_id: ChannelId, client: &crate::Client) -> Result<()> {

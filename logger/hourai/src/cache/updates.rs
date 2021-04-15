@@ -2,7 +2,6 @@ use super::{config::ResourceType, InMemoryCache};
 use std::ops::Deref;
 use twilight_model::{
     gateway::{event::Event, payload::*, presence::UserOrId},
-    guild::GuildStatus,
 };
 
 pub trait UpdateCache {
@@ -129,15 +128,8 @@ impl UpdateCache for PresenceUpdate {
 impl UpdateCache for Ready {
     fn update(&self, cache: &InMemoryCache) {
         if cache.wants(ResourceType::GUILD) {
-            for status in &self.guilds {
-                match status {
-                    GuildStatus::Offline(u) => {
-                        cache.unavailable_guild(u.id);
-                    }
-                    GuildStatus::Online(g) => {
-                        cache.cache_guild(g.clone());
-                    }
-                }
+            for guild in &self.guilds {
+                cache.unavailable_guild(guild.id);
             }
         }
     }

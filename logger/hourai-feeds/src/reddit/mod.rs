@@ -152,29 +152,29 @@ fn make_post(feed: &Feed, source: Submission) -> Result<Post> {
 
 fn make_embed(source: Submission) -> Result<Embed> {
     let mut builder = EmbedBuilder::new()
-        .title(source.title)?
+        .title(source.title)
         .url(format!("https://reddit.com{}", source.permalink))
-        .color(0xFF4301)?
+        .color(0xFF4301)
         .author(
             EmbedAuthorBuilder::new()
-                .name(format!("/u/{}", source.author))?
+                .name(format!("/u/{}", source.author))
                 .url(format!("https://reddit.com/u/{}", source.author)),
         );
 
     if let Some(flair_text) = source.link_flair_text {
-        builder = builder.footer(EmbedFooterBuilder::new(flair_text)?);
+        builder = builder.footer(EmbedFooterBuilder::new(flair_text));
     }
 
     if source.is_self {
-        builder = builder.description(ellipsize(&source.selftext, 2000))?;
+        builder = builder.description(ellipsize(&source.selftext, 2000));
     } else if let Some(hint) = source.post_hint {
         if hint == "image" {
             builder = builder.image(ImageSource::url(source.url)?);
         } else {
-            builder = builder.description(source.url)?;
+            builder = builder.description(source.url);
         }
     } else {
-        builder = builder.description(source.url)?;
+        builder = builder.description(source.url);
     }
 
     Ok(builder.build()?)

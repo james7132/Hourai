@@ -138,11 +138,11 @@ fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
     Ok(EmbedBuilder::new()
         .author(
             EmbedAuthorBuilder::new()
-                .name(track.requestor.display_name())?
+                .name(track.requestor.display_name())
                 .icon_url(ImageSource::url(track.requestor.avatar_url())?),
         )
-        .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))?
-        .description(build_progress_bar(&ui))?
+        .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))
+        .description(build_progress_bar(&ui))
         .url(track.info.uri.clone())
         .build()?)
 }
@@ -202,8 +202,8 @@ impl EmbedUIBuilder for QueueUI {
         } else {
             let footer = format!("Page {}/{}", self.page + 1, pages + 1);
             Ok(EmbedBuilder::new()
-                .description(description)?
-                .footer(EmbedFooterBuilder::new(footer)?)
+                .description(description)
+                .footer(EmbedFooterBuilder::new(footer))
                 .build()?)
         }
     }
@@ -211,10 +211,7 @@ impl EmbedUIBuilder for QueueUI {
 
 fn build_progress_bar<T: EmbedUIBuilder + Default>(ui: &EmbedUI<T>) -> String {
     let (pos, paused) = match ui.client.lavalink.players().get(&ui.guild_id) {
-        Some(kv) => {
-            let player = kv.value();
-            (player.position(), player.paused())
-        }
+        Some(player) => (player.position(), player.paused()),
         None => (0, true),
     };
 
@@ -247,8 +244,8 @@ fn build_progress_bar<T: EmbedUIBuilder + Default>(ui: &EmbedUI<T>) -> String {
 fn not_playing_embed() -> Result<Embed> {
     let progress = format!(":stop_button:{}:mute:", progress_bar(f64::INFINITY));
     Ok(EmbedBuilder::new()
-        .title("**No music playing**")?
-        .description(progress)?
+        .title("**No music playing**")
+        .description(progress)
         .build()?)
 }
 

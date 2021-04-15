@@ -16,7 +16,7 @@ use twilight_lavalink::http::LoadType;
 
 macro_rules! get_player {
     ($client:expr, $guild_id: expr) => {
-        $client.lavalink.players().get($guild_id).unwrap().value()
+        $client.lavalink.players().get($guild_id).unwrap()
     };
 }
 
@@ -424,7 +424,7 @@ async fn volume(
     } else {
         format!(
             "Current volume is `{}`.",
-            get_player!(client, &guild_id).volume_ref()
+            get_player!(client, &guild_id).volume()
         )
     };
     ctx.respond().content(response)?.await?;

@@ -14,7 +14,7 @@ use hourai::{
     models::{
         channel::{Channel, GuildChannel, Message},
         gateway::payload::*,
-        guild::{member::Member, GuildStatus, Permissions, Role},
+        guild::{member::Member, Permissions, Role},
         id::*,
         user::User,
     },
@@ -253,7 +253,7 @@ impl Client {
     async fn consume_event(mut self, shard_id: u64, event: Event) {
         let kind = event.kind();
         let result = match event {
-            Event::Ready(evt) => self.on_shard_ready(shard_id, *evt).await,
+            Event::Ready(_) => self.on_shard_ready(shard_id).await,
             Event::BanAdd(evt) => self.on_ban_add(evt).await,
             Event::BanRemove(evt) => self.on_ban_remove(evt).await,
             Event::GuildCreate(evt) => self.on_guild_create(*evt).await,
@@ -291,7 +291,7 @@ impl Client {
         }
     }
 
-    async fn on_shard_ready(mut self, shard_id: u64, evt: Ready) -> Result<()> {
+    async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
         let (res1, res2) = futures::join!(
             Ban::clear_shard(shard_id, self.total_shards()).execute(&self.sql),
             hourai_sql::Member::clear_present_shard(shard_id, self.total_shards())
@@ -300,17 +300,6 @@ impl Client {
 
         res1?;
         res2?;
-
-        for guild in evt.guilds {
-            if let GuildStatus::Online(g) = guild {
-                hourai_redis::CachedGuild::save(&g)
-                    .query_async(&mut self.redis)
-                    .await?;
-                hourai_redis::CachedVoiceState::update_guild(&g)
-                    .query_async(&mut self.redis)
-                    .await?;
-            }
-        }
 
         Ok(())
     }

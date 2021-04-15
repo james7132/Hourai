@@ -283,7 +283,7 @@ impl Client<'static> {
         self.lavalink
             .players()
             .get(&guild_id)
-            .and_then(|kv| kv.value().channel_id())
+            .and_then(|p| p.channel_id())
     }
 
     /// Counts the number of users in the same voice channel as the bot.
@@ -302,7 +302,7 @@ impl Client<'static> {
 
     pub async fn get_node(&self, guild_id: GuildId) -> Result<twilight_lavalink::Node> {
         Ok(match self.lavalink.players().get(&guild_id) {
-            Some(kv) => kv.value().node().clone(),
+            Some(kv) => kv.node().clone(),
             None => self.lavalink.best().await?,
         })
     }
@@ -325,15 +325,14 @@ impl Client<'static> {
     }
 
     async fn play(&self, guild_id: GuildId, track: &Track) -> Result<()> {
-        self.lavalink.player(guild_id).await?.value().play(track)?;
+        self.lavalink.player(guild_id).await?.play(track)?;
         Ok(())
     }
 
     pub async fn start_playing(&self, guild_id: GuildId) -> Result<()> {
         if let Some(track) = self.currently_playing(guild_id) {
             let config = self.get_config(guild_id).await?;
-            let kv = self.lavalink.player(guild_id).await?;
-            let player = kv.value();
+            let player = self.lavalink.player(guild_id).await?;
             let volume = if config.has_volume() {
                 config.get_volume()
             } else {
