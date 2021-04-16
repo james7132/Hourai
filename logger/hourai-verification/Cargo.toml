@@ -1,0 +1,24 @@
+[package]
+name = "hourai-verification"
+version = "0.1.0"
+authors = ["james7132 <contact@jamessliu.com>"]
+edition = "2018"
+
+[dependencies]
+hourai = { path = "../hourai" }
+hourai-sql = { path = "../storage/sql" }
+hourai-redis = { path = "../storage/redis" }
+anyhow = "1.0"
+async-trait = "0.1.42"
+chrono = "0.4"
+dashmap = { default-features = false, version = "4.0" }
+futures = { default-features = false, version = "0.3.12" }
+humantime = "2.1"
+lazy_static = "1.4"
+regex = "1.4"
+tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
+
+[dependencies.tokio]
+default-features = false
+version = "1.0"
+features = ["macros", "rt"]

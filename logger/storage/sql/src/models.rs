@@ -236,63 +236,39 @@ pub struct Member {
     pub role_ids: Vec<i64>,
     pub nickname: Option<String>,
     pub bot: bool,
-<<<<<<< HEAD
     pub premium_since: Option<DateTime<Utc>>,
-=======
-    pub premium_since: Option<DateTime<Utc>>
->>>>>>> 839f934 (Cache both bot and premium_since)
 }
 
 impl From<&TwilightMember> for Member {
     fn from(member: &TwilightMember) -> Self {
-<<<<<<< HEAD
         let premium = member
             .premium_since
             .as_ref()
             .and_then(|p| p.parse::<DateTime<Utc>>().ok());
-=======
-        let premium = member.premium_since.as_ref().and_then(|p| {
-            p.parse::<DateTime<Utc>>().ok()
-        });
->>>>>>> 839f934 (Cache both bot and premium_since)
         Self {
             guild_id: member.guild_id.0 as i64,
             user_id: member.user.id.0 as i64,
             role_ids: member.roles.iter().map(|id| id.0 as i64).collect(),
             nickname: member.nick.clone(),
             bot: member.user.bot,
-<<<<<<< HEAD
             premium_since: premium,
-=======
-            premium_since: premium
->>>>>>> 839f934 (Cache both bot and premium_since)
         }
     }
 }
 
 impl From<&MemberUpdate> for Member {
     fn from(member: &MemberUpdate) -> Self {
-<<<<<<< HEAD
         let premium = member
             .premium_since
             .as_ref()
             .and_then(|p| p.parse::<DateTime<Utc>>().ok());
-=======
-        let premium = member.premium_since.as_ref().and_then(|p| {
-            p.parse::<DateTime<Utc>>().ok()
-        });
->>>>>>> 839f934 (Cache both bot and premium_since)
         Self {
             guild_id: member.guild_id.0 as i64,
             user_id: member.user.id.0 as i64,
             role_ids: member.roles.iter().map(|id| id.0 as i64).collect(),
             nickname: member.nick.clone(),
             bot: member.user.bot,
-<<<<<<< HEAD
             premium_since: premium,
-=======
-            premium_since: premium
->>>>>>> 839f934 (Cache both bot and premium_since)
         }
     }
 }

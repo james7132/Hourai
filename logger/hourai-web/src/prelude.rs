@@ -41,7 +41,7 @@ impl WebError {
             self.status_code()
                 .canonical_reason()
                 .map(|r| r.to_owned())
-                .unwrap_or_else(String::new)
+                .unwrap_or_else(|| "Internal Server Error".to_owned())
         } else {
             self.to_string()
         }
