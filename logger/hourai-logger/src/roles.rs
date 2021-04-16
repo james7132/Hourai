@@ -6,7 +6,7 @@ use hourai::{
         id::*,
         RoleFlags,
     },
-    proto::guild_configs::*,
+    proto::{cache::CachedRoleProto, guild_configs::*},
 };
 use hourai_redis::GuildConfig;
 use std::collections::HashMap;
@@ -75,17 +75,18 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
     };
 
     let max_role =
-        hourai_redis::CachedGuild::highest_role(guild_id, &bot_roles, &mut redis).await?;
+        hourai_redis::CachedGuild::highest_role(guild_id, &bot_roles, &mut redis).await?
+            .unwrap_or_else(|| CachedRoleProto::default());
 
     let flags = get_role_flags(client, guild_id).await?;
     let mut restorable: Vec<RoleId> = user_roles
-        .iter()
+        .into_iter()
         .filter(|role| {
             let role_flags = flags
                 .get(&role.get_role_id())
                 .cloned()
                 .unwrap_or_else(RoleFlags::empty);
-            role.get_position() < max_role && role_flags.contains(RoleFlags::RESTORABLE)
+            role < &max_role && role_flags.contains(RoleFlags::RESTORABLE)
         })
         .map(|role| RoleId(role.get_role_id()))
         .collect();

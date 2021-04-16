@@ -297,13 +297,11 @@ impl CachedGuild {
         guild_id: GuildId,
         role_ids: &[RoleId],
         conn: &mut RedisPool,
-    ) -> Result<i64> {
+    ) -> Result<Option<CachedRoleProto>> {
         Ok(Self::fetch_resources::<Role>(guild_id, role_ids, conn)
             .await?
             .into_iter()
-            .map(|role| role.get_position())
-            .max()
-            .unwrap_or(i64::MIN))
+            .max())
     }
 
     /// Gets the guild-level permissions for a given member.
