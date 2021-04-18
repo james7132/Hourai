@@ -2,7 +2,7 @@ use crate::context;
 use anyhow::Result;
 use async_trait::async_trait;
 
-pub type BoxedVerifier = Box<dyn Verifier + Sync + 'static>;
+pub type BoxedVerifier = Box<dyn Verifier + Send + Sync + 'static>;
 
 #[async_trait]
 pub trait Verifier {
@@ -21,11 +21,11 @@ impl Verifier for Vec<BoxedVerifier> {
 
 pub struct GenericVerifier {
     pub reason: context::VerificationReason,
-    pub pred: Box<dyn Fn(&context::VerificationContext) -> Result<bool> + Sync + 'static>,
+    pub pred: Box<dyn Fn(&context::VerificationContext) -> Result<bool> + Send + Sync + 'static>,
 }
 
 impl GenericVerifier {
-    pub fn new_approver<T: Fn(&context::VerificationContext) -> Result<bool> + Sync + 'static>(
+    pub fn new_approver<T: Fn(&context::VerificationContext) -> Result<bool> + Send + Sync + 'static>(
         reason: impl Into<String>,
         approver: T,
     ) -> BoxedVerifier {
@@ -35,7 +35,7 @@ impl GenericVerifier {
         )
     }
 
-    pub fn new_rejector<T: Fn(&context::VerificationContext) -> Result<bool> + Sync + 'static>(
+    pub fn new_rejector<T: Fn(&context::VerificationContext) -> Result<bool> + Send + Sync + 'static>(
         reason: impl Into<String>,
         approver: T,
     ) -> BoxedVerifier {
@@ -45,7 +45,7 @@ impl GenericVerifier {
         )
     }
 
-    fn new<T: Fn(&context::VerificationContext) -> Result<bool> + Sync + 'static>(
+    fn new<T: Fn(&context::VerificationContext) -> Result<bool> + Send + Sync + 'static>(
         reason: context::VerificationReason,
         approver: T,
     ) -> BoxedVerifier {

@@ -10,7 +10,7 @@ use anyhow::Result;
 use chrono::Duration;
 use hourai::{
     init, config,
-    models::{id::*, guild::{Permissions, Member}, channel::Message},
+    models::{id::*, guild::Member, channel::Message},
     cache::{ResourceType, InMemoryCache},
     gateway::{Intents, Event, EventTypeFlags, Cluster, cluster::ShardScheme}
 };
@@ -30,9 +30,11 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
         | EventTypeFlags::MEMBER_UPDATE.bits()
 );
 
-const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
-    ResourceType::ROLE.bits() | ResourceType::GUILD.bits() | ResourceType::PRESENCE.bits(),
-);
+fn full_match(list: Vec<String>) -> Vec<String> {
+    list.into_iter()
+        .map(|s| format!(r"\A{}\z", s))
+        .collect()
+}
 
 #[tokio::main]
 async fn main() {
@@ -43,7 +45,7 @@ async fn main() {
     let sql = hourai_sql::init(&config).await;
     let redis = hourai_redis::init(&config).await;
     let cache = InMemoryCache::builder()
-        .resource_types(CACHED_RESOURCES)
+        .resource_types(ResourceType::GUILD)
         .build();
     let gateway = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
@@ -61,7 +63,9 @@ async fn main() {
     owners.insert(application.owner.id);
     if let Some(team) = application.team {
         owners.insert(team.owner_user_id);
-        owners.extend(team.members.iter().map(|member| member.user.id).collect());
+        for member in team.members {
+            owners.insert(member.user.id);
+        }
     }
 
     let mut verifiers: Vec<verifier::BoxedVerifier> = Vec::new();
@@ -80,18 +84,16 @@ async fn main() {
     verifiers.push(rejectors::deleted_user(sql.clone()));
 
     // Filter likely user bots based on usernames.
-    verifiers.push(Box::new(rejectors::UsernameMatchRejector {
-        sql: sql.clone(),
-        prefix: "Likely user bot. ",
-        full_match: false,
-        matches: load_list("user_bot_names"),
-    }));
-    verifiers.push(Box::new(rejectors::UsernameMatchRejector {
-        sql: sql.clone(),
-        prefix: "Likely user bot. ",
-        full_match: true,
-        matches: load_list("user_bot_names_fullmatch"),
-    }));
+    verifiers.push(Box::new(rejectors::UsernameMatchRejector::new(
+        /*sql=*/ sql.clone(),
+        /*prefix=*/ "Likely user bot. ",
+        /*matches=*/ config.load_list("user_bot_names"))
+            .expect("Could not create username match rejector.")));
+    verifiers.push(Box::new(rejectors::UsernameMatchRejector::new(
+        /*sql=*/sql.clone(),
+        /*prefix=*/"Likely user bot. ",
+        /*matches=*/full_match(config.load_list("user_bot_names_fullmatch")))
+            .expect("Could not create username match rejector.")));
 
     // If a user has Nitro, they probably aren't an alt or user bot.
     verifiers.push(approvers::nitro());
@@ -129,11 +131,17 @@ async fn main() {
         //min_match_length=4),
 
     // Filter offensive usernames.
-    verifiers.push(Box::new(rejectors::UsernameMatchRejector(
-                sql.clone(), "Offensive username. ", false, load_list("offensive_usernames"))));
+    verifiers.push(Box::new(rejectors::UsernameMatchRejector::new(
+        /*sql=*/sql.clone(),
+        /*prefix=*/"Offensive username. ",
+        /*matches=*/config.load_list("offensive_usernames"))
+            .expect("Could not create username match rejector.")));
     // Filter sexually inapproriate usernames.
-    verifiers.push(Box::new(rejectors::UsernameMatchRejector(
-                sql.clone(), "Offensive username. ", false, load_list("sexually_inapproriate_usernames"))));
+    verifiers.push(Box::new(rejectors::UsernameMatchRejector::new(
+        /*sql=*/sql.clone(),
+        /*prefix=*/"Sexually inappropriate username. ",
+        /*matches=*/config.load_list("sexually_inapproriate_usernames"))
+            .expect("Could not create username match rejector.")));
 
     // Filter potentially long usernames that use wide unicode characters that
     // may be disruptive or spammy to other members.
@@ -174,12 +182,8 @@ async fn main() {
             .expect("User should not fail to load.");
         Client(Arc::new(ClientRef {
             user_id: user.id,
-            http_client,
-            gateway: gateway.clone(),
             cache: cache.clone(),
-            sql,
-            redis: redis.clone(),
-            verifiers: Box::new(verifiers)
+            verifiers: verifiers
         }))
     };
 
@@ -201,40 +205,14 @@ async fn main() {
 
 pub struct ClientRef {
     user_id: UserId,
-    http_client: hourai::http::Client,
-    gateway: Cluster,
     cache: InMemoryCache,
-    sql: hourai_sql::SqlPool,
-    redis: hourai_redis::RedisPool,
+    verifiers: Vec<verifier::BoxedVerifier>,
 }
 
 #[derive(Clone)]
 pub struct Client(Arc<ClientRef>);
 
 impl Client {
-    pub async fn fetch_guild_permissions(
-        &self,
-        guild_id: GuildId,
-        user_id: UserId,
-    ) -> Result<Permissions> {
-        let local_member = hourai_sql::Member::fetch(guild_id, user_id)
-            .fetch_one(&self.0.sql)
-            .await;
-        if let Ok(member) = local_member {
-            Ok(self.0
-                .cache
-                .guild_permissions(guild_id, user_id, member.role_ids()))
-        } else {
-            let roles = self.0
-                .http_client
-                .guild_member(guild_id, user_id)
-                .await?
-                .into_iter()
-                .flat_map(|m| m.roles);
-            Ok(self.0.cache.guild_permissions(guild_id, user_id, roles))
-        }
-    }
-
     /// Handle events before the cache is updated.
     async fn pre_cache_event(&self, event: &Event) -> () {
         let kind = event.kind();
@@ -285,11 +263,11 @@ impl Client {
         }
     }
 
-    async fn on_member_add(&self, member: Member) -> Result<()> {
+    async fn on_message_create(self, evt: Message) -> Result<()> {
         Ok(())
     }
 
-    async fn on_message_create(&self, evt: Message) -> Result<()> {
+    async fn on_member_add(&self, member: Member) -> Result<()> {
         Ok(())
     }
 

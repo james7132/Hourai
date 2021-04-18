@@ -3,7 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use chrono::offset::Utc;
 use chrono::Duration;
-use dashmap::DashMap;
+use std::collections::HashMap;
 use hourai::models::{user::User, Snowflake};
 use hourai_sql::{Ban, SqlPool, Username, VerificationBan};
 use regex::Regex;
@@ -149,7 +149,7 @@ impl Verifier for BannedUsernameRejector {
 #[async_trait]
 pub trait StringMatchRejector: Sync {
     type Key;
-    fn regexes(&self) -> Vec<(Self::Key, Regex)>;
+    fn regexes(&self) -> Vec<(&Self::Key, &Regex)>;
     async fn criteria(&self, ctx: &context::VerificationContext) -> Result<Vec<String>>;
     fn reason(&self, key: &Self::Key, matched: &str) -> String;
 }
@@ -174,7 +174,7 @@ impl<T: StringMatchRejector> Verifier for T {
 
 pub struct UsernameMatchRejector {
     sql: SqlPool,
-    matches: DashMap<String, Regex>,
+    matches: HashMap<String, Regex>,
     prefix: String,
 }
 
@@ -187,8 +187,8 @@ impl UsernameMatchRejector {
         })
     }
 
-    fn compile(base: Vec<String>) -> Result<DashMap<String, Regex>> {
-        let matches: DashMap<String, Regex> = DashMap::new();
+    fn compile(base: Vec<String>) -> Result<HashMap<String, Regex>> {
+        let mut matches: HashMap<String, Regex> = HashMap::new();
         for input in base {
             matches.insert(
                 input.clone(),
@@ -215,10 +215,9 @@ impl UsernameMatchRejector {
 impl StringMatchRejector for UsernameMatchRejector {
     type Key = String;
 
-    fn regexes(&self) -> Vec<(Self::Key, Regex)> {
+    fn regexes(&self) -> Vec<(&Self::Key, &Regex)> {
         self.matches
             .iter()
-            .map(|kv| (kv.key().clone(), kv.value().clone()))
             .collect()
     }
 

@@ -13,12 +13,24 @@ pub struct HouraiConfig {
     pub command_prefix: String,
     pub database: String,
     pub redis: String,
+    pub list_directory: String,
     pub music: MusicConfig,
     pub discord: DiscordConfig,
     pub web: WebConfig,
     pub metrics: MetricsConfig,
     pub reddit: RedditConfig,
     pub third_party: ThirdPartyConfig,
+}
+
+impl HouraiConfig {
+    pub fn load_list(&self, name: impl AsRef<str>) -> Vec<String> {
+        let mut buffer = PathBuf::from(self.list_directory.as_str());
+        buffer.push(name.as_ref());
+        buffer.set_extension("json");
+        tracing::info!("Loading list from {:?}.", buffer.as_path());
+        let file = File::open(buffer).expect("Could not open list file.");
+        simd_json::serde::from_reader(file).unwrap()
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
