@@ -5,7 +5,7 @@ mod protobuf;
 
 use self::compression::Compressed;
 pub use self::guild_config::CachedGuildConfig;
-use self::keys::{CacheKey, CachePrefix, GuildKey, Id};
+use self::keys::{CacheKey, GuildKey, Id};
 use self::protobuf::Protobuf;
 use anyhow::Result;
 use hourai::models::{
@@ -51,7 +51,7 @@ impl OnlineStatus {
         guild_id: GuildId,
         online: impl IntoIterator<Item = UserId>,
     ) -> &mut Self {
-        let key = CachePrefix::OnlineStatus.make_key(guild_id.0);
+        let key = CacheKey::OnlineStatus(guild_id);
         let ids: Vec<Id<u64>> = online.into_iter().map(|id| Id(id.0)).collect();
         self.pipeline
             .del(key)
@@ -74,7 +74,7 @@ impl GuildConfig {
         id: GuildId,
         conn: &mut RedisPool,
     ) -> std::result::Result<Option<T>, redis::RedisError> {
-        let key = CachePrefix::GuildConfigs.make_key(id.0);
+        let key = CacheKey::GuildConfigs(id);
         let response: Option<Compressed<Protobuf<T>>> = redis::Cmd::hget(key, vec![T::SUBKEY])
             .query_async(conn)
             .await?;
@@ -89,7 +89,7 @@ impl GuildConfig {
     }
 
     pub fn set<T: ::protobuf::Message + CachedGuildConfig>(id: GuildId, value: T) -> redis::Cmd {
-        let key = CachePrefix::GuildConfigs.make_key(id.0);
+        let key = CacheKey::GuildConfigs(id);
         redis::Cmd::hset(key, vec![T::SUBKEY], Compressed(Protobuf(value)))
     }
 }
@@ -128,7 +128,7 @@ impl CachedMessage {
         message_id: MessageId,
         conn: &mut C,
     ) -> Result<Option<CachedMessageProto>> {
-        let key = CachePrefix::Messages.make_key((channel_id.0, message_id.0));
+        let key = CacheKey::Messages(channel_id, message_id);
         let proto: Option<Protobuf<CachedMessageProto>> =
             redis::Cmd::get(key).query_async(conn).await?;
         Ok(proto.map(|msg| {
@@ -142,7 +142,7 @@ impl CachedMessage {
     pub fn flush(mut self) -> redis::Cmd {
         let channel_id = self.proto.0.get_channel_id();
         let id = self.proto.0.get_id();
-        let key = CachePrefix::Messages.make_key((channel_id, id));
+        let key = CacheKey::Messages(ChannelId(channel_id), MessageId(id));
         // Remove IDs to save space, as it's in the key.
         self.proto.0.clear_id();
         self.proto.0.clear_channel_id();
@@ -158,9 +158,9 @@ impl CachedMessage {
         channel_id: ChannelId,
         ids: impl IntoIterator<Item = MessageId>,
     ) -> redis::Cmd {
-        let keys: Vec<CacheKey<(u64, u64)>> = ids
+        let keys: Vec<CacheKey> = ids
             .into_iter()
-            .map(|id| CachePrefix::Messages.make_key((channel_id.0, id.0)))
+            .map(|id| CacheKey::Messages(channel_id, id))
             .collect();
         redis::Cmd::del(keys)
     }
@@ -171,9 +171,8 @@ pub struct CachedVoiceState;
 impl CachedVoiceState {
 
     pub fn update_guild(guild: &Guild) -> redis::Pipeline {
-        let key = CachePrefix::VoiceState.make_key(guild.id.0);
         let mut pipe = redis::pipe();
-        pipe.atomic().del(key).ignore();
+        pipe.atomic().del(CacheKey::VoiceState(guild.id)).ignore();
         for state in guild.voice_states.iter() {
             pipe.add_command(Self::save(state)).ignore();
         }
@@ -181,17 +180,16 @@ impl CachedVoiceState {
     }
 
     pub fn get_channel(guild_id: GuildId, user_id: UserId) -> redis::Cmd {
-        let key = CachePrefix::VoiceState.make_key(guild_id.0);
-        redis::Cmd::hget(key, user_id.0)
+        redis::Cmd::hget(CacheKey::VoiceState(guild_id), user_id.0)
     }
 
     pub fn get_channels(guild_id: GuildId) -> redis::Cmd {
-        redis::Cmd::hgetall(CachePrefix::VoiceState.make_key(guild_id.0))
+        redis::Cmd::hgetall(CacheKey::VoiceState(guild_id))
     }
 
     pub fn save(state: &VoiceState) -> redis::Cmd {
         let guild_id = state.guild_id.expect("Only voice states in guilds should be cached");
-        let key = CachePrefix::VoiceState.make_key(guild_id.0);
+        let key = CacheKey::VoiceState(guild_id);
         if let Some(channel_id) = state.channel_id {
             redis::Cmd::hset(key, state.user_id.0, channel_id.0)
         } else {
@@ -200,7 +198,7 @@ impl CachedVoiceState {
     }
 
     pub fn clear_guild(guild_id: GuildId) -> redis::Cmd {
-        redis::Cmd::del(CachePrefix::VoiceState.make_key(guild_id.0))
+        redis::Cmd::del(CacheKey::VoiceState(guild_id))
     }
 
 }
@@ -209,7 +207,7 @@ pub struct CachedGuild;
 
 impl CachedGuild {
     pub fn save(guild: &hourai::models::guild::Guild) -> redis::Pipeline {
-        let key = CachePrefix::Guild.make_key(guild.id.0);
+        let key = CacheKey::Guild(guild.id);
         let mut pipe = redis::pipe();
         pipe.atomic().del(key).ignore();
         pipe.add_command(Self::save_resource(guild.id, guild.id, guild))
@@ -227,7 +225,7 @@ impl CachedGuild {
 
     /// Deletes all of the cached information about a guild from the cache.
     pub fn delete(guild_id: GuildId) -> redis::Cmd {
-        redis::Cmd::del(CachePrefix::Guild.make_key(guild_id.0))
+        redis::Cmd::del(CacheKey::Guild(guild_id))
     }
 
     /// Gets a cached resource from the cache.
@@ -237,11 +235,10 @@ impl CachedGuild {
         conn: &mut RedisPool,
     ) -> Result<Option<T::Proto>>
     where
-        GuildKey<T::Subkey>: ToRedisArgs,
+        GuildKey: From<T::Id> + ToRedisArgs,
     {
-        let guild_key = CachePrefix::Guild.make_key(guild_id.0);
-        let resource_key: GuildKey<T::Subkey> = resource_id.into();
-        let proto: Option<Protobuf<T::Proto>> = redis::Cmd::hget(guild_key, resource_key)
+        let guild_key = CacheKey::Guild(guild_id);
+        let proto: Option<Protobuf<T::Proto>> = redis::Cmd::hget(guild_key, resource_id.into())
             .query_async(conn)
             .await?;
         Ok(proto.map(|proto| proto.0))
@@ -254,10 +251,10 @@ impl CachedGuild {
         conn: &mut RedisPool,
     ) -> Result<Vec<T::Proto>>
     where
-        GuildKey<T::Subkey>: ToRedisArgs,
+        GuildKey: From<T::Id> + ToRedisArgs,
     {
-        let guild_key = CachePrefix::Guild.make_key(guild_id.0);
-        let resource_keys: Vec<GuildKey<T::Subkey>> =
+        let guild_key = CacheKey::Guild(guild_id);
+        let resource_keys: Vec<GuildKey> =
             resource_ids.iter().map(|id| id.clone().into()).collect();
         let protos: Vec<Option<Protobuf<T::Proto>>> = redis::Cmd::hget(guild_key, resource_keys)
             .query_async(conn)
@@ -275,20 +272,18 @@ impl CachedGuild {
         data: &T,
     ) -> redis::Cmd
     where
-        GuildKey<T::Subkey>: ToRedisArgs,
+        GuildKey: From<T::Id> + ToRedisArgs,
     {
-        let guild_key = CachePrefix::Guild.make_key(guild_id.0);
         let proto = Protobuf(data.to_proto());
-        redis::Cmd::hset(guild_key, resource_id.into(), proto)
+        redis::Cmd::hset(CacheKey::Guild(guild_id), resource_id.into(), proto)
     }
 
     /// Deletes a resource from the cache.
     pub fn delete_resource<T: GuildResource>(guild_id: GuildId, resource_id: T::Id) -> redis::Cmd
     where
-        GuildKey<T::Subkey>: ToRedisArgs,
+        GuildKey: From<T::Id> + ToRedisArgs,
     {
-        let guild_key = CachePrefix::Guild.make_key(guild_id.0);
-        redis::Cmd::hdel(guild_key, resource_id.into())
+        redis::Cmd::hdel(CacheKey::Guild(guild_id), resource_id.into())
     }
 
     /// Given a list of role IDs, finds the highest among them.
@@ -346,7 +341,7 @@ pub trait ToProto {
 }
 
 pub trait GuildResource: ToProto {
-    type Id: Into<GuildKey<Self::Subkey>> + Copy;
+    type Id: Into<GuildKey> + Copy;
     type Subkey;
 }
 
