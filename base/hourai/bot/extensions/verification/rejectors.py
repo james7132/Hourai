@@ -29,6 +29,8 @@ class NameMatchRejector(Verifier):
     async def verify_member(self, ctx):
         member_names = {}
         for guild_member in filter(self.filter, ctx.guild.members):
+            if ctx.member == guild_member:
+                return
             name = self.member_selector(guild_member) or ''
             member_names.update({
                 p: generalize_filter(p) for p in self._split_name(name)
@@ -36,9 +38,8 @@ class NameMatchRejector(Verifier):
         field_value = self.subfield(ctx.member)
         for filter_name, regex in member_names.items():
             if re.search(regex, field_value):
-                if not utils.is_moderator(ctx.member):
-                    ctx.add_rejection_reason(
-                        self.prefix + f"Matches: '{filter_name}'")
+                ctx.add_rejection_reason(
+                    self.prefix + f"Matches: '{filter_name}'")
 
     def _split_name(self, name):
         split_name = split_camel_case(name)
