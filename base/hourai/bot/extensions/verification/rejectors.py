@@ -29,6 +29,8 @@ class NameMatchRejector(Verifier):
     async def verify_member(self, ctx):
         member_names = {}
         for guild_member in filter(self.filter, ctx.guild.members):
+            if ctx.member == guild_member:
+                return
             name = self.member_selector(guild_member) or ''
             member_names.update({
                 p: generalize_filter(p) for p in self._split_name(name)
