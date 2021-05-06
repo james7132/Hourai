@@ -213,7 +213,7 @@ class Verification(cogs.BaseCog):
             ctx.guild.name,
             channel.mention if channel is not None else 'None'))
 
-    @commands.group(name="validation")
+    @commands.group(name="verification")
     @commands.guild_only()
     @checks.is_moderator()
     async def verification(self, ctx):

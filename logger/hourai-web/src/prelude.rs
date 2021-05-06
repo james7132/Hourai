@@ -1,6 +1,6 @@
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{web, cookie::Cookie, HttpRequest, BaseHttpResponse, body::Body};
 use thiserror::Error;
 
 pub type WebResult<T> = Result<T, WebError>;
@@ -69,14 +69,8 @@ box_error!(awc::error::PayloadError);
 box_error!(awc::error::SendRequestError);
 
 impl ResponseError for WebError {
-    fn error_response(&self) -> HttpResponse {
-        let status = self.status_code();
-        HttpResponse::build(status)
-            .append_header(("Content-Type", "application/json"))
-            .json(serde_json::json!({
-                "status": status.as_u16(),
-                "message": self.message()
-            }))
+    fn error_response(&self) -> BaseHttpResponse<Body> {
+        BaseHttpResponse::new(self.status_code())
     }
 
     fn status_code(&self) -> StatusCode {

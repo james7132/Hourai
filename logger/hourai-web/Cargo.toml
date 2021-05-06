@@ -8,10 +8,10 @@ edition = "2018"
 hourai = { path = "../hourai" }
 hourai-sql = { path = "../storage/sql" }
 hourai-redis = { path = "../storage/redis" }
-actix-web = "4.0.0-beta.4"
+actix-web = { version = "4.0.0-beta.1", features = ["cookies"] }
 cookie = "0.14"
 protobuf = "2.22"
-awc = { version = "3.0.0-beta.3", features = ["rustls"] }
+awc = { version = "3.0.0-beta.5", features = ["rustls"] }
 futures = { default-features = false, version = "0.3.12" }
 tracing-futures = "0.2"
 uuid = { version = "0.8", features = ["v4"] }

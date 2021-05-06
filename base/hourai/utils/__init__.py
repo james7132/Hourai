@@ -208,7 +208,7 @@ def find_moderators(guild):
             query = (f"SELECT user_id FROM members "
                      f"WHERE {role.id} = ANY(role_ids) AND NOT bot")
             for row in session.execute(query).fetchall():
-                user_ids.update(row.values())
+                user_ids.add(row.user_id)
     logging.info(f"Found moderators: {user_ids}")
     return user_ids
 

@@ -82,7 +82,7 @@ impl ToRedisArgs for GuildKey {
 }
 
 impl From<GuildId> for GuildKey {
-    fn from(value: GuildId) -> Self {
+    fn from(_: GuildId) -> Self {
         Self::Guild
     }
 }

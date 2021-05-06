@@ -1,6 +1,5 @@
 use crate::{prelude::*, AppState};
-use actix_web::{dev::Body, get, http::Cookie, post, web, HttpMessage, HttpRequest, HttpResponse};
-use cookie::SameSite;
+use actix_web::{dev::Body, cookie::{Cookie, SameSite}, get, post, web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use time::Duration;
 

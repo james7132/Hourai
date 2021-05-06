@@ -1,12 +1,10 @@
 pub use crate::player::PlayerExt;
-use futures::channel::mpsc::UnboundedReceiver;
 pub use hourai::prelude::*;
 pub use std::net::SocketAddr;
 pub use twilight_lavalink::{
-    http::LoadedTracks, model::IncomingEvent, player::Player as TwilightPlayer, Lavalink, Node,
+    http::LoadedTracks, model::IncomingEvent, player::Player as TwilightPlayer,
+    node::IncomingEvents, Lavalink, Node,
 };
-
-pub type LavalinkEventStream = UnboundedReceiver<IncomingEvent>;
 
 pub fn format_duration(duration: Duration) -> String {
     let mut secs = duration.as_secs();

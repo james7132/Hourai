@@ -577,10 +577,11 @@ impl Client {
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
-            let bans: Vec<Ban> = self
+            let fetched_bans = self
                 .http_client
                 .bans(guild_id)
-                .await?
+                .await?;
+            let bans: Vec<Ban> = fetched_bans.clone()
                 .into_iter()
                 .map(|b| Ban::from(guild_id, b))
                 .collect();
@@ -589,6 +590,13 @@ impl Client {
             Ban::clear_guild(guild_id).execute(&mut txn).await?;
             Ban::bulk_insert(bans).execute(&mut txn).await?;
             txn.commit().await?;
+
+            // Log user data from bans
+            let users: Vec<User> = fetched_bans
+                .into_iter()
+                .map(|ban| ban.user)
+                .collect();
+            self.log_users(users).await?;
         } else {
             debug!("Cleared bans from guild {}", guild_id);
             Ban::clear_guild(guild_id).execute(&self.sql).await?;

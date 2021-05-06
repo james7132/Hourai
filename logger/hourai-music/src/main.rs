@@ -138,7 +138,7 @@ impl Client<'static> {
         &mut self,
         uri: &Uri,
         password: impl Into<String>,
-    ) -> Result<LavalinkEventStream> {
+    ) -> Result<IncomingEvents> {
         let name = Name::from_str(uri.host().unwrap()).unwrap();
         let pass = password.into();
         for mut address in self.resolver.call(name).await? {
@@ -161,7 +161,7 @@ impl Client<'static> {
         info!("Starting listener for node {}.", name.as_str());
         loop {
             let connect = self.connect_node(&uri, config.password.as_str());
-            let mut rx: LavalinkEventStream = match connect.await {
+            let mut rx: IncomingEvents = match connect.await {
                 Ok(rx) => rx,
                 Err(err) => {
                     error!("Error connecting to node {}: {:?}", name.as_str(), err);
