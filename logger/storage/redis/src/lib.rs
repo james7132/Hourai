@@ -253,16 +253,23 @@ impl CachedGuild {
     where
         GuildKey: From<T::Id> + ToRedisArgs,
     {
-        let guild_key = CacheKey::Guild(guild_id);
-        let resource_keys: Vec<GuildKey> =
-            resource_ids.iter().map(|id| id.clone().into()).collect();
-        let protos: Vec<Option<Protobuf<T::Proto>>> = redis::Cmd::hget(guild_key, resource_keys)
-            .query_async(conn)
-            .await?;
-        Ok(protos
-            .into_iter()
-            .filter_map(|p| p.map(|proto| proto.0))
-            .collect())
+        Ok(match resource_ids.len() {
+            0 => vec![],
+            1 => Self::fetch_resource::<T>(guild_id, resource_ids[0], conn).await?.into_iter().collect(),
+            _ => {
+                let guild_key = CacheKey::Guild(guild_id);
+                let resource_keys: Vec<GuildKey> =
+                    resource_ids.iter().map(|id| id.clone().into()).collect();
+                let protos: Vec<Option<Protobuf<T::Proto>>> =
+                    redis::Cmd::hget(guild_key, resource_keys)
+                    .query_async(conn)
+                    .await?;
+                protos
+                    .into_iter()
+                    .filter_map(|p| p.map(|proto| proto.0))
+                    .collect()
+            }
+        })
     }
 
     /// Saves a resoruce into the cache.

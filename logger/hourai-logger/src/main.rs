@@ -350,7 +350,9 @@ impl Client {
     }
 
     async fn on_member_chunk(&self, evt: MemberChunk) -> Result<()> {
-        self.log_members(&evt.members).await?;
+        while let Err(err) = self.log_members(&evt.members).await {
+            error!("Error while chunking members, retrying: {:?}", err);
+        }
         Ok(())
     }
 

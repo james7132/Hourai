@@ -17,9 +17,9 @@ hyper = { features = ["client", "http2", "runtime"], version = "0.14" }
 rand = "0.8"
 serde_json = "1.0.62"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
-twilight-command-parser = { git = "https://github.com/james7132/twilight", branch = "v0.4" }
-twilight-lavalink = { git = "https://github.com/james7132/twilight", branch = "v0.4" }
-twilight-embed-builder = { git = "https://github.com/james7132/twilight", branch = "v0.4" }
+twilight-command-parser = "0.4"
+twilight-lavalink = "0.4"
+twilight-embed-builder = "0.4"
 
 [dependencies.tokio]
 default-features = false
