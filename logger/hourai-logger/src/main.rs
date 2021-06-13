@@ -69,9 +69,10 @@ async fn main() {
     let cache = InMemoryCache::builder()
         .resource_types(CACHED_RESOURCES)
         .build();
-    let gateway = init::cluster(&config, BOT_INTENTS)
+    let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
+        .event_types(BOT_EVENTS)
         .build()
         .await
         .expect("Failed to connect to the Discord gateway");
@@ -105,7 +106,6 @@ async fn main() {
     tokio::spawn(client.clone().log_bans());
     tokio::spawn(flush_online(cache.clone(), redis.clone()));
 
-    let mut events = gateway.some_events(BOT_EVENTS);
     while let Some((shard_id, evt)) = events.next().await {
         if evt.kind() == EventType::PresenceUpdate {
             cache.update(&evt);

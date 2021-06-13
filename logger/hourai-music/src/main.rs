@@ -76,9 +76,10 @@ async fn main() {
 
     let http_client = init::http_client(&config);
     let current_user = http_client.current_user().await.unwrap();
-    let gateway = init::cluster(&config, BOT_INTENTS)
+    let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
+        .event_types(BOT_EVENTS)
         .build()
         .await
         .expect("Failed to connect to the Discord gateway");
@@ -107,7 +108,6 @@ async fn main() {
     gateway.up().await;
     info!("Client started.");
 
-    let mut events = gateway.some_events(BOT_EVENTS);
     while let Some((_, evt)) = events.next().await {
         if let Err(err) = lavalink.process(&evt).await {
             error!("Error while handling Lavalink event: {}", err);
