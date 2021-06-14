@@ -1,3 +1,5 @@
+local commands = import 'commands.libsonnet';
+
 local env(suffix) = {
   description: "The world's most advanced security and moderation bot for Discord.",
   command_prefix: "~",
@@ -25,6 +27,7 @@ local env(suffix) = {
 
   database: databases.postgres.connection_string,
   redis: "redis://redis",
+  commands: commands,
 
   web: {
     port: 8080
