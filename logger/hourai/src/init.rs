@@ -1,4 +1,4 @@
-use crate::config::HouraiConfig;
+use crate::{config::HouraiConfig, models::id::ApplicationId};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::{convert::TryFrom, future::Future, pin::Pin, sync::Arc};
@@ -54,6 +54,7 @@ pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
             .token(&config.discord.bot_token)
             .proxy(proxy, true)
             .ratelimiter(None)
+            .application_id(ApplicationId(config.discord.application_id))
             .build()
     } else {
         twilight_http::Client::new(&config.discord.bot_token)

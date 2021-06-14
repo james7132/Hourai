@@ -9,7 +9,7 @@ pub mod prelude;
 pub mod proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
     use self::cache::CachedRoleProto;
-    use std::cmp::{Ord, PartialOrd, Ordering};
+    use std::cmp::{Ord, Ordering, PartialOrd};
 
     impl Eq for CachedRoleProto {}
 
@@ -17,7 +17,7 @@ pub mod proto {
         fn cmp(&self, other: &Self) -> Ordering {
             match self.get_position().cmp(&other.get_position()) {
                 Ordering::Equal => self.get_role_id().cmp(&other.get_role_id()),
-                ordering => ordering
+                ordering => ordering,
             }
         }
     }

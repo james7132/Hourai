@@ -5,6 +5,7 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
 };
+use twilight_model::application::command::Command;
 
 const DEFAULT_ENV: &str = "dev";
 
@@ -15,6 +16,7 @@ pub struct HouraiConfig {
     pub redis: String,
     pub music: MusicConfig,
     pub discord: DiscordConfig,
+    pub commands: Vec<Command>,
     pub web: WebConfig,
     pub metrics: MetricsConfig,
     pub reddit: RedditConfig,
@@ -48,6 +50,7 @@ pub struct MusicNode {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct DiscordConfig {
+    pub application_id: u64,
     pub client_id: String,
     pub client_secret: String,
     pub redirect_uri: String,

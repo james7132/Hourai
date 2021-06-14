@@ -31,7 +31,7 @@ use hyper::{
     service::Service,
     Body, Request,
 };
-use std::{convert::TryFrom, str::FromStr, collections::HashMap};
+use std::{collections::HashMap, convert::TryFrom, str::FromStr};
 use twilight_command_parser::{CommandParserConfig, Parser};
 use twilight_lavalink::{model::*, Lavalink};
 
@@ -294,7 +294,10 @@ impl Client<'static> {
             let states: HashMap<u64, u64> = hourai_redis::CachedVoiceState::get_channels(guild_id)
                 .query_async(&mut redis)
                 .await?;
-            states.into_iter().filter(|(_, v)| *v == channel_id.0).count()
+            states
+                .into_iter()
+                .filter(|(_, v)| *v == channel_id.0)
+                .count()
         } else {
             0
         })

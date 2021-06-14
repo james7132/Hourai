@@ -12,7 +12,11 @@ use hourai::{
     gateway::{cluster::*, Event, EventType, EventTypeFlags, Intents},
     init,
     models::{
-        channel::{Channel, GuildChannel, Message},
+        application::{
+            callback::{CallbackData, InteractionResponse},
+            interaction::Interaction,
+        },
+        channel::{message::MessageFlags, Channel, GuildChannel, Message},
         gateway::payload::*,
         guild::{member::Member, Permissions, Role},
         id::*,
@@ -21,7 +25,7 @@ use hourai::{
 };
 use hourai_redis::*;
 use hourai_sql::*;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits()
@@ -36,6 +40,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
     EventTypeFlags::READY.bits()
         | EventTypeFlags::BAN_ADD.bits()
         | EventTypeFlags::BAN_REMOVE.bits()
+        | EventTypeFlags::INTERACTION_CREATE.bits()
         | EventTypeFlags::MEMBER_ADD.bits()
         | EventTypeFlags::MEMBER_CHUNK.bits()
         | EventTypeFlags::MEMBER_REMOVE.bits()
@@ -91,6 +96,16 @@ async fn main() {
             redis: redis.clone(),
         }
     };
+
+    info!("Updating commands...");
+    if let Err(err) = client
+        .http_client
+        .set_global_commands(config.commands.clone())
+        .unwrap()
+        .await
+    {
+        panic!("Failed to update global commands: {:?}", err);
+    }
 
     info!("Starting gateway...");
     gateway.up().await;
@@ -265,6 +280,7 @@ impl Client {
                     Ok(())
                 }
             }
+            Event::InteractionCreate(evt) => self.on_interaction_create(evt.0).await,
             Event::MemberAdd(evt) => self.on_member_add(evt.0).await,
             Event::MemberChunk(evt) => self.on_member_chunk(evt).await,
             Event::MemberRemove(evt) => self.on_member_remove(evt).await,
@@ -279,7 +295,7 @@ impl Client {
             Event::ChannelCreate(evt) => self.on_channel_create(evt).await,
             Event::ChannelUpdate(evt) => self.on_channel_update(evt).await,
             Event::ChannelDelete(evt) => self.on_channel_delete(evt).await,
-            Event::VoiceStateUpdate(evt) =>  self.on_voice_state_update(*evt).await,
+            Event::VoiceStateUpdate(evt) => self.on_voice_state_update(*evt).await,
             _ => {
                 error!("Unexpected event type: {:?}", event);
                 Ok(())
@@ -446,6 +462,37 @@ impl Client {
         Ok(())
     }
 
+    async fn on_interaction_create(mut self, evt: Interaction) -> Result<()> {
+        match evt {
+            Interaction::Ping(ping) => {
+                self.http_client
+                    .interaction_callback(ping.id, ping.token, InteractionResponse::Pong)
+                    .await?;
+            }
+            Interaction::ApplicationCommand(cmd) => {
+                let data = CallbackData {
+                    allowed_mentions: None,
+                    content: Some(
+                        "This is currently a placeholder. This command is currently usuable."
+                            .into(),
+                    ),
+                    embeds: Vec::new(),
+                    flags: Some(MessageFlags::EPHEMERAL),
+                    tts: None,
+                };
+                let response = InteractionResponse::ChannelMessageWithSource(data);
+                self.http_client
+                    .interaction_callback(cmd.id, cmd.token, response)
+                    .await?;
+            }
+            interaction => {
+                warn!("Unknown incoming interaction: {:?}", interaction);
+                return Ok(());
+            }
+        };
+        Ok(())
+    }
+
     async fn on_message_delete(mut self, evt: MessageDelete) -> Result<()> {
         message_logging::on_message_delete(&mut self, &evt).await?;
         CachedMessage::delete(evt.channel_id, evt.id)
@@ -579,11 +626,9 @@ impl Client {
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
-            let fetched_bans = self
-                .http_client
-                .bans(guild_id)
-                .await?;
-            let bans: Vec<Ban> = fetched_bans.clone()
+            let fetched_bans = self.http_client.bans(guild_id).await?;
+            let bans: Vec<Ban> = fetched_bans
+                .clone()
                 .into_iter()
                 .map(|b| Ban::from(guild_id, b))
                 .collect();
@@ -594,10 +639,7 @@ impl Client {
             txn.commit().await?;
 
             // Log user data from bans
-            let users: Vec<User> = fetched_bans
-                .into_iter()
-                .map(|ban| ban.user)
-                .collect();
+            let users: Vec<User> = fetched_bans.into_iter().map(|ban| ban.user).collect();
             self.log_users(users).await?;
         } else {
             debug!("Cleared bans from guild {}", guild_id);

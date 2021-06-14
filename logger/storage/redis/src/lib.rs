@@ -11,7 +11,8 @@ use anyhow::Result;
 use hourai::models::{
     channel::GuildChannel,
     guild::{Guild, PartialGuild, Permissions, Role},
-    id::*, voice::VoiceState,
+    id::*,
+    voice::VoiceState,
     MessageLike, Snowflake, UserLike,
 };
 use hourai::proto::cache::*;
@@ -169,7 +170,6 @@ impl CachedMessage {
 pub struct CachedVoiceState;
 
 impl CachedVoiceState {
-
     pub fn update_guild(guild: &Guild) -> redis::Pipeline {
         let mut pipe = redis::pipe();
         pipe.atomic().del(CacheKey::VoiceState(guild.id)).ignore();
@@ -188,7 +188,9 @@ impl CachedVoiceState {
     }
 
     pub fn save(state: &VoiceState) -> redis::Cmd {
-        let guild_id = state.guild_id.expect("Only voice states in guilds should be cached");
+        let guild_id = state
+            .guild_id
+            .expect("Only voice states in guilds should be cached");
         let key = CacheKey::VoiceState(guild_id);
         if let Some(channel_id) = state.channel_id {
             redis::Cmd::hset(key, state.user_id.0, channel_id.0)
@@ -200,7 +202,6 @@ impl CachedVoiceState {
     pub fn clear_guild(guild_id: GuildId) -> redis::Cmd {
         redis::Cmd::del(CacheKey::VoiceState(guild_id))
     }
-
 }
 
 pub struct CachedGuild;
@@ -255,15 +256,18 @@ impl CachedGuild {
     {
         Ok(match resource_ids.len() {
             0 => vec![],
-            1 => Self::fetch_resource::<T>(guild_id, resource_ids[0], conn).await?.into_iter().collect(),
+            1 => Self::fetch_resource::<T>(guild_id, resource_ids[0], conn)
+                .await?
+                .into_iter()
+                .collect(),
             _ => {
                 let guild_key = CacheKey::Guild(guild_id);
                 let resource_keys: Vec<GuildKey> =
                     resource_ids.iter().map(|id| id.clone().into()).collect();
                 let protos: Vec<Option<Protobuf<T::Proto>>> =
                     redis::Cmd::hget(guild_key, resource_keys)
-                    .query_async(conn)
-                    .await?;
+                        .query_async(conn)
+                        .await?;
                 protos
                     .into_iter()
                     .filter_map(|p| p.map(|proto| proto.0))

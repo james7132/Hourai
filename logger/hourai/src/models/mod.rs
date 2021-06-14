@@ -1,6 +1,7 @@
 pub mod message;
 pub mod user;
 
+pub use twilight_model::application;
 pub use twilight_model::channel;
 pub use twilight_model::gateway;
 pub use twilight_model::guild;

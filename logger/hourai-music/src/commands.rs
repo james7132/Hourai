@@ -94,9 +94,10 @@ async fn require_in_voice_channel(
     let guild_id = require_in_guild(&ctx)?;
 
     let mut redis = client.redis.clone();
-    let user: Option<u64> = hourai_redis::CachedVoiceState::get_channel(guild_id, ctx.message.author.id)
-        .query_async(&mut redis)
-        .await?;
+    let user: Option<u64> =
+        hourai_redis::CachedVoiceState::get_channel(guild_id, ctx.message.author.id)
+            .query_async(&mut redis)
+            .await?;
     let user = user.map(ChannelId);
     let bot = client.get_channel(guild_id);
     if bot.is_some() && user != bot {

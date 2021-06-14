@@ -1,8 +1,6 @@
 use super::{config::ResourceType, InMemoryCache};
 use std::ops::Deref;
-use twilight_model::{
-    gateway::{event::Event, payload::*, presence::UserOrId},
-};
+use twilight_model::gateway::{event::Event, payload::*, presence::UserOrId};
 
 pub trait UpdateCache {
     // Allow this for presentation purposes in documentation.
@@ -184,5 +182,4 @@ mod tests {
 
         (guild_id, channel_id, channel)
     }
-
 }

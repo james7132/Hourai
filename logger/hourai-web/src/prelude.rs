@@ -1,6 +1,6 @@
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
-use actix_web::{web, cookie::Cookie, HttpRequest, BaseHttpResponse, body::Body};
+use actix_web::{body::Body, cookie::Cookie, web, BaseHttpResponse, HttpRequest};
 use thiserror::Error;
 
 pub type WebResult<T> = Result<T, WebError>;

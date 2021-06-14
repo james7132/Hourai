@@ -2,8 +2,8 @@ pub use crate::player::PlayerExt;
 pub use hourai::prelude::*;
 pub use std::net::SocketAddr;
 pub use twilight_lavalink::{
-    http::LoadedTracks, model::IncomingEvent, player::Player as TwilightPlayer,
-    node::IncomingEvents, Lavalink, Node,
+    http::LoadedTracks, model::IncomingEvent, node::IncomingEvents,
+    player::Player as TwilightPlayer, Lavalink, Node,
 };
 
 pub fn format_duration(duration: Duration) -> String {

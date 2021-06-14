@@ -74,9 +74,9 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         Err(err) => anyhow::bail!(err),
     };
 
-    let max_role =
-        hourai_redis::CachedGuild::highest_role(guild_id, &bot_roles, &mut redis).await?
-            .unwrap_or_else(|| CachedRoleProto::default());
+    let max_role = hourai_redis::CachedGuild::highest_role(guild_id, &bot_roles, &mut redis)
+        .await?
+        .unwrap_or_else(|| CachedRoleProto::default());
 
     let flags = get_role_flags(client, guild_id).await?;
     let mut restorable: Vec<RoleId> = user_roles
