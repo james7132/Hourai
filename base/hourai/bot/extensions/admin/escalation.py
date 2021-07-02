@@ -34,13 +34,16 @@ class EscalationMixin:
 
     @tasks.loop(seconds=1)
     async def apply_pending_deescalations(self):
-        try:
-            session = self.bot.create_storage_session()
-            with session:
-                for deesc in self.__query_pending_deescalations(session):
+        session = self.bot.create_storage_session()
+        with session:
+            for deesc in self.__query_pending_deescalations(session):
+                try:
                     await self.__apply_pending_deescalation(session, deesc)
-        except Exception:
-            log.exception('Error in running pending deescalation:')
+                except Exception:
+                    log.exception('Error in running pending deescalation:')
+                except escalation_history.EscalationException:
+                    # Happens only when a ladder has been removed
+                    pass
 
     async def __apply_pending_deescalation(self, session, deesc):
         guild = self.bot.get_guild(deesc.guild_id)
