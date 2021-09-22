@@ -4,14 +4,17 @@ use hourai::{
     models::{
         application::{
             callback::{CallbackData, InteractionResponse},
-            interaction::application_command::{ApplicationCommand, CommandDataOption},
+            interaction::application_command::{
+                ApplicationCommand, CommandDataOption, InteractionMember,
+            },
         },
         channel::{embed::Embed, message::MessageFlags},
-        guild::PartialMember,
-        id::GuildId,
+        guild::{PartialMember, Permissions},
+        id::{GuildId, UserId},
         user::User,
     },
 };
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum Command<'a> {
@@ -97,6 +100,86 @@ impl CommandContext {
         } else {
             Command::Command(base)
         }
+    }
+
+    /// Checks if the caller has a given set of permissions. All provided permissions must be
+    /// present for this to return true.
+    pub fn has_user_permission(&self, perms: Permissions) -> bool {
+        self.command
+            .member
+            .as_ref()
+            .and_then(|m| m.permissions)
+            .map(|p| p.contains(perms))
+            .unwrap_or(false)
+    }
+
+    /// Gets the first instance of an option containing a specific name substring, if available.
+    pub fn options(&self) -> impl Iterator<Item = &CommandDataOption> {
+        Self::flatten_options(&self.command.data.options).into_iter()
+    }
+
+    pub fn option_named(&self, name: &'static str) -> Option<&CommandDataOption> {
+        self.options().find(move |opt| opt.name().contains(name))
+    }
+
+    pub fn all_options_named(
+        &self,
+        name: &'static str,
+    ) -> impl Iterator<Item = &CommandDataOption> {
+        self.options().filter(move |opt| opt.name().contains(name))
+    }
+
+    /// Gets all resolved members provided by command options with a given substring name.
+    pub fn all_member_options_named(
+        &self,
+        name: &'static str,
+    ) -> impl Iterator<Item = &InteractionMember> {
+        self.all_options_named(name)
+            .filter_map(move |option| self.resolve_member(option))
+    }
+
+    /// Checks if a boolean flag is set to true or not. If no flag with the name was found, it
+    /// returs None.
+    pub fn get_flag(&self, name: &'static str) -> Option<bool> {
+        self.option_named(name).and_then(|option| {
+            if let CommandDataOption::Boolean { value, .. } = option {
+                Some(*value)
+            } else {
+                None
+            }
+        })
+    }
+
+    fn resolve_member(&self, option: &CommandDataOption) -> Option<&InteractionMember> {
+        if let Some(id) = Self::parse_option_id(option) {
+            self.command
+                .data
+                .resolved
+                .as_ref()
+                .and_then(|r| r.members.iter().find(|m| m.id == UserId(id)))
+        } else {
+            None
+        }
+    }
+
+    fn parse_option_id(option: &CommandDataOption) -> Option<u64> {
+        if let CommandDataOption::String { value, .. } = option {
+            u64::from_str(value).ok()
+        } else {
+            None
+        }
+    }
+
+    fn flatten_options(options: &Vec<CommandDataOption>) -> Vec<&CommandDataOption> {
+        let mut all_options: Vec<&CommandDataOption> = Vec::new();
+        for option in options.iter() {
+            if let CommandDataOption::SubCommand { options, .. } = option {
+                all_options.extend(Self::flatten_options(options));
+            } else {
+                all_options.push(option);
+            }
+        }
+        all_options
     }
 
     pub async fn defer(&self, data: impl Into<CallbackData>) -> Result<()> {

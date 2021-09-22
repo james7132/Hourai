@@ -1,5 +1,5 @@
 use anyhow::Result;
-use hourai::http::{error::ErrorType as HttpErrorType};
+use hourai::http::error::ErrorType as HttpErrorType;
 use hourai::models::{channel::embed::Embed, id::ChannelId};
 use hourai_sql::{
     sql_types::chrono::{DateTime, Utc},

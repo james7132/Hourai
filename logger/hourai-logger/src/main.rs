@@ -41,23 +41,24 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
     EventTypeFlags::READY.bits()
         | EventTypeFlags::BAN_ADD.bits()
         | EventTypeFlags::BAN_REMOVE.bits()
+        | EventTypeFlags::GUILD_CREATE.bits()
+        | EventTypeFlags::GUILD_DELETE.bits()
+        | EventTypeFlags::GUILD_UPDATE.bits()
         | EventTypeFlags::INTERACTION_CREATE.bits()
         | EventTypeFlags::MEMBER_ADD.bits()
         | EventTypeFlags::MEMBER_CHUNK.bits()
         | EventTypeFlags::MEMBER_REMOVE.bits()
         | EventTypeFlags::MEMBER_UPDATE.bits()
         | EventTypeFlags::MESSAGE_CREATE.bits()
-        | EventTypeFlags::MESSAGE_UPDATE.bits()
         | EventTypeFlags::MESSAGE_DELETE.bits()
         | EventTypeFlags::MESSAGE_DELETE_BULK.bits()
-        | EventTypeFlags::GUILD_CREATE.bits()
-        | EventTypeFlags::GUILD_UPDATE.bits()
-        | EventTypeFlags::GUILD_DELETE.bits()
+        | EventTypeFlags::MESSAGE_UPDATE.bits()
         | EventTypeFlags::PRESENCE_UPDATE.bits()
-        | EventTypeFlags::VOICE_STATE_UPDATE.bits()
         | EventTypeFlags::ROLE_CREATE.bits()
+        | EventTypeFlags::ROLE_DELETE.bits()
         | EventTypeFlags::ROLE_UPDATE.bits()
-        | EventTypeFlags::ROLE_DELETE.bits(),
+        | EventTypeFlags::THREAD_CREATE.bits()
+        | EventTypeFlags::VOICE_STATE_UPDATE.bits(),
 );
 
 const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
@@ -309,6 +310,8 @@ impl Client {
             Event::ChannelCreate(evt) => self.on_channel_create(evt).await,
             Event::ChannelUpdate(evt) => self.on_channel_update(evt).await,
             Event::ChannelDelete(evt) => self.on_channel_delete(evt).await,
+            Event::ThreadCreate(evt) => self.on_thread_create(evt).await,
+            Event::ThreadListSync(evt) => self.on_thread_list_sync(evt).await,
             Event::VoiceStateUpdate(evt) => self.on_voice_state_update(*evt).await,
             _ => {
                 error!("Unexpected event type: {:?}", event);
@@ -446,6 +449,24 @@ impl Client {
                 hourai_redis::CachedGuild::delete_resource::<GuildChannel>(guild_id, ch.id())
                     .query_async(&mut self.redis)
                     .await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn on_thread_create(&mut self, evt: ThreadCreate) -> Result<()> {
+        self.http_client.join_thread(evt.0.id()).exec().await?;
+        debug!("Joined thread {}", evt.0.id());
+        Ok(())
+    }
+
+    async fn on_thread_list_sync(&mut self, evt: ThreadListSync) -> Result<()> {
+        for thread in evt.threads {
+            if let Err(err) = self.http_client.join_thread(thread.id()).exec().await {
+                error!(
+                    "Error while joining new thread in guild {}: {}",
+                    evt.guild_id, err
+                );
             }
         }
         Ok(())

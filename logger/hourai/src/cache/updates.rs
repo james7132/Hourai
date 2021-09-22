@@ -151,7 +151,7 @@ mod tests {
             message::{MessageFlags, MessageType},
             ChannelType, GuildChannel, Message, Reaction, TextChannel,
         },
-        gateway::payload::{ChannelDelete},
+        gateway::payload::ChannelDelete,
         guild::{
             DefaultMessageNotificationLevel, ExplicitContentFilter, Guild, Member, MfaLevel,
             PartialGuild, PartialMember, PremiumTier, SystemChannelFlags, VerificationLevel,
