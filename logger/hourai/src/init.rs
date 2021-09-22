@@ -57,7 +57,10 @@ pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
             .application_id(ApplicationId(config.discord.application_id))
             .build()
     } else {
-        twilight_http::Client::new(&config.discord.bot_token)
+        twilight_http::Client::builder()
+            .token(&config.discord.bot_token)
+            .application_id(ApplicationId(config.discord.application_id))
+            .build()
     }
 }
 

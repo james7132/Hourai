@@ -45,5 +45,5 @@ class BanStorage:
             if ban.reason is not None:
                 ban_proto.reason = ban.reason
             if config is not None:
-                ban_proto.guild_blocked = config.is_blocked
+                ban_proto.guild_blocked = not config.source_bans
             yield ban_proto

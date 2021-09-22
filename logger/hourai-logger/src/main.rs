@@ -1,4 +1,5 @@
 mod announcements;
+mod commands;
 mod listings;
 mod message_logging;
 mod roles;
@@ -74,6 +75,16 @@ async fn main() {
     let cache = InMemoryCache::builder()
         .resource_types(CACHED_RESOURCES)
         .build();
+
+    info!("Updating commands...");
+    if let Err(err) = http_client
+        .set_global_commands(config.commands.clone())
+        .unwrap()
+        .await
+    {
+        warn!("Failed to update global commands: {:?}", err);
+    }
+
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
@@ -96,16 +107,6 @@ async fn main() {
             redis: redis.clone(),
         }
     };
-
-    info!("Updating commands...");
-    if let Err(err) = client
-        .http_client
-        .set_global_commands(config.commands.clone())
-        .unwrap()
-        .await
-    {
-        panic!("Failed to update global commands: {:?}", err);
-    }
 
     info!("Starting gateway...");
     gateway.up().await;
@@ -462,7 +463,7 @@ impl Client {
         Ok(())
     }
 
-    async fn on_interaction_create(mut self, evt: Interaction) -> Result<()> {
+    async fn on_interaction_create(self, evt: Interaction) -> Result<()> {
         match evt {
             Interaction::Ping(ping) => {
                 self.http_client
@@ -470,20 +471,11 @@ impl Client {
                     .await?;
             }
             Interaction::ApplicationCommand(cmd) => {
-                let data = CallbackData {
-                    allowed_mentions: None,
-                    content: Some(
-                        "This is currently a placeholder. This command is currently usuable."
-                            .into(),
-                    ),
-                    embeds: Vec::new(),
-                    flags: Some(MessageFlags::EPHEMERAL),
-                    tts: None,
+                let ctx = commands::CommandContext {
+                    http: self.http_client,
+                    command: cmd,
                 };
-                let response = InteractionResponse::ChannelMessageWithSource(data);
-                self.http_client
-                    .interaction_callback(cmd.id, cmd.token, response)
-                    .await?;
+                commands::handle_command(ctx).await?;
             }
             interaction => {
                 warn!("Unknown incoming interaction: {:?}", interaction);

@@ -10,6 +10,7 @@ hourai-sql = { path = "../storage/sql" }
 hourai-redis = { path = "../storage/redis" }
 anyhow = "1.0"
 chrono = "0.4"
+thiserror = "1.0"
 reqwest = { version = "0.11", features = ["json"] }
 serde_json = "1.0"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
