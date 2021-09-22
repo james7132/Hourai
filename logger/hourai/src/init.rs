@@ -40,7 +40,7 @@ pub fn cluster(
     let cluster = twilight_gateway::Cluster::builder(&config.discord.bot_token, intents);
     if let Some(ref uri) = config.discord.gateway_queue {
         let queue = GatewayQueue(hyper::Uri::try_from(uri.clone()).unwrap());
-        cluster.queue(Arc::new(Box::new(queue)))
+        cluster.queue(Arc::new(queue))
     } else {
         cluster
     }
@@ -51,14 +51,14 @@ pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
     // Use the twilight HTTP proxy when configured
     if let Some(proxy) = config.discord.proxy.as_ref() {
         twilight_http::Client::builder()
-            .token(&config.discord.bot_token)
-            .proxy(proxy, true)
+            .token(config.discord.bot_token.clone())
+            .proxy(proxy.clone(), true)
             .ratelimiter(None)
             .application_id(ApplicationId(config.discord.application_id))
             .build()
     } else {
         twilight_http::Client::builder()
-            .token(&config.discord.bot_token)
+            .token(config.discord.bot_token.clone())
             .application_id(ApplicationId(config.discord.application_id))
             .build()
     }

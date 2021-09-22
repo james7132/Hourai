@@ -75,7 +75,14 @@ async fn main() {
     };
 
     let http_client = init::http_client(&config);
-    let current_user = http_client.current_user().await.unwrap();
+    let current_user = http_client
+        .current_user()
+        .exec()
+        .await
+        .unwrap()
+        .model()
+        .await
+        .unwrap();
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())

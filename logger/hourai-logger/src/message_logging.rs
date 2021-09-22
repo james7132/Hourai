@@ -80,16 +80,15 @@ pub(super) async fn on_message_update(
         client
             .http_client
             .create_message(output_channel.unwrap())
-            .content(format!(
+            .content(&format!(
                 "Message by <@{}> edited from <#{}>",
                 before.id(),
                 before.channel_id()
             ))?
-            .embed(
-                message_diff_embed(&before, &after)?
-                    .color(0xa84300) // Dark orange
-                    .build()?,
-            )?
+            .embeds(&vec![message_diff_embed(&before, &after)?
+                .color(0xa84300) // Dark orange
+                .build()?])?
+            .exec()
             .await?;
     }
     Ok(())
@@ -109,16 +108,15 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
             client
                 .http_client
                 .create_message(output_channel.unwrap())
-                .content(format!(
+                .content(&format!(
                     "Message by <@{}> deleted from <#{}>",
                     msg.author().get_id(),
                     msg.get_channel_id()
                 ))?
-                .embed(
-                    message_to_embed(&msg)?
-                        .color(0x992d22) // Dark red
-                        .build()?,
-                )?
+                .embeds(&vec![message_to_embed(&msg)?
+                    .color(0x992d22) // Dark red
+                    .build()?])?
+                .exec()
                 .await?;
         }
     }
@@ -137,11 +135,12 @@ pub(super) async fn on_message_bulk_delete(
         client
             .http_client
             .create_message(output_channel.unwrap())
-            .content(format!(
+            .content(&format!(
                 "{} messages bulk deleted from <#{}>",
                 evt.ids.len(),
                 evt.channel_id
             ))?
+            .exec()
             .await?;
     }
     Ok(())

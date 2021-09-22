@@ -146,14 +146,12 @@ impl UpdateCache for UnavailableGuild {
 
 #[cfg(test)]
 mod tests {
-    use super::super::config::ResourceType;
-    use super::*;
     use twilight_model::{
         channel::{
             message::{MessageFlags, MessageType},
             ChannelType, GuildChannel, Message, Reaction, TextChannel,
         },
-        gateway::payload::{reaction_remove_emoji::PartialEmoji, ChannelDelete},
+        gateway::payload::{ChannelDelete},
         guild::{
             DefaultMessageNotificationLevel, ExplicitContentFilter, Guild, Member, MfaLevel,
             PartialGuild, PartialMember, PremiumTier, SystemChannelFlags, VerificationLevel,

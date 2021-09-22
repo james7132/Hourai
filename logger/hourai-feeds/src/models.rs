@@ -1,11 +1,10 @@
 use anyhow::Result;
-use hourai::http::error::ErrorType as HttpErrorType;
+use hourai::http::{error::ErrorType as HttpErrorType};
 use hourai::models::{channel::embed::Embed, id::ChannelId};
 use hourai_sql::{
     sql_types::chrono::{DateTime, Utc},
     SqlQuery, SqlQueryAs,
 };
-use http::status::StatusCode;
 use tracing::error;
 
 #[derive(Debug)]
@@ -36,24 +35,22 @@ impl Post {
         content: Option<String>,
         embed: Option<Embed>,
     ) -> Result<()> {
-        let mut request = client.http.create_message(channel_id);
-        if let Some(content) = content {
-            request = request.content(content.as_str())?;
-        }
-        if let Some(embed) = embed {
-            request = request.embed(embed)?;
-        }
-        if let Err(err) = request.await {
-            return match err.kind() {
-                HttpErrorType::Response {
-                    status: StatusCode::NOT_FOUND,
-                    ..
-                } => Self::delete_channel(channel_id, &client).await,
-                HttpErrorType::Response {
-                    status: StatusCode::FORBIDDEN,
-                    ..
-                } => Self::delete_channel(channel_id, &client).await,
-                _ => Err(anyhow::anyhow!(err)),
+        let embeds = embed.into_iter().collect::<Vec<_>>();
+        let request = client
+            .http
+            .create_message(channel_id)
+            .content(content.as_ref().map(|s| s.as_str()).unwrap_or(""))?
+            .embeds(&embeds)?;
+
+        if let Err(err) = request.exec().await {
+            return if let HttpErrorType::Response { status, .. } = err.kind() {
+                if status.raw() == 404 || status.raw() == 404 {
+                    Self::delete_channel(channel_id, &client).await
+                } else {
+                    Err(anyhow::anyhow!(err))
+                }
+            } else {
+                Err(anyhow::anyhow!(err))
             };
         }
         Ok(())

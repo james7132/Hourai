@@ -50,7 +50,7 @@ pub trait Updateable: Sync {
 
 pub trait EmbedUIBuilder: Sized + Default + Sync + Send {
     fn build_content(&self, ui: &EmbedUI<Self>) -> String;
-    fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed>;
+    fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Vec<Embed>>;
 }
 
 pub struct EmbedUI<T>
@@ -86,8 +86,11 @@ where
             .client
             .http_client
             .create_message(channel_id)
-            .content(dummy.builder.build_content(&dummy))?
-            .embed(dummy.builder.build_embed(&dummy)?)?
+            .content(&dummy.builder.build_content(&dummy))?
+            .embeds(&dummy.builder.build_embed(&dummy)?)?
+            .exec()
+            .await?
+            .model()
             .await?;
 
         dummy.message_id = message.id;
@@ -101,8 +104,9 @@ impl<T: EmbedUIBuilder> Updateable for EmbedUI<T> {
         self.client
             .http_client
             .update_message(self.channel_id, self.message_id)
-            .content(self.builder.build_content(self))?
-            .embed(self.builder.build_embed(self)?)?
+            .content(Some(&self.builder.build_content(self)))?
+            .embeds(&self.builder.build_embed(self)?)?
+            .exec()
             .await?;
         if self.expiration > Instant::now() {
             Ok(())
@@ -124,18 +128,18 @@ impl EmbedUIBuilder for NowPlayingUI {
         ":notes: **Now Playing**".to_owned()
     }
 
-    fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed> {
+    fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Vec<Embed>> {
         build_np_embed(ui)
     }
 }
 
-fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
+fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Vec<Embed>> {
     let track = match ui.client.currently_playing(ui.guild_id) {
         Some(track) => track,
         None => return not_playing_embed(),
     };
 
-    Ok(EmbedBuilder::new()
+    Ok(vec![EmbedBuilder::new()
         .author(
             EmbedAuthorBuilder::new()
                 .name(track.requestor.display_name())
@@ -144,7 +148,7 @@ fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
         .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))
         .description(build_progress_bar(&ui))
         .url(track.info.uri.clone())
-        .build()?)
+        .build()?])
 }
 
 impl EmbedUIBuilder for QueueUI {
@@ -168,7 +172,7 @@ impl EmbedUIBuilder for QueueUI {
         )
     }
 
-    fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed> {
+    fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Vec<Embed>> {
         fn format_track(idx: usize, track: &Track) -> String {
             format!(
                 "`{}.` `[{}]` **[{}]({})** - <@{}>",
@@ -201,10 +205,10 @@ impl EmbedUIBuilder for QueueUI {
             build_np_embed(&ui)
         } else {
             let footer = format!("Page {}/{}", self.page + 1, pages + 1);
-            Ok(EmbedBuilder::new()
+            Ok(vec![EmbedBuilder::new()
                 .description(description)
                 .footer(EmbedFooterBuilder::new(footer))
-                .build()?)
+                .build()?])
         }
     }
 }
@@ -241,12 +245,12 @@ fn build_progress_bar<T: EmbedUIBuilder + Default>(ui: &EmbedUI<T>) -> String {
     )
 }
 
-fn not_playing_embed() -> Result<Embed> {
+fn not_playing_embed() -> Result<Vec<Embed>> {
     let progress = format!(":stop_button:{}:mute:", progress_bar(f64::INFINITY));
-    Ok(EmbedBuilder::new()
+    Ok(vec![EmbedBuilder::new()
         .title("**No music playing**")
         .description(progress)
-        .build()?)
+        .build()?])
 }
 
 fn progress_bar(ratio: f64) -> String {

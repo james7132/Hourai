@@ -77,7 +77,8 @@ pub async fn on_message_create(client: Client<'static>, evt: Message) -> Result<
                         .http_client
                         .create_message(evt.channel_id)
                         .reply(evt.id)
-                        .content(format!(":x: {}", command_error))?
+                        .content(&format!(":x: {}", command_error))?
+                        .exec()
                         .await?;
                 }
                 Err(err) => bail!(err),
@@ -262,7 +263,7 @@ async fn play(
         }
     }
 
-    ctx.respond().content(response)?.await?;
+    ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
 
@@ -275,7 +276,7 @@ async fn pause(client: &Client<'static>, ctx: commands::Context<'_>, pause: bool
     } else {
         "The music bot has been unpaused."
     };
-    ctx.respond().content(response)?.await?;
+    ctx.respond().content(response)?.exec().await?;
     Ok(())
 }
 
@@ -285,6 +286,7 @@ async fn stop(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
     client.disconnect(guild_id).await?;
     ctx.respond()
         .content("The player has been stopped and the queue has been cleared")?
+        .exec()
         .await?;
     Ok(())
 }
@@ -307,7 +309,7 @@ async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
         format!("Total votes: `{}/{}`.", votes, required)
     };
 
-    ctx.respond().content(response)?.await?;
+    ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
 
@@ -325,6 +327,7 @@ async fn remove(
         // Do not allow removing the currently playing song from the queue.
         ctx.respond()
             .content(":x: Invalid index for removal.")?
+            .exec()
             .await?;
         return Ok(());
     }
@@ -351,7 +354,7 @@ async fn remove(
         })
         .unwrap();
 
-    ctx.respond().content(response)?.await?;
+    ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
 
@@ -367,7 +370,7 @@ async fn remove_all(client: &Client<'static>, ctx: commands::Context<'_>) -> Res
             }
         })
         .unwrap();
-    ctx.respond().content(response)?.await?;
+    ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
 
@@ -383,7 +386,7 @@ async fn shuffle(client: &Client<'static>, ctx: commands::Context<'_>) -> Result
             }
         })
         .unwrap();
-    ctx.respond().content(response)?.await?;
+    ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
 
@@ -395,7 +398,7 @@ async fn forceskip(client: &Client<'static>, ctx: commands::Context<'_>) -> Resu
     } else {
         "There is nothing in the queue right now.".to_owned()
     };
-    ctx.respond().content(response)?.await?;
+    ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
 
@@ -428,7 +431,7 @@ async fn volume(
             get_player!(client, &guild_id).volume()
         )
     };
-    ctx.respond().content(response)?.await?;
+    ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
 

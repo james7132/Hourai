@@ -91,7 +91,7 @@ pub async fn on_voice_update(
 
 pub fn broadcast(client: &Client, config: &AnnouncementTypeConfig, message: String) {
     async fn push(http: hourai::http::Client, channel: ChannelId, msg: String) -> Result<()> {
-        http.create_message(channel).content(msg)?.await?;
+        http.create_message(channel).content(&msg)?.exec().await?;
         Ok(())
     }
 

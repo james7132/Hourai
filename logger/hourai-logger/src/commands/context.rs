@@ -29,6 +29,7 @@ impl Response {
         Self {
             data: CallbackData {
                 allowed_mentions: None,
+                components: None,
                 content: None,
                 embeds: Vec::new(),
                 flags: None,
@@ -41,6 +42,7 @@ impl Response {
         Self {
             data: CallbackData {
                 allowed_mentions: None,
+                components: None,
                 content: None,
                 embeds: Vec::new(),
                 flags: Some(MessageFlags::EPHEMERAL),
@@ -111,15 +113,17 @@ impl CommandContext {
 
     pub async fn reply_raw(&self, response: InteractionResponse) -> Result<()> {
         self.http
-            .interaction_callback(self.command.id, self.command.token.clone(), response)
+            .interaction_callback(self.command.id, &self.command.token, &response)
+            .exec()
             .await?;
         Ok(())
     }
 
     pub async fn update(&self, content: String) -> Result<()> {
         self.http
-            .update_interaction_original(self.command.token.clone())?
-            .content(Some(content.into()))?
+            .update_interaction_original(&self.command.token)?
+            .content(Some(&content))?
+            .exec()
             .await?;
         Ok(())
     }

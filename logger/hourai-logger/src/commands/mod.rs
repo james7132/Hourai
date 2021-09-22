@@ -11,7 +11,12 @@ pub async fn handle_command(ctx: CommandContext) -> Result<()> {
         Command::Command("pingmod") => pingmod(ctx).await,
         cmd => {
             error!("Unknown command: {:?}", cmd);
-            ctx.reply(Response::ephemeral().content("This is currently a placeholder. This command is currently unsuable.")).await?;
+            ctx.reply(
+                Response::ephemeral().content(
+                    "This is currently a placeholder. This command is currently unsuable.",
+                ),
+            )
+            .await?;
             anyhow::bail!(CommandError::UnknownCommand);
         }
     }
@@ -20,10 +25,11 @@ pub async fn handle_command(ctx: CommandContext) -> Result<()> {
 #[derive(Debug, Error)]
 pub enum CommandError {
     #[error("Unkown Command")]
-    UnknownCommand
+    UnknownCommand,
 }
 
 async fn pingmod(ctx: CommandContext) -> Result<()> {
-    ctx.reply(Response::ephemeral().content("Pinged <MODERATOR> to this channel.")).await?;
+    ctx.reply(Response::ephemeral().content("Pinged <MODERATOR> to this channel."))
+        .await?;
     Ok(())
 }

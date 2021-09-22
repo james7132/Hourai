@@ -1,6 +1,6 @@
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
-use actix_web::{body::Body, cookie::Cookie, web, BaseHttpResponse, HttpRequest};
+use actix_web::{body::Body, web, HttpRequest, HttpResponse};
 use thiserror::Error;
 
 pub type WebResult<T> = Result<T, WebError>;
@@ -19,7 +19,7 @@ pub fn require_header<'a>(request: &'a HttpRequest, key: &str) -> WebResult<&'a 
 #[derive(Error, Debug)]
 pub enum WebError {
     #[error("Generic response error: {}", .0)]
-    ResponseError(Box<dyn ResponseError>),
+    ResponseError(Box<dyn std::error::Error>),
     #[error("HTTP Error: {}", .0)]
     GenericHTTPError(StatusCode),
     #[error("Redis Error: {}", .0)]
@@ -69,8 +69,11 @@ box_error!(awc::error::PayloadError);
 box_error!(awc::error::SendRequestError);
 
 impl ResponseError for WebError {
-    fn error_response(&self) -> BaseHttpResponse<Body> {
-        BaseHttpResponse::new(self.status_code())
+    fn error_response(&self) -> HttpResponse<Body> {
+        HttpResponse::build(self.status_code()).json(serde_json::json!({
+            "status": self.status_code().as_u16(),
+            "message": self.message()
+        }))
     }
 
     fn status_code(&self) -> StatusCode {

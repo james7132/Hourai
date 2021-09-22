@@ -78,8 +78,9 @@ async fn main() {
 
     info!("Updating commands...");
     if let Err(err) = http_client
-        .set_global_commands(config.commands.clone())
-        .unwrap()
+        .set_global_commands(&config.commands)
+        .expect("Failed to create global commands")
+        .exec()
         .await
     {
         warn!("Failed to update global commands: {:?}", err);
@@ -96,8 +97,12 @@ async fn main() {
     let client = {
         let user = http_client
             .current_user()
+            .exec()
             .await
-            .expect("User should not fail to load.");
+            .expect("User should not fail to load.")
+            .model()
+            .await
+            .expect("Failed to deserialize bot user.");
         Client {
             user_id: user.id,
             http_client,
@@ -226,10 +231,18 @@ impl Client {
             let roles = self
                 .http_client
                 .guild_member(guild_id, user_id)
+                .exec()
                 .await?
-                .into_iter()
-                .flat_map(|m| m.roles);
-            hourai_redis::CachedGuild::guild_permissions(guild_id, user_id, roles, &mut redis).await
+                .model()
+                .await?
+                .roles;
+            hourai_redis::CachedGuild::guild_permissions(
+                guild_id,
+                user_id,
+                roles.into_iter(),
+                &mut redis,
+            )
+            .await
         }
     }
 
@@ -331,7 +344,14 @@ impl Client {
             .fetch_guild_permissions(evt.guild_id, self.user_id)
             .await?;
         if perms.contains(Permissions::BAN_MEMBERS) {
-            if let Some(ban) = self.http_client.ban(evt.guild_id, evt.user.id).await? {
+            if let Ok(ban) = self
+                .http_client
+                .ban(evt.guild_id, evt.user.id)
+                .exec()
+                .await?
+                .model()
+                .await
+            {
                 Ban::from(evt.guild_id, ban)
                     .insert()
                     .execute(&self.sql)
@@ -467,7 +487,8 @@ impl Client {
         match evt {
             Interaction::Ping(ping) => {
                 self.http_client
-                    .interaction_callback(ping.id, ping.token, InteractionResponse::Pong)
+                    .interaction_callback(ping.id, &ping.token, &InteractionResponse::Pong)
+                    .exec()
                     .await?;
             }
             Interaction::ApplicationCommand(cmd) => {
@@ -618,7 +639,13 @@ impl Client {
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
-            let fetched_bans = self.http_client.bans(guild_id).await?;
+            let fetched_bans = self
+                .http_client
+                .bans(guild_id)
+                .exec()
+                .await?
+                .model()
+                .await?;
             let bans: Vec<Ban> = fetched_bans
                 .clone()
                 .into_iter()
