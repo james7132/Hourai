@@ -36,7 +36,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(logger::TracingLogger)
-            .data(AppState {
+            .app_data(AppState {
                 config: config.clone(),
                 http: awc::Client::new(),
                 sql: sql.clone(),

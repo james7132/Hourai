@@ -13,10 +13,7 @@ use hourai::{
     gateway::{cluster::*, Event, EventType, EventTypeFlags, Intents},
     init,
     models::{
-        application::{
-            callback::InteractionResponse,
-            interaction::Interaction,
-        },
+        application::{callback::InteractionResponse, interaction::Interaction},
         channel::{Channel, GuildChannel, Message},
         gateway::payload::*,
         guild::{member::Member, Permissions, Role},
@@ -519,6 +516,7 @@ impl Client {
             Interaction::ApplicationCommand(cmd) => {
                 let ctx = commands::CommandContext {
                     http: self.http_client,
+                    redis: self.redis,
                     command: cmd,
                 };
                 commands::handle_command(ctx).await?;

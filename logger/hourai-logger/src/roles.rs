@@ -2,13 +2,13 @@ use crate::Client;
 use anyhow::Result;
 use hourai::{
     models::{
-        guild::{Member, Permissions, Role},
+        guild::{Member, Permissions},
         id::*,
         RoleFlags,
     },
     proto::{cache::CachedRoleProto, guild_configs::*},
 };
-use hourai_redis::GuildConfig;
+use hourai_redis::{CachedGuild, GuildConfig};
 use std::collections::HashMap;
 
 async fn get_roles(
@@ -55,7 +55,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
     };
 
     let mut redis = client.redis.clone();
-    let perms = hourai_redis::CachedGuild::guild_permissions(
+    let perms = CachedGuild::guild_permissions(
         guild_id,
         client.user_id,
         bot_roles.iter().cloned(),
@@ -67,26 +67,26 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
     }
 
     let user_roles = match get_roles(client, guild_id, user_id).await {
-        Ok(roles) => {
-            hourai_redis::CachedGuild::fetch_resources::<Role>(guild_id, &roles, &mut redis).await?
-        }
+        Ok(roles) => CachedGuild::role_set(guild_id, &roles, &mut redis).await?,
         Err(hourai_sql::Error::RowNotFound) => return Ok(()),
         Err(err) => anyhow::bail!(err),
     };
 
-    let max_role = hourai_redis::CachedGuild::highest_role(guild_id, &bot_roles, &mut redis)
+    let max_role = CachedGuild::role_set(guild_id, &bot_roles, &mut redis)
         .await?
+        .highest()
+        .cloned()
         .unwrap_or_else(|| CachedRoleProto::default());
 
     let flags = get_role_flags(client, guild_id).await?;
     let mut restorable: Vec<RoleId> = user_roles
-        .into_iter()
+        .iter()
         .filter(|role| {
             let role_flags = flags
                 .get(&role.get_role_id())
                 .cloned()
                 .unwrap_or_else(RoleFlags::empty);
-            role < &max_role && role_flags.contains(RoleFlags::RESTORABLE)
+            role < &&max_role && role_flags.contains(RoleFlags::RESTORABLE)
         })
         .map(|role| RoleId(role.get_role_id()))
         .collect();

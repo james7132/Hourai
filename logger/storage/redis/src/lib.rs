@@ -18,6 +18,10 @@ use hourai::models::{
 use hourai::proto::cache::*;
 use redis::aio::ConnectionLike;
 use redis::ToRedisArgs;
+use std::{
+    cmp::{Ord, Ordering},
+    ops::Deref,
+};
 use tracing::debug;
 
 pub type RedisPool = redis::aio::ConnectionManager;
@@ -297,17 +301,15 @@ impl CachedGuild {
         redis::Cmd::hdel(CacheKey::Guild(guild_id), resource_id.into())
     }
 
-    /// Given a list of role IDs, finds the highest among them.
-    /// Returns None if role_ids is empty.
-    pub async fn highest_role(
+    /// Fetches a `RoleSet` from the provided guild and role IDs.
+    pub async fn role_set(
         guild_id: GuildId,
         role_ids: &[RoleId],
         conn: &mut RedisPool,
-    ) -> Result<Option<CachedRoleProto>> {
-        Ok(Self::fetch_resources::<Role>(guild_id, role_ids, conn)
-            .await?
-            .into_iter()
-            .max())
+    ) -> Result<RoleSet> {
+        Ok(RoleSet(
+            Self::fetch_resources::<Role>(guild_id, role_ids, conn).await?,
+        ))
     }
 
     /// Gets the guild-level permissions for a given member.
@@ -331,18 +333,59 @@ impl CachedGuild {
         // The everyone role ID is the same as the guild ID.
         let mut role_ids: Vec<RoleId> = role_ids.collect();
         role_ids.push(RoleId(guild_id.0));
-        let perms = Self::fetch_resources::<Role>(guild_id, &role_ids, conn)
+        Ok(Self::role_set(guild_id, &role_ids, conn)
             .await?
-            .into_iter()
+            .guild_permissions())
+    }
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct RoleSet(Vec<CachedRoleProto>);
+
+impl RoleSet {
+    /// Gets the highest role in the `RoleSet`, if available. Returns None if the set is empty.
+    pub fn highest(&self) -> Option<&CachedRoleProto> {
+        self.0.iter().max()
+    }
+
+    /// Computes the available permissions for all of the roles.
+    pub fn guild_permissions(&self) -> Permissions {
+        let perms = self
+            .0
+            .iter()
             .map(|role| Permissions::from_bits_truncate(role.get_permissions()))
             .fold(Permissions::empty(), |acc, perm| acc | perm);
 
         // Administrators by default have every permission enabled.
-        Ok(if perms.contains(Permissions::ADMINISTRATOR) {
+        if perms.contains(Permissions::ADMINISTRATOR) {
             Permissions::all()
         } else {
             perms
-        })
+        }
+    }
+}
+
+impl Ord for RoleSet {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self.highest(), other.highest()) {
+            (Some(left), Some(right)) => left.cmp(&right),
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (None, None) => Ordering::Equal,
+        }
+    }
+}
+
+impl PartialOrd for RoleSet {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Deref for RoleSet {
+    type Target = Vec<CachedRoleProto>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

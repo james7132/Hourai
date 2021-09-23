@@ -1,5 +1,4 @@
 use anyhow::Result;
-use thiserror::Error;
 use hourai::{
     http::Client,
     models::{
@@ -15,7 +14,9 @@ use hourai::{
         user::User,
     },
 };
+use hourai_redis::RedisPool;
 use std::str::FromStr;
+use thiserror::Error;
 
 pub type CommandResult<T> = std::result::Result<T, CommandError>;
 
@@ -32,7 +33,6 @@ pub enum CommandError {
     #[error("Generic error: {0}")]
     GenericError(#[from] anyhow::Error),
 }
-
 
 #[derive(Debug)]
 pub enum Command<'a> {
@@ -91,6 +91,7 @@ impl From<Response> for CallbackData {
 
 pub struct CommandContext {
     pub http: Client,
+    pub redis: RedisPool,
     pub command: Box<ApplicationCommand>,
 }
 
@@ -147,22 +148,10 @@ impl CommandContext {
         self.options().filter(move |opt| opt.name().contains(name))
     }
 
-    /// Gets all resolved users provided by command options with a given substring name.
-    pub fn all_user_options_named(
-        &self,
-        name: &'static str,
-    ) -> impl Iterator<Item = &User> {
+    /// Gets all of the raw IDs with a given name.
+    pub fn all_id_options_named(&self, name: &'static str) -> impl Iterator<Item = u64> + '_ {
         self.all_options_named(name)
-            .filter_map(move |option| self.resolve_user(option))
-    }
-
-    /// Gets all resolved members provided by command options with a given substring name.
-    pub fn all_member_options_named(
-        &self,
-        name: &'static str,
-    ) -> impl Iterator<Item = &InteractionMember> {
-        self.all_options_named(name)
-            .filter_map(move |option| self.resolve_member(option))
+            .filter_map(Self::parse_option_id)
     }
 
     /// Checks if a boolean flag is set to true or not. If no flag with the name was found, it
@@ -189,29 +178,20 @@ impl CommandContext {
         })
     }
 
-    fn resolve_user(&self, option: &CommandDataOption) -> Option<&User> {
-        if let Some(id) = Self::parse_option_id(option) {
-            self.command
-                .data
-                .resolved
-                .as_ref()
-                .and_then(|r| r.users.iter().find(|m| m.id == UserId(id)))
-        } else {
-            None
-        }
+    pub fn resolve_user(&self, id: UserId) -> Option<&User> {
+        self.command
+            .data
+            .resolved
+            .as_ref()
+            .and_then(|r| r.users.iter().find(|m| m.id == id))
     }
 
-
-    fn resolve_member(&self, option: &CommandDataOption) -> Option<&InteractionMember> {
-        if let Some(id) = Self::parse_option_id(option) {
-            self.command
-                .data
-                .resolved
-                .as_ref()
-                .and_then(|r| r.members.iter().find(|m| m.id == UserId(id)))
-        } else {
-            None
-        }
+    pub fn resolve_member(&self, id: UserId) -> Option<&InteractionMember> {
+        self.command
+            .data
+            .resolved
+            .as_ref()
+            .and_then(|r| r.members.iter().find(|m| m.id == id))
     }
 
     fn parse_option_id(option: &CommandDataOption) -> Option<u64> {

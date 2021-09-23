@@ -148,16 +148,9 @@ impl UpdateCache for UnavailableGuild {
 mod tests {
     use twilight_model::{
         channel::{
-            message::{MessageFlags, MessageType},
-            ChannelType, GuildChannel, Message, Reaction, TextChannel,
+            ChannelType, GuildChannel, TextChannel,
         },
-        gateway::payload::ChannelDelete,
-        guild::{
-            DefaultMessageNotificationLevel, ExplicitContentFilter, Guild, Member, MfaLevel,
-            PartialGuild, PartialMember, PremiumTier, SystemChannelFlags, VerificationLevel,
-        },
-        id::{ChannelId, GuildId, MessageId, UserId},
-        user::User,
+        id::{ChannelId, GuildId},
     };
 
     fn guild_channel_text() -> (GuildId, ChannelId, GuildChannel) {
