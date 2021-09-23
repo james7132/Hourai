@@ -1,4 +1,5 @@
 use anyhow::Result;
+use thiserror::Error;
 use hourai::{
     http::Client,
     models::{
@@ -15,6 +16,23 @@ use hourai::{
     },
 };
 use std::str::FromStr;
+
+pub type CommandResult<T> = std::result::Result<T, CommandError>;
+
+#[derive(Debug, Error)]
+pub enum CommandError {
+    #[error("Unkown command. This command is currently unsuable.")]
+    UnknownCommand,
+    #[error("Command can only be used in a server.")]
+    NotInGuild,
+    #[error("User is missing permission: `{0}`")]
+    MissingPermission(&'static str),
+    #[error("{0}")]
+    UserError(&'static str),
+    #[error("Generic error: {0}")]
+    GenericError(#[from] anyhow::Error),
+}
+
 
 #[derive(Debug)]
 pub enum Command<'a> {
@@ -77,8 +95,8 @@ pub struct CommandContext {
 }
 
 impl CommandContext {
-    pub fn guild_id(&self) -> Option<GuildId> {
-        self.command.guild_id
+    pub fn guild_id(&self) -> CommandResult<GuildId> {
+        self.command.guild_id.ok_or(CommandError::NotInGuild)
     }
 
     pub fn user(&self) -> Option<&User> {
@@ -129,6 +147,15 @@ impl CommandContext {
         self.options().filter(move |opt| opt.name().contains(name))
     }
 
+    /// Gets all resolved users provided by command options with a given substring name.
+    pub fn all_user_options_named(
+        &self,
+        name: &'static str,
+    ) -> impl Iterator<Item = &User> {
+        self.all_options_named(name)
+            .filter_map(move |option| self.resolve_user(option))
+    }
+
     /// Gets all resolved members provided by command options with a given substring name.
     pub fn all_member_options_named(
         &self,
@@ -136,6 +163,18 @@ impl CommandContext {
     ) -> impl Iterator<Item = &InteractionMember> {
         self.all_options_named(name)
             .filter_map(move |option| self.resolve_member(option))
+    }
+
+    /// Checks if a boolean flag is set to true or not. If no flag with the name was found, it
+    /// returs None.
+    pub fn get_string(&self, name: &'static str) -> Option<&String> {
+        self.option_named(name).and_then(|option| {
+            if let CommandDataOption::String { value, .. } = option {
+                Some(value)
+            } else {
+                None
+            }
+        })
     }
 
     /// Checks if a boolean flag is set to true or not. If no flag with the name was found, it
@@ -149,6 +188,19 @@ impl CommandContext {
             }
         })
     }
+
+    fn resolve_user(&self, option: &CommandDataOption) -> Option<&User> {
+        if let Some(id) = Self::parse_option_id(option) {
+            self.command
+                .data
+                .resolved
+                .as_ref()
+                .and_then(|r| r.users.iter().find(|m| m.id == UserId(id)))
+        } else {
+            None
+        }
+    }
+
 
     fn resolve_member(&self, option: &CommandDataOption) -> Option<&InteractionMember> {
         if let Some(id) = Self::parse_option_id(option) {

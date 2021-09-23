@@ -14,10 +14,10 @@ use hourai::{
     init,
     models::{
         application::{
-            callback::{CallbackData, InteractionResponse},
+            callback::InteractionResponse,
             interaction::Interaction,
         },
-        channel::{message::MessageFlags, Channel, GuildChannel, Message},
+        channel::{Channel, GuildChannel, Message},
         gateway::payload::*,
         guild::{member::Member, Permissions, Role},
         id::*,
@@ -58,6 +58,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
         | EventTypeFlags::ROLE_DELETE.bits()
         | EventTypeFlags::ROLE_UPDATE.bits()
         | EventTypeFlags::THREAD_CREATE.bits()
+        | EventTypeFlags::THREAD_LIST_SYNC.bits()
         | EventTypeFlags::VOICE_STATE_UPDATE.bits(),
 );
 
@@ -456,7 +457,7 @@ impl Client {
 
     async fn on_thread_create(&mut self, evt: ThreadCreate) -> Result<()> {
         self.http_client.join_thread(evt.0.id()).exec().await?;
-        debug!("Joined thread {}", evt.0.id());
+        info!("Joined thread {}", evt.0.id());
         Ok(())
     }
 
@@ -467,6 +468,8 @@ impl Client {
                     "Error while joining new thread in guild {}: {}",
                     evt.guild_id, err
                 );
+            } else {
+                info!("Joined thread {}", thread.id());
             }
         }
         Ok(())
@@ -505,6 +508,7 @@ impl Client {
     }
 
     async fn on_interaction_create(self, evt: Interaction) -> Result<()> {
+        info!("Recieved interaction: {:?}", evt);
         match evt {
             Interaction::Ping(ping) => {
                 self.http_client
