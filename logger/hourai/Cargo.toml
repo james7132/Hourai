@@ -20,11 +20,13 @@ dashmap = { default-features = false, version = "4.0" }
 metrics-exporter-prometheus = "0.6"
 protobuf = "2.22"
 serde = "1.0"
+lazy_static = "1.4"
 thiserror = "1.0"
 hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = "0.2.15"
 twilight-model = "0.7"
+regex = "1.5"
 # Feature based optional dependencies
 twilight-command-parser= "0.7"
 

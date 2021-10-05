@@ -3,6 +3,7 @@ use std::sync::Arc;
 mod announcements;
 mod commands;
 mod listings;
+mod message_filter;
 mod message_logging;
 mod roles;
 

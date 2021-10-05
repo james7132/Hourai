@@ -1,7 +1,7 @@
 use super::user::UserLike;
 use super::Snowflake;
 use crate::proto::cache::{CachedMessageProto, CachedUserProto};
-use twilight_model::channel::Message;
+use twilight_model::channel::{embed::Embed, Attachment, Message};
 use twilight_model::gateway::payload::incoming::MessageUpdate;
 use twilight_model::id::*;
 use twilight_model::user::User;
@@ -13,6 +13,8 @@ pub trait MessageLike: Snowflake<MessageId> {
     fn guild_id(&self) -> Option<GuildId>;
     fn author(&self) -> &Self::Author;
     fn content(&self) -> &str;
+    fn embeds(&self) -> &[Embed];
+    fn attachments(&self) -> &[Attachment];
 
     /// Gets the link to the message
     fn message_link(&self) -> String {
@@ -66,6 +68,14 @@ impl MessageLike for Message {
     fn content(&self) -> &str {
         self.content.as_str()
     }
+
+    fn embeds(&self) -> &[Embed] {
+        &self.embeds
+    }
+
+    fn attachments(&self) -> &[Attachment] {
+        &self.attachments
+    }
 }
 
 impl MessageLike for CachedMessageProto {
@@ -89,5 +99,14 @@ impl MessageLike for CachedMessageProto {
 
     fn content(&self) -> &str {
         self.get_content()
+    }
+
+    // TODO(james7132): Implement this fix this
+    fn embeds(&self) -> &[Embed] {
+        &[]
+    }
+
+    fn attachments(&self) -> &[Attachment] {
+        &[]
     }
 }
