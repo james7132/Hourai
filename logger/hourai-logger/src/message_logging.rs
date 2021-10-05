@@ -82,7 +82,7 @@ pub(super) async fn on_message_update(
             .create_message(output_channel.unwrap())
             .content(&format!(
                 "Message by <@{}> edited from <#{}>",
-                before.id(),
+                before.author().id(),
                 before.channel_id()
             ))?
             .embeds(&vec![message_diff_embed(&before, &after)?
