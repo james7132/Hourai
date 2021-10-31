@@ -8,7 +8,7 @@ pub async fn run_push_listings(client: crate::Client, config: HouraiConfig, inte
     let http = reqwest::Client::new();
     loop {
         let query = hourai_sql::Member::count_guilds()
-            .fetch_one(&client.sql)
+            .fetch_one(client.sql())
             .await;
         let count = match query {
             Ok((cnt,)) => cnt,
@@ -18,15 +18,15 @@ pub async fn run_push_listings(client: crate::Client, config: HouraiConfig, inte
             }
         };
         if config.third_party.discord_bots_token.is_some() {
-            let req = post_discord_bots(&http, client.user_id, &config, count);
+            let req = post_discord_bots(&http, client.user_id(), &config, count);
             tokio::spawn(handle_response("Discord Bots", req));
         }
         if config.third_party.discord_boats_token.is_some() {
-            let req = post_discord_boats(&http, client.user_id, &config, count);
+            let req = post_discord_boats(&http, client.user_id(), &config, count);
             tokio::spawn(handle_response("Discord Boats", req));
         }
         if config.third_party.discord_boats_token.is_some() {
-            let req = post_top_gg(&http, client.user_id, &config, count);
+            let req = post_top_gg(&http, client.user_id(), &config, count);
             tokio::spawn(handle_response("top.gg", req));
         }
         tokio::time::sleep(interval).await;

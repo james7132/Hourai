@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 mod announcements;
 mod commands;
 mod listings;
@@ -15,7 +17,7 @@ use hourai::{
     models::{
         application::{callback::InteractionResponse, interaction::Interaction},
         channel::{Channel, GuildChannel, Message},
-        gateway::payload::*,
+        gateway::payload::{incoming::*, outgoing::RequestGuildMembers},
         guild::{member::Member, Permissions, Role},
         id::*,
         user::User,
@@ -68,7 +70,7 @@ async fn main() {
     let config = config::load_config(config::get_config_path().as_ref());
 
     init::init(&config);
-    let http_client = init::http_client(&config);
+    let http_client = Arc::new(init::http_client(&config));
     let sql = hourai_sql::init(&config).await;
     let redis = hourai_redis::init(&config).await;
     let cache = InMemoryCache::builder()
@@ -92,6 +94,7 @@ async fn main() {
         .build()
         .await
         .expect("Failed to connect to the Discord gateway");
+    let gateway = Arc::new(gateway);
 
     let client = {
         let user = http_client
@@ -102,14 +105,14 @@ async fn main() {
             .model()
             .await
             .expect("Failed to deserialize bot user.");
-        Client {
+        Client(Arc::new(ClientRef {
             user_id: user.id,
             http_client,
             gateway: gateway.clone(),
             cache: cache.clone(),
             sql,
             redis: redis.clone(),
-        }
+        }))
     };
 
     info!("Starting gateway...");
@@ -162,21 +165,23 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
     }
 }
 
-#[derive(Clone)]
-pub struct Client {
+struct ClientRef {
     pub user_id: UserId,
-    pub http_client: hourai::http::Client,
-    pub gateway: Cluster,
+    pub http_client: Arc<hourai::http::Client>,
+    pub gateway: Arc<Cluster>,
     pub cache: InMemoryCache,
     pub sql: SqlPool,
     pub redis: RedisPool,
 }
 
+#[derive(Clone)]
+pub struct Client(Arc<ClientRef>);
+
 impl Client {
     async fn log_bans(self) {
         loop {
             info!("Refreshing bans...");
-            for guild_id in self.cache.guilds() {
+            for guild_id in self.0.cache.guilds() {
                 if let Err(err) = self.refresh_bans(guild_id).await {
                     error!("Error while logging bans: {:?}", err);
                 }
@@ -187,15 +192,29 @@ impl Client {
 
     #[inline(always)]
     pub fn total_shards(&self) -> u64 {
-        let shards = self.gateway.config().shard_config().shard()[1];
-        assert!(shards > 0, "Bot somehow has a total of zero shards.");
-        shards
+        self.0.gateway.shards().len() as u64
     }
 
     /// Gets the shard ID for a guild.
     #[inline(always)]
     pub fn shard_id(&self, guild_id: GuildId) -> u64 {
-        (guild_id.0 >> 22) % self.total_shards()
+        (guild_id.get() >> 22) % self.total_shards()
+    }
+
+    pub fn user_id(&self) -> UserId {
+        self.0.user_id
+    }
+
+    pub fn sql(&self) -> &SqlPool {
+        &self.0.sql
+    }
+
+    pub fn redis(&self) -> RedisPool {
+        self.0.redis.clone()
+    }
+
+    pub fn http_client(&self) -> Arc<hourai::http::Client> {
+        self.0.http_client.clone()
     }
 
     pub async fn chunk_guild(&self, guild_id: GuildId) -> Result<()> {
@@ -203,7 +222,8 @@ impl Client {
         let request = RequestGuildMembers::builder(guild_id)
             .presences(true)
             .query(String::new(), None);
-        self.gateway
+        self.0
+            .gateway
             .command(self.shard_id(guild_id), &request)
             .await?;
         Ok(())
@@ -215,9 +235,9 @@ impl Client {
         user_id: UserId,
     ) -> Result<Permissions> {
         let local_member = hourai_sql::Member::fetch(guild_id, user_id)
-            .fetch_one(&self.sql)
+            .fetch_one(&self.0.sql)
             .await;
-        let mut redis = self.redis.clone();
+        let mut redis = self.0.redis.clone();
         if let Ok(member) = local_member {
             hourai_redis::CachedGuild::guild_permissions(
                 guild_id,
@@ -228,6 +248,7 @@ impl Client {
             .await
         } else {
             let roles = self
+                .0
                 .http_client
                 .guild_member(guild_id, user_id)
                 .exec()
@@ -250,7 +271,7 @@ impl Client {
         let kind = event.kind();
         let result = match event {
             Event::MemberUpdate(ref evt) => {
-                if self.cache.is_pending(evt.guild_id, evt.user.id) && !evt.pending {
+                if self.0.cache.is_pending(evt.guild_id, evt.user.id) && !evt.pending {
                     let member = Member {
                         guild_id: evt.guild_id,
                         nick: evt.nick.clone(),
@@ -261,7 +282,6 @@ impl Client {
                         joined_at: Some(evt.joined_at.clone()),
 
                         // Unknown/dummy fields.
-                        hoisted_role: None,
                         deaf: false,
                         mute: false,
                     };
@@ -324,9 +344,12 @@ impl Client {
 
     async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
         let (res1, res2) = futures::join!(
-            Ban::clear_shard(shard_id, self.total_shards()).execute(&self.sql),
-            hourai_sql::Member::clear_present_shard(shard_id, self.total_shards())
-                .execute(&self.sql)
+            self.sql()
+                .execute(Ban::clear_shard(shard_id, self.total_shards())),
+            self.sql().execute(hourai_sql::Member::clear_present_shard(
+                shard_id,
+                self.total_shards()
+            ))
         );
 
         res1?;
@@ -342,20 +365,19 @@ impl Client {
         );
 
         let perms = self
-            .fetch_guild_permissions(evt.guild_id, self.user_id)
+            .fetch_guild_permissions(evt.guild_id, self.user_id())
             .await?;
         if perms.contains(Permissions::BAN_MEMBERS) {
             if let Ok(ban) = self
-                .http_client
+                .http_client()
                 .ban(evt.guild_id, evt.user.id)
                 .exec()
                 .await?
                 .model()
                 .await
             {
-                Ban::from(evt.guild_id, ban)
-                    .insert()
-                    .execute(&self.sql)
+                self.sql()
+                    .execute(Ban::from(evt.guild_id, ban).insert())
                     .await?;
             }
         }
@@ -368,7 +390,8 @@ impl Client {
     async fn on_ban_remove(self, evt: BanRemove) -> Result<()> {
         let (res1, res2) = futures::join!(
             self.log_users(vec![evt.user.clone()]),
-            Ban::clear_ban(evt.guild_id, evt.user.id).execute(&self.sql)
+            self.sql()
+                .execute(Ban::clear_ban(evt.guild_id, evt.user.id)),
         );
 
         res1?;
@@ -399,17 +422,20 @@ impl Client {
             return Ok(());
         }
 
-        hourai_sql::Member::from(&evt)
-            .insert()
-            .execute(&self.sql)
-            .await?;
-        Username::new(&evt.user).insert().execute(&self.sql).await?;
+        let mut txn = self.sql().begin().await?;
+        txn.execute(hourai_sql::Member::from(&evt).insert()).await?;
+        txn.execute(Username::new(&evt.user).insert()).await?;
+        txn.commit().await?;
         Ok(())
     }
 
     async fn on_member_remove(&self, evt: MemberRemove) -> Result<()> {
         let (res1, res2, res3) = futures::join!(
-            hourai_sql::Member::set_present(evt.guild_id, evt.user.id, false).execute(&self.sql),
+            self.sql().execute(hourai_sql::Member::set_present(
+                evt.guild_id,
+                evt.user.id,
+                false
+            )),
             self.log_users(vec![evt.user.clone()]),
             announcements::on_member_leave(&self, evt)
         );
@@ -419,33 +445,33 @@ impl Client {
         Ok(())
     }
 
-    async fn on_channel_create(&mut self, evt: ChannelCreate) -> Result<()> {
+    async fn on_channel_create(&self, evt: ChannelCreate) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
                 hourai_redis::CachedGuild::save_resource(guild_id, ch.id(), ch)
-                    .query_async(&mut self.redis)
+                    .query_async(&mut self.redis())
                     .await?;
             }
         }
         Ok(())
     }
 
-    async fn on_channel_update(&mut self, evt: ChannelUpdate) -> Result<()> {
+    async fn on_channel_update(&self, evt: ChannelUpdate) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
                 hourai_redis::CachedGuild::save_resource(guild_id, ch.id(), ch)
-                    .query_async(&mut self.redis)
+                    .query_async(&mut self.redis())
                     .await?;
             }
         }
         Ok(())
     }
 
-    async fn on_channel_delete(mut self, evt: ChannelDelete) -> Result<()> {
+    async fn on_channel_delete(self, evt: ChannelDelete) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
                 hourai_redis::CachedGuild::delete_resource::<GuildChannel>(guild_id, ch.id())
-                    .query_async(&mut self.redis)
+                    .query_async(&mut self.redis())
                     .await?;
             }
         }
@@ -453,14 +479,14 @@ impl Client {
     }
 
     async fn on_thread_create(&mut self, evt: ThreadCreate) -> Result<()> {
-        self.http_client.join_thread(evt.0.id()).exec().await?;
+        self.http_client().join_thread(evt.0.id()).exec().await?;
         info!("Joined thread {}", evt.0.id());
         Ok(())
     }
 
     async fn on_thread_list_sync(&mut self, evt: ThreadListSync) -> Result<()> {
         for thread in evt.threads {
-            if let Err(err) = self.http_client.join_thread(thread.id()).exec().await {
+            if let Err(err) = self.http_client().join_thread(thread.id()).exec().await {
                 error!(
                     "Error while joining new thread in guild {}: {}",
                     evt.guild_id, err
@@ -472,19 +498,20 @@ impl Client {
         Ok(())
     }
 
-    async fn on_message_create(mut self, evt: Message) -> Result<()> {
+    async fn on_message_create(self, evt: Message) -> Result<()> {
         if !evt.author.bot {
             CachedMessage::new(evt)
                 .flush()
-                .query_async(&mut self.redis)
+                .query_async(&mut self.redis())
                 .await?;
         }
         Ok(())
     }
 
-    async fn on_message_update(mut self, evt: MessageUpdate) -> Result<()> {
+    async fn on_message_update(self, evt: MessageUpdate) -> Result<()> {
         // TODO(james7132): Properly implement this
-        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut self.redis).await?;
+        let mut redis = self.redis();
+        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut redis).await?;
         if let Some(mut msg) = cached {
             if let Some(content) = evt.content {
                 let before = msg.clone();
@@ -496,7 +523,7 @@ impl Client {
                 ));
                 CachedMessage::new(before)
                     .flush()
-                    .query_async(&mut self.redis)
+                    .query_async(&mut redis)
                     .await?;
             }
         }
@@ -508,15 +535,15 @@ impl Client {
         info!("Recieved interaction: {:?}", evt);
         match evt {
             Interaction::Ping(ping) => {
-                self.http_client
+                self.http_client()
                     .interaction_callback(ping.id, &ping.token, &InteractionResponse::Pong)
                     .exec()
                     .await?;
             }
             Interaction::ApplicationCommand(cmd) => {
                 let ctx = commands::CommandContext {
-                    http: self.http_client,
-                    redis: self.redis,
+                    http: self.http_client(),
+                    redis: self.redis(),
                     command: cmd,
                 };
                 commands::handle_command(ctx).await?;
@@ -532,23 +559,23 @@ impl Client {
     async fn on_message_delete(mut self, evt: MessageDelete) -> Result<()> {
         message_logging::on_message_delete(&mut self, &evt).await?;
         CachedMessage::delete(evt.channel_id, evt.id)
-            .query_async(&mut self.redis)
+            .query_async(&mut self.redis())
             .await?;
         Ok(())
     }
 
-    async fn on_message_bulk_delete(mut self, evt: MessageDeleteBulk) -> Result<()> {
+    async fn on_message_bulk_delete(self, evt: MessageDeleteBulk) -> Result<()> {
         tokio::spawn(message_logging::on_message_bulk_delete(
             self.clone(),
             evt.clone(),
         ));
         CachedMessage::bulk_delete(evt.channel_id, evt.ids)
-            .query_async(&mut self.redis)
+            .query_async(&mut self.0.redis.clone())
             .await?;
         Ok(())
     }
 
-    async fn on_guild_create(mut self, evt: GuildCreate) -> Result<()> {
+    async fn on_guild_create(self, evt: GuildCreate) -> Result<()> {
         let guild = evt.0;
 
         if guild.unavailable {
@@ -558,60 +585,64 @@ impl Client {
         }
 
         self.chunk_guild(guild.id).await?;
+        let mut redis = self.0.redis.clone();
         hourai_redis::CachedGuild::save(&guild)
-            .query_async(&mut self.redis)
+            .query_async(&mut redis)
             .await?;
         hourai_redis::CachedVoiceState::update_guild(&guild)
-            .query_async(&mut self.redis)
+            .query_async(&mut redis)
             .await?;
 
         Ok(())
     }
 
-    async fn on_guild_update(mut self, evt: GuildUpdate) -> Result<()> {
+    async fn on_guild_update(self, evt: GuildUpdate) -> Result<()> {
         hourai_redis::CachedGuild::save_resource(evt.0.id, evt.0.id, &evt.0)
-            .query_async(&mut self.redis)
+            .query_async(&mut self.0.redis.clone())
             .await?;
         Ok(())
     }
 
-    async fn on_guild_leave(mut self, evt: GuildDelete) -> Result<()> {
+    async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
         info!("Left guild {}", evt.id);
+        let mut redis = self.0.redis.clone();
         hourai_redis::CachedGuild::delete(evt.id)
-            .query_async(&mut self.redis)
+            .query_async(&mut redis)
             .await?;
         hourai_redis::CachedVoiceState::clear_guild(evt.id)
-            .query_async(&mut self.redis)
+            .query_async(&mut redis)
             .await?;
         let (res1, res2) = futures::join!(
-            hourai_sql::Member::clear_guild(evt.id).execute(&self.sql),
-            Ban::clear_guild(evt.id).execute(&self.sql),
+            self.0.sql.execute(hourai_sql::Member::clear_guild(evt.id)),
+            self.0.sql.execute(Ban::clear_guild(evt.id)),
         );
         res1?;
         res2?;
         Ok(())
     }
 
-    async fn on_role_create(mut self, evt: RoleCreate) -> Result<()> {
+    async fn on_role_create(self, evt: RoleCreate) -> Result<()> {
         hourai_redis::CachedGuild::save_resource(evt.guild_id, evt.role.id, &evt.role)
-            .query_async(&mut self.redis)
+            .query_async(&mut self.0.redis.clone())
             .await?;
         Ok(())
     }
 
-    async fn on_role_update(mut self, evt: RoleUpdate) -> Result<()> {
+    async fn on_role_update(self, evt: RoleUpdate) -> Result<()> {
         hourai_redis::CachedGuild::save_resource(evt.guild_id, evt.role.id, &evt.role)
-            .query_async(&mut self.redis)
+            .query_async(&mut self.0.redis.clone())
             .await?;
         Ok(())
     }
 
-    async fn on_role_delete(mut self, evt: RoleDelete) -> Result<()> {
-        let res = hourai_sql::Member::clear_role(evt.guild_id, evt.role_id)
-            .execute(&self.sql)
+    async fn on_role_delete(self, evt: RoleDelete) -> Result<()> {
+        let res = self
+            .0
+            .sql
+            .execute(hourai_sql::Member::clear_role(evt.guild_id, evt.role_id))
             .await;
         let res2 = hourai_redis::CachedGuild::delete_resource::<Role>(evt.guild_id, evt.role_id)
-            .query_async(&mut self.redis)
+            .query_async(&mut self.0.redis.clone())
             .await;
         self.refresh_bans(evt.guild_id).await?;
         res?;
@@ -619,38 +650,37 @@ impl Client {
         Ok(())
     }
 
-    async fn on_voice_state_update(mut self, evt: VoiceStateUpdate) -> Result<()> {
+    async fn on_voice_state_update(self, evt: VoiceStateUpdate) -> Result<()> {
         let guild_id = match evt.0.guild_id {
             Some(id) => id,
             None => return Ok(()),
         };
+        let mut redis = self.redis();
         let channel_id: Option<u64> =
             hourai_redis::CachedVoiceState::get_channel(guild_id, evt.0.user_id)
-                .query_async(&mut self.redis)
+                .query_async(&mut redis)
                 .await?;
-        let channel_id = channel_id.map(ChannelId);
+        let channel_id = channel_id.and_then(ChannelId::new);
         announcements::on_voice_update(&self, evt.0.clone(), channel_id).await?;
         hourai_redis::CachedVoiceState::save(&evt.0)
-            .query_async(&mut self.redis)
+            .query_async(&mut redis)
             .await?;
         Ok(())
     }
 
     async fn log_users(&self, users: Vec<User>) -> Result<()> {
         let usernames = users.iter().map(|u| Username::new(u)).collect();
-        Username::bulk_insert(usernames).execute(&self.sql).await?;
+        self.0.sql.execute(Username::bulk_insert(usernames)).await?;
         Ok(())
     }
 
     async fn log_members(&self, members: &[Member]) -> Result<()> {
         let usernames = members.iter().map(|m| Username::new(&m.user)).collect();
 
-        Username::bulk_insert(usernames).execute(&self.sql).await?;
-        let mut txn = self.sql.begin().await?;
+        self.0.sql.execute(Username::bulk_insert(usernames)).await?;
+        let mut txn = self.0.sql.begin().await?;
         for member in members {
-            hourai_sql::Member::from(member)
-                .insert()
-                .execute(&mut txn)
+            txn.execute(hourai_sql::Member::from(member).insert())
                 .await?;
         }
         txn.commit().await?;
@@ -658,11 +688,14 @@ impl Client {
     }
 
     async fn refresh_bans(&self, guild_id: GuildId) -> Result<()> {
-        let perms = self.fetch_guild_permissions(guild_id, self.user_id).await?;
+        let perms = self
+            .fetch_guild_permissions(guild_id, self.0.user_id)
+            .await?;
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
             let fetched_bans = self
+                .0
                 .http_client
                 .bans(guild_id)
                 .exec()
@@ -675,9 +708,9 @@ impl Client {
                 .map(|b| Ban::from(guild_id, b))
                 .collect();
             debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
-            let mut txn = self.sql.begin().await?;
-            Ban::clear_guild(guild_id).execute(&mut txn).await?;
-            Ban::bulk_insert(bans).execute(&mut txn).await?;
+            let mut txn = self.0.sql.begin().await?;
+            txn.execute(Ban::clear_guild(guild_id)).await?;
+            txn.execute(Ban::bulk_insert(bans)).await?;
             txn.commit().await?;
 
             // Log user data from bans
@@ -685,7 +718,7 @@ impl Client {
             self.log_users(users).await?;
         } else {
             debug!("Cleared bans from guild {}", guild_id);
-            Ban::clear_guild(guild_id).execute(&self.sql).await?;
+            self.0.sql.execute(Ban::clear_guild(guild_id)).await?;
         }
         Ok(())
     }

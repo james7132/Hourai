@@ -5,6 +5,7 @@ use futures::channel::mpsc::UnboundedSender;
 use futures::prelude::*;
 use hourai::{config, init};
 use hourai_sql::SqlPool;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
@@ -13,7 +14,7 @@ async fn main() {
 
     let (tx, mut rx) = futures::channel::mpsc::unbounded();
     let client = Client {
-        http: init::http_client(&config),
+        http: Arc::new(init::http_client(&config)),
         sql: hourai_sql::init(&config).await,
         tx,
     };
@@ -30,7 +31,7 @@ async fn main() {
 
 #[derive(Clone)]
 pub struct Client {
-    http: hourai::http::Client,
-    sql: SqlPool,
+    pub http: Arc<hourai::http::Client>,
+    pub sql: SqlPool,
     tx: UnboundedSender<models::Post>,
 }

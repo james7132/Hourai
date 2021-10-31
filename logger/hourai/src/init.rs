@@ -48,18 +48,19 @@ pub fn cluster(
 
 pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
     debug!("Creating Discord HTTP client");
+    let application_id = ApplicationId::new(config.discord.application_id).unwrap();
     // Use the twilight HTTP proxy when configured
     if let Some(proxy) = config.discord.proxy.as_ref() {
         twilight_http::Client::builder()
             .token(config.discord.bot_token.clone())
             .proxy(proxy.clone(), true)
             .ratelimiter(None)
-            .application_id(ApplicationId(config.discord.application_id))
+            .application_id(application_id)
             .build()
     } else {
         twilight_http::Client::builder()
             .token(config.discord.bot_token.clone())
-            .application_id(ApplicationId(config.discord.application_id))
+            .application_id(application_id)
             .build()
     }
 }

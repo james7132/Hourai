@@ -99,7 +99,7 @@ async fn require_in_voice_channel(
         hourai_redis::CachedVoiceState::get_channel(guild_id, ctx.message.author.id)
             .query_async(&mut redis)
             .await?;
-    let user = user.map(ChannelId);
+    let user = user.and_then(ChannelId::new);
     let bot = client.get_channel(guild_id);
     if bot.is_some() && user != bot {
         bail!(CommandError::FailedPrecondition(
@@ -128,7 +128,7 @@ fn require_playing(client: &Client<'static>, ctx: &commands::Context<'_>) -> Res
 
 fn is_dj(config: &MusicConfig, roles: &[RoleId]) -> bool {
     let dj_roles = config.get_dj_role_id();
-    roles.iter().any(|id| dj_roles.contains(&id.0))
+    roles.iter().any(|id| dj_roles.contains(&id.get()))
 }
 
 /// Requires that the author is a DJ on the server to use the command.

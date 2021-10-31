@@ -1,6 +1,6 @@
 use super::{config::ResourceType, InMemoryCache};
 use std::ops::Deref;
-use twilight_model::gateway::{event::Event, payload::*, presence::UserOrId};
+use twilight_model::gateway::{event::Event, payload::incoming::*, presence::UserOrId};
 
 pub trait UpdateCache {
     // Allow this for presentation purposes in documentation.
@@ -141,36 +141,5 @@ impl UpdateCache for UnavailableGuild {
 
         cache.0.guilds.remove(&self.id);
         cache.0.unavailable_guilds.insert(self.id);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use twilight_model::{
-        channel::{
-            ChannelType, GuildChannel, TextChannel,
-        },
-        id::{ChannelId, GuildId},
-    };
-
-    fn guild_channel_text() -> (GuildId, ChannelId, GuildChannel) {
-        let guild_id = GuildId(1);
-        let channel_id = ChannelId(2);
-        let channel = GuildChannel::Text(TextChannel {
-            guild_id: Some(guild_id),
-            id: channel_id,
-            kind: ChannelType::GuildText,
-            last_message_id: None,
-            last_pin_timestamp: None,
-            name: "test".to_owned(),
-            nsfw: false,
-            parent_id: None,
-            permission_overwrites: Vec::new(),
-            position: 3,
-            rate_limit_per_user: None,
-            topic: None,
-        });
-
-        (guild_id, channel_id, channel)
     }
 }

@@ -1,5 +1,5 @@
 use crate::{prelude::*, AppState};
-use actix_web::web;
+use actix_web::{http::StatusCode, web};
 use hourai::{models::id::GuildId, proto::auto_config::*, proto::guild_configs::*};
 use hourai_redis::{CachedGuildConfig, GuildConfig};
 
@@ -11,12 +11,14 @@ where
     T: protobuf::Message + CachedGuildConfig + serde::Serialize,
 {
     // TODO(james7132): Properly set up authN and authZ for this
-    let guild_id = GuildId(path.into_inner());
-    let mut redis = data.redis.clone();
-    let response = GuildConfig::fetch::<T>(guild_id, &mut redis)
-        .await?
-        .map(web::Json);
-    Ok(response)
+    if let Some(guild_id) = GuildId::new(path.into_inner()) {
+        Ok(GuildConfig::fetch::<T>(guild_id, &mut data.redis.clone())
+            .await
+            .map_err(|_| WebError::GenericHTTPError(StatusCode::NOT_FOUND))?
+            .map(web::Json))
+    } else {
+        Err(WebError::GenericHTTPError(StatusCode::NOT_FOUND))
+    }
 }
 
 fn add_config<T: protobuf::Message + CachedGuildConfig + serde::Serialize>(

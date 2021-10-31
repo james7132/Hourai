@@ -73,28 +73,30 @@ where
         let guild_id = commands::precondition::require_in_guild(&ctx)?;
         let channel_id = ctx.message.channel_id;
 
-        let mut dummy = Self {
-            client,
-            guild_id,
-            channel_id,
-            message_id: MessageId(0),
-            expiration: Instant::now() + Duration::from_secs(300),
-            builder: T::default(),
-        };
+        unsafe {
+            let mut dummy = Self {
+                client,
+                guild_id,
+                channel_id,
+                message_id: MessageId::new_unchecked(0),
+                expiration: Instant::now() + Duration::from_secs(300),
+                builder: T::default(),
+            };
 
-        let message = dummy
-            .client
-            .http_client
-            .create_message(channel_id)
-            .content(&dummy.builder.build_content(&dummy))?
-            .embeds(&dummy.builder.build_embed(&dummy)?)?
-            .exec()
-            .await?
-            .model()
-            .await?;
+            let message = dummy
+                .client
+                .http_client
+                .create_message(channel_id)
+                .content(&dummy.builder.build_content(&dummy))?
+                .embeds(&dummy.builder.build_embed(&dummy)?)?
+                .exec()
+                .await?
+                .model()
+                .await?;
 
-        dummy.message_id = message.id;
-        Ok(dummy)
+            dummy.message_id = message.id;
+            Ok(dummy)
+        }
     }
 }
 

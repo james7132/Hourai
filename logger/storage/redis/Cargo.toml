@@ -15,5 +15,5 @@ protobuf = "2.22"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 
 [dependencies.redis]
-version = "0.20"
+version = "0.21"
 features = ["aio", "tokio-comp", "connection-manager"]

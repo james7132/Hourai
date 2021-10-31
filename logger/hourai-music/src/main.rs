@@ -18,7 +18,7 @@ use hourai::{
     config,
     gateway::{cluster::*, Event, EventTypeFlags, Intents},
     init,
-    models::id::*,
+    models::{gateway::payload::outgoing::UpdateVoiceState, id::*},
     proto::guild_configs::MusicConfig,
 };
 use hourai_redis::*;
@@ -74,7 +74,7 @@ async fn main() {
         Parser::new(parser)
     };
 
-    let http_client = init::http_client(&config);
+    let http_client = Arc::new(init::http_client(&config));
     let current_user = http_client
         .current_user()
         .exec()
@@ -90,9 +90,11 @@ async fn main() {
         .build()
         .await
         .expect("Failed to connect to the Discord gateway");
-
-    let shard_count = gateway.config().shard_config().shard()[1];
-    let lavalink = Lavalink::new(current_user.id, shard_count);
+    let gateway = Arc::new(gateway);
+    let lavalink = Arc::new(Lavalink::new(
+        current_user.id,
+        gateway.shards().len() as u64,
+    ));
     let redis = hourai_redis::init(&config).await;
     let client = Client {
         user_id: current_user.id,
@@ -130,10 +132,10 @@ async fn main() {
 #[derive(Clone)]
 pub struct Client<'a> {
     pub user_id: UserId,
-    pub http_client: hourai::http::Client,
+    pub http_client: Arc<hourai::http::Client>,
     pub hyper: HyperClient<HttpConnector>,
-    pub gateway: Cluster,
-    pub lavalink: twilight_lavalink::Lavalink,
+    pub gateway: Arc<Cluster>,
+    pub lavalink: Arc<twilight_lavalink::Lavalink>,
     pub states: Arc<DashMap<GuildId, PlayerState>>,
     pub resolver: GaiResolver,
     pub redis: RedisPool,
@@ -303,14 +305,14 @@ impl Client<'static> {
                 .await?;
             states
                 .into_iter()
-                .filter(|(_, v)| *v == channel_id.0)
+                .filter(|(_, v)| *v == channel_id.get())
                 .count()
         } else {
             0
         })
     }
 
-    pub async fn get_node(&self, guild_id: GuildId) -> Result<twilight_lavalink::Node> {
+    pub async fn get_node(&self, guild_id: GuildId) -> Result<Arc<twilight_lavalink::Node>> {
         Ok(match self.lavalink.players().get(&guild_id) {
             Some(kv) => kv.node().clone(),
             None => self.lavalink.best().await?,
@@ -376,19 +378,12 @@ impl Client<'static> {
     }
 
     pub async fn connect(&self, guild_id: GuildId, channel_id: ChannelId) -> Result<()> {
-        let shard_id = self.gateway.shard_id(guild_id);
         self.gateway
             .command(
-                shard_id,
-                &serde_json::json!({
-                    "op": 4,
-                    "d": {
-                        "channel_id": channel_id,
-                        "guild_id": guild_id,
-                        "self_mute": false,
-                        "self_deaf": false,
-                    }
-                }),
+                self.gateway.shard_id(guild_id),
+                &UpdateVoiceState::new(
+                    guild_id, channel_id, /* self_deaf */ false, /* self_mute */ false,
+                ),
             )
             .await?;
 
@@ -397,19 +392,12 @@ impl Client<'static> {
     }
 
     pub async fn disconnect(&self, guild_id: GuildId) -> Result<()> {
-        let shard_id = self.gateway.shard_id(guild_id);
         self.gateway
             .command(
-                shard_id,
-                &serde_json::json!({
-                    "op": 4,
-                    "d": {
-                        "channel_id": None::<ChannelId>,
-                        "guild_id": guild_id,
-                        "self_mute": false,
-                        "self_deaf": false,
-                    }
-                }),
+                self.gateway.shard_id(guild_id),
+                &UpdateVoiceState::new(
+                    guild_id, None, /* self_deaf */ false, /* self_mute */ false,
+                ),
             )
             .await?;
         info!("Disconnected from guild {}", guild_id);

@@ -17,32 +17,32 @@ anyhow = "1.0.38"
 bitflags = { default-features = false, version = "1" }
 chrono = "0.4"
 dashmap = { default-features = false, version = "4.0" }
-metrics-exporter-prometheus = "0.3"
+metrics-exporter-prometheus = "0.6"
 protobuf = "2.22"
 serde = "1.0"
 thiserror = "1.0"
 hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = "0.2.15"
-twilight-model = "0.6"
+twilight-model = "0.7"
 # Avoid breaking change
 funty = "=1.1.0"
 # Feature based optional dependencies
-twilight-command-parser= "0.6"
+twilight-command-parser= "0.7"
 
 [dependencies.twilight-gateway]
-version = "0.6"
+version = "0.7"
 default-features = true
 features = ['simd-json', 'rustls', 'metrics']
 
 [dependencies.twilight-http]
-version = "0.6"
+version = "0.7"
 default-features = true
 features = ['simd-json', 'rustls']
 
 [dependencies.simd-json]
 default-features = true
-version = "0.3"
+version = "0.4"
 features = ['allow-non-simd']
 
 [dev-dependencies]

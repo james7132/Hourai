@@ -5,7 +5,7 @@ use hourai::{
         application::{
             callback::{CallbackData, InteractionResponse},
             interaction::application_command::{
-                ApplicationCommand, CommandDataOption, InteractionMember,
+                ApplicationCommand, CommandDataOption, CommandOptionValue, InteractionMember,
             },
         },
         channel::{embed::Embed, message::MessageFlags},
@@ -16,6 +16,7 @@ use hourai::{
 };
 use hourai_redis::RedisPool;
 use std::str::FromStr;
+use std::sync::Arc;
 use thiserror::Error;
 
 pub type CommandResult<T> = std::result::Result<T, CommandError>;
@@ -90,7 +91,7 @@ impl From<Response> for CallbackData {
 }
 
 pub struct CommandContext {
-    pub http: Client,
+    pub http: Arc<Client>,
     pub redis: RedisPool,
     pub command: Box<ApplicationCommand>,
 }
@@ -138,14 +139,14 @@ impl CommandContext {
     }
 
     pub fn option_named(&self, name: &'static str) -> Option<&CommandDataOption> {
-        self.options().find(move |opt| opt.name().contains(name))
+        self.options().find(move |opt| opt.name.contains(name))
     }
 
     pub fn all_options_named(
         &self,
         name: &'static str,
     ) -> impl Iterator<Item = &CommandDataOption> {
-        self.options().filter(move |opt| opt.name().contains(name))
+        self.options().filter(move |opt| opt.name.contains(name))
     }
 
     /// Gets all of the raw IDs with a given name.
@@ -157,25 +158,21 @@ impl CommandContext {
     /// Checks if a boolean flag is set to true or not. If no flag with the name was found, it
     /// returs None.
     pub fn get_string(&self, name: &'static str) -> Option<&String> {
-        self.option_named(name).and_then(|option| {
-            if let CommandDataOption::String { value, .. } = option {
-                Some(value)
-            } else {
-                None
-            }
-        })
+        self.option_named(name)
+            .and_then(|option| match option.value {
+                CommandOptionValue::String(ref value) => Some(value),
+                _ => None,
+            })
     }
 
     /// Checks if a boolean flag is set to true or not. If no flag with the name was found, it
     /// returs None.
     pub fn get_flag(&self, name: &'static str) -> Option<bool> {
-        self.option_named(name).and_then(|option| {
-            if let CommandDataOption::Boolean { value, .. } = option {
-                Some(*value)
-            } else {
-                None
-            }
-        })
+        self.option_named(name)
+            .and_then(|option| match option.value {
+                CommandOptionValue::Boolean(value) => Some(value),
+                _ => None,
+            })
     }
 
     pub fn resolve_user(&self, id: UserId) -> Option<&User> {
@@ -195,7 +192,7 @@ impl CommandContext {
     }
 
     fn parse_option_id(option: &CommandDataOption) -> Option<u64> {
-        if let CommandDataOption::String { value, .. } = option {
+        if let CommandOptionValue::String(ref value) = option.value {
             u64::from_str(value).ok()
         } else {
             None
@@ -205,7 +202,7 @@ impl CommandContext {
     fn flatten_options(options: &Vec<CommandDataOption>) -> Vec<&CommandDataOption> {
         let mut all_options: Vec<&CommandDataOption> = Vec::new();
         for option in options.iter() {
-            if let CommandDataOption::SubCommand { options, .. } = option {
+            if let CommandOptionValue::SubCommand(ref options) = option.value {
                 all_options.extend(Self::flatten_options(options));
             } else {
                 all_options.push(option);
@@ -247,8 +244,8 @@ impl CommandContext {
         options: &'a Vec<CommandDataOption>,
     ) -> Option<(&'a str, &'a Vec<CommandDataOption>)> {
         for option in options.iter() {
-            if let CommandDataOption::SubCommand { name, options } = option {
-                return Some((name.as_ref(), options));
+            if let CommandOptionValue::SubCommand(ref options) = option.value {
+                return Some((option.name.as_ref(), options));
             }
         }
         None

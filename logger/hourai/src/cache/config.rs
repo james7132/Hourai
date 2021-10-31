@@ -37,30 +37,3 @@ impl Default for Config {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{Config, ResourceType};
-
-    #[test]
-    #[allow(clippy::cognitive_complexity)]
-    fn test_resource_type_const_values() {
-        assert_eq!(1, ResourceType::GUILD.bits());
-        assert_eq!(1 << 1, ResourceType::MEMBER.bits());
-        assert_eq!(1 << 2, ResourceType::PRESENCE.bits());
-    }
-
-    #[test]
-    fn test_defaults() {
-        let conf = Config {
-            resource_types: ResourceType::all(),
-        };
-        let default = Config::default();
-        assert_eq!(conf.resource_types, default.resource_types);
-    }
-
-    #[test]
-    fn test_config_fields() {
-        static_assertions::assert_fields!(Config: resource_types);
-    }
-}

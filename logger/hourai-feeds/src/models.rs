@@ -114,11 +114,11 @@ impl Feed {
     }
 
     pub fn delete_feed_channel<'a>(channel_id: ChannelId) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM feed_channels WHERE channel_id = $1").bind(channel_id.0 as i64)
+        sqlx::query("DELETE FROM feed_channels WHERE channel_id = $1").bind(channel_id.get() as i64)
     }
 
     pub fn delete_channel<'a>(channel_id: ChannelId) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM channels WHERE id = $1").bind(channel_id.0 as i64)
+        sqlx::query("DELETE FROM channels WHERE id = $1").bind(channel_id.get() as i64)
     }
 
     pub fn make_post(&self, content: Option<String>, embed: Option<Embed>) -> Post {
@@ -126,7 +126,7 @@ impl Feed {
             channel_ids: self
                 .channel_ids
                 .iter()
-                .map(|id| ChannelId(*id as u64))
+                .filter_map(|id| ChannelId::new(*id as u64))
                 .collect(),
             content,
             embed,

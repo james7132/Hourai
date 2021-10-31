@@ -27,12 +27,3 @@ impl InMemoryCacheBuilder {
         self
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::InMemoryCacheBuilder;
-    use static_assertions::assert_impl_all;
-    use std::fmt::Debug;
-
-    assert_impl_all!(InMemoryCacheBuilder: Clone, Debug, Default, Send, Sync);
-}

@@ -77,7 +77,7 @@ async fn ban(ctx: &CommandContext) -> CommandResult<Response> {
         ));
     }
     let soft = ctx.get_flag("soft").unwrap_or(false);
-    let users = ctx.all_id_options_named("user").map(UserId);
+    let users = ctx.all_id_options_named("user").filter_map(UserId::new);
     let mut success = 0;
     let mut errors = Vec::new();
 
@@ -171,7 +171,7 @@ async fn kick(ctx: &CommandContext) -> CommandResult<Response> {
         authorizer.user.as_ref().unwrap(),
         ctx.get_string("reason"),
     );
-    let members = ctx.all_id_options_named("user").map(UserId);
+    let members = ctx.all_id_options_named("user").filter_map(UserId::new);
     let mut success = 0;
     let mut errors = Vec::new();
 

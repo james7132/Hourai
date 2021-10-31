@@ -1,8 +1,8 @@
 use hourai::models::{
-    gateway::payload::MemberUpdate, guild::Ban as TwilightBan, guild::Member as TwilightMember,
-    id::*, UserLike,
+    datetime::Timestamp, gateway::payload::incoming::MemberUpdate, guild::Ban as TwilightBan,
+    guild::Member as TwilightMember, id::*, UserLike,
 };
-use sqlx::types::chrono::{DateTime, Utc};
+use sqlx::types::chrono::{DateTime, NaiveDateTime, Utc};
 use std::convert::TryInto;
 
 pub type SqlDatabase = sqlx::Postgres;
@@ -18,6 +18,16 @@ pub type SqlQueryAs<'a, O> = sqlx::query::QueryAs<
     <SqlDatabase as sqlx::database::HasArguments<'a>>::Arguments,
 >;
 
+fn to_datetime(timestamp: &Timestamp) -> DateTime<Utc> {
+    let micros = timestamp.as_micros();
+    let secs = micros / 1000000;
+    let nsecs = (micros % 1000000) * 1000;
+    DateTime::from_utc(
+        NaiveDateTime::from_timestamp(secs as i64, nsecs as u32),
+        Utc,
+    )
+}
+
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Username {
     pub user_id: i64,
@@ -29,7 +39,7 @@ pub struct Username {
 impl Username {
     pub fn new(user: &impl UserLike) -> Self {
         Self {
-            user_id: user.id().0 as i64,
+            user_id: user.id().get() as i64,
             timestamp: Utc::now(),
             name: user.name().to_owned(),
             discriminator: Some(user.discriminator() as u32),
@@ -42,14 +52,14 @@ impl Username {
                 "SELECT user_id, timestamp, name, discriminator \
                  FROM usernames WHERE user_id = $1 LIMIT $2",
             )
-            .bind(user_id.0 as i64)
+            .bind(user_id.get() as i64)
             .bind(max as i64)
         } else {
             sqlx::query_as(
                 "SELECT user_id, timestamp, name, discriminator \
                  FROM usernames WHERE user_id = $1",
             )
-            .bind(user_id.0 as i64)
+            .bind(user_id.get() as i64)
         }
     }
 
@@ -104,7 +114,7 @@ impl VerificationBan {
                 ban.guild_id = $1 AND \
                 LOWER(username.name) = $2",
         )
-        .bind(guild_id.0 as i64)
+        .bind(guild_id.get() as i64)
         .bind(name)
     }
 
@@ -124,7 +134,7 @@ impl VerificationBan {
                 ban.guild_id = $1 AND \
                 LOWER(ban.avatar) = $2",
         )
-        .bind(guild_id.0 as i64)
+        .bind(guild_id.get() as i64)
         .bind(avatar)
     }
 }
@@ -140,15 +150,15 @@ pub struct Ban {
 impl Ban {
     pub fn from(guild_id: GuildId, ban: TwilightBan) -> Self {
         Self {
-            guild_id: guild_id.0 as i64,
-            user_id: ban.user.id.0 as i64,
+            guild_id: guild_id.get() as i64,
+            user_id: ban.user.id.get() as i64,
             reason: ban.reason,
             avatar: ban.user.avatar,
         }
     }
 
     pub fn guild_id(&self) -> GuildId {
-        GuildId(self.guild_id as u64)
+        unsafe { GuildId::new_unchecked(self.guild_id as u64) }
     }
 
     /// Constructs a query to add a single ban.
@@ -187,13 +197,13 @@ impl Ban {
     /// Constructs a query to clear a single user's ban from a given guild.
     pub fn clear_ban<'a>(guild_id: GuildId, user_id: UserId) -> SqlQuery<'a> {
         sqlx::query("DELETE FROM bans WHERE guild_id = $1 AND user_id = $2")
-            .bind(guild_id.0 as i64)
-            .bind(user_id.0 as i64)
+            .bind(guild_id.get() as i64)
+            .bind(user_id.get() as i64)
     }
 
     /// Constructs a query to clear a all bans from a given guild.
     pub fn clear_guild<'a>(guild_id: GuildId) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM bans WHERE guild_id = $1").bind(guild_id.0 as i64)
+        sqlx::query("DELETE FROM bans WHERE guild_id = $1").bind(guild_id.get() as i64)
     }
 
     /// Constructs a query to clear a all bans from a given shard.
@@ -206,7 +216,7 @@ impl Ban {
     /// Constructs a query to retreive all bans from a given guild.
     pub fn fetch_guild_bans<'a>(guild_id: GuildId) -> SqlQueryAs<'a, Self> {
         sqlx::query_as("SELECT guild_id, user_id, reason, avatar FROM bans WHERE guild_id = $1")
-            .bind(guild_id.0 as i64)
+            .bind(guild_id.get() as i64)
     }
 
     /// Constructs a query to retreive all bans for a given user, ignoring certain servers.
@@ -222,7 +232,7 @@ impl Ban {
                 bans.user_id = $1 AND \
                 (admin_configs.id IS NULL OR admin_configs.source_bans = true)",
         )
-        .bind(user_id.0 as i64)
+        .bind(user_id.get() as i64)
     }
 }
 
@@ -238,14 +248,11 @@ pub struct Member {
 
 impl From<&TwilightMember> for Member {
     fn from(member: &TwilightMember) -> Self {
-        let premium = member
-            .premium_since
-            .as_ref()
-            .and_then(|p| p.parse::<DateTime<Utc>>().ok());
+        let premium = member.premium_since.as_ref().map(|p| to_datetime(p));
         Self {
-            guild_id: member.guild_id.0 as i64,
-            user_id: member.user.id.0 as i64,
-            role_ids: member.roles.iter().map(|id| id.0 as i64).collect(),
+            guild_id: member.guild_id.get() as i64,
+            user_id: member.user.id.get() as i64,
+            role_ids: member.roles.iter().map(|id| id.get() as i64).collect(),
             nickname: member.nick.clone(),
             bot: member.user.bot,
             premium_since: premium,
@@ -255,14 +262,11 @@ impl From<&TwilightMember> for Member {
 
 impl From<&MemberUpdate> for Member {
     fn from(member: &MemberUpdate) -> Self {
-        let premium = member
-            .premium_since
-            .as_ref()
-            .and_then(|p| p.parse::<DateTime<Utc>>().ok());
+        let premium = member.premium_since.as_ref().map(|p| to_datetime(p));
         Self {
-            guild_id: member.guild_id.0 as i64,
-            user_id: member.user.id.0 as i64,
-            role_ids: member.roles.iter().map(|id| id.0 as i64).collect(),
+            guild_id: member.guild_id.get() as i64,
+            user_id: member.user.id.get() as i64,
+            role_ids: member.roles.iter().map(|id| id.get() as i64).collect(),
             nickname: member.nick.clone(),
             bot: member.user.bot,
             premium_since: premium,
@@ -272,17 +276,19 @@ impl From<&MemberUpdate> for Member {
 
 impl Member {
     pub fn guild_id(&self) -> GuildId {
-        GuildId(self.user_id as u64)
+        unsafe { GuildId::new_unchecked(self.user_id as u64) }
     }
 
     pub fn user_id(&self) -> UserId {
-        UserId(self.user_id as u64)
+        unsafe { UserId::new_unchecked(self.user_id as u64) }
     }
 
     pub fn role_ids(&self) -> impl Iterator<Item = RoleId> + '_ {
-        self.role_ids
-            .iter()
-            .map(|id| RoleId(id.clone().try_into().unwrap()))
+        unsafe {
+            self.role_ids
+                .iter()
+                .map(|id| RoleId::new_unchecked(id.clone().try_into().unwrap()))
+        }
     }
 
     pub fn set_present<'a>(guild_id: GuildId, user_id: UserId, present: bool) -> SqlQuery<'a> {
@@ -291,8 +297,8 @@ impl Member {
                      WHERE guild_id = $2 AND user_id = $3",
         )
         .bind(present)
-        .bind(guild_id.0 as i64)
-        .bind(user_id.0 as i64)
+        .bind(guild_id.get() as i64)
+        .bind(user_id.get() as i64)
     }
 
     pub fn insert<'a>(self) -> SqlQuery<'a> {
@@ -330,19 +336,19 @@ impl Member {
     ) -> SqlQueryAs<'a, (i64,)> {
         if include_bots {
             sqlx::query_as("SELECT count(*) FROM members WHERE guild_id = $1 AND present")
-                .bind(guild_id.0 as i64)
+                .bind(guild_id.get() as i64)
         } else {
             sqlx::query_as(
                 "SELECT count(*) FROM members WHERE guild_id = $1 AND present AND NOT bot",
             )
-            .bind(guild_id.0 as i64)
+            .bind(guild_id.get() as i64)
         }
     }
 
     pub fn fetch<'a>(guild_id: GuildId, user_id: UserId) -> SqlQueryAs<'a, Self> {
         sqlx::query_as("SELECT * FROM members WHERE guild_id = $1 AND user_id = $2")
-            .bind(guild_id.0 as i64)
-            .bind(user_id.0 as i64)
+            .bind(guild_id.get() as i64)
+            .bind(user_id.get() as i64)
     }
 
     /// Marks all members as not present in preparation for repopulating the column.
@@ -354,17 +360,17 @@ impl Member {
 
     /// Clears all of the records for a server
     pub fn clear_guild<'a>(guild_id: GuildId) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM members WHERE guild_id = $1").bind(guild_id.0 as i64)
+        sqlx::query("DELETE FROM members WHERE guild_id = $1").bind(guild_id.get() as i64)
     }
 
     /// Deletes all record of a single role from the database
     pub fn clear_role<'a>(guild_id: GuildId, role_id: RoleId) -> SqlQuery<'a> {
         sqlx::query(
             "UPDATE members \
-                     SET role_ids = array_remove(role_ids, $1) \
-                     WHERE guild_id = $2",
+             SET role_ids = array_remove(role_ids, $1) \
+             WHERE guild_id = $2",
         )
-        .bind(role_id.0 as i64)
-        .bind(guild_id.0 as i64)
+        .bind(role_id.get() as i64)
+        .bind(guild_id.get() as i64)
     }
 }

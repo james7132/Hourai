@@ -3,6 +3,7 @@ pub mod user;
 
 pub use twilight_model::application;
 pub use twilight_model::channel;
+pub use twilight_model::datetime;
 pub use twilight_model::gateway;
 pub use twilight_model::guild;
 pub use twilight_model::id;
@@ -41,7 +42,7 @@ macro_rules! snowflake_id {
     ($id:ty) => {
         impl SnowflakeId for $id {
             fn as_u64(&self) -> u64 {
-                self.0
+                self.get()
             }
         }
     };

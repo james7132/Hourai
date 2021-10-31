@@ -2,7 +2,7 @@ use super::user::UserLike;
 use super::Snowflake;
 use crate::proto::cache::{CachedMessageProto, CachedUserProto};
 use twilight_model::channel::Message;
-use twilight_model::gateway::payload::MessageUpdate;
+use twilight_model::gateway::payload::incoming::MessageUpdate;
 use twilight_model::id::*;
 use twilight_model::user::User;
 
@@ -38,7 +38,7 @@ impl Snowflake<MessageId> for Message {
 
 impl Snowflake<MessageId> for CachedMessageProto {
     fn id(&self) -> MessageId {
-        MessageId(self.get_id())
+        unsafe { MessageId::new_unchecked(self.get_id()) }
     }
 }
 
@@ -72,12 +72,12 @@ impl MessageLike for CachedMessageProto {
     type Author = CachedUserProto;
 
     fn channel_id(&self) -> ChannelId {
-        ChannelId(self.get_channel_id())
+        unsafe { ChannelId::new_unchecked(self.get_channel_id()) }
     }
 
     fn guild_id(&self) -> Option<GuildId> {
         if self.has_guild_id() {
-            Some(GuildId(self.get_guild_id()))
+            unsafe { Some(GuildId::new_unchecked(self.get_guild_id())) }
         } else {
             None
         }

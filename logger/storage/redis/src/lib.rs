@@ -56,8 +56,8 @@ impl OnlineStatus {
         guild_id: GuildId,
         online: impl IntoIterator<Item = UserId>,
     ) -> &mut Self {
-        let key = CacheKey::OnlineStatus(guild_id);
-        let ids: Vec<Id<u64>> = online.into_iter().map(|id| Id(id.0)).collect();
+        let key = CacheKey::OnlineStatus(guild_id.get());
+        let ids: Vec<Id<u64>> = online.into_iter().map(|id| Id(id.get())).collect();
         self.pipeline
             .del(key)
             .ignore()
@@ -79,7 +79,7 @@ impl GuildConfig {
         id: GuildId,
         conn: &mut RedisPool,
     ) -> std::result::Result<Option<T>, redis::RedisError> {
-        let key = CacheKey::GuildConfigs(id);
+        let key = CacheKey::GuildConfigs(id.get());
         let response: Option<Compressed<Protobuf<T>>> = redis::Cmd::hget(key, vec![T::SUBKEY])
             .query_async(conn)
             .await?;
@@ -94,7 +94,7 @@ impl GuildConfig {
     }
 
     pub fn set<T: ::protobuf::Message + CachedGuildConfig>(id: GuildId, value: T) -> redis::Cmd {
-        let key = CacheKey::GuildConfigs(id);
+        let key = CacheKey::GuildConfigs(id.get());
         redis::Cmd::hset(key, vec![T::SUBKEY], Compressed(Protobuf(value)))
     }
 }
@@ -106,16 +106,16 @@ pub struct CachedMessage {
 impl CachedMessage {
     pub fn new(message: impl MessageLike) -> Self {
         let mut msg = CachedMessageProto::new();
-        msg.set_id(message.id().0);
-        msg.set_channel_id(message.channel_id().0);
+        msg.set_id(message.id().get());
+        msg.set_channel_id(message.channel_id().get());
         msg.set_content(message.content().to_owned());
         if let Some(guild_id) = message.guild_id() {
-            msg.set_guild_id(guild_id.0)
+            msg.set_guild_id(guild_id.get())
         }
 
         let user = msg.mut_author();
         let author = message.author();
-        user.set_id(author.id().0);
+        user.set_id(author.id().get());
         user.set_username(author.name().to_owned());
         user.set_discriminator(author.discriminator() as u32);
         user.set_bot(author.bot());
@@ -133,13 +133,13 @@ impl CachedMessage {
         message_id: MessageId,
         conn: &mut C,
     ) -> Result<Option<CachedMessageProto>> {
-        let key = CacheKey::Messages(channel_id, message_id);
+        let key = CacheKey::Messages(channel_id.get(), message_id.get());
         let proto: Option<Protobuf<CachedMessageProto>> =
             redis::Cmd::get(key).query_async(conn).await?;
         Ok(proto.map(|msg| {
             let mut cached_message = msg.0;
-            cached_message.set_id(message_id.0);
-            cached_message.set_channel_id(channel_id.0);
+            cached_message.set_id(message_id.get());
+            cached_message.set_channel_id(channel_id.get());
             cached_message
         }))
     }
@@ -147,7 +147,7 @@ impl CachedMessage {
     pub fn flush(mut self) -> redis::Cmd {
         let channel_id = self.proto.0.get_channel_id();
         let id = self.proto.0.get_id();
-        let key = CacheKey::Messages(ChannelId(channel_id), MessageId(id));
+        let key = CacheKey::Messages(channel_id, id);
         // Remove IDs to save space, as it's in the key.
         self.proto.0.clear_id();
         self.proto.0.clear_channel_id();
@@ -165,7 +165,7 @@ impl CachedMessage {
     ) -> redis::Cmd {
         let keys: Vec<CacheKey> = ids
             .into_iter()
-            .map(|id| CacheKey::Messages(channel_id, id))
+            .map(|id| CacheKey::Messages(channel_id.get(), id.get()))
             .collect();
         redis::Cmd::del(keys)
     }
@@ -176,7 +176,9 @@ pub struct CachedVoiceState;
 impl CachedVoiceState {
     pub fn update_guild(guild: &Guild) -> redis::Pipeline {
         let mut pipe = redis::pipe();
-        pipe.atomic().del(CacheKey::VoiceState(guild.id)).ignore();
+        pipe.atomic()
+            .del(CacheKey::VoiceState(guild.id.get()))
+            .ignore();
         for state in guild.voice_states.iter() {
             pipe.add_command(Self::save(state)).ignore();
         }
@@ -184,27 +186,27 @@ impl CachedVoiceState {
     }
 
     pub fn get_channel(guild_id: GuildId, user_id: UserId) -> redis::Cmd {
-        redis::Cmd::hget(CacheKey::VoiceState(guild_id), user_id.0)
+        redis::Cmd::hget(CacheKey::VoiceState(guild_id.get()), user_id.get())
     }
 
     pub fn get_channels(guild_id: GuildId) -> redis::Cmd {
-        redis::Cmd::hgetall(CacheKey::VoiceState(guild_id))
+        redis::Cmd::hgetall(CacheKey::VoiceState(guild_id.get()))
     }
 
     pub fn save(state: &VoiceState) -> redis::Cmd {
         let guild_id = state
             .guild_id
             .expect("Only voice states in guilds should be cached");
-        let key = CacheKey::VoiceState(guild_id);
+        let key = CacheKey::VoiceState(guild_id.get());
         if let Some(channel_id) = state.channel_id {
-            redis::Cmd::hset(key, state.user_id.0, channel_id.0)
+            redis::Cmd::hset(key, state.user_id.get(), channel_id.get())
         } else {
-            redis::Cmd::hdel(key, state.user_id.0)
+            redis::Cmd::hdel(key, state.user_id.get())
         }
     }
 
     pub fn clear_guild(guild_id: GuildId) -> redis::Cmd {
-        redis::Cmd::del(CacheKey::VoiceState(guild_id))
+        redis::Cmd::del(CacheKey::VoiceState(guild_id.get()))
     }
 }
 
@@ -212,7 +214,7 @@ pub struct CachedGuild;
 
 impl CachedGuild {
     pub fn save(guild: &hourai::models::guild::Guild) -> redis::Pipeline {
-        let key = CacheKey::Guild(guild.id);
+        let key = CacheKey::Guild(guild.id.get());
         let mut pipe = redis::pipe();
         pipe.atomic().del(key).ignore();
         pipe.add_command(Self::save_resource(guild.id, guild.id, guild))
@@ -230,7 +232,7 @@ impl CachedGuild {
 
     /// Deletes all of the cached information about a guild from the cache.
     pub fn delete(guild_id: GuildId) -> redis::Cmd {
-        redis::Cmd::del(CacheKey::Guild(guild_id))
+        redis::Cmd::del(CacheKey::Guild(guild_id.get()))
     }
 
     /// Gets a cached resource from the cache.
@@ -242,7 +244,7 @@ impl CachedGuild {
     where
         GuildKey: From<T::Id> + ToRedisArgs,
     {
-        let guild_key = CacheKey::Guild(guild_id);
+        let guild_key = CacheKey::Guild(guild_id.get());
         let proto: Option<Protobuf<T::Proto>> = redis::Cmd::hget(guild_key, resource_id.into())
             .query_async(conn)
             .await?;
@@ -265,7 +267,7 @@ impl CachedGuild {
                 .into_iter()
                 .collect(),
             _ => {
-                let guild_key = CacheKey::Guild(guild_id);
+                let guild_key = CacheKey::Guild(guild_id.get());
                 let resource_keys: Vec<GuildKey> =
                     resource_ids.iter().map(|id| id.clone().into()).collect();
                 let protos: Vec<Option<Protobuf<T::Proto>>> =
@@ -290,7 +292,7 @@ impl CachedGuild {
         GuildKey: From<T::Id> + ToRedisArgs,
     {
         let proto = Protobuf(data.to_proto());
-        redis::Cmd::hset(CacheKey::Guild(guild_id), resource_id.into(), proto)
+        redis::Cmd::hset(CacheKey::Guild(guild_id.get()), resource_id.into(), proto)
     }
 
     /// Deletes a resource from the cache.
@@ -298,7 +300,7 @@ impl CachedGuild {
     where
         GuildKey: From<T::Id> + ToRedisArgs,
     {
-        redis::Cmd::hdel(CacheKey::Guild(guild_id), resource_id.into())
+        redis::Cmd::hdel(CacheKey::Guild(guild_id.get()), resource_id.into())
     }
 
     /// Fetches a `RoleSet` from the provided guild and role IDs.
@@ -323,7 +325,7 @@ impl CachedGuild {
     ) -> Result<Permissions> {
         // The owner has all permissions.
         if let Some(guild) = Self::fetch_resource::<Guild>(guild_id, guild_id, conn).await? {
-            if guild.get_owner_id() == user_id.0 {
+            if guild.get_owner_id() == user_id.get() {
                 return Ok(Permissions::all());
             }
         } else {
@@ -408,10 +410,10 @@ impl ToProto for Guild {
     type Proto = CachedGuildProto;
     fn to_proto(&self) -> Self::Proto {
         let mut proto = Self::Proto::new();
-        proto.set_id(self.id.0);
+        proto.set_id(self.id.get());
         proto.set_name(self.name.clone());
         proto.features = ::protobuf::RepeatedField::from_vec(self.features.clone());
-        proto.set_owner_id(self.owner_id.0);
+        proto.set_owner_id(self.owner_id.get());
         if let Some(ref code) = self.vanity_url_code {
             proto.set_vanity_url_code(code.clone());
         }
@@ -428,10 +430,10 @@ impl ToProto for PartialGuild {
     type Proto = CachedGuildProto;
     fn to_proto(&self) -> Self::Proto {
         let mut proto = Self::Proto::new();
-        proto.set_id(self.id.0);
+        proto.set_id(self.id.get());
         proto.set_name(self.name.clone());
         proto.features = ::protobuf::RepeatedField::from_vec(self.features.clone());
-        proto.set_owner_id(self.owner_id.0);
+        proto.set_owner_id(self.owner_id.get());
         if let Some(ref code) = self.vanity_url_code {
             proto.set_vanity_url_code(code.clone());
         }
@@ -448,7 +450,7 @@ impl ToProto for GuildChannel {
     type Proto = CachedGuildChannelProto;
     fn to_proto(&self) -> Self::Proto {
         let mut proto = Self::Proto::new();
-        proto.set_channel_id(self.id().0);
+        proto.set_channel_id(self.id().get());
         proto.set_name(self.name().to_owned());
         proto
     }
@@ -463,7 +465,7 @@ impl ToProto for Role {
     type Proto = CachedRoleProto;
     fn to_proto(&self) -> Self::Proto {
         let mut proto = Self::Proto::new();
-        proto.set_role_id(self.id.0);
+        proto.set_role_id(self.id.get());
         proto.set_name(self.name.clone());
         proto.set_position(self.position);
         proto.set_permissions(self.permissions.bits());

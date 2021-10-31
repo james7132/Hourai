@@ -38,7 +38,7 @@ pub trait UserLike: Snowflake<UserId> {
     }
 
     fn default_avatar_url(&self) -> String {
-        let idx = self.id().0 % DEFAULT_AVATAR_COUNT;
+        let idx = self.id().get() % DEFAULT_AVATAR_COUNT;
         format!("{}/embed/avatars/{}.png", BASE_ASSET_URI, idx)
     }
 
@@ -67,7 +67,7 @@ impl Snowflake<UserId> for Member {
 
 impl Snowflake<UserId> for CachedUserProto {
     fn id(&self) -> UserId {
-        UserId(self.get_id())
+        unsafe { UserId::new_unchecked(self.get_id()) }
     }
 }
 
@@ -77,7 +77,7 @@ impl UserLike for User {
     }
 
     fn discriminator(&self) -> u16 {
-        self.discriminator.parse::<u16>().unwrap()
+        self.discriminator
     }
 
     fn avatar_hash(&self) -> Option<&str> {
@@ -95,7 +95,7 @@ impl UserLike for Member {
     }
 
     fn discriminator(&self) -> u16 {
-        self.user.discriminator.parse::<u16>().unwrap()
+        self.user.discriminator
     }
 
     fn avatar_hash(&self) -> Option<&str> {

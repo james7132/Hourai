@@ -7,15 +7,15 @@ use redis::{RedisWrite, ToRedisArgs};
 pub enum CacheKey {
     /// Protobuf configs for per server configuration. Stored in the form of hashes with individual
     /// configs as hash values, keyed by the corresponding CachedGuildConfig subkey.
-    GuildConfigs(GuildId),
+    GuildConfigs(/* Guild ID */ u64),
     /// Redis sets of per-server user IDs of online users.
-    OnlineStatus(GuildId),
+    OnlineStatus(/* Guild ID */ u64),
     /// Messages cached.
-    Messages(ChannelId, MessageId),
+    Messages(/* Channel ID */ u64, /* Message ID */ u64),
     /// Cached guild data.
-    Guild(GuildId),
+    Guild(/* Guild ID */ u64),
     /// Cached voice state data.
-    VoiceState(GuildId),
+    VoiceState(/* Guild ID */ u64),
 }
 
 impl CacheKey {
@@ -36,13 +36,13 @@ impl ToRedisArgs for CacheKey {
         W: RedisWrite,
     {
         match self {
-            Self::GuildConfigs(id) => PrefixedKey(self.prefix(), id.0).write_redis_args(out),
-            Self::OnlineStatus(id) => PrefixedKey(self.prefix(), id.0).write_redis_args(out),
+            Self::GuildConfigs(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
+            Self::OnlineStatus(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
             Self::Messages(ch_id, msg_id) => {
-                PrefixedKey(self.prefix(), (ch_id.0, msg_id.0)).write_redis_args(out)
+                PrefixedKey(self.prefix(), (*ch_id, *msg_id)).write_redis_args(out)
             }
-            Self::Guild(id) => PrefixedKey(self.prefix(), id.0).write_redis_args(out),
-            Self::VoiceState(id) => PrefixedKey(self.prefix(), id.0).write_redis_args(out),
+            Self::Guild(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
+            Self::VoiceState(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
         }
     }
 }
@@ -75,8 +75,8 @@ impl ToRedisArgs for GuildKey {
     {
         match self {
             Self::Guild => PrefixedKey(self.prefix(), ()).write_redis_args(out),
-            Self::Role(id) => PrefixedKey(self.prefix(), id.0).write_redis_args(out),
-            Self::Channel(id) => PrefixedKey(self.prefix(), id.0).write_redis_args(out),
+            Self::Role(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
+            Self::Channel(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
         }
     }
 }

@@ -1,6 +1,7 @@
 pub mod precondition;
 pub mod prelude;
 
+use std::sync::Arc;
 use thiserror::Error;
 use twilight_http::request::channel::message::*;
 use twilight_model::channel::Message;
@@ -8,7 +9,7 @@ use twilight_model::channel::Message;
 #[derive(Debug, Clone)]
 pub struct Context<'a> {
     pub message: &'a Message,
-    pub http: twilight_http::Client,
+    pub http: Arc<twilight_http::Client>,
 }
 
 impl Context<'_> {

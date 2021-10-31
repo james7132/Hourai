@@ -1,16 +1,16 @@
 use crate::Client;
 use anyhow::Result;
 use hourai::models::channel::GuildChannel;
-use hourai::models::gateway::payload::{BanAdd, MemberRemove};
+use hourai::models::gateway::payload::incoming::{BanAdd, MemberRemove};
 use hourai::models::id::*;
 use hourai::models::user::User;
 use hourai::models::voice::VoiceState;
 use hourai::proto::guild_configs::*;
 use hourai_redis::GuildConfig;
+use std::sync::Arc;
 
 async fn get_config(client: &Client, guild_id: GuildId) -> Result<Option<AnnouncementConfig>> {
-    let mut redis = client.redis.clone();
-    Ok(GuildConfig::fetch(guild_id, &mut redis).await?)
+    Ok(GuildConfig::fetch(guild_id, &mut client.redis()).await?)
 }
 
 pub async fn on_member_join(client: &Client, guild: GuildId, user: User) -> Result<()> {
@@ -49,7 +49,7 @@ pub async fn on_voice_update(
         Some(guild) => guild,
         None => return Ok(()),
     };
-    let mut redis = client.redis.clone();
+    let mut redis = client.redis();
     let before_channel = if let Some(id) = before {
         hourai_redis::CachedGuild::fetch_resource::<GuildChannel>(guild, id, &mut redis).await?
     } else {
@@ -90,19 +90,20 @@ pub async fn on_voice_update(
 }
 
 pub fn broadcast(client: &Client, config: &AnnouncementTypeConfig, message: String) {
-    async fn push(http: hourai::http::Client, channel: ChannelId, msg: String) -> Result<()> {
+    async fn push(http: Arc<hourai::http::Client>, channel: ChannelId, msg: String) -> Result<()> {
         http.create_message(channel).content(&msg)?.exec().await?;
         Ok(())
     }
 
     for channel in config.get_channel_ids() {
-        let http = client.http_client.clone();
-        let channel_id = ChannelId(*channel);
-        let msg = message.clone();
-        tokio::spawn(async move {
-            if let Err(err) = push(http, channel_id, msg).await {
-                tracing::error!("Error while making announcment in {}: {}", channel_id, err);
-            }
-        });
+        if let Some(channel_id) = ChannelId::new(*channel) {
+            let http = client.http_client();
+            let msg = message.clone();
+            tokio::spawn(async move {
+                if let Err(err) = push(http, channel_id, msg).await {
+                    tracing::error!("Error while making announcment in {}: {}", channel_id, err);
+                }
+            });
+        }
     }
 }

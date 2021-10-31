@@ -2,9 +2,12 @@ use crate::Client;
 use anyhow::anyhow;
 use anyhow::Result;
 use chrono::Utc;
-use hourai::models::gateway::payload::{MessageDelete, MessageDeleteBulk};
-use hourai::models::id::*;
-use hourai::models::{MessageLike, Snowflake, UserLike};
+use hourai::models::{
+    datetime::Timestamp,
+    gateway::payload::incoming::{MessageDelete, MessageDeleteBulk},
+    id::*,
+    MessageLike, Snowflake, UserLike,
+};
 use hourai::proto::guild_configs::*;
 use hourai::proto::util::IdFilter;
 use hourai_redis::{CachedMessage, GuildConfig};
@@ -19,7 +22,7 @@ fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
         )
         .title(format!("ID: {}", message.id()))
         .url(message.message_link())
-        .timestamp(Utc::now().to_rfc3339()))
+        .timestamp(Timestamp::from_secs(Utc::now().timestamp() as u64).unwrap()))
 }
 
 fn message_to_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
@@ -33,7 +36,7 @@ fn message_diff_embed(before: &impl MessageLike, after: &impl MessageLike) -> Re
 }
 
 async fn get_logging_config(client: &mut Client, guild_id: GuildId) -> Result<LoggingConfig> {
-    Ok(GuildConfig::fetch_or_default(guild_id, &mut client.redis).await?)
+    Ok(GuildConfig::fetch_or_default(guild_id, &mut client.redis()).await?)
 }
 
 fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {
@@ -47,7 +50,7 @@ fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {
 }
 
 fn should_log(config: &MessageLoggingConfig, channel_id: ChannelId) -> bool {
-    config.get_enabled() && meets_id_filter(config.get_channel_filter(), channel_id.0)
+    config.get_enabled() && meets_id_filter(config.get_channel_filter(), channel_id.get())
 }
 
 fn get_output_channel(
@@ -61,7 +64,7 @@ fn get_output_channel(
     } else {
         return None;
     };
-    Some(ChannelId(id))
+    ChannelId::new(id)
 }
 
 pub(super) async fn on_message_update(
@@ -78,7 +81,7 @@ pub(super) async fn on_message_update(
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, before.channel_id()) {
         client
-            .http_client
+            .http_client()
             .create_message(output_channel.unwrap())
             .content(&format!(
                 "Message by <@{}> edited from <#{}>",
@@ -100,13 +103,13 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
-        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut client.redis).await?;
+        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut client.redis()).await?;
         if let Some(msg) = cached {
             if msg.author().bot() {
                 return Ok(());
             }
             client
-                .http_client
+                .http_client()
                 .create_message(output_channel.unwrap())
                 .content(&format!(
                     "Message by <@{}> deleted from <#{}>",
@@ -133,7 +136,7 @@ pub(super) async fn on_message_bulk_delete(
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
         client
-            .http_client
+            .http_client()
             .create_message(output_channel.unwrap())
             .content(&format!(
                 "{} messages bulk deleted from <#{}>",

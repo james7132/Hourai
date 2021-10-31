@@ -17,14 +17,13 @@ async fn get_roles(
     user_id: UserId,
 ) -> hourai_sql::Result<Vec<RoleId>> {
     hourai_sql::Member::fetch(guild_id, user_id)
-        .fetch_one(&client.sql)
+        .fetch_one(client.sql())
         .await
         .map(|member| member.role_ids().collect())
 }
 
 async fn get_role_flags(client: &Client, guild_id: GuildId) -> Result<HashMap<u64, RoleFlags>> {
-    let config =
-        GuildConfig::fetch_or_default::<RoleConfig>(guild_id, &mut client.redis.clone()).await?;
+    let config = GuildConfig::fetch_or_default::<RoleConfig>(guild_id, &mut client.redis()).await?;
     Ok(config
         .get_settings()
         .iter()
@@ -34,11 +33,10 @@ async fn get_role_flags(client: &Client, guild_id: GuildId) -> Result<HashMap<u6
 
 async fn get_verification_role(client: &Client, guild_id: GuildId) -> Result<Option<RoleId>> {
     let config =
-        GuildConfig::fetch_or_default::<VerificationConfig>(guild_id, &mut client.redis.clone())
-            .await?;
+        GuildConfig::fetch_or_default::<VerificationConfig>(guild_id, &mut client.redis()).await?;
 
     if config.get_enabled() && config.has_role_id() {
-        Ok(Some(RoleId(config.get_role_id())))
+        Ok(RoleId::new(config.get_role_id()))
     } else {
         Ok(None)
     }
@@ -48,16 +46,16 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
     let guild_id = member.guild_id;
     let user_id = member.user.id;
 
-    let bot_roles = match get_roles(client, guild_id, client.user_id).await {
+    let bot_roles = match get_roles(client, guild_id, client.user_id()).await {
         Ok(roles) => roles,
         Err(hourai_sql::Error::RowNotFound) => return Ok(()),
         Err(err) => anyhow::bail!(err),
     };
 
-    let mut redis = client.redis.clone();
+    let mut redis = client.redis();
     let perms = CachedGuild::guild_permissions(
         guild_id,
-        client.user_id,
+        client.user_id(),
         bot_roles.iter().cloned(),
         &mut redis,
     )
@@ -88,7 +86,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
                 .unwrap_or_else(RoleFlags::empty);
             role < &&max_role && role_flags.contains(RoleFlags::RESTORABLE)
         })
-        .map(|role| RoleId(role.get_role_id()))
+        .filter_map(|role| RoleId::new(role.get_role_id()))
         .collect();
 
     // Do not give out the verification role if it is enabled.
@@ -101,7 +99,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
     }
 
     client
-        .http_client
+        .http_client()
         .update_guild_member(guild_id, member.user.id)
         .roles(&restorable)
         .exec()
