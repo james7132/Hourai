@@ -3,19 +3,23 @@ use hourai::{
     http::request::prelude::AuditLogReason,
     models::{guild::Permissions, id::UserId, user::User},
 };
-use hourai_redis::CachedGuild;
+use hourai_redis::{RedisPool, CachedGuild};
+use hourai_sql::SqlPool;
+use hourai::interactions::{Command, CommandContext, CommandError, CommandResult, Response};
 
-mod context;
+#[derive(Clone)]
+pub struct StorageContext {
+    pub redis: RedisPool,
+    pub sql: SqlPool,
+}
 
-pub use context::{Command, CommandContext, CommandError, CommandResult, Response};
-
-pub async fn handle_command(ctx: CommandContext) -> Result<()> {
+pub async fn handle_command(ctx: CommandContext, storage: StorageContext) -> Result<()> {
     let result = match ctx.command() {
         Command::Command("pingmod") => pingmod(&ctx).await,
 
         // Admin Commands
-        Command::Command("ban") => ban(&ctx).await,
-        Command::Command("kick") => kick(&ctx).await,
+        Command::Command("ban") => ban(&ctx, &storage).await,
+        Command::Command("kick") => kick(&ctx, &storage).await,
         _ => Err(CommandError::UnknownCommand),
     };
 
@@ -59,9 +63,9 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
     }
 }
 
-async fn ban(ctx: &CommandContext) -> CommandResult<Response> {
+async fn ban(ctx: &CommandContext, storage: &StorageContext) -> CommandResult<Response> {
     let guild_id = ctx.guild_id()?;
-    let mut redis = ctx.redis.clone();
+    let mut redis = storage.redis.clone();
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
     let authorizer_roles = CachedGuild::role_set(guild_id, &authorizer.roles, &mut redis).await?;
     let reason = build_reason(
@@ -157,13 +161,13 @@ async fn ban(ctx: &CommandContext) -> CommandResult<Response> {
     }
 }
 
-async fn kick(ctx: &CommandContext) -> CommandResult<Response> {
+async fn kick(ctx: &CommandContext, storage: &StorageContext) -> CommandResult<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
         return Err(CommandError::MissingPermission("Kick Members"));
     }
 
-    let mut redis = ctx.redis.clone();
+    let mut redis = storage.redis.clone();
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
     let authorizer_roles = CachedGuild::role_set(guild_id, &authorizer.roles, &mut redis).await?;
     let reason = build_reason(

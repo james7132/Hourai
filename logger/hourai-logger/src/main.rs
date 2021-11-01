@@ -541,12 +541,15 @@ impl Client {
                     .await?;
             }
             Interaction::ApplicationCommand(cmd) => {
-                let ctx = commands::CommandContext {
+                let ctx = hourai::interactions::CommandContext {
                     http: self.http_client(),
-                    redis: self.redis(),
                     command: cmd,
                 };
-                commands::handle_command(ctx).await?;
+                let storage = commands::StorageContext {
+                    redis: self.redis(),
+                    sql: self.sql().clone(),
+                };
+                commands::handle_command(ctx, storage).await?;
             }
             interaction => {
                 warn!("Unknown incoming interaction: {:?}", interaction);

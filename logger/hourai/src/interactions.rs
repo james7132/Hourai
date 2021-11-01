@@ -1,5 +1,5 @@
 use anyhow::Result;
-use hourai::{
+use crate::{
     http::Client,
     models::{
         application::{
@@ -14,7 +14,6 @@ use hourai::{
         user::User,
     },
 };
-use hourai_redis::RedisPool;
 use std::str::FromStr;
 use std::sync::Arc;
 use thiserror::Error;
@@ -92,7 +91,6 @@ impl From<Response> for CallbackData {
 
 pub struct CommandContext {
     pub http: Arc<Client>,
-    pub redis: RedisPool,
     pub command: Box<ApplicationCommand>,
 }
 
