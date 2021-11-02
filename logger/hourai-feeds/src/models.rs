@@ -3,7 +3,7 @@ use hourai::http::error::ErrorType as HttpErrorType;
 use hourai::models::{channel::embed::Embed, id::ChannelId};
 use hourai_sql::{
     sql_types::chrono::{DateTime, Utc},
-    SqlQuery, SqlQueryAs,
+    Executor, SqlQuery, SqlQueryAs,
 };
 use tracing::error;
 
@@ -43,31 +43,19 @@ impl Post {
             .embeds(&embeds)?;
 
         if let Err(err) = request.exec().await {
-            return if let HttpErrorType::Response { status, .. } = err.kind() {
-                if status.raw() == 404 || status.raw() == 404 {
-                    Self::delete_channel(channel_id, &client).await
-                } else {
-                    Err(anyhow::anyhow!(err))
+            if let HttpErrorType::Response { status, .. } = err.kind() {
+                if status.raw() == 404 {
+                    client.sql.execute(Feed::delete_feed_channel(channel_id)).await?;
+                    tracing::warn!(
+                        "Deleted channel {} from the database. No longer postable.",
+                        channel_id
+                    );
                 }
-            } else {
-                Err(anyhow::anyhow!(err))
-            };
+            }
+            Err(anyhow::anyhow!(err))
+        } else {
+            Ok(())
         }
-        Ok(())
-    }
-
-    async fn delete_channel(channel_id: ChannelId, client: &crate::Client) -> Result<()> {
-        let mut txn = client.sql.begin().await?;
-        Feed::delete_feed_channel(channel_id)
-            .execute(&mut txn)
-            .await?;
-        Feed::delete_channel(channel_id).execute(&mut txn).await?;
-        txn.commit().await?;
-        tracing::info!(
-            "Deleted channel {} from the database. No longer postable.",
-            channel_id
-        );
-        Ok(())
     }
 }
 
@@ -117,10 +105,6 @@ impl Feed {
         sqlx::query("DELETE FROM feed_channels WHERE channel_id = $1").bind(channel_id.get() as i64)
     }
 
-    pub fn delete_channel<'a>(channel_id: ChannelId) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM channels WHERE id = $1").bind(channel_id.get() as i64)
-    }
-
     pub fn make_post(&self, content: Option<String>, embed: Option<Embed>) -> Post {
         Post {
             channel_ids: self
@@ -150,4 +134,5 @@ impl Feed {
         );
         Ok(())
     }
+
 }
