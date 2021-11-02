@@ -1,6 +1,11 @@
+use crate::GuildResource;
 use byteorder::{BigEndian, ByteOrder};
-use hourai::models::id::*;
-use redis::{RedisWrite, ToRedisArgs};
+use hourai::models::{
+    channel::GuildChannel,
+    guild::{Guild, Role},
+    id::*,
+};
+use redis::{ErrorKind, FromRedisValue, RedisError, RedisWrite, ToRedisArgs};
 
 /// The single byte key prefix for all keys stored in Redis.
 #[derive(Copy, Clone)]
@@ -48,7 +53,7 @@ impl ToRedisArgs for CacheKey {
 }
 
 /// The single byte key prefix for guild keys stored in Redis.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub enum GuildKey {
     /// Guild level data. No secondary key. Maps to a CachedGuildProto.
     Guild,
@@ -61,9 +66,9 @@ pub enum GuildKey {
 impl GuildKey {
     pub fn prefix(&self) -> u8 {
         match self {
-            Self::Guild => 1_u8,
-            Self::Role(_) => 2_u8,
-            Self::Channel(_) => 3_u8,
+            Self::Guild => Guild::PREFIX,
+            Self::Role(_) => Role::PREFIX,
+            Self::Channel(_) => GuildChannel::PREFIX,
         }
     }
 }
@@ -77,6 +82,33 @@ impl ToRedisArgs for GuildKey {
             Self::Guild => PrefixedKey(self.prefix(), ()).write_redis_args(out),
             Self::Role(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
             Self::Channel(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
+        }
+    }
+}
+
+impl FromRedisValue for GuildKey {
+    fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
+        if let redis::Value::Data(data) = value {
+            match (data.get(0), data.len()) {
+                (Some(&Guild::PREFIX), _) => Ok(Self::Guild),
+                (Some(&Role::PREFIX), len) if len >= 9 => unsafe {
+                    let id = BigEndian::read_u64(&data[1..9]);
+                    Ok(Self::Role(RoleId::new_unchecked(id)))
+                },
+                (Some(&GuildChannel::PREFIX), len) if len >= 9 => unsafe {
+                    let id = BigEndian::read_u64(&data[1..9]);
+                    Ok(Self::Channel(ChannelId::new_unchecked(id)))
+                },
+                _ => Err(RedisError::from((
+                    ErrorKind::ResponseError,
+                    "Invalid GuildKey",
+                ))),
+            }
+        } else {
+            Err(RedisError::from((
+                ErrorKind::ResponseError,
+                "Guild key not from data",
+            )))
         }
     }
 }

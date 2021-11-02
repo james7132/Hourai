@@ -1,0 +1,11 @@
+[package]
+name = "hourai-storage"
+version = "0.1.0"
+authors = ["james7132 <contact@jamessliu.com>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0"
+hourai = { path = "../../hourai" }
+hourai-redis = { path = "../redis" }
+hourai-sql = { path = "../sql" }

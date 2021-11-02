@@ -1,11 +1,11 @@
 use anyhow::Result;
+use hourai::interactions::{Command, CommandContext, CommandError, CommandResult, Response};
 use hourai::{
     http::request::prelude::AuditLogReason,
     models::{guild::Permissions, id::UserId, user::User},
 };
-use hourai_redis::{RedisPool, CachedGuild};
+use hourai_redis::{CachedGuild, RedisPool};
 use hourai_sql::SqlPool;
-use hourai::interactions::{Command, CommandContext, CommandError, CommandResult, Response};
 
 #[derive(Clone)]
 pub struct StorageContext {

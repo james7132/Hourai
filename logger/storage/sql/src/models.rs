@@ -351,6 +351,16 @@ impl Member {
             .bind(user_id.get() as i64)
     }
 
+    pub fn find_with_roles<'a>(
+        guild_id: GuildId,
+        role_ids: impl IntoIterator<Item = RoleId>,
+    ) -> SqlQueryAs<'a, Self> {
+        let role_ids: Vec<i64> = role_ids.into_iter().map(|id| id.get() as i64).collect();
+        sqlx::query_as("SELECT * FROM members WHERE present AND guild_id = $1 AND role_ids && $2")
+            .bind(guild_id.get() as i64)
+            .bind(role_ids)
+    }
+
     /// Marks all members as not present in preparation for repopulating the column.
     pub fn clear_present_shard<'a>(shard_id: u64, shard_total: u64) -> SqlQuery<'a> {
         sqlx::query("UPDATE members SET present = false WHERE (guild_id >> 22) % $2 = $1")

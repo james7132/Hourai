@@ -2,9 +2,9 @@ pub mod cache;
 pub mod commands;
 pub mod config;
 pub mod init;
+pub mod interactions;
 pub mod models;
 pub mod prelude;
-pub mod interactions;
 
 // Include the auto-generated protos as a module
 pub mod proto {

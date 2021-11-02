@@ -29,20 +29,14 @@ impl GenericVerifier {
         reason: impl Into<String>,
         approver: T,
     ) -> BoxedVerifier {
-        Self::new(
-            VerificationReason::Approval(reason.into()),
-            approver,
-        )
+        Self::new(VerificationReason::Approval(reason.into()), approver)
     }
 
     pub fn new_rejector<T: Fn(&VerificationContext) -> Result<bool> + Sync + 'static>(
         reason: impl Into<String>,
         approver: T,
     ) -> BoxedVerifier {
-        Self::new(
-            VerificationReason::Rejection(reason.into()),
-            approver,
-        )
+        Self::new(VerificationReason::Rejection(reason.into()), approver)
     }
 
     fn new<T: Fn(&VerificationContext) -> Result<bool> + Sync + 'static>(

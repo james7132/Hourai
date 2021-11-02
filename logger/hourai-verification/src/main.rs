@@ -30,19 +30,17 @@ async fn main() {
         // Deleted accounts shouldn't be able to join new servers. A user
         // joining that is seemingly deleted is suspicious.
         rejectors::deleted_user(sql.clone()),
-
         // Filter likely user bots based on usernames.
         //rejectors::StringFilterRejector(
-            //prefix='Likely user bot. ',
-            //filters=load_list('user_bot_names')),
+        //prefix='Likely user bot. ',
+        //filters=load_list('user_bot_names')),
         //rejectors::StringFilterRejector(
-            //prefix='Likely user bot. ',
-            //full_match=True,
-            //filters=load_list('user_bot_names_fullmatch')),
+        //prefix='Likely user bot. ',
+        //full_match=True,
+        //filters=load_list('user_bot_names_fullmatch')),
 
         // If a user has Nitro, they probably aren't an alt or user bot.
         approvers::nitro(),
-
         // -----------------------------------------------------------------
         // Questionable Level Verifiers
         //     Verifiers here are mostly for red flags of unruly or
@@ -53,35 +51,35 @@ async fn main() {
 
         // Filter usernames and nicknames that match moderator users.
         //rejectors.NameMatchRejector(
-            //prefix='Username matches moderator\'s. ',
-            //filter_func=utils.is_moderator,
-            //min_match_length=4),
+        //prefix='Username matches moderator\'s. ',
+        //filter_func=utils.is_moderator,
+        //min_match_length=4),
         //rejectors.NameMatchRejector(
-            //prefix='Username matches moderator\'s. ',
-            //filter_func=utils.is_moderator,
-            //member_selector=lambda m: m.nick,
-            //min_match_length=4),
+        //prefix='Username matches moderator\'s. ',
+        //filter_func=utils.is_moderator,
+        //member_selector=lambda m: m.nick,
+        //min_match_length=4),
 
         // Filter usernames and nicknames that match bot users.
         //rejectors.NameMatchRejector(
-            //prefix='Username matches bot\'s. ',
-            //filter_func=lambda m: m.bot,
-            //min_match_length=4),
+        //prefix='Username matches bot\'s. ',
+        //filter_func=lambda m: m.bot,
+        //min_match_length=4),
         //rejectors.NameMatchRejector(
-            //prefix='Username matches bot\'s. ',
-            //filter_func=lambda m: m.bot,
-            //member_selector=lambda m: m.nick,
-            //min_match_length=4),
+        //prefix='Username matches bot\'s. ',
+        //filter_func=lambda m: m.bot,
+        //member_selector=lambda m: m.nick,
+        //min_match_length=4),
 
         // Filter offensive usernames.
         //rejectors.StringFilterRejector(
-            //prefix='Offensive username. ',
-            //filters=load_list('offensive_usernames')),
+        //prefix='Offensive username. ',
+        //filters=load_list('offensive_usernames')),
 
         // Filter sexually inapproriate usernames.
         //rejectors.StringFilterRejector(
-            //prefix='Sexually inapproriate username. ',
-            //filters=load_list('sexually_inappropriate_usernames')),
+        //prefix='Sexually inapproriate username. ',
+        //filters=load_list('sexually_inappropriate_usernames')),
 
         // Filter potentially long usernames that use wide unicode characters that
         // may be disruptive or spammy to other members.
@@ -97,11 +95,9 @@ async fn main() {
 
         // Make sure the user is not banned on other servers.
         rejectors::banned_user(sql.clone(), /* min_guild_size */ 150),
-
         // Check the username against known banned users from the current
         // server. Requires exact username match (case insensitive)
         rejectors::banned_username(sql.clone()),
-
         // Check if the user is distinguished (Discord Staff, Verified, Partnered,
         // etc).
         //approvers::distinguished_user(),

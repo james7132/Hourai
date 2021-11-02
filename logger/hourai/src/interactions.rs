@@ -1,4 +1,3 @@
-use anyhow::Result;
 use crate::{
     http::Client,
     models::{
@@ -14,6 +13,7 @@ use crate::{
         user::User,
     },
 };
+use anyhow::Result;
 use std::str::FromStr;
 use std::sync::Arc;
 use thiserror::Error;

@@ -45,7 +45,10 @@ impl Post {
         if let Err(err) = request.exec().await {
             if let HttpErrorType::Response { status, .. } = err.kind() {
                 if status.raw() == 404 {
-                    client.sql.execute(Feed::delete_feed_channel(channel_id)).await?;
+                    client
+                        .sql
+                        .execute(Feed::delete_feed_channel(channel_id))
+                        .await?;
                     tracing::warn!(
                         "Deleted channel {} from the database. No longer postable.",
                         channel_id
@@ -134,5 +137,4 @@ impl Feed {
         );
         Ok(())
     }
-
 }

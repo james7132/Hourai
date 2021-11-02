@@ -6,6 +6,7 @@ members = [
   "hourai-music",
   "hourai-verification",
   "hourai-web",
+  "storage/common",
   "storage/sql",
   "storage/redis",
 ]

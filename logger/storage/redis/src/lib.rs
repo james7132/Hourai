@@ -16,10 +16,11 @@ use hourai::models::{
     MessageLike, Snowflake, UserLike,
 };
 use hourai::proto::cache::*;
-use redis::aio::ConnectionLike;
-use redis::ToRedisArgs;
+use redis::{aio::ConnectionLike, FromRedisValue, ToRedisArgs};
 use std::{
     cmp::{Ord, Ordering},
+    collections::{HashMap, HashSet},
+    hash::Hash,
     ops::Deref,
 };
 use tracing::debug;
@@ -65,6 +66,26 @@ impl OnlineStatus {
             .ignore()
             .expire(key, 3600);
         self
+    }
+
+    pub async fn find_online(
+        guild_id: GuildId,
+        users: impl IntoIterator<Item = UserId>,
+        redis: &mut RedisPool,
+    ) -> Result<HashSet<UserId>> {
+        let key = CacheKey::OnlineStatus(guild_id.get());
+        let user_ids: Vec<UserId> = users.into_iter().collect();
+        let mut pipe = redis::pipe();
+        user_ids.iter().map(|id| Id(id.get())).for_each(|id| {
+            pipe.sismember(key, id);
+        });
+        let results: Vec<bool> = pipe.query_async(redis).await?;
+        Ok(user_ids
+            .into_iter()
+            .zip(results)
+            .filter(|(_, online)| *online)
+            .map(|(id, _)| id)
+            .collect())
     }
 
     pub fn build(self) -> redis::Pipeline {
@@ -252,6 +273,31 @@ impl CachedGuild {
     }
 
     /// Fetches multiple resources from the cache.
+    pub async fn fetch_all_resources<T: GuildResource>(
+        guild_id: GuildId,
+        conn: &mut RedisPool,
+    ) -> Result<HashMap<T::Id, T::Proto>>
+    where
+        GuildKey: From<T::Id> + ToRedisArgs,
+    {
+        // TODO(james7132): Using HGETALL here is super inefficient with guilds with high
+        // role/channel counts, see if this is avoidable.
+        let guild_key = CacheKey::Guild(guild_id.get());
+        let response: HashMap<GuildKey, redis::Value> =
+            redis::Cmd::hgetall(guild_key).query_async(conn).await?;
+        let mut protos = HashMap::new();
+        for (key, value) in response.into_iter() {
+            if key.prefix() != T::PREFIX {
+                continue;
+            }
+            let proto = Protobuf::<T::Proto>::from_redis_value(&value)?;
+            protos.insert(T::from_key(key), proto.0);
+        }
+
+        Ok(protos)
+    }
+
+    /// Fetches multiple resources from the cache.
     pub async fn fetch_resources<T: GuildResource>(
         guild_id: GuildId,
         resource_ids: &[T::Id],
@@ -397,13 +443,21 @@ pub trait ToProto {
 }
 
 pub trait GuildResource: ToProto {
-    type Id: Into<GuildKey> + Copy;
+    type Id: Into<GuildKey> + Copy + Eq + Hash;
     type Subkey;
+    const PREFIX: u8;
+
+    fn from_key(id: GuildKey) -> Self::Id;
 }
 
 impl GuildResource for Guild {
     type Id = GuildId;
     type Subkey = ();
+    const PREFIX: u8 = 1_u8;
+
+    fn from_key(id: GuildKey) -> Self::Id {
+        panic!("Converting GuildKey to GuildId is not supported");
+    }
 }
 
 impl ToProto for Guild {
@@ -424,6 +478,11 @@ impl ToProto for Guild {
 impl GuildResource for PartialGuild {
     type Id = GuildId;
     type Subkey = ();
+    const PREFIX: u8 = 1_u8;
+
+    fn from_key(id: GuildKey) -> Self::Id {
+        panic!("Converting GuildKey to GuildId is not supported");
+    }
 }
 
 impl ToProto for PartialGuild {
@@ -444,6 +503,15 @@ impl ToProto for PartialGuild {
 impl GuildResource for GuildChannel {
     type Id = ChannelId;
     type Subkey = u64;
+    const PREFIX: u8 = 3_u8;
+
+    fn from_key(key: GuildKey) -> Self::Id {
+        if let GuildKey::Channel(id) = key {
+            id
+        } else {
+            panic!("Invalid GuildKey for channel: {:?}", key);
+        }
+    }
 }
 
 impl ToProto for GuildChannel {
@@ -459,6 +527,15 @@ impl ToProto for GuildChannel {
 impl GuildResource for Role {
     type Id = RoleId;
     type Subkey = u64;
+    const PREFIX: u8 = 2_u8;
+
+    fn from_key(key: GuildKey) -> Self::Id {
+        if let GuildKey::Role(id) = key {
+            id
+        } else {
+            panic!("Invalid GuildKey for channel: {:?}", key);
+        }
+    }
 }
 
 impl ToProto for Role {
