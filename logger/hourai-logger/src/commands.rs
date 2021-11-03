@@ -3,6 +3,7 @@ use hourai::interactions::{Command, CommandContext, CommandError, Response};
 use hourai::{
     http::request::prelude::AuditLogReason,
     models::{
+        channel::message::allowed_mentions::AllowedMentions,
         guild::{Guild, Permissions},
         id::{ChannelId, UserId},
         user::User,
@@ -72,11 +73,12 @@ async fn pingmod(ctx: &CommandContext, storage: &mut StorageContext) -> Result<R
         ctx.http
             .create_message(ChannelId::new(config.get_modlog_channel_id()).unwrap())
             .content(&format!(
-                "<@{}> used `/pingmod` to ping <@{}> in <#{}>",
-                ctx.command.user.as_ref().unwrap().id,
+                "<@{}> used `/pingmod` to ping {} in <#{}>",
+                ctx.user().id,
                 mention,
                 ctx.channel_id()
             ))?
+            .allowed_mentions(AllowedMentions::builder().build())
             .exec()
             .await?;
 
@@ -86,7 +88,7 @@ async fn pingmod(ctx: &CommandContext, storage: &mut StorageContext) -> Result<R
             .exec()
             .await?;
 
-        Ok(Response::ephemeral().content(format!("Pinged <@{}> to this channel.", mention)))
+        Ok(Response::ephemeral().content(format!("Pinged {} to this channel.", mention)))
     } else {
         Ok(Response::direct().content(&mention))
     }
