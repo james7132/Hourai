@@ -9,7 +9,7 @@ use crate::{
         },
         channel::{embed::Embed, message::MessageFlags},
         guild::{PartialMember, Permissions},
-        id::{GuildId, UserId},
+        id::{ChannelId, GuildId, UserId},
         user::User,
     },
 };
@@ -30,8 +30,6 @@ pub enum CommandError {
     MissingPermission(&'static str),
     #[error("{0}")]
     UserError(&'static str),
-    #[error("Generic error: {0}")]
-    GenericError(#[from] anyhow::Error),
 }
 
 #[derive(Debug)]
@@ -97,6 +95,10 @@ pub struct CommandContext {
 impl CommandContext {
     pub fn guild_id(&self) -> CommandResult<GuildId> {
         self.command.guild_id.ok_or(CommandError::NotInGuild)
+    }
+
+    pub fn channel_id(&self) -> ChannelId {
+        self.command.channel_id
     }
 
     pub fn user(&self) -> Option<&User> {

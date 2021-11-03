@@ -1,11 +1,17 @@
 use anyhow::Result;
-use hourai::interactions::{Command, CommandContext, CommandError, CommandResult, Response};
+use hourai::interactions::{Command, CommandContext, CommandError, Response};
 use hourai::{
     http::request::prelude::AuditLogReason,
-    models::{guild::Permissions, id::UserId, user::User},
+    models::{
+        guild::{Guild, Permissions},
+        id::{ChannelId, UserId},
+        user::User,
+    },
+    proto::guild_configs::LoggingConfig,
 };
-use hourai_redis::{CachedGuild, RedisPool};
+use hourai_redis::{CachedGuild, GuildConfig, RedisPool};
 use hourai_sql::SqlPool;
+use rand::Rng;
 
 #[derive(Clone)]
 pub struct StorageContext {
@@ -13,40 +19,77 @@ pub struct StorageContext {
     pub sql: SqlPool,
 }
 
-pub async fn handle_command(ctx: CommandContext, storage: StorageContext) -> Result<()> {
+pub async fn handle_command(ctx: CommandContext, mut storage: StorageContext) -> Result<()> {
     let result = match ctx.command() {
-        Command::Command("pingmod") => pingmod(&ctx).await,
+        Command::Command("pingmod") => pingmod(&ctx, &mut storage).await,
 
         // Admin Commands
         Command::Command("ban") => ban(&ctx, &storage).await,
         Command::Command("kick") => kick(&ctx, &storage).await,
-        _ => Err(CommandError::UnknownCommand),
+        _ => Err(anyhow::Error::new(CommandError::UnknownCommand)),
     };
 
     match result {
         Ok(response) => ctx.reply(response).await,
-        Err(CommandError::GenericError(err)) => {
-            // TODO(james7132): Add some form of tracing for this.
-            ctx.reply(
-                Response::ephemeral().content(":x: Fatal Error: Internal Error has occured."),
-            )
-            .await?;
-            Err(err)
-        }
         Err(err) => {
-            ctx.reply(Response::ephemeral().content(format!(":x: Error: {}", err)))
-                .await?;
-            Ok(())
+            let response = Response::ephemeral();
+            if let Some(command_err) = err.downcast_ref::<CommandError>() {
+                ctx.reply(response.content(format!(":x: Error: {}", command_err)))
+                    .await?;
+                Ok(())
+            } else {
+                // TODO(james7132): Add some form of tracing for this.
+                ctx.reply(response.content(":x: Fatal Error: Internal Error has occured."))
+                    .await?;
+                Err(err)
+            }
         }
     }
 }
 
-async fn pingmod(ctx: &CommandContext) -> CommandResult<Response> {
-    if ctx.command.guild_id.is_none() {
-        return Err(CommandError::NotInGuild);
-    }
+async fn pingmod(ctx: &CommandContext, storage: &mut StorageContext) -> Result<Response> {
+    let guild_id = ctx.guild_id()?;
+    let online_mods =
+        hourai_storage::find_online_moderators(guild_id, &storage.sql, &mut storage.redis).await?;
+    let guild = CachedGuild::fetch_resource::<Guild>(guild_id, guild_id, &mut storage.redis)
+        .await?
+        .ok_or(CommandError::NotInGuild)?;
+    let config =
+        GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut storage.redis).await?;
 
-    Ok(Response::ephemeral().content("Pinged <MODERATOR> to this channel."))
+    let mention: String;
+    let ping: String;
+    if online_mods.is_empty() {
+        mention = format!("<@{}>", guild.get_owner_id());
+        ping = format!("<@{}>, No mods online!", guild.get_owner_id());
+    } else {
+        let idx = rand::thread_rng().gen_range(0..online_mods.len());
+        mention = format!("<@{}>", online_mods[idx].user_id());
+        ping = mention.clone();
+    };
+
+    if config.has_modlog_channel_id() {
+        ctx.http
+            .create_message(ChannelId::new(config.get_modlog_channel_id()).unwrap())
+            .content(&format!(
+                "<@{}> used `/pingmod` to ping <@{}> in <#{}>",
+                ctx.command.user.as_ref().unwrap().id,
+                mention,
+                ctx.channel_id()
+            ))?
+            .exec()
+            .await?;
+
+        ctx.http
+            .create_message(ctx.channel_id())
+            .content(&ping)?
+            .exec()
+            .await?;
+
+        Ok(Response::ephemeral().content(format!("Pinged <@{}> to this channel.", mention)))
+    } else {
+        Ok(Response::direct().content(&mention))
+    }
 }
 
 fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> String {
@@ -63,7 +106,7 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
     }
 }
 
-async fn ban(ctx: &CommandContext, storage: &StorageContext) -> CommandResult<Response> {
+async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     let mut redis = storage.redis.clone();
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
@@ -76,7 +119,7 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> CommandResult<Re
 
     let duration = ctx.get_string("duration");
     if duration.is_some() {
-        return Err(CommandError::UserError(
+        anyhow::bail!(CommandError::UserError(
             "Temp bans via this command are currently not supported.",
         ));
     }
@@ -88,7 +131,7 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> CommandResult<Re
     // TODO(james7132): Properly display the errors.
     if soft {
         if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
-            return Err(CommandError::MissingPermission("Kick Members"));
+            anyhow::bail!(CommandError::MissingPermission("Kick Members"));
         }
 
         for user_id in users {
@@ -130,7 +173,7 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> CommandResult<Re
         Ok(Response::direct().content(format!("Softbanned {} users.", success)))
     } else {
         if !ctx.has_user_permission(Permissions::BAN_MEMBERS) {
-            return Err(CommandError::MissingPermission("Ban Members"));
+            anyhow::bail!(CommandError::MissingPermission("Ban Members"));
         }
 
         for user_id in users {
@@ -161,10 +204,10 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> CommandResult<Re
     }
 }
 
-async fn kick(ctx: &CommandContext, storage: &StorageContext) -> CommandResult<Response> {
+async fn kick(ctx: &CommandContext, storage: &StorageContext) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
-        return Err(CommandError::MissingPermission("Kick Members"));
+        anyhow::bail!(CommandError::MissingPermission("Kick Members"));
     }
 
     let mut redis = storage.redis.clone();

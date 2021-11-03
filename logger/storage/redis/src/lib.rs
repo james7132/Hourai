@@ -455,7 +455,7 @@ impl GuildResource for Guild {
     type Subkey = ();
     const PREFIX: u8 = 1_u8;
 
-    fn from_key(id: GuildKey) -> Self::Id {
+    fn from_key(_: GuildKey) -> Self::Id {
         panic!("Converting GuildKey to GuildId is not supported");
     }
 }
@@ -480,7 +480,7 @@ impl GuildResource for PartialGuild {
     type Subkey = ();
     const PREFIX: u8 = 1_u8;
 
-    fn from_key(id: GuildKey) -> Self::Id {
+    fn from_key(_: GuildKey) -> Self::Id {
         panic!("Converting GuildKey to GuildId is not supported");
     }
 }
