@@ -102,7 +102,11 @@ impl CommandContext {
     }
 
     pub fn user(&self) -> &User {
-        let member = self.command.member.as_ref().and_then(|member| member.user.as_ref());
+        let member = self
+            .command
+            .member
+            .as_ref()
+            .and_then(|member| member.user.as_ref());
         let user = self.command.user.as_ref();
         user.or(member).unwrap()
     }

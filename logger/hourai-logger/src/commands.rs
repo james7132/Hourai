@@ -27,6 +27,8 @@ pub async fn handle_command(ctx: CommandContext, mut storage: StorageContext) ->
         // Admin Commands
         Command::Command("ban") => ban(&ctx, &storage).await,
         Command::Command("kick") => kick(&ctx, &storage).await,
+        Command::Command("mute") => mute(&ctx).await,
+        Command::Command("deafen") => deafen(&ctx).await,
         _ => Err(anyhow::Error::new(CommandError::UnknownCommand)),
     };
 
@@ -111,10 +113,12 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
 async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     let mut redis = storage.redis.clone();
+    let soft = ctx.get_flag("soft").unwrap_or(false);
+    let action = if soft { "Softbanned" } else { "Banned" };
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
     let authorizer_roles = CachedGuild::role_set(guild_id, &authorizer.roles, &mut redis).await?;
     let reason = build_reason(
-        "Banned",
+        action,
         authorizer.user.as_ref().unwrap(),
         ctx.get_string("reason"),
     );
@@ -125,19 +129,20 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
             "Temp bans via this command are currently not supported.",
         ));
     }
-    let soft = ctx.get_flag("soft").unwrap_or(false);
-    let users = ctx.all_id_options_named("user").filter_map(UserId::new);
-    let mut success = 0;
-    let mut errors = Vec::new();
 
     // TODO(james7132): Properly display the errors.
+    let users: Vec<_> = ctx
+        .all_id_options_named("user")
+        .filter_map(UserId::new)
+        .collect();
+    let mut errors = Vec::new();
     if soft {
         if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
             anyhow::bail!(CommandError::MissingPermission("Kick Members"));
         }
 
-        for user_id in users {
-            if let Some(member) = ctx.resolve_member(user_id) {
+        for user_id in users.iter() {
+            if let Some(member) = ctx.resolve_member(*user_id) {
                 let roles = CachedGuild::role_set(guild_id, &member.roles, &mut redis).await?;
                 if roles >= authorizer_roles {
                     errors.push(format!(
@@ -150,7 +155,7 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
 
             let request = ctx
                 .http
-                .create_ban(guild_id, user_id)
+                .create_ban(guild_id, *user_id)
                 .delete_message_days(7)
                 .unwrap()
                 .reason(&reason)
@@ -162,24 +167,20 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
 
             let request = ctx
                 .http
-                .delete_ban(guild_id, user_id)
+                .delete_ban(guild_id, *user_id)
                 .reason(&reason)
                 .unwrap();
             if let Err(err) = request.exec().await {
                 errors.push(format!("{}: {}", user_id, err));
-            } else {
-                success += 1;
             }
         }
-
-        Ok(Response::direct().content(format!("Softbanned {} users.", success)))
     } else {
         if !ctx.has_user_permission(Permissions::BAN_MEMBERS) {
             anyhow::bail!(CommandError::MissingPermission("Ban Members"));
         }
 
-        for user_id in users {
-            if let Some(member) = ctx.resolve_member(user_id) {
+        for user_id in users.iter() {
+            if let Some(member) = ctx.resolve_member(*user_id) {
                 let roles = CachedGuild::role_set(guild_id, &member.roles, &mut redis).await?;
                 if roles >= authorizer_roles {
                     errors.push(format!(
@@ -192,18 +193,15 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
 
             let request = ctx
                 .http
-                .create_ban(guild_id, user_id)
+                .create_ban(guild_id, *user_id)
                 .reason(&reason)
                 .unwrap();
             if let Err(err) = request.exec().await {
                 errors.push(format!("{}: {}", user_id, err));
-            } else {
-                success += 1;
             }
         }
-
-        Ok(Response::direct().content(format!("Banned {} users.", success)))
     }
+    Ok(Response::direct().content(format!("{} {} users.", action, users.len() - errors.len())))
 }
 
 async fn kick(ctx: &CommandContext, storage: &StorageContext) -> Result<Response> {
@@ -216,16 +214,18 @@ async fn kick(ctx: &CommandContext, storage: &StorageContext) -> Result<Response
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
     let authorizer_roles = CachedGuild::role_set(guild_id, &authorizer.roles, &mut redis).await?;
     let reason = build_reason(
-        "Banned",
+        "Kicked",
         authorizer.user.as_ref().unwrap(),
         ctx.get_string("reason"),
     );
-    let members = ctx.all_id_options_named("user").filter_map(UserId::new);
-    let mut success = 0;
-    let mut errors = Vec::new();
 
-    for member_id in members {
-        if let Some(member) = ctx.resolve_member(member_id) {
+    let members: Vec<_> = ctx
+        .all_id_options_named("user")
+        .filter_map(UserId::new)
+        .collect();
+    let mut errors = Vec::new();
+    for member_id in members.iter() {
+        if let Some(member) = ctx.resolve_member(*member_id) {
             let roles = CachedGuild::role_set(guild_id, &member.roles, &mut redis).await?;
             if roles >= authorizer_roles {
                 errors.push(format!(
@@ -238,15 +238,79 @@ async fn kick(ctx: &CommandContext, storage: &StorageContext) -> Result<Response
 
         let request = ctx
             .http
-            .remove_guild_member(guild_id, member_id)
+            .remove_guild_member(guild_id, *member_id)
             .reason(&reason)
             .unwrap();
         if let Err(err) = request.exec().await {
             errors.push(format!("{}: {}", member_id, err));
-        } else {
-            success += 1;
         }
     }
 
-    Ok(Response::direct().content(format!("Kicked {} users.", success)))
+    Ok(Response::direct().content(format!("Kicked {} users.", members.len() - errors.len())))
+}
+
+async fn deafen(ctx: &CommandContext) -> Result<Response> {
+    let guild_id = ctx.guild_id()?;
+    if !ctx.has_user_permission(Permissions::DEAFEN_MEMBERS) {
+        anyhow::bail!(CommandError::MissingPermission("Deafen Members"));
+    }
+
+    let authorizer = ctx.member().expect("Command without user.");
+    let reason = build_reason(
+        "Deafened",
+        authorizer.user.as_ref().unwrap(),
+        ctx.get_string("reason"),
+    );
+
+    let members: Vec<_> = ctx
+        .all_id_options_named("user")
+        .filter_map(UserId::new)
+        .collect();
+    let mut errors = Vec::new();
+    for member_id in members.iter() {
+        let request = ctx
+            .http
+            .update_guild_member(guild_id, *member_id)
+            .deaf(true)
+            .reason(&reason)
+            .unwrap();
+        if let Err(err) = request.exec().await {
+            errors.push(format!("{}: {}", member_id, err));
+        }
+    }
+
+    Ok(Response::direct().content(format!("Deafened {} users.", members.len() - errors.len())))
+}
+
+async fn mute(ctx: &CommandContext) -> Result<Response> {
+    let guild_id = ctx.guild_id()?;
+    if !ctx.has_user_permission(Permissions::MUTE_MEMBERS) {
+        anyhow::bail!(CommandError::MissingPermission("Mute Members"));
+    }
+
+    let authorizer = ctx.member().expect("Command without user.");
+    let reason = build_reason(
+        "Banned",
+        authorizer.user.as_ref().unwrap(),
+        ctx.get_string("reason"),
+    );
+
+    let members: Vec<_> = ctx
+        .all_id_options_named("user")
+        .filter_map(UserId::new)
+        .collect();
+    let mut errors = Vec::new();
+    for member_id in members.iter() {
+        let request = ctx
+            .http
+            .update_guild_member(guild_id, *member_id)
+            .mute(true)
+            .reason(&reason)
+            .unwrap();
+        if let Err(err) = request.exec().await {
+            errors.push(format!("{}: {}", member_id, err));
+        }
+    }
+
+    Ok(Response::direct().content(format!("Muted {} users.", members.len() - errors.len())))
 }
