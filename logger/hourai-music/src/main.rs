@@ -1,4 +1,5 @@
 mod commands;
+mod interactions;
 mod player;
 mod prelude;
 mod queue;
@@ -18,7 +19,11 @@ use hourai::{
     config,
     gateway::{cluster::*, Event, EventTypeFlags, Intents},
     init,
-    models::{gateway::payload::outgoing::UpdateVoiceState, id::*},
+    models::{
+        application::{callback::InteractionResponse, interaction::Interaction},
+        gateway::payload::outgoing::UpdateVoiceState,
+        id::*,
+    },
     proto::guild_configs::MusicConfig,
 };
 use hourai_redis::*;
@@ -45,6 +50,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
         | EventTypeFlags::CHANNEL_UPDATE.bits()
         | EventTypeFlags::GUILD_CREATE.bits()
         | EventTypeFlags::GUILD_DELETE.bits()
+        | EventTypeFlags::INTERACTION_CREATE.bits()
         | EventTypeFlags::MESSAGE_CREATE.bits()
         | EventTypeFlags::READY.bits()
         | EventTypeFlags::VOICE_SERVER_UPDATE.bits()
@@ -191,11 +197,9 @@ impl Client<'static> {
     async fn consume_event(self, event: Event) {
         let kind = event.kind();
         let result = match event {
-            Event::Ready(_) => Ok(()),
             Event::ChannelCreate(_) => Ok(()),
-            Event::ChannelUpdate(_) => Ok(()),
             Event::ChannelDelete(_) => Ok(()),
-            Event::MessageCreate(evt) => commands::on_message_create(self, evt.0).await,
+            Event::ChannelUpdate(_) => Ok(()),
             Event::GuildCreate(_) => Ok(()),
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
@@ -204,6 +208,9 @@ impl Client<'static> {
                     Ok(())
                 }
             }
+            Event::InteractionCreate(evt) => self.on_interaction_create(evt.0).await,
+            Event::MessageCreate(evt) => commands::on_message_create(self, evt.0).await,
+            Event::Ready(_) => Ok(()),
             Event::VoiceStateUpdate(_) => Ok(()),
             Event::VoiceServerUpdate(_) => Ok(()),
             _ => {
@@ -215,6 +222,30 @@ impl Client<'static> {
         if let Err(err) = result {
             error!("Error while running event with {:?}: {:?}", kind, err);
         }
+    }
+
+    async fn on_interaction_create(self, evt: Interaction) -> Result<()> {
+        info!("Recieved interaction: {:?}", evt);
+        match evt {
+            Interaction::Ping(ping) => {
+                self.http_client
+                    .interaction_callback(ping.id, &ping.token, &InteractionResponse::Pong)
+                    .exec()
+                    .await?;
+            }
+            Interaction::ApplicationCommand(cmd) => {
+                let ctx = hourai::interactions::CommandContext {
+                    http: self.http_client.clone(),
+                    command: cmd,
+                };
+                interactions::handle_command(self, ctx).await?;
+            }
+            interaction => {
+                warn!("Unknown incoming interaction: {:?}", interaction);
+                return Ok(());
+            }
+        };
+        Ok(())
     }
 
     async fn handle_lavalink_event(self, event: IncomingEvent) {

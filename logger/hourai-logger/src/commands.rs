@@ -29,7 +29,7 @@ pub async fn handle_command(ctx: CommandContext, mut storage: StorageContext) ->
         Command::Command("kick") => kick(&ctx, &storage).await,
         Command::Command("mute") => mute(&ctx).await,
         Command::Command("deafen") => deafen(&ctx).await,
-        _ => Err(anyhow::Error::new(CommandError::UnknownCommand)),
+        _ => return Err(anyhow::Error::new(CommandError::UnknownCommand)),
     };
 
     match result {
@@ -71,6 +71,11 @@ async fn pingmod(ctx: &CommandContext, storage: &mut StorageContext) -> Result<R
         ping = mention.clone();
     };
 
+    let content = ctx
+        .get_string("reason")
+        .map(|reason| format!("{}: {}", ping, reason))
+        .unwrap_or(ping);
+
     if config.has_modlog_channel_id() {
         ctx.http
             .create_message(ChannelId::new(config.get_modlog_channel_id()).unwrap())
@@ -86,13 +91,13 @@ async fn pingmod(ctx: &CommandContext, storage: &mut StorageContext) -> Result<R
 
         ctx.http
             .create_message(ctx.channel_id())
-            .content(&ping)?
+            .content(&content)?
             .exec()
             .await?;
 
         Ok(Response::ephemeral().content(format!("Pinged {} to this channel.", mention)))
     } else {
-        Ok(Response::direct().content(&mention))
+        Ok(Response::direct().content(&content))
     }
 }
 
@@ -171,6 +176,7 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
                 .reason(&reason)
                 .unwrap();
             if let Err(err) = request.exec().await {
+                tracing::error!("Error while running /ban on {}: {}", user_id, err);
                 errors.push(format!("{}: {}", user_id, err));
             }
         }
@@ -197,6 +203,7 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
                 .reason(&reason)
                 .unwrap();
             if let Err(err) = request.exec().await {
+                tracing::error!("Error while running /ban on {}: {}", user_id, err);
                 errors.push(format!("{}: {}", user_id, err));
             }
         }
@@ -242,6 +249,7 @@ async fn kick(ctx: &CommandContext, storage: &StorageContext) -> Result<Response
             .reason(&reason)
             .unwrap();
         if let Err(err) = request.exec().await {
+            tracing::error!("Error while running /kick on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
         }
     }
@@ -275,6 +283,7 @@ async fn deafen(ctx: &CommandContext) -> Result<Response> {
             .reason(&reason)
             .unwrap();
         if let Err(err) = request.exec().await {
+            tracing::error!("Error while running /deafen on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
         }
     }
@@ -290,7 +299,7 @@ async fn mute(ctx: &CommandContext) -> Result<Response> {
 
     let authorizer = ctx.member().expect("Command without user.");
     let reason = build_reason(
-        "Banned",
+        "Muted",
         authorizer.user.as_ref().unwrap(),
         ctx.get_string("reason"),
     );
@@ -308,6 +317,7 @@ async fn mute(ctx: &CommandContext) -> Result<Response> {
             .reason(&reason)
             .unwrap();
         if let Err(err) = request.exec().await {
+            tracing::error!("Error while running /mute on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
         }
     }
