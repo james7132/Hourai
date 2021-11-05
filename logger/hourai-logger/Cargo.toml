@@ -11,17 +11,17 @@ hourai-sql = { path = "../storage/sql" }
 hourai-redis = { path = "../storage/redis" }
 anyhow = "1.0"
 chrono = "0.4"
-thiserror = "1.0"
+futures = { default-features = false, version = "0.3" }
 rand = "0.8"
+regex = "1.5"
 serde_json = "1.0"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
-futures = { default-features = false, version = "0.3.12" }
 twilight-embed-builder = "0.7"
 
 [dependencies.tokio]
 default-features = false
 version = "1.0"
-features = ["macros", "rt"]
+features = ["macros", "rt-multi-thread"]
 
 [dependencies.reqwest]
 default-features = false

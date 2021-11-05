@@ -14,7 +14,6 @@ use crate::{
     },
 };
 use anyhow::Result;
-use std::str::FromStr;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -162,9 +161,12 @@ impl CommandContext {
     }
 
     /// Gets all of the raw IDs with a given name.
-    pub fn all_id_options_named(&self, name: &'static str) -> impl Iterator<Item = u64> + '_ {
+    pub fn all_users(&self, name: &'static str) -> impl Iterator<Item = UserId> + '_ {
         self.all_options_named(name)
-            .filter_map(Self::parse_option_id)
+            .filter_map(|opt| match opt.value {
+                CommandOptionValue::User(user) => Some(user),
+                _ => None,
+            })
     }
 
     /// Attempts to find the first argument with a given name that is of type Integer. If no such
@@ -184,6 +186,17 @@ impl CommandContext {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::Integer(ref value) => Some(*value),
+                _ => None,
+            })
+            .ok_or(CommandError::MissingArgument(name))
+    }
+
+    /// Attempts to find the first argument with a given name that is of type User. If no such
+    /// argument is found, return None.
+    pub fn get_user(&self, name: &'static str) -> Result<UserId, CommandError> {
+        self.option_named(name)
+            .and_then(|option| match option.value {
+                CommandOptionValue::User(ref value) => Some(*value),
                 _ => None,
             })
             .ok_or(CommandError::MissingArgument(name))
@@ -224,14 +237,6 @@ impl CommandContext {
             .resolved
             .as_ref()
             .and_then(|r| r.members.iter().find(|m| m.id == id))
-    }
-
-    fn parse_option_id(option: &CommandDataOption) -> Option<u64> {
-        if let CommandOptionValue::String(ref value) = option.value {
-            u64::from_str(value).ok()
-        } else {
-            None
-        }
     }
 
     fn flatten_options(options: &Vec<CommandDataOption>) -> Vec<&CommandDataOption> {

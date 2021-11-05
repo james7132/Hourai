@@ -1,11 +1,12 @@
 use anyhow::Result;
+use futures::{channel::mpsc, future, prelude::*};
 use hourai::interactions::{Command, CommandContext, CommandError, Response};
 use hourai::{
     http::request::prelude::AuditLogReason,
     models::{
-        channel::message::allowed_mentions::AllowedMentions,
+        channel::message::{allowed_mentions::AllowedMentions, Message},
         guild::{Guild, Permissions},
-        id::{ChannelId, UserId},
+        id::{ChannelId, MessageId, UserId},
         user::User,
     },
     proto::guild_configs::LoggingConfig,
@@ -13,7 +14,15 @@ use hourai::{
 use hourai_redis::{CachedGuild, GuildConfig, RedisPool};
 use hourai_sql::SqlPool;
 use rand::Rng;
-use std::collections::HashMap;
+use regex::Regex;
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+const MAX_PRUNED_MESSAGES: usize = 100;
+const MAX_PRUNED_MESSAGES_PER_BATCH: usize = 100;
 
 #[derive(Clone)]
 pub struct StorageContext {
@@ -31,6 +40,7 @@ pub async fn handle_command(ctx: CommandContext, mut storage: StorageContext) ->
         Command::Command("mute") => mute(&ctx).await,
         Command::Command("move") => move_cmd(&ctx, &mut storage).await,
         Command::Command("deafen") => deafen(&ctx).await,
+        Command::Command("prune") => prune(&ctx).await,
         _ => return Err(anyhow::Error::new(CommandError::UnknownCommand)),
     };
 
@@ -138,10 +148,7 @@ async fn ban(ctx: &CommandContext, storage: &mut StorageContext) -> Result<Respo
     }
 
     // TODO(james7132): Properly display the errors.
-    let users: Vec<_> = ctx
-        .all_id_options_named("user")
-        .filter_map(UserId::new)
-        .collect();
+    let users: Vec<_> = ctx.all_users("user").collect();
     let mut errors = Vec::new();
     if soft {
         if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
@@ -230,10 +237,7 @@ async fn kick(ctx: &CommandContext, storage: &mut StorageContext) -> Result<Resp
         ctx.get_string("reason").ok(),
     );
 
-    let members: Vec<_> = ctx
-        .all_id_options_named("user")
-        .filter_map(UserId::new)
-        .collect();
+    let members: Vec<_> = ctx.all_users("user").collect();
     let mut errors = Vec::new();
     for member_id in members.iter() {
         if let Some(member) = ctx.resolve_member(*member_id) {
@@ -274,10 +278,7 @@ async fn deafen(ctx: &CommandContext) -> Result<Response> {
         ctx.get_string("reason").ok(),
     );
 
-    let members: Vec<_> = ctx
-        .all_id_options_named("user")
-        .filter_map(UserId::new)
-        .collect();
+    let members: Vec<_> = ctx.all_users("user").collect();
     let mut errors = Vec::new();
     for member_id in members.iter() {
         let request = ctx
@@ -308,10 +309,7 @@ async fn mute(ctx: &CommandContext) -> Result<Response> {
         ctx.get_string("reason").ok(),
     );
 
-    let members: Vec<_> = ctx
-        .all_id_options_named("user")
-        .filter_map(UserId::new)
-        .collect();
+    let members: Vec<_> = ctx.all_users("user").collect();
     let mut errors = Vec::new();
     for member_id in members.iter() {
         let request = ctx
@@ -372,4 +370,109 @@ async fn move_cmd(ctx: &CommandContext, storage: &mut StorageContext) -> Result<
     }
 
     Ok(Response::direct().content(format!("Moved {} users.", success)))
+}
+
+async fn fetch_messages(
+    channel_id: ChannelId,
+    http: Arc<hourai::http::Client>,
+    tx: mpsc::UnboundedSender<Message>,
+) -> Result<()> {
+    const TWO_WEEKS_SECS: u64 = 14 * 24 * 60 * 60;
+    let limit = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        - TWO_WEEKS_SECS;
+    let mut oldest = MessageId::new(u64::MAX).unwrap();
+    loop {
+        let messages = http
+            .channel_messages(channel_id)
+            .before(oldest)
+            .exec()
+            .await?
+            .model()
+            .await?;
+        for message in messages {
+            oldest = std::cmp::min(oldest, message.id);
+            if message.timestamp.as_secs() < limit {
+                return Ok(());
+            } else {
+                tx.unbounded_send(message)?;
+            }
+        }
+    }
+}
+
+async fn prune(ctx: &CommandContext) -> Result<Response> {
+    ctx.guild_id()?;
+    let count = ctx.get_int("count").unwrap_or(100) as usize;
+    if count > MAX_PRUNED_MESSAGES {
+        anyhow::bail!(CommandError::InvalidArgument(
+            "Prune only supports up to 2000 messages."
+        ));
+    }
+
+    let mut filters: Vec<Box<dyn Fn(&Message) -> bool + Send + 'static>> = Vec::new();
+    let mine = ctx.get_flag("mine").unwrap_or(false);
+    if mine {
+        let user_id = ctx.user().id;
+        filters.push(Box::new(move |msg| msg.author.id == user_id));
+    }
+    if ctx.get_flag("bot").unwrap_or(false) {
+        filters.push(Box::new(|msg| msg.author.bot));
+    }
+    if ctx.get_flag("embed").unwrap_or(false) {
+        filters.push(Box::new(|msg| {
+            !msg.embeds.is_empty() || !msg.attachments.is_empty()
+        }));
+    }
+    if ctx.get_flag("mention").unwrap_or(false) {
+        filters.push(Box::new(|msg| {
+            msg.mention_everyone || !msg.mention_roles.is_empty() || !msg.mentions.is_empty()
+        }));
+    }
+    if let Ok(user) = ctx.get_user("user") {
+        let user_id = user;
+        filters.push(Box::new(move |msg| msg.author.id == user_id));
+    }
+    if let Ok(rgx) = ctx.get_string("match") {
+        let regex = Regex::new(&rgx).map_err(|_| {
+            CommandError::InvalidArgument("`match` must be a valid regex or pattern.")
+        })?;
+        filters.push(Box::new(move |msg| regex.is_match(&msg.content)));
+    }
+
+    if !mine && !ctx.has_user_permission(Permissions::MANAGE_MESSAGES) {
+        anyhow::bail!(CommandError::MissingPermission("Manage Messages"));
+    }
+
+    let authorizer = ctx.member().expect("Command without user.");
+    let reason = build_reason(
+        "Pruned",
+        authorizer.user.as_ref().unwrap(),
+        ctx.get_string("reason").ok(),
+    );
+
+    let (tx, rx) = mpsc::unbounded();
+    tokio::spawn(fetch_messages(ctx.channel_id(), ctx.http.clone(), tx));
+
+    let batches: Vec<Vec<MessageId>> = rx
+        .take(count)
+        .filter(move |msg| future::ready(filters.iter().all(|f| f(msg))))
+        .map(|msg| msg.id)
+        .chunks(MAX_PRUNED_MESSAGES_PER_BATCH)
+        .map(|batch| Vec::from(batch))
+        .collect()
+        .await;
+
+    let mut total = 0;
+    for batch in batches {
+        ctx.http
+            .delete_messages(ctx.channel_id(), &batch)
+            .reason(&reason)?
+            .exec()
+            .await?;
+        total += batch.len();
+    }
+    Ok(Response::direct().content(format!("Pruned {} messages.", total)))
 }

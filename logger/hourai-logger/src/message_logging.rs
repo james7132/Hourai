@@ -35,10 +35,6 @@ fn message_diff_embed(before: &impl MessageLike, after: &impl MessageLike) -> Re
         .field(EmbedFieldBuilder::new("After", after.content())))
 }
 
-async fn get_logging_config(client: &mut Client, guild_id: GuildId) -> Result<LoggingConfig> {
-    Ok(GuildConfig::fetch_or_default(guild_id, &mut client.redis()).await?)
-}
-
 fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {
     if filter.denylist.contains(&id) {
         return false;
@@ -68,7 +64,7 @@ fn get_output_channel(
 }
 
 pub(super) async fn on_message_update(
-    mut client: Client,
+    client: Client,
     before: impl MessageLike,
     after: impl MessageLike,
 ) -> Result<()> {
@@ -76,7 +72,8 @@ pub(super) async fn on_message_update(
         return Ok(());
     }
     let guild_id = before.guild_id().ok_or_else(|| anyhow!("Not in guild."))?;
-    let config = get_logging_config(&mut client, guild_id).await?;
+    let config =
+        GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut client.redis()).await?;
     let type_config = config.get_edited_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, before.channel_id()) {
@@ -99,7 +96,8 @@ pub(super) async fn on_message_update(
 
 pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) -> Result<()> {
     let guild_id = evt.guild_id.ok_or_else(|| anyhow!("Not in guild."))?;
-    let config = get_logging_config(client, guild_id).await?;
+    let config =
+        GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut client.redis()).await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
@@ -126,12 +124,10 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
     Ok(())
 }
 
-pub(super) async fn on_message_bulk_delete(
-    mut client: Client,
-    evt: MessageDeleteBulk,
-) -> Result<()> {
+pub(super) async fn on_message_bulk_delete(client: Client, evt: MessageDeleteBulk) -> Result<()> {
     let guild_id = evt.guild_id.ok_or_else(|| anyhow!("Not in guild."))?;
-    let config = get_logging_config(&mut client, guild_id).await?;
+    let config =
+        GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut client.redis()).await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
