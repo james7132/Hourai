@@ -13,6 +13,7 @@ use hourai::{
 use hourai_redis::{CachedGuild, GuildConfig, RedisPool};
 use hourai_sql::SqlPool;
 use rand::Rng;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct StorageContext {
@@ -25,9 +26,10 @@ pub async fn handle_command(ctx: CommandContext, mut storage: StorageContext) ->
         Command::Command("pingmod") => pingmod(&ctx, &mut storage).await,
 
         // Admin Commands
-        Command::Command("ban") => ban(&ctx, &storage).await,
-        Command::Command("kick") => kick(&ctx, &storage).await,
+        Command::Command("ban") => ban(&ctx, &mut storage).await,
+        Command::Command("kick") => kick(&ctx, &mut storage).await,
         Command::Command("mute") => mute(&ctx).await,
+        Command::Command("move") => move_cmd(&ctx, &mut storage).await,
         Command::Command("deafen") => deafen(&ctx).await,
         _ => return Err(anyhow::Error::new(CommandError::UnknownCommand)),
     };
@@ -115,21 +117,21 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
     }
 }
 
-async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response> {
+async fn ban(ctx: &CommandContext, storage: &mut StorageContext) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
-    let mut redis = storage.redis.clone();
     let soft = ctx.get_flag("soft").unwrap_or(false);
     let action = if soft { "Softbanned" } else { "Banned" };
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
-    let authorizer_roles = CachedGuild::role_set(guild_id, &authorizer.roles, &mut redis).await?;
+    let authorizer_roles =
+        CachedGuild::role_set(guild_id, &authorizer.roles, &mut storage.redis).await?;
     let reason = build_reason(
         action,
         authorizer.user.as_ref().unwrap(),
-        ctx.get_string("reason"),
+        ctx.get_string("reason").ok(),
     );
 
     let duration = ctx.get_string("duration");
-    if duration.is_some() {
+    if duration.is_ok() {
         anyhow::bail!(CommandError::UserError(
             "Temp bans via this command are currently not supported.",
         ));
@@ -148,7 +150,8 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
 
         for user_id in users.iter() {
             if let Some(member) = ctx.resolve_member(*user_id) {
-                let roles = CachedGuild::role_set(guild_id, &member.roles, &mut redis).await?;
+                let roles =
+                    CachedGuild::role_set(guild_id, &member.roles, &mut storage.redis).await?;
                 if roles >= authorizer_roles {
                     errors.push(format!(
                         "{}: Has higher roles, not authorized to softban.",
@@ -187,7 +190,8 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
 
         for user_id in users.iter() {
             if let Some(member) = ctx.resolve_member(*user_id) {
-                let roles = CachedGuild::role_set(guild_id, &member.roles, &mut redis).await?;
+                let roles =
+                    CachedGuild::role_set(guild_id, &member.roles, &mut storage.redis).await?;
                 if roles >= authorizer_roles {
                     errors.push(format!(
                         "{}: Has higher roles, not authorized to ban.",
@@ -211,19 +215,19 @@ async fn ban(ctx: &CommandContext, storage: &StorageContext) -> Result<Response>
     Ok(Response::direct().content(format!("{} {} users.", action, users.len() - errors.len())))
 }
 
-async fn kick(ctx: &CommandContext, storage: &StorageContext) -> Result<Response> {
+async fn kick(ctx: &CommandContext, storage: &mut StorageContext) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Kick Members"));
     }
 
-    let mut redis = storage.redis.clone();
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
-    let authorizer_roles = CachedGuild::role_set(guild_id, &authorizer.roles, &mut redis).await?;
+    let authorizer_roles =
+        CachedGuild::role_set(guild_id, &authorizer.roles, &mut storage.redis).await?;
     let reason = build_reason(
         "Kicked",
         authorizer.user.as_ref().unwrap(),
-        ctx.get_string("reason"),
+        ctx.get_string("reason").ok(),
     );
 
     let members: Vec<_> = ctx
@@ -233,7 +237,7 @@ async fn kick(ctx: &CommandContext, storage: &StorageContext) -> Result<Response
     let mut errors = Vec::new();
     for member_id in members.iter() {
         if let Some(member) = ctx.resolve_member(*member_id) {
-            let roles = CachedGuild::role_set(guild_id, &member.roles, &mut redis).await?;
+            let roles = CachedGuild::role_set(guild_id, &member.roles, &mut storage.redis).await?;
             if roles >= authorizer_roles {
                 errors.push(format!(
                     "{}: Has higher or equal roles, not authorized to kick.",
@@ -267,7 +271,7 @@ async fn deafen(ctx: &CommandContext) -> Result<Response> {
     let reason = build_reason(
         "Deafened",
         authorizer.user.as_ref().unwrap(),
-        ctx.get_string("reason"),
+        ctx.get_string("reason").ok(),
     );
 
     let members: Vec<_> = ctx
@@ -301,7 +305,7 @@ async fn mute(ctx: &CommandContext) -> Result<Response> {
     let reason = build_reason(
         "Muted",
         authorizer.user.as_ref().unwrap(),
-        ctx.get_string("reason"),
+        ctx.get_string("reason").ok(),
     );
 
     let members: Vec<_> = ctx
@@ -323,4 +327,49 @@ async fn mute(ctx: &CommandContext) -> Result<Response> {
     }
 
     Ok(Response::direct().content(format!("Muted {} users.", members.len() - errors.len())))
+}
+
+async fn move_cmd(ctx: &CommandContext, storage: &mut StorageContext) -> Result<Response> {
+    let guild_id = ctx.guild_id()?;
+    if !ctx.has_user_permission(Permissions::MOVE_MEMBERS) {
+        anyhow::bail!(CommandError::MissingPermission("Move Members"));
+    }
+
+    let authorizer = ctx.member().expect("Command without user.");
+    let reason = build_reason(
+        "Moved",
+        authorizer.user.as_ref().unwrap(),
+        ctx.get_string("reason").ok(),
+    );
+
+    let states: HashMap<u64, u64> = hourai_redis::CachedVoiceState::get_channels(guild_id)
+        .query_async(&mut storage.redis)
+        .await?;
+
+    let src = ctx.get_channel("src")?;
+    let dst = ctx.get_channel("dst")?;
+
+    let mut success = 0;
+    let mut errors = Vec::new();
+    for (user_id, channel_id) in states {
+        if ChannelId::new(channel_id) != Some(src) {
+            continue;
+        }
+        if let Some(user_id) = UserId::new(user_id) {
+            let request = ctx
+                .http
+                .update_guild_member(guild_id, user_id)
+                .channel_id(Some(dst))
+                .reason(&reason)
+                .unwrap();
+            if let Err(err) = request.exec().await {
+                tracing::error!("Error while running /mute on {}: {}", user_id, err);
+                errors.push(format!("{}: {}", user_id, err));
+            } else {
+                success += 1;
+            }
+        }
+    }
+
+    Ok(Response::direct().content(format!("Moved {} users.", success)))
 }

@@ -26,6 +26,8 @@ pub enum CommandError {
     UnknownCommand,
     #[error("Command can only be used in a server.")]
     NotInGuild,
+    #[error("Missing argument: {}", .0)]
+    MissingArgument(&'static str),
     #[error("Invalid argument: {}", .0)]
     InvalidArgument(&'static str),
     #[error("User failed to satisfy preconditions: {}", .0)]
@@ -167,22 +169,35 @@ impl CommandContext {
 
     /// Attempts to find the first argument with a given name that is of type Integer. If no such
     /// argument is found, return None.
-    pub fn get_string(&self, name: &'static str) -> Option<&String> {
+    pub fn get_string(&self, name: &'static str) -> Result<&String, CommandError> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::String(ref value) => Some(value),
                 _ => None,
             })
+            .ok_or(CommandError::MissingArgument(name))
     }
 
     /// Attempts to find the first argument with a given name that is of type Integer. If no such
     /// argument is found, return None.
-    pub fn get_int(&self, name: &'static str) -> Option<i64> {
+    pub fn get_int(&self, name: &'static str) -> Result<i64, CommandError> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::Integer(ref value) => Some(*value),
                 _ => None,
             })
+            .ok_or(CommandError::MissingArgument(name))
+    }
+
+    /// Attempts to find the first argument with a given name that is of type Channel. If no such
+    /// argument is found, return None.
+    pub fn get_channel(&self, name: &'static str) -> Result<ChannelId, CommandError> {
+        self.option_named(name)
+            .and_then(|option| match option.value {
+                CommandOptionValue::Channel(ref value) => Some(*value),
+                _ => None,
+            })
+            .ok_or(CommandError::MissingArgument(name))
     }
 
     /// Checks if a boolean flag is set to true or not. If no flag with the name was found, it

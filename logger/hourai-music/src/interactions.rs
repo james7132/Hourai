@@ -164,10 +164,8 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
     let (guild_id, channel_id) = require_in_voice_channel(client, &ctx).await?;
     let user = ctx.user();
     let query = match ctx.get_string("query") {
-        Some(query) => query,
-        None => {
-            return pause(client, ctx, false).await;
-        }
+        Ok(query) => query,
+        Err(_) => return pause(client, ctx, false).await,
     };
 
     let query = query.trim_matches(|c: char| c.is_whitespace() || c == '<' || c == '>');
@@ -276,10 +274,7 @@ async fn remove(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
     let guild_id = require_playing(client, &ctx)?;
     require_in_voice_channel(client, &ctx).await?;
     let user = ctx.user();
-    let idx = match ctx.get_int("position") {
-        Some(idx) => idx,
-        None => bail!(CommandError::InvalidArgument("No specified position.")),
-    };
+    let idx = ctx.get_int("position")?;
 
     if idx == 0 {
         // Do not allow removing the currently playing song from the queue.
@@ -360,7 +355,7 @@ async fn forceskip(client: &Client<'static>, ctx: &CommandContext) -> Result<Res
 async fn volume(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     let volume = ctx.get_int("volume");
-    let response = if let Some(vol) = volume {
+    let response = if let Ok(vol) = volume {
         require_dj(client, &ctx).await?;
         if vol < 0 || vol > 150 {
             bail!(CommandError::InvalidArgument(
