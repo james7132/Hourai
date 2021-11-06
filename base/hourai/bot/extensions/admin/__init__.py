@@ -62,29 +62,6 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.apply_pending_actions.start()
-        super().__init__(bot)
-
-    def cog_unload(self):
-        self.apply_pending_actions.cancel()
-        super().cog_unload()
-
-    @tasks.loop(seconds=1)
-    async def apply_pending_actions(self):
-        try:
-            session = self.bot.create_storage_session()
-            with session:
-                query = self.bot.action_manager.query_pending_actions(session)
-                for pending_action in query:
-                    await self.bot.action_manager.execute(pending_action.data)
-                    session.delete(pending_action)
-                    session.commit()
-        except Exception:
-            log.exception('Error in running pending action:')
-
-    @apply_pending_actions.before_loop
-    async def before_apply_pending_actions(self):
-        await self.bot.wait_until_ready()
 
     # --------------------------------------------------------------------------
     # General Admin commands

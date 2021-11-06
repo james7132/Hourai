@@ -10,7 +10,7 @@ use hourai::{
     proto::action::*,
 };
 use sqlx::types::chrono::{DateTime, Utc};
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct PendingAction {
@@ -19,6 +19,10 @@ pub struct PendingAction {
 }
 
 impl PendingAction {
+    pub fn action(&self) -> &Action {
+        &self.data.0
+    }
+
     pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
         sqlx::query_as("SELECT id, data FROM pending_actions WHERE ts < now()")
     }
@@ -34,14 +38,23 @@ impl PendingAction {
     }
 }
 
+#[derive(Clone)]
 pub struct ActionExecutor {
-    http: http::Client,
+    http: Arc<http::Client>,
     sql: SqlPool,
 }
 
 impl ActionExecutor {
-    pub fn new(http: http::Client, sql: SqlPool) -> Self {
+    pub fn new(http: Arc<http::Client>, sql: SqlPool) -> Self {
         Self { http, sql }
+    }
+
+    pub fn http(&self) -> &Arc<http::Client> {
+        &self.http
+    }
+
+    pub fn sql(&self) -> &SqlPool {
+        &self.sql
     }
 
     pub async fn execute_action(&self, action: &Action) -> Result<()> {

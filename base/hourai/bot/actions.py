@@ -46,16 +46,6 @@ class ActionScheduler:
                                                  data=action))
             session.commit()
 
-    def query_pending_actions(self, session):
-        """Queries a SQLAlchemy session for of the currently unexecuted pending
-        actions.
-        """
-        now = datetime.utcnow()
-        return session.query(models.PendingAction) \
-            .filter(models.PendingAction.timestamp < now) \
-            .order_by(models.PendingAction.timestamp) \
-            .all()
-
 
 class ActionExecutor:
 
