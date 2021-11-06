@@ -12,19 +12,19 @@ pub fn get_user_mention_ids(text: &str) -> impl Iterator<Item = UserId> + '_ {
     USER_MENTION_REGEX
         .find_iter(text)
         .filter_map(|hit| u64::from_str(hit.as_str()).ok())
-        .map(UserId)
+        .filter_map(UserId::new)
 }
 
 pub fn get_role_mention_ids(text: &str) -> impl Iterator<Item = RoleId> + '_ {
     ROLE_MENTION_REGEX
         .find_iter(text)
         .filter_map(|hit| u64::from_str(hit.as_str()).ok())
-        .map(RoleId)
+        .filter_map(RoleId::new)
 }
 
 pub fn get_channel_mention_ids(text: &str) -> impl Iterator<Item = ChannelId> + '_ {
     CHANNEL_MENTION_REGEX
         .find_iter(text)
         .filter_map(|hit| u64::from_str(hit.as_str()).ok())
-        .map(ChannelId)
+        .filter_map(ChannelId::new)
 }

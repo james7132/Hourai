@@ -49,8 +49,8 @@ async fn apply_rule(
         let mut actions = Vec::new();
         for action_template in rule.additional_actions.iter() {
             let mut action = action_template.clone();
-            action.set_guild_id(guild_id.0);
-            action.set_user_id(message.author().id().0);
+            action.set_guild_id(guild_id.get());
+            action.set_user_id(message.author().id().get());
             actions.push(action);
         }
     }
@@ -101,10 +101,10 @@ fn get_mention_reason(
     reasons: &mut Vec<String>,
 ) {
     let users = mentions::get_user_mention_ids(message.content())
-        .map(|id| id.0)
+        .map(|id| id.get())
         .collect::<Vec<_>>();
     let roles = mentions::get_role_mention_ids(message.content())
-        .map(|id| id.0)
+        .map(|id| id.get())
         .collect::<Vec<_>>();
     let mut all = Vec::new();
     all.extend(users.iter().cloned());

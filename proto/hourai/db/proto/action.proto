@@ -17,8 +17,9 @@ message Action {
     ChangeRole change_role = 7;
     DirectMessage direct_message = 8;
     SendMessage send_message = 9;
-    ExecuteCommand command = 10;
   }
+
+  reserved 10;
 }
 
 message ActionSet {
@@ -81,10 +82,5 @@ message DirectMessage {
 
 message SendMessage {
   optional string content = 1;
-  optional uint64 channel_id = 2;
-}
-
-message ExecuteCommand {
-  optional string command = 1;
   optional uint64 channel_id = 2;
 }

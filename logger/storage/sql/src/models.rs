@@ -243,6 +243,7 @@ pub struct Member {
     pub role_ids: Vec<i64>,
     pub nickname: Option<String>,
     pub bot: bool,
+    pub present: bool,
     pub premium_since: Option<DateTime<Utc>>,
 }
 
@@ -255,6 +256,7 @@ impl From<&TwilightMember> for Member {
             role_ids: member.roles.iter().map(|id| id.get() as i64).collect(),
             nickname: member.nick.clone(),
             bot: member.user.bot,
+            present: true,
             premium_since: premium,
         }
     }
@@ -269,6 +271,7 @@ impl From<&MemberUpdate> for Member {
             role_ids: member.roles.iter().map(|id| id.get() as i64).collect(),
             nickname: member.nick.clone(),
             bot: member.user.bot,
+            present: true,
             premium_since: premium,
         }
     }

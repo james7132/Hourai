@@ -6,6 +6,8 @@ edition = "2018"
 
 [dependencies]
 hourai = { path = "../../hourai" }
+anyhow = "1.0"
+chrono = "0.4"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 protobuf = "2.22"
 
