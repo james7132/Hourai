@@ -12,10 +12,10 @@ where
 {
     // TODO(james7132): Properly set up authN and authZ for this
     if let Some(guild_id) = GuildId::new(path.into_inner()) {
-        Ok(GuildConfig::fetch::<T>(guild_id, &mut data.redis.clone())
+        let proto: Option<T> = GuildConfig::fetch(guild_id, &mut data.redis.clone())
             .await
-            .map_err(|_| WebError::GenericHTTPError(StatusCode::NOT_FOUND))?
-            .map(web::Json))
+            .map_err(|_| WebError::GenericHTTPError(StatusCode::NOT_FOUND))?;
+        Ok(proto.map(web::Json))
     } else {
         Err(WebError::GenericHTTPError(StatusCode::NOT_FOUND))
     }

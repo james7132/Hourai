@@ -10,6 +10,7 @@ hourai-redis = { path = "../redis" }
 hourai-sql = { path = "../sql" }
 anyhow = "1.0"
 chrono = "0.4"
+rand = "0.8"
 delegate = "0.6"
 either = "1.6"
 futures = { default-features = false, version = "0.3" }

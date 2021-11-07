@@ -288,7 +288,7 @@ impl Client<'static> {
     /// Gets the music config for a server.
     pub async fn get_config(&self, guild_id: GuildId) -> Result<MusicConfig> {
         let mut conn = self.redis.clone();
-        let config = GuildConfig::fetch_or_default::<MusicConfig>(guild_id, &mut conn).await?;
+        let config: MusicConfig = GuildConfig::fetch_or_default(guild_id, &mut conn).await?;
         Ok(config)
     }
 

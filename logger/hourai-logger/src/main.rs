@@ -1,4 +1,5 @@
-use std::sync::Arc;
+#[macro_use]
+extern crate lazy_static;
 
 mod announcements;
 mod commands;
@@ -29,6 +30,7 @@ use hourai_redis::*;
 use hourai_sql::{Ban, Executor, Username};
 use hourai_storage::{actions::ActionExecutor, Storage};
 use tracing::{debug, error, info, warn};
+use std::sync::Arc;
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits()
@@ -509,6 +511,9 @@ impl Client {
     }
 
     async fn on_message_create(self, evt: Message) -> Result<()> {
+        if message_filter::check_message(&self.0.actions, &evt).await? {
+            return Ok(());
+        }
         if !evt.author.bot {
             CachedMessage::new(evt)
                 .flush()
@@ -519,6 +524,9 @@ impl Client {
     }
 
     async fn on_message_update(self, evt: MessageUpdate) -> Result<()> {
+        if message_filter::check_message(&self.0.actions, &evt).await? {
+            return Ok(());
+        }
         // TODO(james7132): Properly implement this
         let mut redis = self.storage().redis().clone();
         let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut redis).await?;

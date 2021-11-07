@@ -78,6 +78,34 @@ impl MessageLike for Message {
     }
 }
 
+impl MessageLike for MessageUpdate {
+    type Author = User;
+
+    fn channel_id(&self) -> ChannelId {
+        self.channel_id
+    }
+
+    fn guild_id(&self) -> Option<GuildId> {
+        self.guild_id
+    }
+
+    fn author(&self) -> &User {
+        self.author.as_ref().unwrap()
+    }
+
+    fn content(&self) -> &str {
+        self.content.as_deref().unwrap()
+    }
+
+    fn embeds(&self) -> &[Embed] {
+        self.embeds.as_deref().unwrap()
+    }
+
+    fn attachments(&self) -> &[Attachment] {
+        self.attachments.as_deref().unwrap()
+    }
+}
+
 impl MessageLike for CachedMessageProto {
     type Author = CachedUserProto;
 

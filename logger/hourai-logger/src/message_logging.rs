@@ -73,7 +73,7 @@ pub(super) async fn on_message_update(
     }
     let guild_id = before.guild_id().ok_or_else(|| anyhow!("Not in guild."))?;
     let mut redis = client.storage().redis().clone();
-    let config = GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut redis).await?;
+    let config: LoggingConfig = GuildConfig::fetch_or_default(guild_id, &mut redis).await?;
     let type_config = config.get_edited_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, before.channel_id()) {
@@ -97,7 +97,7 @@ pub(super) async fn on_message_update(
 pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) -> Result<()> {
     let guild_id = evt.guild_id.ok_or_else(|| anyhow!("Not in guild."))?;
     let mut redis = client.storage().redis().clone();
-    let config = GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut redis).await?;
+    let config: LoggingConfig = GuildConfig::fetch_or_default(guild_id, &mut redis).await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
@@ -127,7 +127,7 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
 pub(super) async fn on_message_bulk_delete(client: Client, evt: MessageDeleteBulk) -> Result<()> {
     let guild_id = evt.guild_id.ok_or_else(|| anyhow!("Not in guild."))?;
     let mut redis = client.storage().redis().clone();
-    let config = GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut redis).await?;
+    let config: LoggingConfig = GuildConfig::fetch_or_default(guild_id, &mut redis).await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {

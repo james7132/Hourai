@@ -24,8 +24,8 @@ async fn get_roles(
 }
 
 async fn get_role_flags(storage: &Storage, guild_id: GuildId) -> Result<HashMap<u64, RoleFlags>> {
-    let config =
-        GuildConfig::fetch_or_default::<RoleConfig>(guild_id, &mut storage.redis().clone()).await?;
+    let config: RoleConfig =
+        GuildConfig::fetch_or_default(guild_id, &mut storage.redis().clone()).await?;
     Ok(config
         .get_settings()
         .iter()
@@ -34,9 +34,8 @@ async fn get_role_flags(storage: &Storage, guild_id: GuildId) -> Result<HashMap<
 }
 
 async fn get_verification_role(storage: &Storage, guild_id: GuildId) -> Result<Option<RoleId>> {
-    let config =
-        GuildConfig::fetch_or_default::<VerificationConfig>(guild_id, &mut storage.redis().clone())
-            .await?;
+    let config: VerificationConfig =
+        GuildConfig::fetch_or_default(guild_id, &mut storage.redis().clone()).await?;
 
     if config.get_enabled() && config.has_role_id() {
         Ok(RoleId::new(config.get_role_id()))

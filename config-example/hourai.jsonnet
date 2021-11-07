@@ -8,6 +8,10 @@ local subcommand = option {
   type: 1 // SUB_COMMAND
 };
 
+local subcommand_group = option {
+  type: 2 // SUB_COMMAND_GROUP
+};
+
 local string = option {
   type: 3 // STRING
 };
@@ -317,7 +321,7 @@ local commands = [
 
   command {
     // #018
-    name: "avatar",
+    name: "verification",
     description: "",
     options: [subcommand {
       name: "verify",
@@ -346,6 +350,51 @@ local commands = [
         required: true,
       }]
     }]
+  },
+
+  command {
+    // #019
+    name: "escalate",
+    description: "Progressive tracked moderation.",
+    options: [subcommand {
+      name: "up",
+      description: "Required: the user that is being inspected.",
+      options: [string {
+        name: "reason",
+        description: "The reason to escalate the user for.",
+        required: true,
+      }, integer {
+        name: "amount",
+        description: "Defaults to 1. Number of levels to go up.",
+      }] + [user {
+        name: "user",
+        description: "The user to kick from the server.",
+      }
+      for x in std.range(1, 24)]
+    }, subcommand {
+      name: "down",
+      description: "Sets up verification on the current server.",
+      options: [string {
+        name: "reason",
+        description: "The reason to escalate the user for.",
+        required: true,
+      }, integer {
+        name: "amount",
+        description: "Defaults to 1. Number of levels to go down.",
+      }] + [user {
+        name: "user",
+        description: "The user to kick from the server.",
+      }
+      for x in std.range(1, 24)]
+    }, subcommand {
+      name: "history",
+      description: "Distributes the verification role to all users currently on the server.",
+      options: [user {
+        name: "user",
+        description: "The user to kick from the server.",
+        required: true,
+      }]
+    }],
   },
 
 ];

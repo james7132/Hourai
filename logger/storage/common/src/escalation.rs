@@ -62,11 +62,8 @@ impl EscalationManager {
     }
 
     pub async fn guild(&self, guild_id: GuildId) -> Result<GuildEscalationManager> {
-        let config = GuildConfig::fetch_or_default::<ModerationConfig>(
-            guild_id,
-            &mut self.storage().redis().clone(),
-        )
-        .await?;
+        let config: ModerationConfig =
+            GuildConfig::fetch_or_default(guild_id, &mut self.storage().redis().clone()).await?;
 
         Ok(GuildEscalationManager {
             guild_id,
@@ -292,13 +289,10 @@ impl EscalationHistory {
     }
 
     async fn log_to_modlog(&self, escalation: &Escalation, diff: i64) -> Result<()> {
-        let modlog_id = GuildConfig::fetch_or_default::<LoggingConfig>(
-            self.guild_id(),
-            &mut self.storage().redis().clone(),
-        )
-        .await?
-        .get_modlog_channel_id();
-        if let Some(modlog_id) = ChannelId::new(modlog_id) {
+        let config: LoggingConfig =
+            GuildConfig::fetch_or_default(self.guild_id(), &mut self.storage().redis().clone())
+                .await?;
+        if let Some(modlog_id) = ChannelId::new(config.get_modlog_channel_id()) {
             let arrow = if diff > 0 { "up" } else { "down" };
             let esc = if diff > 0 { "escalated" } else { "deescalated" };
             let reasons: HashSet<&str> = escalation

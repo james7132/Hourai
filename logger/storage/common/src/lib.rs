@@ -9,14 +9,16 @@ pub use storage::Storage;
 
 use anyhow::Result;
 use hourai::{
+    interactions::CommandError,
     models::{
-        guild::{Permissions, Role},
+        guild::{Guild, Permissions, Role},
         id::{GuildId, RoleId},
     },
     proto::cache::CachedRoleProto,
 };
 use hourai_redis::{CachedGuild, OnlineStatus, RedisPool};
 use hourai_sql::{Member, SqlPool};
+use rand::Rng;
 use std::collections::HashSet;
 
 pub fn is_moderator_role(role: &CachedRoleProto) -> bool {
@@ -66,6 +68,27 @@ pub async fn find_online_moderators(
         .into_iter()
         .filter(|member| online.contains(&member.user_id()))
         .collect())
+}
+
+pub async fn ping_online_mod(guild_id: GuildId, storage: &Storage) -> Result<(String, String)> {
+    let mut redis = storage.redis().clone();
+    let online_mods = find_online_moderators(guild_id, storage.sql(), &mut redis).await?;
+    let guild = CachedGuild::fetch_resource::<Guild>(guild_id, guild_id, &mut redis)
+        .await?
+        .ok_or(CommandError::NotInGuild)?;
+
+    let mention: String;
+    let ping: String;
+    if online_mods.is_empty() {
+        mention = format!("<@{}>", guild.get_owner_id());
+        ping = format!("<@{}>, No mods online!", guild.get_owner_id());
+    } else {
+        let idx = rand::thread_rng().gen_range(0..online_mods.len());
+        mention = format!("<@{}>", online_mods[idx].user_id());
+        ping = mention.clone();
+    };
+
+    Ok((mention, ping))
 }
 
 pub async fn is_moderator(

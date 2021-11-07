@@ -13,7 +13,6 @@ use hourai::{
 };
 use hourai_redis::{CachedGuild, GuildConfig};
 use hourai_storage::{actions::ActionExecutor, escalation::EscalationManager, Storage};
-use rand::Rng;
 use regex::Regex;
 use std::{
     collections::HashMap,
@@ -63,24 +62,9 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
 
 async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
-    let mut redis = storage.redis().clone();
-    let online_mods =
-        hourai_storage::find_online_moderators(guild_id, storage.sql(), &mut redis).await?;
-    let guild = CachedGuild::fetch_resource::<Guild>(guild_id, guild_id, &mut redis)
-        .await?
-        .ok_or(CommandError::NotInGuild)?;
-    let config = GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut redis).await?;
-
-    let mention: String;
-    let ping: String;
-    if online_mods.is_empty() {
-        mention = format!("<@{}>", guild.get_owner_id());
-        ping = format!("<@{}>, No mods online!", guild.get_owner_id());
-    } else {
-        let idx = rand::thread_rng().gen_range(0..online_mods.len());
-        mention = format!("<@{}>", online_mods[idx].user_id());
-        ping = mention.clone();
-    };
+    let config: LoggingConfig = GuildConfig::fetch_or_default(guild_id, &mut storage.clone()).await?;
+    let (mention, ping) =
+        hourai_storage::ping_online_mod(guild_id, storage).await?;
 
     let content = ctx
         .get_string("reason")

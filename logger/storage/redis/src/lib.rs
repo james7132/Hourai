@@ -1,6 +1,7 @@
 mod compression;
 mod guild_config;
 mod keys;
+pub mod modlog;
 mod protobuf;
 
 pub use redis::*;
@@ -98,9 +99,9 @@ impl OnlineStatus {
 pub struct GuildConfig;
 
 impl GuildConfig {
-    pub async fn fetch<T: ::protobuf::Message + CachedGuildConfig>(
+    pub async fn fetch<T: ::protobuf::Message + CachedGuildConfig, C: ConnectionLike>(
         id: GuildId,
-        conn: &mut RedisPool,
+        conn: &mut C,
     ) -> std::result::Result<Option<T>, redis::RedisError> {
         let key = CacheKey::GuildConfigs(id.get());
         let response: Option<Compressed<Protobuf<T>>> = redis::Cmd::hget(key, vec![T::SUBKEY])
@@ -109,11 +110,11 @@ impl GuildConfig {
         Ok(response.map(|c| c.0 .0))
     }
 
-    pub async fn fetch_or_default<T: ::protobuf::Message + CachedGuildConfig>(
+    pub async fn fetch_or_default<T: ::protobuf::Message + CachedGuildConfig, C: ConnectionLike>(
         id: GuildId,
-        conn: &mut RedisPool,
+        conn: &mut C,
     ) -> std::result::Result<T, redis::RedisError> {
-        Ok(Self::fetch::<T>(id, conn).await?.unwrap_or_else(T::new))
+        Ok(Self::fetch::<T, C>(id, conn).await?.unwrap_or_else(T::new))
     }
 
     pub fn set<T: ::protobuf::Message + CachedGuildConfig>(id: GuildId, value: T) -> redis::Cmd {
