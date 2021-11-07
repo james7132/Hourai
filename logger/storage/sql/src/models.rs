@@ -463,6 +463,16 @@ pub struct PendingDeescalation {
 }
 
 impl PendingDeescalation {
+    #[inline(always)]
+    pub fn guild_id(&self) -> GuildId {
+        unsafe { GuildId::new_unchecked(self.guild_id as u64) }
+    }
+
+    #[inline(always)]
+    pub fn user_id(&self) -> UserId {
+        unsafe { UserId::new_unchecked(self.user_id as u64) }
+    }
+
     pub fn insert(&self) -> SqlQuery {
         sqlx::query(
             "INSERT INTO pending_deescalations ( \
@@ -492,6 +502,10 @@ impl PendingDeescalation {
             .bind(guild_id.get() as i64)
             .bind(user_id.get() as i64)
     }
+
+    pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
+        sqlx::query_as("SELECT * FROM pending_deescalations WHERE expiration < now()")
+    }
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -506,7 +520,7 @@ impl PendingAction {
     }
 
     pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
-        sqlx::query_as("SELECT id, data FROM pending_actions WHERE ts < now()")
+        sqlx::query_as("SELECT id, data FROM pending_actions WHERE timestamp < now()")
     }
 
     pub fn schedule<'a>(action: Action, timestamp: impl Into<DateTime<Utc>>) -> SqlQuery<'a> {

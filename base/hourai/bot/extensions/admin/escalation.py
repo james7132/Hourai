@@ -24,50 +24,6 @@ def require_escalation_config(ctx):
 
 class EscalationMixin:
 
-    def __init__(self, bot):
-        self.apply_pending_deescalations.start()
-        super().__init__()
-
-    def cog_unload(self):
-        self.apply_pending_deescalations.cancel()
-        super().cog_unload()
-
-    @tasks.loop(seconds=1)
-    async def apply_pending_deescalations(self):
-        session = self.bot.create_storage_session()
-        with session:
-            for deesc in self.__query_pending_deescalations(session):
-                try:
-                    await self.__apply_pending_deescalation(session, deesc)
-                except Exception:
-                    log.exception('Error in running pending deescalation:')
-                except escalation_history.EscalationException:
-                    # Happens only when a ladder has been removed
-                    pass
-
-    async def __apply_pending_deescalation(self, session, deesc):
-        guild = self.bot.get_guild(deesc.guild_id)
-        if guild is not None:
-            history = escalation_history.UserEscalationHistory(
-                bot=self.bot,
-                user=fake.FakeSnowflake(deesc.user_id),
-                guild=guild, session=session)
-            await history.apply_diff(guild.me, 'Automatic Deescalation',
-                                     deesc.amount, execute=False)
-        session.delete(deesc)
-        session.commit()
-
-    def __query_pending_deescalations(self, session):
-        now = datetime.utcnow()
-        return session.query(models.PendingDeescalation) \
-                      .filter(models.PendingDeescalation.expiration < now) \
-                      .order_by(models.PendingDeescalation.expiration) \
-                      .all()
-
-    @apply_pending_deescalations.before_loop
-    async def before_apply_pending_deescalations(self):
-        await self.bot.wait_until_ready()
-
     @commands.group(name='escalate', invoke_without_command=True)
     @checks.is_moderator()
     @commands.check(require_escalation_config)

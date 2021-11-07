@@ -5,7 +5,7 @@ mod commands;
 mod listings;
 mod message_filter;
 mod message_logging;
-mod pending_actions;
+mod pending_events;
 mod roles;
 
 use anyhow::Result;
@@ -137,7 +137,8 @@ async fn main() {
     // Setup background tasks
     tokio::spawn(client.clone().log_bans());
     tokio::spawn(flush_online(cache.clone(), storage.redis().clone()));
-    tokio::spawn(pending_actions::run_pending_actions(actions.clone()));
+    tokio::spawn(pending_events::run_pending_actions(actions.clone()));
+    tokio::spawn(pending_events::run_pending_deescalations(actions.clone()));
 
     while let Some((shard_id, evt)) = events.next().await {
         if evt.kind() == EventType::PresenceUpdate {
