@@ -5,7 +5,9 @@ authors = ["james7132 <contact@jamessliu.com>"]
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0"
 hourai = { path = "../../hourai" }
 hourai-redis = { path = "../redis" }
 hourai-sql = { path = "../sql" }
+anyhow = "1.0"
+chrono = "0.4"
+thiserror = "1.0"

@@ -7,7 +7,7 @@ use sqlx::{
 use std::error::Error;
 
 /// Wrapper for writing and storing Protocol Buffers to a SQL table column.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Protobuf<T: protobuf::Message>(pub T);
 
 impl<T: protobuf::Message> Type<crate::SqlDatabase> for Protobuf<T> {
@@ -40,5 +40,11 @@ where
         let bytes = <&'r [u8] as Decode<'r, crate::SqlDatabase>>::decode(value)?;
         let proto = T::parse_from_bytes(bytes)?;
         Ok(Protobuf(proto))
+    }
+}
+
+impl<T: protobuf::Message> From<T> for Protobuf<T> {
+    fn from(value: T) -> Self {
+        Self(value)
     }
 }

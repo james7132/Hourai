@@ -26,7 +26,7 @@ use hourai::{
     },
 };
 use hourai_redis::*;
-use hourai_sql::{*, actions::ActionExecutor};
+use hourai_sql::{actions::ActionExecutor, *};
 use tracing::{debug, error, info, warn};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
@@ -130,8 +130,10 @@ async fn main() {
     // Setup background tasks
     tokio::spawn(client.clone().log_bans());
     tokio::spawn(flush_online(cache.clone(), redis.clone()));
-    tokio::spawn(pending_actions::run_pending_actions(
-            ActionExecutor::new(client.http_client(), client.sql().clone())));
+    tokio::spawn(pending_actions::run_pending_actions(ActionExecutor::new(
+        client.http_client(),
+        client.sql().clone(),
+    )));
 
     while let Some((shard_id, evt)) = events.next().await {
         if evt.kind() == EventType::PresenceUpdate {

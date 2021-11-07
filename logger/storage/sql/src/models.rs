@@ -1,6 +1,10 @@
-use hourai::models::{
-    datetime::Timestamp, gateway::payload::incoming::MemberUpdate, guild::Ban as TwilightBan,
-    guild::Member as TwilightMember, id::*, UserLike,
+use crate::types;
+use hourai::{
+    models::{
+        datetime::Timestamp, gateway::payload::incoming::MemberUpdate, guild::Ban as TwilightBan,
+        guild::Member as TwilightMember, id::*, UserLike,
+    },
+    proto::action::ActionSet,
 };
 use sqlx::types::chrono::{DateTime, NaiveDateTime, Utc};
 use std::convert::TryInto;
@@ -385,5 +389,107 @@ impl Member {
         )
         .bind(role_id.get() as i64)
         .bind(guild_id.get() as i64)
+    }
+}
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct EscalationEntry {
+    pub guild_id: i64,
+    pub subject_id: i64,
+    pub authorizer_id: i64,
+    pub authorizer_name: String,
+    pub display_name: String,
+    pub timestamp: DateTime<Utc>,
+    pub action: types::Protobuf<ActionSet>,
+    pub level_delta: i32,
+}
+
+impl EscalationEntry {
+    pub fn guild_id(&self) -> GuildId {
+        unsafe { GuildId::new_unchecked(self.guild_id as u64) }
+    }
+
+    pub fn subject_id(&self) -> UserId {
+        unsafe { UserId::new_unchecked(self.subject_id as u64) }
+    }
+
+    pub fn authorizer_id(&self) -> UserId {
+        unsafe { UserId::new_unchecked(self.authorizer_id as u64) }
+    }
+
+    pub fn fetch<'a>(guild_id: GuildId, user_id: UserId) -> SqlQueryAs<'a, Self> {
+        sqlx::query_as(
+            "SELECT * FROM escalation_history \
+                        WHERE guild_id = $1 AND subject_id = $2 \
+                        ORDER BY timestamp",
+        )
+        .bind(guild_id.get() as i64)
+        .bind(user_id.get() as i64)
+    }
+
+    pub fn insert<'a>(&self) -> SqlQueryAs<'a, (i64,)> {
+        sqlx::query_as(
+            "INSERT INTO escalation_histories ( \
+                guild_id, \
+                subject_id, \
+                authorizer_id, \
+                authorizer_name, \
+                display_name, \
+                action, \
+                level_delta \
+                timestamp, \
+            ) \
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
+            RETURNING id",
+        )
+        .bind(self.guild_id)
+        .bind(self.subject_id)
+        .bind(self.authorizer_id)
+        .bind(self.authorizer_name.clone())
+        .bind(self.display_name.clone())
+        .bind(self.action.clone())
+        .bind(self.level_delta)
+        .bind(self.timestamp)
+    }
+}
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct PendingDeescalation {
+    pub guild_id: i64,
+    pub user_id: i64,
+    pub expiration: DateTime<Utc>,
+    pub amount: i64,
+    pub entry_id: i64,
+}
+
+impl PendingDeescalation {
+    pub fn insert(&self) -> SqlQuery {
+        sqlx::query(
+            "INSERT INTO pending_deescalations ( \
+                guild_id, \
+                user_id, \
+                expiration, \
+                amount, \
+                entry_id \
+            ) \
+            VALUES ($1, $2, $3, $4, $5) \
+            ON CONFLICT ON CONSTRAINT pending_deescalations_pkey \
+            DO UPDATE SET \
+                amount = excluded.amount \
+                expiration = excluded.expiration \
+                entry_id = excluded.entry_id \
+            ",
+        )
+        .bind(self.guild_id)
+        .bind(self.user_id)
+        .bind(self.expiration)
+        .bind(self.amount)
+        .bind(self.entry_id)
+    }
+
+    pub fn delete<'a>(guild_id: GuildId, user_id: UserId) -> SqlQuery<'a> {
+        sqlx::query("DELETE FROM pending_deescalations WHERE guild_id = $1 AND user_id = $2")
+            .bind(guild_id.get() as i64)
+            .bind(user_id.get() as i64)
     }
 }

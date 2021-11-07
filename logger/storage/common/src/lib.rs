@@ -1,3 +1,5 @@
+pub mod escalation;
+
 use anyhow::Result;
 use hourai::{
     models::{
