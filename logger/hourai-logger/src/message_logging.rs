@@ -78,7 +78,7 @@ pub(super) async fn on_message_update(
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, before.channel_id()) {
         client
-            .http_client()
+            .http()
             .create_message(output_channel.unwrap())
             .content(&format!(
                 "Message by <@{}> edited from <#{}>",
@@ -107,7 +107,7 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
                 return Ok(());
             }
             client
-                .http_client()
+                .http()
                 .create_message(output_channel.unwrap())
                 .content(&format!(
                     "Message by <@{}> deleted from <#{}>",
@@ -132,7 +132,7 @@ pub(super) async fn on_message_bulk_delete(client: Client, evt: MessageDeleteBul
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
         client
-            .http_client()
+            .http()
             .create_message(output_channel.unwrap())
             .content(&format!(
                 "{} messages bulk deleted from <#{}>",

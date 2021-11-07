@@ -26,10 +26,17 @@ impl ActionExecutor {
         }
     }
 
+    #[inline(always)]
+    pub fn current_user(&self) -> &User {
+        &self.current_user
+    }
+
+    #[inline(always)]
     pub fn http(&self) -> &Arc<http::Client> {
         &self.http
     }
 
+    #[inline(always)]
     pub fn storage(&self) -> &Storage {
         &self.storage
     }

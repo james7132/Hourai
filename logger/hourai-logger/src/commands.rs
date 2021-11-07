@@ -11,9 +11,8 @@ use hourai::{
     },
     proto::guild_configs::LoggingConfig,
 };
-use hourai_redis::{CachedGuild, GuildConfig, RedisPool};
-use hourai_sql::SqlPool;
-use hourai_storage::Storage;
+use hourai_redis::{CachedGuild, GuildConfig};
+use hourai_storage::{actions::ActionExecutor, escalation::EscalationManager, Storage};
 use rand::Rng;
 use regex::Regex;
 use std::{
@@ -25,17 +24,22 @@ use std::{
 const MAX_PRUNED_MESSAGES: usize = 100;
 const MAX_PRUNED_MESSAGES_PER_BATCH: usize = 100;
 
-pub async fn handle_command(ctx: CommandContext, mut storage: Storage) -> Result<()> {
+pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Result<()> {
     let result = match ctx.command() {
-        Command::Command("pingmod") => pingmod(&ctx, &mut storage).await,
+        Command::Command("pingmod") => pingmod(&ctx, actions.storage()).await,
 
         // Admin Commands
-        Command::Command("ban") => ban(&ctx, &mut storage).await,
-        Command::Command("kick") => kick(&ctx, &mut storage).await,
+        Command::Command("ban") => ban(&ctx, actions.storage()).await,
+        Command::Command("kick") => kick(&ctx, actions.storage()).await,
         Command::Command("mute") => mute(&ctx).await,
-        Command::Command("move") => move_cmd(&ctx, &mut storage).await,
+        Command::Command("move") => move_cmd(&ctx, actions.storage()).await,
         Command::Command("deafen") => deafen(&ctx).await,
         Command::Command("prune") => prune(&ctx).await,
+
+        // Escalation commands
+        Command::SubCommand("escalate", "up") => escalate(&ctx, actions).await,
+        Command::SubCommand("escalate", "down") => deescalate(&ctx, actions).await,
+        Command::SubCommand("escalate", "history") => escalate_history(&ctx, actions).await,
         _ => return Err(anyhow::Error::new(CommandError::UnknownCommand)),
     };
 
@@ -122,7 +126,7 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
     }
 }
 
-async fn ban(ctx: &CommandContext, storage: &mut Storage) -> Result<Response> {
+async fn ban(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     let soft = ctx.get_flag("soft").unwrap_or(false);
     let action = if soft { "Softbanned" } else { "Banned" };
@@ -219,7 +223,7 @@ async fn ban(ctx: &CommandContext, storage: &mut Storage) -> Result<Response> {
     Ok(Response::direct().content(format!("{} {} users.", action, users.len() - errors.len())))
 }
 
-async fn kick(ctx: &CommandContext, storage: &mut Storage) -> Result<Response> {
+async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Kick Members"));
@@ -326,7 +330,7 @@ async fn mute(ctx: &CommandContext) -> Result<Response> {
     Ok(Response::direct().content(format!("Muted {} users.", members.len() - errors.len())))
 }
 
-async fn move_cmd(ctx: &CommandContext, storage: &mut Storage) -> Result<Response> {
+async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MOVE_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Move Members"));
@@ -474,4 +478,124 @@ async fn prune(ctx: &CommandContext) -> Result<Response> {
         total += batch.len();
     }
     Ok(Response::direct().content(format!("Pruned {} messages.", total)))
+}
+
+async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
+    let guild_id = ctx.guild_id()?;
+    if !hourai_storage::is_moderator(
+        guild_id,
+        ctx.command.member.as_ref().unwrap().roles.iter().cloned(),
+        &mut actions.storage().redis().clone(),
+    )
+    .await?
+    {
+        anyhow::bail!(CommandError::MissingPermission(
+            "Only moderators can escalate users."
+        ));
+    }
+    let authorizer = ctx.user();
+    let reason = ctx.get_string("reason")?.as_ref();
+    let amount = ctx.get_int("amount").unwrap_or(1);
+    if amount <= 0 {
+        anyhow::bail!(CommandError::InvalidArgument(
+            "Non-positive `amounts` are not allowed. If you need to deescalate someone, please use \
+             `/escalate down` instead."));
+    }
+    let manager = EscalationManager::new(actions.clone());
+    let guild = manager.guild(guild_id).await?;
+    let mut results = Vec::new();
+    for user_id in ctx.all_users("user") {
+        let history = guild.fetch_history(user_id).await?;
+        let result = history
+            .apply_delta(
+                /*authorizer=*/ authorizer,
+                /*reason=*/ reason,
+                /*diff=*/ amount,
+                /*execute=*/ amount >= 0,
+            )
+            .await;
+        match result {
+            Ok(escalation) => {
+                let expiration = escalation.expiration.map(|date| date.to_rfc2822());
+                let expiration = expiration.as_deref().unwrap_or("Never");
+                results.push(format!(
+                    "<@{}>: Action: {}. Expiration {}",
+                    user_id, escalation.entry.display_name, expiration
+                ));
+            }
+            Err(err) => {
+                tracing::error!("Error while escalating a user: {}", err);
+            }
+        }
+    }
+
+    let response = format!(
+        "Escalated {} users for: '{}'\n{}",
+        results.len(),
+        reason,
+        results.join("\n")
+    );
+    Ok(Response::direct().content(response))
+}
+
+async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
+    let guild_id = ctx.guild_id()?;
+    if !hourai_storage::is_moderator(
+        guild_id,
+        ctx.command.member.as_ref().unwrap().roles.iter().cloned(),
+        &mut actions.storage().redis().clone(),
+    )
+    .await?
+    {
+        anyhow::bail!(CommandError::MissingPermission(
+            "Only moderators can escalate users."
+        ));
+    }
+    let authorizer = ctx.user();
+    let reason = ctx.get_string("reason")?.as_ref();
+    let amount = -ctx.get_int("amount").unwrap_or(1);
+    if amount >= 0 {
+        anyhow::bail!(CommandError::InvalidArgument(
+            "Non-positive `amounts` are not allowed. If you need to deescalate someone, please use \
+             `/escalate down` instead."));
+    }
+    let manager = EscalationManager::new(actions.clone());
+    let guild = manager.guild(guild_id).await?;
+    let mut results = Vec::new();
+    for user_id in ctx.all_users("user") {
+        let history = guild.fetch_history(user_id).await?;
+        let result = history
+            .apply_delta(
+                /*authorizer=*/ authorizer,
+                /*reason=*/ reason,
+                /*diff=*/ amount,
+                /*execute=*/ amount >= 0,
+            )
+            .await;
+        match result {
+            Ok(escalation) => {
+                let expiration = escalation.expiration.map(|date| date.to_rfc2822());
+                let expiration = expiration.as_deref().unwrap_or("Never");
+                results.push(format!(
+                    "<@{}>: Action: {}. Expiration {}",
+                    user_id, escalation.entry.display_name, expiration
+                ));
+            }
+            Err(err) => {
+                tracing::error!("Error while escalating a user: {}", err);
+            }
+        }
+    }
+
+    let response = format!(
+        "Escalated {} users for: '{}'\n{}",
+        results.len(),
+        reason,
+        results.join("\n")
+    );
+    Ok(Response::direct().content(response))
+}
+
+async fn escalate_history(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
+    anyhow::bail!("This command is unfortunately not implemented yet.");
 }

@@ -116,12 +116,12 @@ async fn main() {
         .await
         .expect("Failed to deserialize bot user.");
 
+    let actions = ActionExecutor::new(user, http_client, storage.clone());
+
     let client = Client(Arc::new(ClientRef {
-        user_id: user.id,
-        http_client,
         gateway: gateway.clone(),
         cache: cache.clone(),
-        storage: storage.clone(),
+        actions: actions.clone(),
     }));
 
     info!("Starting gateway...");
@@ -137,11 +137,7 @@ async fn main() {
     // Setup background tasks
     tokio::spawn(client.clone().log_bans());
     tokio::spawn(flush_online(cache.clone(), storage.redis().clone()));
-    tokio::spawn(pending_actions::run_pending_actions(ActionExecutor::new(
-        user,
-        client.http_client(),
-        storage.clone(),
-    )));
+    tokio::spawn(pending_actions::run_pending_actions(actions.clone()));
 
     while let Some((shard_id, evt)) = events.next().await {
         if evt.kind() == EventType::PresenceUpdate {
@@ -180,11 +176,9 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
 }
 
 struct ClientRef {
-    pub user_id: UserId,
-    pub http_client: Arc<hourai::http::Client>,
     pub gateway: Arc<Cluster>,
     pub cache: InMemoryCache,
-    pub storage: Storage,
+    pub actions: ActionExecutor,
 }
 
 #[derive(Clone)]
@@ -215,15 +209,17 @@ impl Client {
     }
 
     pub fn user_id(&self) -> UserId {
-        self.0.user_id
+        self.0.actions.current_user().id
     }
 
+    #[inline(always)]
     pub fn storage(&self) -> &Storage {
-        &self.0.storage
+        &self.0.actions.storage()
     }
 
-    pub fn http_client(&self) -> Arc<hourai::http::Client> {
-        self.0.http_client.clone()
+    #[inline(always)]
+    pub fn http(&self) -> &Arc<hourai::http::Client> {
+        self.0.actions.http()
     }
 
     pub async fn chunk_guild(&self, guild_id: GuildId) -> Result<()> {
@@ -257,8 +253,7 @@ impl Client {
             .await
         } else {
             let roles = self
-                .0
-                .http_client
+                .http()
                 .guild_member(guild_id, user_id)
                 .exec()
                 .await?
@@ -378,7 +373,7 @@ impl Client {
             .await?;
         if perms.contains(Permissions::BAN_MEMBERS) {
             if let Ok(ban) = self
-                .http_client()
+                .http()
                 .ban(evt.guild_id, evt.user.id)
                 .exec()
                 .await?
@@ -493,14 +488,14 @@ impl Client {
     }
 
     async fn on_thread_create(&mut self, evt: ThreadCreate) -> Result<()> {
-        self.http_client().join_thread(evt.0.id()).exec().await?;
+        self.http().join_thread(evt.0.id()).exec().await?;
         info!("Joined thread {}", evt.0.id());
         Ok(())
     }
 
     async fn on_thread_list_sync(&mut self, evt: ThreadListSync) -> Result<()> {
         for thread in evt.threads {
-            if let Err(err) = self.http_client().join_thread(thread.id()).exec().await {
+            if let Err(err) = self.http().join_thread(thread.id()).exec().await {
                 error!(
                     "Error while joining new thread in guild {}: {}",
                     evt.guild_id, err
@@ -549,17 +544,17 @@ impl Client {
         info!("Recieved interaction: {:?}", evt);
         match evt {
             Interaction::Ping(ping) => {
-                self.http_client()
+                self.http()
                     .interaction_callback(ping.id, &ping.token, &InteractionResponse::Pong)
                     .exec()
                     .await?;
             }
             Interaction::ApplicationCommand(cmd) => {
                 let ctx = hourai::interactions::CommandContext {
-                    http: self.http_client(),
+                    http: self.http().clone(),
                     command: cmd,
                 };
-                commands::handle_command(ctx, self.storage().clone()).await?;
+                commands::handle_command(ctx, &self.0.actions).await?;
             }
             interaction => {
                 warn!("Unknown incoming interaction: {:?}", interaction);
@@ -706,19 +701,12 @@ impl Client {
 
     async fn refresh_bans(&self, guild_id: GuildId) -> Result<()> {
         let perms = self
-            .fetch_guild_permissions(guild_id, self.0.user_id)
+            .fetch_guild_permissions(guild_id, self.user_id())
             .await?;
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
-            let fetched_bans = self
-                .0
-                .http_client
-                .bans(guild_id)
-                .exec()
-                .await?
-                .model()
-                .await?;
+            let fetched_bans = self.http().bans(guild_id).exec().await?.model().await?;
             let bans: Vec<Ban> = fetched_bans
                 .clone()
                 .into_iter()

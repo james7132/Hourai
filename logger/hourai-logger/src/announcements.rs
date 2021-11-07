@@ -102,7 +102,7 @@ pub fn broadcast(client: &Client, config: &AnnouncementTypeConfig, message: Stri
         .cloned()
         .filter_map(ChannelId::new);
     for channel_id in channel_ids {
-        let http = client.http_client();
+        let http = client.http().clone();
         let msg = message.clone();
         tokio::spawn(async move {
             if let Err(err) = push(http, channel_id, msg).await {

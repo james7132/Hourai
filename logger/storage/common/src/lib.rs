@@ -17,6 +17,7 @@ use hourai::{
 };
 use hourai_redis::{CachedGuild, OnlineStatus, RedisPool};
 use hourai_sql::{Member, SqlPool};
+use std::collections::HashSet;
 
 pub fn is_moderator_role(role: &CachedRoleProto) -> bool {
     let name = role.get_name().to_lowercase();
@@ -65,4 +66,17 @@ pub async fn find_online_moderators(
         .into_iter()
         .filter(|member| online.contains(&member.user_id()))
         .collect())
+}
+
+pub async fn is_moderator(
+    guild_id: GuildId,
+    mut roles: impl Iterator<Item = RoleId>,
+    redis: &mut RedisPool,
+) -> Result<bool> {
+    let moderator_roles: HashSet<RoleId> = find_moderator_roles(guild_id, redis)
+        .await?
+        .iter()
+        .filter_map(|role| RoleId::new(role.get_role_id()))
+        .collect();
+    Ok(roles.any(move |role_id| moderator_roles.contains(&role_id)))
 }
