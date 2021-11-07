@@ -7,14 +7,15 @@ use hourai::models::user::User;
 use hourai::models::voice::VoiceState;
 use hourai::proto::guild_configs::*;
 use hourai_redis::GuildConfig;
+use hourai_storage::Storage;
 use std::sync::Arc;
 
-async fn get_config(client: &Client, guild_id: GuildId) -> Result<Option<AnnouncementConfig>> {
-    Ok(GuildConfig::fetch(guild_id, &mut client.redis()).await?)
+async fn get_config(storage: &Storage, guild_id: GuildId) -> Result<Option<AnnouncementConfig>> {
+    Ok(GuildConfig::fetch(guild_id, &mut storage.redis().clone()).await?)
 }
 
 pub async fn on_member_join(client: &Client, guild: GuildId, user: User) -> Result<()> {
-    if let Some(config) = get_config(client, guild).await? {
+    if let Some(config) = get_config(client.storage(), guild).await? {
         // TODO(james7132): let this be customizable.
         let msg = format!("<@{}> has joined the server.", user.id);
         broadcast(client, config.get_leaves(), msg);
@@ -23,7 +24,7 @@ pub async fn on_member_join(client: &Client, guild: GuildId, user: User) -> Resu
 }
 
 pub async fn on_member_leave(client: &Client, evt: MemberRemove) -> Result<()> {
-    if let Some(config) = get_config(&client, evt.guild_id).await? {
+    if let Some(config) = get_config(client.storage(), evt.guild_id).await? {
         // TODO(james7132): let this be customizable.
         let msg = format!("**{}** has left the server.", evt.user.name);
         broadcast(client, config.get_leaves(), msg);
@@ -32,7 +33,7 @@ pub async fn on_member_leave(client: &Client, evt: MemberRemove) -> Result<()> {
 }
 
 pub async fn on_member_ban(client: &Client, evt: BanAdd) -> Result<()> {
-    if let Some(config) = get_config(client, evt.guild_id).await? {
+    if let Some(config) = get_config(client.storage(), evt.guild_id).await? {
         // TODO(james7132): let this be customizable.
         let msg = format!("**{}** has been banned.", evt.user.name);
         broadcast(client, config.get_bans(), msg);
@@ -49,7 +50,7 @@ pub async fn on_voice_update(
         Some(guild) => guild,
         None => return Ok(()),
     };
-    let mut redis = client.redis();
+    let mut redis = client.storage().redis().clone();
     let before_channel = if let Some(id) = before {
         hourai_redis::CachedGuild::fetch_resource::<GuildChannel>(guild, id, &mut redis).await?
     } else {
@@ -67,7 +68,7 @@ pub async fn on_voice_update(
         Some(member) => member.user.name,
         None => return Ok(()),
     };
-    if let Some(config) = get_config(client, guild).await? {
+    if let Some(config) = get_config(client.storage(), guild).await? {
         // TODO(james7132): let this be customizable.
         let msg = match (before_channel, after_channel) {
             (Some(b), Some(a)) => {
@@ -95,15 +96,18 @@ pub fn broadcast(client: &Client, config: &AnnouncementTypeConfig, message: Stri
         Ok(())
     }
 
-    for channel in config.get_channel_ids() {
-        if let Some(channel_id) = ChannelId::new(*channel) {
-            let http = client.http_client();
-            let msg = message.clone();
-            tokio::spawn(async move {
-                if let Err(err) = push(http, channel_id, msg).await {
-                    tracing::error!("Error while making announcment in {}: {}", channel_id, err);
-                }
-            });
-        }
+    let channel_ids = config
+        .get_channel_ids()
+        .iter()
+        .cloned()
+        .filter_map(ChannelId::new);
+    for channel_id in channel_ids {
+        let http = client.http_client();
+        let msg = message.clone();
+        tokio::spawn(async move {
+            if let Err(err) = push(http, channel_id, msg).await {
+                tracing::error!("Error while making announcment in {}: {}", channel_id, err);
+            }
+        });
     }
 }

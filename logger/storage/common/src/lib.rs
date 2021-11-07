@@ -1,4 +1,11 @@
+#[macro_use]
+extern crate delegate;
+
+pub mod actions;
 pub mod escalation;
+mod storage;
+
+pub use storage::Storage;
 
 use anyhow::Result;
 use hourai::{

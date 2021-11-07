@@ -9,21 +9,23 @@ use hourai::{
     proto::{cache::CachedRoleProto, guild_configs::*},
 };
 use hourai_redis::{CachedGuild, GuildConfig};
+use hourai_storage::Storage;
 use std::collections::HashMap;
 
 async fn get_roles(
-    client: &Client,
+    storage: &Storage,
     guild_id: GuildId,
     user_id: UserId,
 ) -> hourai_sql::Result<Vec<RoleId>> {
     hourai_sql::Member::fetch(guild_id, user_id)
-        .fetch_one(client.sql())
+        .fetch_one(storage.sql())
         .await
         .map(|member| member.role_ids().collect())
 }
 
-async fn get_role_flags(client: &Client, guild_id: GuildId) -> Result<HashMap<u64, RoleFlags>> {
-    let config = GuildConfig::fetch_or_default::<RoleConfig>(guild_id, &mut client.redis()).await?;
+async fn get_role_flags(storage: &Storage, guild_id: GuildId) -> Result<HashMap<u64, RoleFlags>> {
+    let config =
+        GuildConfig::fetch_or_default::<RoleConfig>(guild_id, &mut storage.redis().clone()).await?;
     Ok(config
         .get_settings()
         .iter()
@@ -31,9 +33,10 @@ async fn get_role_flags(client: &Client, guild_id: GuildId) -> Result<HashMap<u6
         .collect())
 }
 
-async fn get_verification_role(client: &Client, guild_id: GuildId) -> Result<Option<RoleId>> {
+async fn get_verification_role(storage: &Storage, guild_id: GuildId) -> Result<Option<RoleId>> {
     let config =
-        GuildConfig::fetch_or_default::<VerificationConfig>(guild_id, &mut client.redis()).await?;
+        GuildConfig::fetch_or_default::<VerificationConfig>(guild_id, &mut storage.redis().clone())
+            .await?;
 
     if config.get_enabled() && config.has_role_id() {
         Ok(RoleId::new(config.get_role_id()))
@@ -46,13 +49,13 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
     let guild_id = member.guild_id;
     let user_id = member.user.id;
 
-    let bot_roles = match get_roles(client, guild_id, client.user_id()).await {
+    let bot_roles = match get_roles(client.storage(), guild_id, client.user_id()).await {
         Ok(roles) => roles,
         Err(hourai_sql::Error::RowNotFound) => return Ok(()),
         Err(err) => anyhow::bail!(err),
     };
 
-    let mut redis = client.redis();
+    let mut redis = client.storage().redis().clone();
     let perms = CachedGuild::guild_permissions(
         guild_id,
         client.user_id(),
@@ -64,7 +67,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         return Ok(());
     }
 
-    let user_roles = match get_roles(client, guild_id, user_id).await {
+    let user_roles = match get_roles(client.storage(), guild_id, user_id).await {
         Ok(roles) => CachedGuild::role_set(guild_id, &roles, &mut redis).await?,
         Err(hourai_sql::Error::RowNotFound) => return Ok(()),
         Err(err) => anyhow::bail!(err),
@@ -76,7 +79,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         .cloned()
         .unwrap_or_else(|| CachedRoleProto::default());
 
-    let flags = get_role_flags(client, guild_id).await?;
+    let flags = get_role_flags(client.storage(), guild_id).await?;
     let mut restorable: Vec<RoleId> = user_roles
         .iter()
         .filter(|role| {
@@ -90,7 +93,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         .collect();
 
     // Do not give out the verification role if it is enabled.
-    if let Some(role) = get_verification_role(client, guild_id).await? {
+    if let Some(role) = get_verification_role(client.storage(), guild_id).await? {
         restorable.retain(|id| *id != role);
     }
 

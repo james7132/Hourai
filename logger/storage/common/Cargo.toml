@@ -10,4 +10,8 @@ hourai-redis = { path = "../redis" }
 hourai-sql = { path = "../sql" }
 anyhow = "1.0"
 chrono = "0.4"
+delegate = "0.6"
+either = "1.6"
+futures = { default-features = false, version = "0.3" }
+sqlx-core = "0.5"
 thiserror = "1.0"

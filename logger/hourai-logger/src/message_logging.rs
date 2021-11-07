@@ -72,8 +72,8 @@ pub(super) async fn on_message_update(
         return Ok(());
     }
     let guild_id = before.guild_id().ok_or_else(|| anyhow!("Not in guild."))?;
-    let config =
-        GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut client.redis()).await?;
+    let mut redis = client.storage().redis().clone();
+    let config = GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut redis).await?;
     let type_config = config.get_edited_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, before.channel_id()) {
@@ -96,12 +96,12 @@ pub(super) async fn on_message_update(
 
 pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) -> Result<()> {
     let guild_id = evt.guild_id.ok_or_else(|| anyhow!("Not in guild."))?;
-    let config =
-        GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut client.redis()).await?;
+    let mut redis = client.storage().redis().clone();
+    let config = GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut redis).await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
-        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut client.redis()).await?;
+        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut redis).await?;
         if let Some(msg) = cached {
             if msg.author().bot() {
                 return Ok(());
@@ -126,8 +126,8 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
 
 pub(super) async fn on_message_bulk_delete(client: Client, evt: MessageDeleteBulk) -> Result<()> {
     let guild_id = evt.guild_id.ok_or_else(|| anyhow!("Not in guild."))?;
-    let config =
-        GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut client.redis()).await?;
+    let mut redis = client.storage().redis().clone();
+    let config = GuildConfig::fetch_or_default::<LoggingConfig>(guild_id, &mut redis).await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {

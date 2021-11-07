@@ -1,3 +1,4 @@
+use crate::{actions::ActionExecutor, Storage};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use hourai::{
@@ -9,13 +10,11 @@ use hourai::{
     },
 };
 use hourai::{
-    models::guild::Member,
+    models::user::User,
     proto::action::{Action, ActionSet},
 };
-use hourai_redis::{GuildConfig, RedisPool};
-use hourai_sql::{
-    actions::ActionExecutor, EscalationEntry, Executor, PendingDeescalation, SqlPool,
-};
+use hourai_redis::GuildConfig;
+use hourai_sql::{EscalationEntry, Executor, PendingDeescalation};
 use std::{
     cmp::{max, min},
     collections::HashSet,
@@ -40,43 +39,34 @@ pub enum EscalationError {
 }
 
 #[derive(Clone)]
-pub struct EscalationManager {
-    actions: ActionExecutor,
-    redis: RedisPool,
-}
+pub struct EscalationManager(ActionExecutor);
 
 impl EscalationManager {
-    pub fn new(executor: ActionExecutor, redis: RedisPool) -> Self {
-        Self {
-            actions: executor,
-            redis,
-        }
+    pub fn new(executor: ActionExecutor) -> Self {
+        Self(executor)
     }
 
     #[inline(always)]
     pub fn http(&self) -> &Arc<http::Client> {
-        self.actions.http()
+        self.0.http()
     }
 
     #[inline(always)]
-    pub fn sql(&self) -> &SqlPool {
-        self.actions.sql()
-    }
-
-    #[inline(always)]
-    pub fn redis(&self) -> &RedisPool {
-        &self.redis
+    pub fn storage(&self) -> &Storage {
+        self.0.storage()
     }
 
     #[inline(always)]
     pub fn executor(&self) -> &ActionExecutor {
-        &self.actions
+        &self.0
     }
 
     pub async fn guild(&self, guild_id: GuildId) -> Result<GuildEscalationManager> {
-        let config =
-            GuildConfig::fetch_or_default::<ModerationConfig>(guild_id, &mut self.redis.clone())
-                .await?;
+        let config = GuildConfig::fetch_or_default::<ModerationConfig>(
+            guild_id,
+            &mut self.storage().redis().clone(),
+        )
+        .await?;
 
         Ok(GuildEscalationManager {
             guild_id,
@@ -110,13 +100,8 @@ impl GuildEscalationManager {
     }
 
     #[inline(always)]
-    pub fn sql(&self) -> &SqlPool {
-        self.manager.sql()
-    }
-
-    #[inline(always)]
-    pub fn redis(&self) -> &RedisPool {
-        self.manager.redis()
+    pub fn storage(&self) -> &Storage {
+        self.manager.storage()
     }
 
     #[inline(always)]
@@ -126,7 +111,7 @@ impl GuildEscalationManager {
 
     pub async fn fetch_history(&self, user_id: UserId) -> Result<EscalationHistory> {
         let entries = EscalationEntry::fetch(self.guild_id, user_id)
-            .fetch_all(self.manager.sql())
+            .fetch_all(self.storage().sql())
             .await?;
         Ok(EscalationHistory {
             user_id,
@@ -164,8 +149,8 @@ impl EscalationHistory {
     }
 
     #[inline(always)]
-    pub fn sql(&self) -> &SqlPool {
-        self.manager.sql()
+    pub fn storage(&self) -> &Storage {
+        self.manager.storage()
     }
 
     #[inline(always)]
@@ -189,26 +174,18 @@ impl EscalationHistory {
     }
 
     #[inline(always)]
-    pub async fn escalate(
-        &self,
-        authorizer: &Member,
-        reason: &str,
-    ) -> Result<Escalation> {
+    pub async fn escalate(&self, authorizer: &User, reason: &str) -> Result<Escalation> {
         self.apply_delta(authorizer, reason, 1, true).await
     }
 
     #[inline(always)]
-    pub async fn deescalate(
-        &self,
-        authorizer: &Member,
-        reason: &str,
-    ) -> Result<Escalation> {
+    pub async fn deescalate(&self, authorizer: &User, reason: &str) -> Result<Escalation> {
         self.apply_delta(authorizer, reason, -1, false).await
     }
 
     pub async fn apply_delta(
         &self,
-        authorizer: &Member,
+        authorizer: &User,
         reason: &str,
         diff: i64,
         execute: bool,
@@ -247,7 +224,7 @@ impl EscalationHistory {
         };
 
         let entry = self.create_entry(&authorizer, actions, display_name, diff);
-        let mut txn = self.sql().begin().await?;
+        let mut txn = self.storage().sql().begin().await?;
         let entry_id: i64 = entry.insert().fetch_one(&mut txn).await?.0;
 
         // Schedule the pending deescalation
@@ -269,6 +246,7 @@ impl EscalationHistory {
             txn.execute(PendingDeescalation::delete(self.guild_id(), self.user_id()))
                 .await?;
         }
+        txn.commit().await?;
 
         let escalation = Escalation {
             current_level,
@@ -295,17 +273,16 @@ impl EscalationHistory {
 
     fn create_entry(
         &self,
-        authorizer: &Member,
+        authorizer: &User,
         actions: ActionSet,
         display_name: &str,
         diff: i64,
     ) -> EscalationEntry {
-        let user = &authorizer.user;
-        let authorizer_name = format!("{}#{:04}", user.name, user.discriminator);
+        let authorizer_name = format!("{}#{:04}", authorizer.name, authorizer.discriminator);
         EscalationEntry {
             guild_id: self.guild_id().get() as i64,
             subject_id: self.user_id().get() as i64,
-            authorizer_id: user.id.get() as i64,
+            authorizer_id: authorizer.id.get() as i64,
             authorizer_name: authorizer_name,
             display_name: display_name.to_owned(),
             timestamp: Utc::now(),
@@ -317,7 +294,7 @@ impl EscalationHistory {
     async fn log_to_modlog(&self, escalation: &Escalation, diff: i64) -> Result<()> {
         let modlog_id = GuildConfig::fetch_or_default::<LoggingConfig>(
             self.guild_id(),
-            &mut self.manager.redis().clone(),
+            &mut self.storage().redis().clone(),
         )
         .await?
         .get_modlog_channel_id();

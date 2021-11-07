@@ -1,60 +1,37 @@
-use crate::{
-    models::{Member, SqlQuery, SqlQueryAs},
-    types, SqlPool,
-};
+use crate::{escalation::EscalationManager, Storage};
 use anyhow::Result;
-use chrono::Duration;
+use chrono::{Duration, Utc};
+use futures::future::{BoxFuture, FutureExt};
 use hourai::{
     http::{self, request::AuditLogReason},
-    models::id::*,
+    models::{id::*, user::User},
     proto::action::*,
 };
-use sqlx::types::chrono::{DateTime, Utc};
+use hourai_sql::{Member, PendingAction};
 use std::{collections::HashSet, sync::Arc};
-
-#[derive(Debug, sqlx::FromRow)]
-pub struct PendingAction {
-    id: i32,
-    data: types::Protobuf<Action>,
-}
-
-impl PendingAction {
-    pub fn action(&self) -> &Action {
-        &self.data.0
-    }
-
-    pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
-        sqlx::query_as("SELECT id, data FROM pending_actions WHERE ts < now()")
-    }
-
-    pub fn schedule<'a>(action: Action, timestamp: impl Into<DateTime<Utc>>) -> SqlQuery<'a> {
-        sqlx::query("INSERT INTO pending_actions (timestamp, data) VALUES ($1, $2)")
-            .bind(timestamp.into())
-            .bind(types::Protobuf(action))
-    }
-
-    pub fn delete<'a>(&self) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM pending_actions WHERE id = $1").bind(self.id)
-    }
-}
 
 #[derive(Clone)]
 pub struct ActionExecutor {
+    current_user: User,
     http: Arc<http::Client>,
-    sql: SqlPool,
+    storage: Storage,
 }
 
 impl ActionExecutor {
-    pub fn new(http: Arc<http::Client>, sql: SqlPool) -> Self {
-        Self { http, sql }
+    pub fn new(current_user: User, http: Arc<http::Client>, storage: Storage) -> Self {
+        Self {
+            current_user,
+            http,
+            storage,
+        }
     }
 
     pub fn http(&self) -> &Arc<http::Client> {
         &self.http
     }
 
-    pub fn sql(&self) -> &SqlPool {
-        &self.sql
+    pub fn storage(&self) -> &Storage {
+        &self.storage
     }
 
     pub async fn execute_action(&self, action: &Action) -> Result<()> {
@@ -87,7 +64,7 @@ impl ActionExecutor {
             Self::invert_action(&mut undo);
             undo.clear_duration();
             PendingAction::schedule(undo, timestamp)
-                .execute(&self.sql)
+                .execute(self.storage().sql())
                 .await?;
         }
         Ok(())
@@ -161,9 +138,28 @@ impl ActionExecutor {
         Ok(())
     }
 
-    async fn execute_escalate(&self, action: &Action, info: &EscalateMember) -> Result<()> {
-        // TODO(james7132): Implement
-        Ok(())
+    fn execute_escalate<'a>(
+        &'a self,
+        action: &'a Action,
+        info: &'a EscalateMember,
+    ) -> BoxFuture<'a, Result<()>> {
+        async move {
+            let guild_id = GuildId::new(action.get_guild_id()).unwrap();
+            let user_id = UserId::new(action.get_user_id()).unwrap();
+            let manager = EscalationManager::new(self.clone());
+            let guild = manager.guild(guild_id).await?;
+            let history = guild.fetch_history(user_id).await?;
+            history
+                .apply_delta(
+                    /*authorizer=*/ &self.current_user,
+                    /*reason=*/ action.get_reason(),
+                    /*diff=*/ info.get_amount() as i64,
+                    /*execute=*/ info.get_amount() >= 0,
+                )
+                .await?;
+            Ok(())
+        }
+        .boxed()
     }
 
     async fn execute_mute(&self, action: &Action, info: &MuteMember) -> Result<()> {
@@ -226,7 +222,7 @@ impl ActionExecutor {
         let guild_id = GuildId::new(action.get_guild_id()).unwrap();
         let user_id = UserId::new(action.get_user_id()).unwrap();
         let member = Member::fetch(guild_id, user_id)
-            .fetch_one(&self.sql)
+            .fetch_one(self.storage().sql())
             .await?;
 
         if !member.present && info.get_role_ids().is_empty() {

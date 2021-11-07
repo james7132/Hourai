@@ -8,7 +8,7 @@ pub async fn run_push_listings(client: crate::Client, config: HouraiConfig, inte
     let http = reqwest::Client::new();
     loop {
         let query = hourai_sql::Member::count_guilds()
-            .fetch_one(client.sql())
+            .fetch_one(client.storage().sql())
             .await;
         let count = match query {
             Ok((cnt,)) => cnt,

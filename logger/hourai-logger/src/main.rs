@@ -26,7 +26,8 @@ use hourai::{
     },
 };
 use hourai_redis::*;
-use hourai_sql::{actions::ActionExecutor, *};
+use hourai_sql::{Ban, Executor, Username};
+use hourai_storage::{actions::ActionExecutor, Storage};
 use tracing::{debug, error, info, warn};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
@@ -73,8 +74,7 @@ async fn main() {
 
     init::init(&config);
     let http_client = Arc::new(init::http_client(&config));
-    let sql = hourai_sql::init(&config).await;
-    let redis = hourai_redis::init(&config).await;
+    let storage = Storage::init(&config).await;
     let cache = InMemoryCache::builder()
         .resource_types(CACHED_RESOURCES)
         .build();
@@ -98,24 +98,31 @@ async fn main() {
         .expect("Failed to connect to the Discord gateway");
     let gateway = Arc::new(gateway);
 
-    let client = {
-        let user = http_client
-            .current_user()
-            .exec()
-            .await
-            .expect("User should not fail to load.")
-            .model()
-            .await
-            .expect("Failed to deserialize bot user.");
-        Client(Arc::new(ClientRef {
-            user_id: user.id,
-            http_client,
-            gateway: gateway.clone(),
-            cache: cache.clone(),
-            sql,
-            redis: redis.clone(),
-        }))
-    };
+    let user = http_client
+        .current_user()
+        .exec()
+        .await
+        .expect("Current user should not fail to load.")
+        .model()
+        .await
+        .expect("Failed to deserialize bot CurrentUser.");
+
+    let user = http_client
+        .user(user.id)
+        .exec()
+        .await
+        .expect("User should not fail to load")
+        .model()
+        .await
+        .expect("Failed to deserialize bot user.");
+
+    let client = Client(Arc::new(ClientRef {
+        user_id: user.id,
+        http_client,
+        gateway: gateway.clone(),
+        cache: cache.clone(),
+        storage: storage.clone(),
+    }));
 
     info!("Starting gateway...");
     gateway.up().await;
@@ -129,10 +136,11 @@ async fn main() {
 
     // Setup background tasks
     tokio::spawn(client.clone().log_bans());
-    tokio::spawn(flush_online(cache.clone(), redis.clone()));
+    tokio::spawn(flush_online(cache.clone(), storage.redis().clone()));
     tokio::spawn(pending_actions::run_pending_actions(ActionExecutor::new(
+        user,
         client.http_client(),
-        client.sql().clone(),
+        storage.clone(),
     )));
 
     while let Some((shard_id, evt)) = events.next().await {
@@ -176,8 +184,7 @@ struct ClientRef {
     pub http_client: Arc<hourai::http::Client>,
     pub gateway: Arc<Cluster>,
     pub cache: InMemoryCache,
-    pub sql: SqlPool,
-    pub redis: RedisPool,
+    pub storage: Storage,
 }
 
 #[derive(Clone)]
@@ -211,12 +218,8 @@ impl Client {
         self.0.user_id
     }
 
-    pub fn sql(&self) -> &SqlPool {
-        &self.0.sql
-    }
-
-    pub fn redis(&self) -> RedisPool {
-        self.0.redis.clone()
+    pub fn storage(&self) -> &Storage {
+        &self.0.storage
     }
 
     pub fn http_client(&self) -> Arc<hourai::http::Client> {
@@ -241,9 +244,9 @@ impl Client {
         user_id: UserId,
     ) -> Result<Permissions> {
         let local_member = hourai_sql::Member::fetch(guild_id, user_id)
-            .fetch_one(&self.0.sql)
+            .fetch_one(self.storage().sql())
             .await;
-        let mut redis = self.0.redis.clone();
+        let mut redis = self.storage().redis().clone();
         if let Ok(member) = local_member {
             hourai_redis::CachedGuild::guild_permissions(
                 guild_id,
@@ -349,10 +352,10 @@ impl Client {
     }
 
     async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
+        let sql = self.storage().sql();
         let (res1, res2) = futures::join!(
-            self.sql()
-                .execute(Ban::clear_shard(shard_id, self.total_shards())),
-            self.sql().execute(hourai_sql::Member::clear_present_shard(
+            sql.execute(Ban::clear_shard(shard_id, self.total_shards())),
+            sql.execute(hourai_sql::Member::clear_present_shard(
                 shard_id,
                 self.total_shards()
             ))
@@ -382,7 +385,8 @@ impl Client {
                 .model()
                 .await
             {
-                self.sql()
+                self.storage()
+                    .sql()
                     .execute(Ban::from(evt.guild_id, ban).insert())
                     .await?;
             }
@@ -396,7 +400,8 @@ impl Client {
     async fn on_ban_remove(self, evt: BanRemove) -> Result<()> {
         let (res1, res2) = futures::join!(
             self.log_users(vec![evt.user.clone()]),
-            self.sql()
+            self.storage()
+                .sql()
                 .execute(Ban::clear_ban(evt.guild_id, evt.user.id)),
         );
 
@@ -428,7 +433,7 @@ impl Client {
             return Ok(());
         }
 
-        let mut txn = self.sql().begin().await?;
+        let mut txn = self.storage().sql().begin().await?;
         txn.execute(hourai_sql::Member::from(&evt).insert()).await?;
         txn.execute(Username::new(&evt.user).insert()).await?;
         txn.commit().await?;
@@ -437,7 +442,7 @@ impl Client {
 
     async fn on_member_remove(&self, evt: MemberRemove) -> Result<()> {
         let (res1, res2, res3) = futures::join!(
-            self.sql().execute(hourai_sql::Member::set_present(
+            self.storage().execute(hourai_sql::Member::set_present(
                 evt.guild_id,
                 evt.user.id,
                 false
@@ -454,8 +459,9 @@ impl Client {
     async fn on_channel_create(&self, evt: ChannelCreate) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
+                let mut redis = self.storage().redis().clone();
                 hourai_redis::CachedGuild::save_resource(guild_id, ch.id(), ch)
-                    .query_async(&mut self.redis())
+                    .query_async(&mut redis)
                     .await?;
             }
         }
@@ -465,8 +471,9 @@ impl Client {
     async fn on_channel_update(&self, evt: ChannelUpdate) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
+                let mut redis = self.storage().redis().clone();
                 hourai_redis::CachedGuild::save_resource(guild_id, ch.id(), ch)
-                    .query_async(&mut self.redis())
+                    .query_async(&mut redis)
                     .await?;
             }
         }
@@ -476,8 +483,9 @@ impl Client {
     async fn on_channel_delete(self, evt: ChannelDelete) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
+                let mut redis = self.storage().redis().clone();
                 hourai_redis::CachedGuild::delete_resource::<GuildChannel>(guild_id, ch.id())
-                    .query_async(&mut self.redis())
+                    .query_async(&mut redis)
                     .await?;
             }
         }
@@ -508,7 +516,7 @@ impl Client {
         if !evt.author.bot {
             CachedMessage::new(evt)
                 .flush()
-                .query_async(&mut self.redis())
+                .query_async(&mut self.storage().redis().clone())
                 .await?;
         }
         Ok(())
@@ -516,7 +524,7 @@ impl Client {
 
     async fn on_message_update(self, evt: MessageUpdate) -> Result<()> {
         // TODO(james7132): Properly implement this
-        let mut redis = self.redis();
+        let mut redis = self.storage().redis().clone();
         let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut redis).await?;
         if let Some(mut msg) = cached {
             if let Some(content) = evt.content {
@@ -551,11 +559,7 @@ impl Client {
                     http: self.http_client(),
                     command: cmd,
                 };
-                let storage = commands::StorageContext {
-                    redis: self.redis(),
-                    sql: self.sql().clone(),
-                };
-                commands::handle_command(ctx, storage).await?;
+                commands::handle_command(ctx, self.storage().clone()).await?;
             }
             interaction => {
                 warn!("Unknown incoming interaction: {:?}", interaction);
@@ -568,7 +572,7 @@ impl Client {
     async fn on_message_delete(mut self, evt: MessageDelete) -> Result<()> {
         message_logging::on_message_delete(&mut self, &evt).await?;
         CachedMessage::delete(evt.channel_id, evt.id)
-            .query_async(&mut self.redis())
+            .query_async(&mut self.storage().redis().clone())
             .await?;
         Ok(())
     }
@@ -579,7 +583,7 @@ impl Client {
             evt.clone(),
         ));
         CachedMessage::bulk_delete(evt.channel_id, evt.ids)
-            .query_async(&mut self.0.redis.clone())
+            .query_async(&mut self.storage().redis().clone())
             .await?;
         Ok(())
     }
@@ -594,7 +598,7 @@ impl Client {
         }
 
         self.chunk_guild(guild.id).await?;
-        let mut redis = self.0.redis.clone();
+        let mut redis = self.storage().redis().clone();
         hourai_redis::CachedGuild::save(&guild)
             .query_async(&mut redis)
             .await?;
@@ -607,14 +611,14 @@ impl Client {
 
     async fn on_guild_update(self, evt: GuildUpdate) -> Result<()> {
         hourai_redis::CachedGuild::save_resource(evt.0.id, evt.0.id, &evt.0)
-            .query_async(&mut self.0.redis.clone())
+            .query_async(&mut self.storage().clone())
             .await?;
         Ok(())
     }
 
     async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
         info!("Left guild {}", evt.id);
-        let mut redis = self.0.redis.clone();
+        let mut redis = self.storage().redis().clone();
         hourai_redis::CachedGuild::delete(evt.id)
             .query_async(&mut redis)
             .await?;
@@ -622,8 +626,9 @@ impl Client {
             .query_async(&mut redis)
             .await?;
         let (res1, res2) = futures::join!(
-            self.0.sql.execute(hourai_sql::Member::clear_guild(evt.id)),
-            self.0.sql.execute(Ban::clear_guild(evt.id)),
+            self.storage()
+                .execute(hourai_sql::Member::clear_guild(evt.id)),
+            self.storage().execute(Ban::clear_guild(evt.id)),
         );
         res1?;
         res2?;
@@ -632,26 +637,25 @@ impl Client {
 
     async fn on_role_create(self, evt: RoleCreate) -> Result<()> {
         hourai_redis::CachedGuild::save_resource(evt.guild_id, evt.role.id, &evt.role)
-            .query_async(&mut self.0.redis.clone())
+            .query_async(&mut self.storage().redis().clone())
             .await?;
         Ok(())
     }
 
     async fn on_role_update(self, evt: RoleUpdate) -> Result<()> {
         hourai_redis::CachedGuild::save_resource(evt.guild_id, evt.role.id, &evt.role)
-            .query_async(&mut self.0.redis.clone())
+            .query_async(&mut self.storage().redis().clone())
             .await?;
         Ok(())
     }
 
     async fn on_role_delete(self, evt: RoleDelete) -> Result<()> {
         let res = self
-            .0
-            .sql
+            .storage()
             .execute(hourai_sql::Member::clear_role(evt.guild_id, evt.role_id))
             .await;
         let res2 = hourai_redis::CachedGuild::delete_resource::<Role>(evt.guild_id, evt.role_id)
-            .query_async(&mut self.0.redis.clone())
+            .query_async(&mut self.storage().redis().clone())
             .await;
         self.refresh_bans(evt.guild_id).await?;
         res?;
@@ -664,7 +668,7 @@ impl Client {
             Some(id) => id,
             None => return Ok(()),
         };
-        let mut redis = self.redis();
+        let mut redis = self.storage().redis().clone();
         let channel_id: Option<u64> =
             hourai_redis::CachedVoiceState::get_channel(guild_id, evt.0.user_id)
                 .query_async(&mut redis)
@@ -679,15 +683,19 @@ impl Client {
 
     async fn log_users(&self, users: Vec<User>) -> Result<()> {
         let usernames = users.iter().map(|u| Username::new(u)).collect();
-        self.0.sql.execute(Username::bulk_insert(usernames)).await?;
+        self.storage()
+            .execute(Username::bulk_insert(usernames))
+            .await?;
         Ok(())
     }
 
     async fn log_members(&self, members: &[Member]) -> Result<()> {
         let usernames = members.iter().map(|m| Username::new(&m.user)).collect();
 
-        self.0.sql.execute(Username::bulk_insert(usernames)).await?;
-        let mut txn = self.0.sql.begin().await?;
+        self.storage()
+            .execute(Username::bulk_insert(usernames))
+            .await?;
+        let mut txn = self.storage().sql().begin().await?;
         for member in members {
             txn.execute(hourai_sql::Member::from(member).insert())
                 .await?;
@@ -717,7 +725,7 @@ impl Client {
                 .map(|b| Ban::from(guild_id, b))
                 .collect();
             debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
-            let mut txn = self.0.sql.begin().await?;
+            let mut txn = self.storage().sql().begin().await?;
             txn.execute(Ban::clear_guild(guild_id)).await?;
             txn.execute(Ban::bulk_insert(bans)).await?;
             txn.commit().await?;
@@ -727,7 +735,7 @@ impl Client {
             self.log_users(users).await?;
         } else {
             debug!("Cleared bans from guild {}", guild_id);
-            self.0.sql.execute(Ban::clear_guild(guild_id)).await?;
+            self.storage().execute(Ban::clear_guild(guild_id)).await?;
         }
         Ok(())
     }

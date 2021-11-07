@@ -3,6 +3,8 @@ mod guild_config;
 mod keys;
 mod protobuf;
 
+pub use redis::*;
+
 use self::compression::Compressed;
 pub use self::guild_config::CachedGuildConfig;
 use self::keys::{CacheKey, GuildKey, Id};
