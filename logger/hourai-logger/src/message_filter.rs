@@ -100,6 +100,7 @@ async fn apply_rule(
 
         let http = executor.http().clone();
         tokio::spawn(async move {
+            // TODO(james7132): DM the user that their message was deleted.
             let result = http.delete_message(channel_id, message_id).exec().await;
             if let Err(err) = result {
                 tracing::error!(
@@ -108,6 +109,7 @@ async fn apply_rule(
                     channel_id,
                     err
                 );
+                return;
             }
         });
 
