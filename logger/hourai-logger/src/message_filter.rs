@@ -81,8 +81,10 @@ async fn apply_rule(
     let message_id = message.id();
 
     if rule.get_notify_moderator() {
-        action_taken = Some(format!("Message filter found notable message by <@{}> in <#{}>",
-                                    author_id, channel_id));
+        action_taken = Some(format!(
+            "Message filter found notable message by <@{}> in <#{}>",
+            author_id, channel_id
+        ));
 
         tracing::info!(
             "Message filter notified moderator about message {} in channel {}",
@@ -92,8 +94,10 @@ async fn apply_rule(
     }
 
     if rule.get_delete_message() {
-        action_taken = Some(format!("Message filter deleted a message by <@{}> in <#{}>:",
-                                    author_id, channel_id));
+        action_taken = Some(format!(
+            "Message filter deleted a message by <@{}> in <#{}>",
+            author_id, channel_id
+        ));
 
         // Delete the message from the cache to avoid logging it when it gets deleted.
         CachedMessage::delete(message.channel_id(), message.id())

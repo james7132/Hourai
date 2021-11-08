@@ -28,7 +28,7 @@ pub enum CommandError {
     #[error("Missing argument: {}", .0)]
     MissingArgument(&'static str),
     #[error("Invalid argument: {}", .0)]
-    InvalidArgument(&'static str),
+    InvalidArgument(String),
     #[error("User failed to satisfy preconditions: {}", .0)]
     FailedPrecondition(&'static str),
     #[error("User is missing permission: `{0}`")]

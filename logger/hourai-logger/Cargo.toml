@@ -16,6 +16,7 @@ lazy_static = "1.4"
 regex = "1.5"
 serde_json = "1.0"
 thiserror = "1.0"
+humantime = "2.1"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 twilight-embed-builder = "0.7"
 

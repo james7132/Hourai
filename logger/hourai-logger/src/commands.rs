@@ -5,11 +5,14 @@ use hourai::{
     http::request::prelude::AuditLogReason,
     models::{
         channel::message::{allowed_mentions::AllowedMentions, Message},
-        guild::{Guild, Permissions},
+        guild::Permissions,
         id::{ChannelId, MessageId, UserId},
         user::User,
     },
-    proto::guild_configs::LoggingConfig,
+    proto::{
+        action::{Action, BanMember_Type, StatusType},
+        guild_configs::LoggingConfig,
+    },
 };
 use hourai_redis::{CachedGuild, GuildConfig};
 use hourai_storage::{actions::ActionExecutor, escalation::EscalationManager, Storage};
@@ -17,6 +20,7 @@ use regex::Regex;
 use std::{
     collections::HashMap,
     sync::Arc,
+    time::Duration,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -28,11 +32,11 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
         Command::Command("pingmod") => pingmod(&ctx, actions.storage()).await,
 
         // Admin Commands
-        Command::Command("ban") => ban(&ctx, actions.storage()).await,
+        Command::Command("ban") => ban(&ctx, actions).await,
         Command::Command("kick") => kick(&ctx, actions.storage()).await,
-        Command::Command("mute") => mute(&ctx).await,
+        Command::Command("mute") => mute(&ctx, actions).await,
+        Command::Command("deafen") => deafen(&ctx, actions).await,
         Command::Command("move") => move_cmd(&ctx, actions.storage()).await,
-        Command::Command("deafen") => deafen(&ctx).await,
         Command::Command("prune") => prune(&ctx).await,
 
         // Escalation commands
@@ -58,6 +62,15 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
             }
         }
     }
+}
+
+fn parse_duration(duration: &str) -> Result<Duration> {
+    humantime::parse_duration(duration).map_err(|err| {
+        anyhow::anyhow!(CommandError::InvalidArgument(format!(
+            "Cannot parse `{}` as a duration: {}",
+            duration, err
+        )))
+    })
 }
 
 async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
@@ -110,100 +123,57 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
     }
 }
 
-async fn ban(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     let soft = ctx.get_flag("soft").unwrap_or(false);
     let action = if soft { "Softbanned" } else { "Banned" };
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
+    let storage = executor.storage();
     let authorizer_roles =
         CachedGuild::role_set(guild_id, &authorizer.roles, &mut storage.redis().clone()).await?;
-    let reason = build_reason(
-        action,
-        authorizer.user.as_ref().unwrap(),
-        ctx.get_string("reason").ok(),
-    );
-
-    let duration = ctx.get_string("duration");
-    if duration.is_ok() {
-        anyhow::bail!(CommandError::UserError(
-            "Temp bans via this command are currently not supported.",
-        ));
-    }
 
     // TODO(james7132): Properly display the errors.
     let users: Vec<_> = ctx.all_users("user").collect();
     let mut errors = Vec::new();
-    if soft {
-        if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
-            anyhow::bail!(CommandError::MissingPermission("Kick Members"));
-        }
+    let mut base = Action::new();
+    base.set_guild_id(guild_id.get());
+    base.mut_ban().set_field_type(if soft {
+        BanMember_Type::SOFTBAN
+    } else {
+        BanMember_Type::BAN
+    });
+    base.set_reason(build_reason(
+        action,
+        authorizer.user.as_ref().unwrap(),
+        ctx.get_string("reason").ok(),
+    ));
+    if let Ok(duration) = ctx.get_string("duration") {
+        base.set_duration(parse_duration(duration)?.as_secs());
+    }
 
-        for user_id in users.iter() {
-            if let Some(member) = ctx.resolve_member(*user_id) {
-                let roles =
-                    CachedGuild::role_set(guild_id, &member.roles, &mut storage.redis().clone())
-                        .await?;
-                if roles >= authorizer_roles {
-                    errors.push(format!(
-                        "{}: Has higher roles, not authorized to softban.",
-                        user_id
-                    ));
-                    continue;
-                }
-            }
-
-            let request = ctx
-                .http
-                .create_ban(guild_id, *user_id)
-                .delete_message_days(7)
-                .unwrap()
-                .reason(&reason)
-                .unwrap();
-            if let Err(err) = request.exec().await {
-                errors.push(format!("{}: {}", user_id, err));
+    for user_id in users.iter() {
+        if let Some(member) = ctx.resolve_member(*user_id) {
+            let roles =
+                CachedGuild::role_set(guild_id, &member.roles, &mut storage.redis().clone())
+                    .await?;
+            if roles >= authorizer_roles {
+                errors.push(format!(
+                    "{}: Has higher roles, not authorized to {}.",
+                    user_id,
+                    if soft { "softban" } else { "ban" }
+                ));
                 continue;
             }
-
-            let request = ctx
-                .http
-                .delete_ban(guild_id, *user_id)
-                .reason(&reason)
-                .unwrap();
-            if let Err(err) = request.exec().await {
-                tracing::error!("Error while running /ban on {}: {}", user_id, err);
-                errors.push(format!("{}: {}", user_id, err));
-            }
-        }
-    } else {
-        if !ctx.has_user_permission(Permissions::BAN_MEMBERS) {
-            anyhow::bail!(CommandError::MissingPermission("Ban Members"));
         }
 
-        for user_id in users.iter() {
-            if let Some(member) = ctx.resolve_member(*user_id) {
-                let roles =
-                    CachedGuild::role_set(guild_id, &member.roles, &mut storage.redis().clone())
-                        .await?;
-                if roles >= authorizer_roles {
-                    errors.push(format!(
-                        "{}: Has higher roles, not authorized to ban.",
-                        user_id
-                    ));
-                    continue;
-                }
-            }
-
-            let request = ctx
-                .http
-                .create_ban(guild_id, *user_id)
-                .reason(&reason)
-                .unwrap();
-            if let Err(err) = request.exec().await {
-                tracing::error!("Error while running /ban on {}: {}", user_id, err);
-                errors.push(format!("{}: {}", user_id, err));
-            }
+        let mut action = base.clone();
+        action.set_user_id(user_id.get());
+        if let Err(err) = executor.execute_action(&action).await {
+            tracing::error!("Error while running /ban on {}: {}", user_id, err);
+            errors.push(format!("{}: {}", user_id, err));
         }
     }
+
     Ok(Response::direct().content(format!("{} {} users.", action, users.len() - errors.len())))
 }
 
@@ -252,29 +222,31 @@ async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     Ok(Response::direct().content(format!("Kicked {} users.", members.len() - errors.len())))
 }
 
-async fn deafen(ctx: &CommandContext) -> Result<Response> {
+async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::DEAFEN_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Deafen Members"));
     }
 
     let authorizer = ctx.member().expect("Command without user.");
-    let reason = build_reason(
+    let members: Vec<_> = ctx.all_users("user").collect();
+    let mut base = Action::new();
+    base.set_guild_id(guild_id.get());
+    base.mut_deafen().set_field_type(StatusType::APPLY);
+    base.set_reason(build_reason(
         "Deafened",
         authorizer.user.as_ref().unwrap(),
         ctx.get_string("reason").ok(),
-    );
+    ));
+    if let Ok(duration) = ctx.get_string("duration") {
+        base.set_duration(parse_duration(duration)?.as_secs());
+    }
 
-    let members: Vec<_> = ctx.all_users("user").collect();
     let mut errors = Vec::new();
     for member_id in members.iter() {
-        let request = ctx
-            .http
-            .update_guild_member(guild_id, *member_id)
-            .deaf(true)
-            .reason(&reason)
-            .unwrap();
-        if let Err(err) = request.exec().await {
+        let mut action = base.clone();
+        action.set_user_id(member_id.get());
+        if let Err(err) = executor.execute_action(&action).await {
             tracing::error!("Error while running /deafen on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
         }
@@ -283,29 +255,31 @@ async fn deafen(ctx: &CommandContext) -> Result<Response> {
     Ok(Response::direct().content(format!("Deafened {} users.", members.len() - errors.len())))
 }
 
-async fn mute(ctx: &CommandContext) -> Result<Response> {
+async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MUTE_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Mute Members"));
     }
 
     let authorizer = ctx.member().expect("Command without user.");
-    let reason = build_reason(
+    let members: Vec<_> = ctx.all_users("user").collect();
+    let mut base = Action::new();
+    base.set_guild_id(guild_id.get());
+    base.mut_mute().set_field_type(StatusType::APPLY);
+    base.set_reason(build_reason(
         "Muted",
         authorizer.user.as_ref().unwrap(),
         ctx.get_string("reason").ok(),
-    );
+    ));
+    if let Ok(duration) = ctx.get_string("duration") {
+        base.set_duration(parse_duration(duration)?.as_secs());
+    }
 
-    let members: Vec<_> = ctx.all_users("user").collect();
     let mut errors = Vec::new();
     for member_id in members.iter() {
-        let request = ctx
-            .http
-            .update_guild_member(guild_id, *member_id)
-            .mute(true)
-            .reason(&reason)
-            .unwrap();
-        if let Err(err) = request.exec().await {
+        let mut action = base.clone();
+        action.set_user_id(member_id.get());
+        if let Err(err) = executor.execute_action(&action).await {
             tracing::error!("Error while running /mute on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
         }
@@ -395,7 +369,7 @@ async fn prune(ctx: &CommandContext) -> Result<Response> {
     let count = ctx.get_int("count").unwrap_or(100) as usize;
     if count > MAX_PRUNED_MESSAGES {
         anyhow::bail!(CommandError::InvalidArgument(
-            "Prune only supports up to 2000 messages."
+            "Prune only supports up to 2000 messages.".to_owned()
         ));
     }
 
@@ -424,7 +398,7 @@ async fn prune(ctx: &CommandContext) -> Result<Response> {
     }
     if let Ok(rgx) = ctx.get_string("match") {
         let regex = Regex::new(&rgx).map_err(|_| {
-            CommandError::InvalidArgument("`match` must be a valid regex or pattern.")
+            CommandError::InvalidArgument("`match` must be a valid regex or pattern.".to_owned())
         })?;
         filters.push(Box::new(move |msg| regex.is_match(&msg.content)));
     }
@@ -483,7 +457,7 @@ async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Resp
     if amount <= 0 {
         anyhow::bail!(CommandError::InvalidArgument(
             "Non-positive `amounts` are not allowed. If you need to deescalate someone, please use \
-             `/escalate down` instead."));
+             `/escalate down` instead.".to_owned()));
     }
     let manager = EscalationManager::new(actions.clone());
     let guild = manager.guild(guild_id).await?;
@@ -541,7 +515,7 @@ async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Re
     if amount >= 0 {
         anyhow::bail!(CommandError::InvalidArgument(
             "Non-positive `amounts` are not allowed. If you need to deescalate someone, please use \
-             `/escalate down` instead."));
+             `/escalate down` instead.".to_owned()));
     }
     let manager = EscalationManager::new(actions.clone());
     let guild = manager.guild(guild_id).await?;

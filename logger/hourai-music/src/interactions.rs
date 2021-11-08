@@ -279,11 +279,12 @@ async fn remove(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
     if idx == 0 {
         // Do not allow removing the currently playing song from the queue.
         bail!(CommandError::InvalidArgument(
-            "Cannot remove the currently playing song.
-                Consider using `/skip`."
+            "Cannot remove the currently playing song. Consider using `/skip`.".to_owned()
         ));
     } else if idx < 0 {
-        bail!(CommandError::InvalidArgument("Negative position."));
+        bail!(CommandError::InvalidArgument(
+            "Negative positions are not valid.".to_owned()
+        ));
     }
 
     let idx = idx as usize;
