@@ -55,13 +55,11 @@ local commands = [
     // #002
     name: "pause",
     description: "Pauses the currently playing song. Only usable by DJs.",
-    default_permissions: false,
   },
   command {
     // #003
     name: "stop",
     description: "Stops the currently playing song and clears the queue. Only usable by DJs.",
-    default_permissions: false,
   },
   command {
     // #004
@@ -128,7 +126,6 @@ local commands = [
     // #007
     name: "ban",
     description: "Bans a user from the server. Requires Ban Members.",
-    default_permissions: false,
     options: [string {
       name: "reason",
       description: "Optional: the reason for the ban.",
@@ -149,7 +146,6 @@ local commands = [
     // #008
     name: "kick",
     description: "Kicks a user from the server. Requires Kick Members.",
-    default_permissions: false,
     options: [string {
       name: "reason",
       description: "Optional: the reason for the kick.",
@@ -164,7 +160,6 @@ local commands = [
     // #009
     name: "move",
     description: "Moves all of the users in a voice channel to another. Requires Move Members.",
-    default_permissions: false,
     options: [channel {
       name: "src",
       description: "The source channel to move from.",
@@ -180,7 +175,6 @@ local commands = [
     // #010
     name: "prune",
     description: "Bulk deletes messages up to 14 days old. Requires Manage Messages.",
-    default_permissions: false,
     options: [integer {
       name: "count",
       description: "Optional: The number of messages to check. If not set, defaults to 100.",
@@ -206,7 +200,6 @@ local commands = [
     // #011
     name: "mute",
     description: "Server mutes a user from the server. Requires Mute Members.",
-    default_permissions: false,
     options: [string {
       name: "reason",
       description: "Optional: reason for the mute.",
@@ -224,7 +217,6 @@ local commands = [
     // #012
     name: "deafen",
     description: "Server deafens from the server. Requires Deafen Members.",
-    default_permissions: false,
     options: [string {
       name: "reason",
       description: "Optional: reason for the deafen.",
