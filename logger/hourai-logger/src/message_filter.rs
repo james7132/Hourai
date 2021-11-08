@@ -74,14 +74,15 @@ async fn apply_rule(
     reasons: Vec<String>,
     executor: &ActionExecutor,
 ) -> Result<()> {
-    let mut action_taken = "";
+    let mut action_taken = None;
     let guild_id = message.guild_id().unwrap();
     let author_id = message.author().id();
     let channel_id = message.channel_id();
     let message_id = message.id();
 
     if rule.get_notify_moderator() {
-        action_taken = "Message filter found notable message:";
+        action_taken = Some(format!("Message filter found notable message by <@{}> in <#{}>",
+                                    author_id, channel_id));
 
         tracing::info!(
             "Message filter notified moderator about message {} in channel {}",
@@ -91,7 +92,8 @@ async fn apply_rule(
     }
 
     if rule.get_delete_message() {
-        action_taken = "Message filter deleted a message:";
+        action_taken = Some(format!("Message filter deleted a message by <@{}> in <#{}>:",
+                                    author_id, channel_id));
 
         // Delete the message from the cache to avoid logging it when it gets deleted.
         CachedMessage::delete(message.channel_id(), message.id())
@@ -137,7 +139,7 @@ async fn apply_rule(
         });
     }
 
-    if action_taken != "" {
+    if let Some(action_taken) = action_taken {
         let ping = if rule.get_notify_moderator() {
             let (_, ping) = hourai_storage::ping_online_mod(guild_id, executor.storage()).await?;
             ping
