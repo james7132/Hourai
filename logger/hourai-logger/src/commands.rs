@@ -38,6 +38,10 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
         Command::Command("deafen") => deafen(&ctx, actions).await,
         Command::Command("move") => move_cmd(&ctx, actions.storage()).await,
         Command::Command("prune") => prune(&ctx).await,
+        Command::SubCommand("role", "add") => change_role(&ctx, actions, StatusType::APPLY).await,
+        Command::SubCommand("role", "remove") => {
+            change_role(&ctx, actions, StatusType::UNAPPLY).await
+        }
 
         // Escalation commands
         Command::SubCommand("escalate", "up") => escalate(&ctx, actions).await,
@@ -220,6 +224,59 @@ async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     }
 
     Ok(Response::direct().content(format!("Kicked {} users.", members.len() - errors.len())))
+}
+
+async fn change_role(
+    ctx: &CommandContext,
+    executor: &ActionExecutor,
+    status: StatusType,
+) -> Result<Response> {
+    let guild_id = ctx.guild_id()?;
+    if !ctx.has_user_permission(Permissions::MANAGE_ROLES) {
+        anyhow::bail!(CommandError::MissingPermission("Manage Roles"));
+    }
+
+    let authorizer = ctx.member().expect("Command without user.");
+    let members: Vec<_> = ctx.all_users("user").collect();
+    let mut base = Action::new();
+    base.set_guild_id(guild_id.get());
+    base.mut_change_role().set_field_type(status);
+    base.set_reason(build_reason(
+        if let StatusType::APPLY = status {
+            "Added role"
+        } else {
+            "Removed role"
+        },
+        authorizer.user.as_ref().unwrap(),
+        ctx.get_string("reason").ok(),
+    ));
+    if let Ok(duration) = ctx.get_string("duration") {
+        base.set_duration(parse_duration(duration)?.as_secs());
+    }
+
+    let mut errors = Vec::new();
+    for member_id in members.iter() {
+        let mut action = base.clone();
+        action.set_user_id(member_id.get());
+        if let Err(err) = executor.execute_action(&action).await {
+            tracing::error!(
+                "Error while running /role {{add/remove}} on {}: {}",
+                member_id,
+                err
+            );
+            errors.push(format!("{}: {}", member_id, err));
+        }
+    }
+
+    Ok(Response::direct().content(format!(
+        "{} {} users.",
+        if let StatusType::APPLY = status {
+            "Added role to"
+        } else {
+            "Removed role from"
+        },
+        members.len() - errors.len()
+    )))
 }
 
 async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
