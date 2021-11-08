@@ -86,7 +86,7 @@ async fn handle_response(target: &str, request: RequestBuilder) {
     match request.send().await {
         Ok(response) => match response.status() {
             code if code.is_success() => {
-                tracing::info!("Successfully bot info to {} ({})", target, code)
+                tracing::debug!("Successfully bot info to {} ({})", target, code)
             }
             code if code.is_server_error() => {
                 tracing::warn!("Failed to post bot info to {} ({})", target, code)

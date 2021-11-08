@@ -62,9 +62,9 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
 
 async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
-    let config: LoggingConfig = GuildConfig::fetch_or_default(guild_id, &mut storage.clone()).await?;
-    let (mention, ping) =
-        hourai_storage::ping_online_mod(guild_id, storage).await?;
+    let config: LoggingConfig =
+        GuildConfig::fetch_or_default(guild_id, &mut storage.clone()).await?;
+    let (mention, ping) = hourai_storage::ping_online_mod(guild_id, storage).await?;
 
     let content = ctx
         .get_string("reason")

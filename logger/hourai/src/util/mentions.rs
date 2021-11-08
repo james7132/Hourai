@@ -3,9 +3,9 @@ use regex::Regex;
 use std::str::FromStr;
 
 lazy_static! {
-    static ref USER_MENTION_REGEX: Regex = Regex::new(r"<@\!?(\d+)>").unwrap();
+    static ref USER_MENTION_REGEX: Regex = Regex::new(r"<@!?(\d+)>").unwrap();
     static ref ROLE_MENTION_REGEX: Regex = Regex::new(r"<@&(\d+)>").unwrap();
-    static ref CHANNEL_MENTION_REGEX: Regex = Regex::new(r"<@\#(\d+)>").unwrap();
+    static ref CHANNEL_MENTION_REGEX: Regex = Regex::new(r"<@#(\d+)>").unwrap();
 }
 
 pub fn get_user_mention_ids(text: &str) -> impl Iterator<Item = UserId> + '_ {

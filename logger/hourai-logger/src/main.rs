@@ -29,8 +29,8 @@ use hourai::{
 use hourai_redis::*;
 use hourai_sql::{Ban, Executor, Username};
 use hourai_storage::{actions::ActionExecutor, Storage};
-use tracing::{debug, error, info, warn};
 use std::sync::Arc;
+use tracing::{debug, error, info, warn};
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits()
@@ -511,8 +511,15 @@ impl Client {
     }
 
     async fn on_message_create(self, evt: Message) -> Result<()> {
-        if message_filter::check_message(&self.0.actions, &evt).await? {
-            return Ok(());
+        match message_filter::check_message(&self.0.actions, &evt).await {
+            Ok(deleted) => {
+                if deleted {
+                    return Ok(());
+                }
+            }
+            Err(err) => {
+                tracing::error!("Error while running message filter: {} ({:?})", err, evt);
+            }
         }
         if !evt.author.bot {
             CachedMessage::new(evt)
@@ -524,10 +531,10 @@ impl Client {
     }
 
     async fn on_message_update(self, evt: MessageUpdate) -> Result<()> {
-        if message_filter::check_message(&self.0.actions, &evt).await? {
-            return Ok(());
-        }
-        // TODO(james7132): Properly implement this
+        // TODO(james7132): Figure this out
+        //if message_filter::check_message(&self.0.actions, &evt).await? {
+        //return Ok(());
+        //}
         let mut redis = self.storage().redis().clone();
         let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut redis).await?;
         if let Some(mut msg) = cached {

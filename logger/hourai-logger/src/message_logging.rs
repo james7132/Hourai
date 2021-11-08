@@ -25,11 +25,14 @@ fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
         .timestamp(Timestamp::from_secs(Utc::now().timestamp() as u64).unwrap()))
 }
 
-fn message_to_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
+pub(crate) fn message_to_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
     Ok(message_base_embed(message)?.description(message.content()))
 }
 
-fn message_diff_embed(before: &impl MessageLike, after: &impl MessageLike) -> Result<EmbedBuilder> {
+pub(crate) fn message_diff_embed(
+    before: &impl MessageLike,
+    after: &impl MessageLike,
+) -> Result<EmbedBuilder> {
     Ok(message_base_embed(before)?
         .field(EmbedFieldBuilder::new("Before", before.content()))
         .field(EmbedFieldBuilder::new("After", after.content())))

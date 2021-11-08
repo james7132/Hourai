@@ -222,7 +222,7 @@ impl EscalationHistory {
 
         let entry = self.create_entry(&authorizer, actions, display_name, diff);
         let mut txn = self.storage().sql().begin().await?;
-        let entry_id: i64 = entry.insert().fetch_one(&mut txn).await?.0;
+        let entry_id: i32 = entry.insert().fetch_one(&mut txn).await?.0;
 
         // Schedule the pending deescalation
         let mut expiration = None;

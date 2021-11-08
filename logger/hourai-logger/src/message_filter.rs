@@ -1,11 +1,18 @@
+use crate::message_logging;
 use anyhow::Result;
 use hourai::proto::guild_configs::*;
 use hourai::{
-    models::{id::ChannelId, message::MessageLike, Snowflake},
+    models::{
+        id::{ChannelId, RoleId},
+        message::MessageLike,
+        user::UserLike,
+        Snowflake,
+    },
     util::mentions,
 };
 use hourai_redis::{CachedMessage, GuildConfig};
-use hourai_storage::actions::ActionExecutor;
+use hourai_sql::Member;
+use hourai_storage::{actions::ActionExecutor, Storage};
 use regex::Regex;
 use std::collections::HashSet;
 
@@ -15,8 +22,8 @@ lazy_static! {
 }
 
 const SLURS: &[&str] = &[
-    "nigger", "nigga", "tarskin", "tranny", "trannie", "redskin", "faggot",
-    "chink", "kike", "dyke", "gook", "wigger"
+    "nigger", "nigga", "tarskin", "tranny", "trannie", "redskin", "faggot", "chink", "kike",
+    "dyke", "gook", "wigger",
 ];
 
 pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike) -> Result<bool> {
@@ -29,9 +36,9 @@ pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike
     let config: ModerationConfig = GuildConfig::fetch_or_default(guild_id, &mut storage).await?;
 
     for rule in config.get_message_filter().get_rules() {
-        let reasons = get_filter_reasons(message, rule.get_criteria())?;
+        let reasons = get_filter_reasons(message, rule.get_criteria(), &mut storage).await?;
         if !reasons.is_empty() {
-            apply_rule(message, rule, reasons, executor).await?;
+            apply_rule(message, rule.clone(), reasons, executor).await?;
             return Ok(rule.get_delete_message());
         }
     }
@@ -63,15 +70,24 @@ fn generalize_filter(filter: &str) -> String {
 
 async fn apply_rule(
     message: &impl MessageLike,
-    rule: &MessageFilterRule,
+    rule: MessageFilterRule,
     reasons: Vec<String>,
     executor: &ActionExecutor,
 ) -> Result<()> {
     let mut action_taken = "";
     let guild_id = message.guild_id().unwrap();
+    let author_id = message.author().id();
+    let channel_id = message.channel_id();
+    let message_id = message.id();
 
     if rule.get_notify_moderator() {
         action_taken = "Message filter found notable message:";
+
+        tracing::info!(
+            "Message filter notified moderator about message {} in channel {}",
+            message.id(),
+            message.channel_id()
+        );
     }
 
     if rule.get_delete_message() {
@@ -82,20 +98,41 @@ async fn apply_rule(
             .query_async(&mut executor.storage().clone())
             .await?;
 
-        executor
-            .http()
-            .delete_message(message.channel_id(), message.id())
-            .exec()
-            .await?;
+        let http = executor.http().clone();
+        tokio::spawn(async move {
+            let result = http.delete_message(channel_id, message_id).exec().await;
+            if let Err(err) = result {
+                tracing::error!(
+                    "Error while deleting message {} in channel {} for message filter: {}",
+                    message_id,
+                    channel_id,
+                    err
+                );
+            }
+        });
+
+        tracing::info!(
+            "Message filter deleted message {} in channel {}",
+            message.id(),
+            message.channel_id()
+        );
     }
 
     if !rule.additional_actions.is_empty() {
-        for action_template in rule.additional_actions.iter() {
-            let mut action = action_template.clone();
-            action.set_guild_id(guild_id.get());
-            action.set_user_id(message.author().id().get());
-            executor.execute_action(&action).await?;
-        }
+        let rule = rule.clone();
+        let exec = executor.clone();
+        tokio::spawn(async move {
+            for action_template in rule.additional_actions.iter() {
+                let mut action = action_template.clone();
+                action.set_guild_id(guild_id.get());
+                action.set_user_id(author_id.get());
+                action.set_reason(format!("Triggered message filter: {}", rule.get_name()));
+                if let Err(err) = exec.execute_action(&action).await {
+                    tracing::error!("Error while running actions for message filter: {}", err);
+                    break;
+                }
+            }
+        });
     }
 
     if action_taken != "" {
@@ -121,6 +158,7 @@ async fn apply_rule(
                 .http()
                 .create_message(modlog_id)
                 .content(&response)?
+                .embeds(&[message_logging::message_to_embed(message)?.build()?])?
                 .exec()
                 .await?;
         }
@@ -129,24 +167,55 @@ async fn apply_rule(
     Ok(())
 }
 
-fn get_filter_reasons(
+async fn get_filter_reasons(
     message: &impl MessageLike,
     criteria: &MessageFilterRule_Criteria,
+    storage: &Storage,
 ) -> Result<Vec<String>> {
+    let guild_id = message.guild_id().unwrap();
+    let mut redis = storage.redis().clone();
     let mut reasons = Vec::new();
+
+    let is_bot = criteria.get_exclude_bots() && message.author().bot();
+    let is_in_excluded_channel = criteria
+        .get_excluded_channels()
+        .contains(&message.channel_id().get());
+    let is_moderator = if criteria.get_exclude_moderators() {
+        let roles: Vec<RoleId> = Member::fetch(guild_id, message.author().id())
+            .fetch_one(storage)
+            .await?
+            .role_ids()
+            .collect();
+        hourai_storage::is_moderator(guild_id, roles.into_iter(), &mut redis).await?
+    } else {
+        false
+    };
+
+    if is_bot || is_moderator || is_in_excluded_channel {
+        return Ok(reasons);
+    }
+
     for regex in criteria.matches.iter() {
-        let regex = Regex::new(&regex)?;
-        if regex.is_match(message.content()) {
-            reasons.push(String::from("Message contains banned word or phrase."));
+        match Regex::new(&regex) {
+            Ok(regex) => {
+                if regex.is_match(message.content()) {
+                    reasons.push(String::from("Message contains banned word or phrase."));
+                }
+            }
+            Err(err) => {
+                tracing::warn!(
+                    "Error while building regex for message filter ({}): {}",
+                    regex,
+                    err
+                );
+            }
         }
     }
 
     if criteria.get_includes_slurs() {
         for word in message.content().split_whitespace() {
             if SLUR_REGEX.is_match(word) {
-                reasons.push(
-                    format!("Message contains recognized racial slur: {}", word)
-                );
+                reasons.push(format!("Message contains recognized racial slur: {}", word));
             }
             break;
         }

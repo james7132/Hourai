@@ -427,7 +427,7 @@ impl EscalationEntry {
         .bind(user_id.get() as i64)
     }
 
-    pub fn insert<'a>(&self) -> SqlQueryAs<'a, (i64,)> {
+    pub fn insert<'a>(&self) -> SqlQueryAs<'a, (i32,)> {
         sqlx::query_as(
             "INSERT INTO escalation_histories ( \
                 guild_id, \
@@ -459,7 +459,7 @@ pub struct PendingDeescalation {
     pub user_id: i64,
     pub expiration: DateTime<Utc>,
     pub amount: i64,
-    pub entry_id: i64,
+    pub entry_id: i32,
 }
 
 impl PendingDeescalation {
