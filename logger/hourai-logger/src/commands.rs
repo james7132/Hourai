@@ -129,6 +129,9 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
 
 async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
+    if !ctx.has_user_permission(Permissions::BAN_MEMBERS) {
+        anyhow::bail!(CommandError::MissingPermission("Ban Members"));
+    }
     let soft = ctx.get_flag("soft").unwrap_or(false);
     let action = if soft { "Softbanned" } else { "Banned" };
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");

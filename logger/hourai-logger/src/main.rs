@@ -491,8 +491,10 @@ impl Client {
     }
 
     async fn on_thread_create(&mut self, evt: ThreadCreate) -> Result<()> {
-        self.http().join_thread(evt.0.id()).exec().await?;
-        info!("Joined thread {}", evt.0.id());
+        if let Channel::Guild(GuildChannel::PublicThread(thread)) = evt.0 {
+            self.http().join_thread(thread.id).exec().await?;
+            info!("Joined thread {}", thread.id);
+        }
         Ok(())
     }
 

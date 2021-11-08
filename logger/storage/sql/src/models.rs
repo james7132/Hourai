@@ -436,8 +436,8 @@ impl EscalationEntry {
                 authorizer_name, \
                 display_name, \
                 action, \
-                level_delta \
-                timestamp, \
+                level_delta, \
+                timestamp \
             ) \
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
             RETURNING id",
@@ -485,8 +485,8 @@ impl PendingDeescalation {
             VALUES ($1, $2, $3, $4, $5) \
             ON CONFLICT ON CONSTRAINT pending_deescalations_pkey \
             DO UPDATE SET \
-                amount = excluded.amount \
-                expiration = excluded.expiration \
+                amount = excluded.amount, \
+                expiration = excluded.expiration, \
                 entry_id = excluded.entry_id \
             ",
         )
