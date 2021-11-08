@@ -419,9 +419,9 @@ impl EscalationEntry {
 
     pub fn fetch<'a>(guild_id: GuildId, user_id: UserId) -> SqlQueryAs<'a, Self> {
         sqlx::query_as(
-            "SELECT * FROM escalation_history \
-                        WHERE guild_id = $1 AND subject_id = $2 \
-                        ORDER BY timestamp",
+            "SELECT * FROM escalation_histories \
+             WHERE guild_id = $1 AND subject_id = $2 \
+             ORDER BY timestamp",
         )
         .bind(guild_id.get() as i64)
         .bind(user_id.get() as i64)
