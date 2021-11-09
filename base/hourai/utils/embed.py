@@ -49,8 +49,6 @@ def traceback_to_embed(keep_end=False):
 
 
 def make_whois_embed(ctx, user):
-    now = datetime.utcnow()
-
     description = []
 
     usernames = _get_extra_usernames(ctx, user)
@@ -68,15 +66,15 @@ def make_whois_embed(ctx, user):
     embed.set_thumbnail(url=str(user.avatar_url or user.default_avatar_url))
     embed.set_footer(text=hex(user.id))
 
-    _add_time_field(embed, 'Created At', user.created_at, now)
+    _add_time_field(embed, 'Created At', user.created_at)
     try:
-        _add_time_field(embed, 'Joined On', user.joined_at, now)
+        _add_time_field(embed, 'Joined On', user.joined_at)
     except AttributeError:
         pass
 
     try:
         if user.premium_since is not None:
-            _add_time_field(embed, 'Boosting Since', user.premium_since, now)
+            _add_time_field(embed, 'Boosting Since', user.premium_since)
     except AttributeError:
         pass
 
@@ -91,13 +89,12 @@ def make_whois_embed(ctx, user):
     return embed
 
 
-def _add_time_field(embed, name, time, now):
+def _add_time_field(embed, name, time):
     if time is None:
         embed.add_field(name=name, value='N/A')
         return
-    time_string = time.strftime('%b %d %Y %-I:%M:%S %p')
-    delta = humanize.naturaltime(now - time)
-    embed.add_field(name=name, value=f'{time_string} ({delta})')
+    time = int(time.timestamp())
+    embed.add_field(name=name, value=f'<t:{time}:R>')
 
 
 def _to_username_line(username):

@@ -37,7 +37,7 @@ pub struct Username {
     pub user_id: i64,
     pub timestamp: DateTime<Utc>,
     pub name: String,
-    pub discriminator: Option<u32>,
+    pub discriminator: Option<i32>,
 }
 
 impl Username {
@@ -46,7 +46,7 @@ impl Username {
             user_id: user.id().get() as i64,
             timestamp: Utc::now(),
             name: user.name().to_owned(),
-            discriminator: Some(user.discriminator() as u32),
+            discriminator: Some(user.discriminator() as i32),
         }
     }
 
@@ -70,9 +70,9 @@ impl Username {
     pub fn insert(&self) -> SqlQuery {
         sqlx::query(
             "INSERT INTO usernames (user_id, name, discriminator) \
-                     VALUES ($1, $2, $3) \
-                     ON CONFLICT ON CONSTRAINT idx_unique_username \
-                     DO NOTHING",
+             VALUES ($1, $2, $3) \
+             ON CONFLICT ON CONSTRAINT idx_unique_username \
+             DO NOTHING",
         )
         .bind(self.user_id)
         .bind(self.name.clone())
@@ -82,7 +82,7 @@ impl Username {
     pub fn bulk_insert<'a>(usernames: Vec<Self>) -> SqlQuery<'a> {
         let user_ids: Vec<i64> = usernames.iter().map(|u| u.user_id).collect();
         let names: Vec<String> = usernames.iter().map(|u| u.name.clone()).collect();
-        let discriminator: Vec<Option<u32>> = usernames.iter().map(|u| u.discriminator).collect();
+        let discriminator: Vec<Option<i32>> = usernames.iter().map(|u| u.discriminator).collect();
         sqlx::query(
             "INSERT INTO usernames (user_id, name, discriminator) \
              SELECT * FROM UNNEST ($1, $2, $3) \

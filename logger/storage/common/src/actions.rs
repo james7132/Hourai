@@ -232,7 +232,7 @@ impl ActionExecutor {
             .fetch_one(self.storage().sql())
             .await?;
 
-        if !member.present && info.get_role_ids().is_empty() {
+        if info.get_role_ids().is_empty() {
             return Ok(());
         }
 
@@ -298,4 +298,5 @@ impl ActionExecutor {
             .await?;
         Ok(())
     }
+
 }

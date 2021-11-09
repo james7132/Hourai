@@ -3,27 +3,30 @@ use crate::models::{
     user::{User, UserLike},
 };
 use anyhow::Result;
-use chrono::{offset::TimeZone, Utc};
-use twilight_embed_builder::{image_source::ImageSource, EmbedBuilder, EmbedFieldBuilder};
+use twilight_embed_builder::{image_source::ImageSource, EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
 use twilight_util::snowflake::Snowflake;
+
+fn timestamp_to_str(timestamp: i64) -> String {
+    format!("<t:{}:R>", timestamp)
+}
 
 pub fn user(user: &User) -> Result<EmbedBuilder> {
     let thumbnail = ImageSource::url(user.avatar_url())?;
     let mut builder = EmbedBuilder::new()
         .title(format!(
-            "{}#{:04} ({})",
-            user.name, user.discriminator, user.id
+            "{}#{:04}",
+            user.name, user.discriminator,
         ))
-        .thumbnail(thumbnail);
+        .thumbnail(thumbnail)
+        .footer(EmbedFooterBuilder::new(format!("ID: {}", user.id)));
 
     if let Some(color) = user.accent_color {
         builder = builder.color(color as u32);
     }
 
-    let timestamp = Utc.timestamp(user.id.timestamp() / 1000, 0);
     builder = builder.field(EmbedFieldBuilder::new(
-        "Joined At",
-        format!("{}", timestamp),
+        "Created on",
+        timestamp_to_str(user.id.timestamp() / 1000)
     ));
 
     Ok(builder)
@@ -33,18 +36,16 @@ pub fn member(member: &Member) -> Result<EmbedBuilder> {
     let mut builder = user(&member.user)?;
 
     if let Some(ts) = member.joined_at {
-        let timestamp = Utc.timestamp(ts.as_secs() as i64, 0);
         builder = builder.field(EmbedFieldBuilder::new(
-            "Joined At",
-            format!("{}", timestamp),
+            "Joined at",
+            timestamp_to_str(ts.as_secs() as i64),
         ));
     }
 
     if let Some(ts) = member.premium_since {
-        let timestamp = Utc.timestamp(ts.as_secs() as i64, 0);
         builder = builder.field(EmbedFieldBuilder::new(
             "Boosting Since",
-            format!("{}", timestamp),
+            timestamp_to_str(ts.as_secs() as i64),
         ));
     }
 
