@@ -3,7 +3,18 @@ use hourai::{
     models::{channel::message::allowed_mentions::AllowedMentions, id::ChannelId},
     proto::guild_configs::LoggingConfig,
 };
+use rand::Rng;
 use hourai_redis::GuildConfig;
+
+pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
+    let choices: Vec<&str> = ctx.all_strings("choice").collect();
+    if choices.is_empty() {
+        Ok(Response::ephemeral().content("Nothing to choose from!"))
+    } else {
+        let idx = rand::thread_rng().gen_range(0..choices.len());
+        Ok(Response::direct().content(format!("I choose `{}`.", choices[idx])))
+    }
+}
 
 pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;

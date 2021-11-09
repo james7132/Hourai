@@ -160,11 +160,20 @@ impl CommandContext {
         self.options().filter(move |opt| opt.name.contains(name))
     }
 
-    /// Gets all of the raw IDs with a given name.
+    /// Gets all of the User options with a given option name.
     pub fn all_users(&self, name: &'static str) -> impl Iterator<Item = UserId> + '_ {
         self.all_options_named(name)
             .filter_map(|opt| match opt.value {
                 CommandOptionValue::User(user) => Some(user),
+                _ => None,
+            })
+    }
+
+    /// Gets all of the String options with a given option name.
+    pub fn all_strings(&self, name: &'static str) -> impl Iterator<Item = &str> + '_ {
+        self.all_options_named(name)
+            .filter_map(|opt| match opt.value {
+                CommandOptionValue::String(ref value) => Some(value.as_ref()),
                 _ => None,
             })
     }

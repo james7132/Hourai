@@ -3,8 +3,8 @@ syntax = "proto2";
 package hourai.db.proto;
 
 message MessageComponentProto {
-  oneof {
-    VerificationButton verification_button = 1
+  oneof component {
+    VerificationButton verification_button = 1;
     MusicButton music_button = 2;
   }
 }
@@ -19,7 +19,7 @@ enum VerificationButtonOption {
 
 // NEXT ID: 3
 message VerificationButton {
-  optional /* actually required */ VerficationButtonOption button_option = 1;
+  optional /* actually required */ VerificationButtonOption button_option = 1;
   optional /* actually required */ fixed64 user_id = 2;
 }
 

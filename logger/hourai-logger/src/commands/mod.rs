@@ -9,6 +9,8 @@ use prelude::*;
 
 pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Result<()> {
     let result = match ctx.command() {
+        // Standard Commands
+        Command::Command("choose") => standard::choose(&ctx).await,
         Command::Command("pingmod") => standard::pingmod(&ctx, actions.storage()).await,
 
         // Admin Commands
