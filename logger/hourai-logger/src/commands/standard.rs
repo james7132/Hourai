@@ -3,8 +3,9 @@ use hourai::{
     models::{channel::message::allowed_mentions::AllowedMentions, id::ChannelId},
     proto::guild_configs::LoggingConfig,
 };
-use rand::Rng;
 use hourai_redis::GuildConfig;
+use rand::Rng;
+use twilight_embed_builder::EmbedBuilder;
 
 pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
     let choices: Vec<&str> = ctx.all_strings("choice").collect();
@@ -12,7 +13,7 @@ pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
         Ok(Response::ephemeral().content("Nothing to choose from!"))
     } else {
         let idx = rand::thread_rng().gen_range(0..choices.len());
-        Ok(Response::direct().content(format!("I choose `{}`.", choices[idx])))
+        Ok(Response::ephemeral().content(format!("I choose `{}`.", choices[idx])))
     }
 }
 
@@ -50,4 +51,22 @@ pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<R
     } else {
         Ok(Response::direct().content(&content))
     }
+}
+
+pub(super) async fn info_user(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
+    let user_id = ctx.get_user("user")?;
+    if let Ok(guild_id) = ctx.guild_id() {
+        let member = executor
+            .http()
+            .guild_member(guild_id, user_id)
+            .exec()
+            .await?
+            .model()
+            .await?;
+        let embed = hourai_sql::whois::member(executor.storage().sql(), &member).await?;
+        return Ok(Response::direct().embed(embed.build()?));
+    }
+    let user = executor.http().user(user_id).exec().await?.model().await?;
+    let embed = hourai_sql::whois::user(executor.storage().sql(), &user).await?;
+    Ok(Response::direct().embed(embed.build()?))
 }

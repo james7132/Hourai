@@ -269,12 +269,14 @@ local commands = [
 
   command {
     // #016
-    name: "whois",
-    description: "Provides detailed information about a user.",
-    options: [user {
+    name: "info",
+    options: [subcommand {
       name: "user",
-      description: "Required: the user that is being inspected.",
-      required: true
+      description: "Provides detailed information about a user.",
+      options: [user {
+        name: "user",
+        required: true
+      }]
     }]
   },
 

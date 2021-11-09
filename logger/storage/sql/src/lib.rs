@@ -1,5 +1,6 @@
 mod models;
 mod types;
+pub mod whois;
 
 pub use self::models::*;
 pub use sqlx::types as sql_types;
