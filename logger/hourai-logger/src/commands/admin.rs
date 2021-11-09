@@ -1,21 +1,16 @@
-use anyhow::Result;
+use super::prelude::*;
 use futures::{channel::mpsc, future, prelude::*};
-use hourai::interactions::{Command, CommandContext, CommandError, Response};
 use hourai::{
     http::request::prelude::AuditLogReason,
     models::{
-        channel::message::{allowed_mentions::AllowedMentions, Message},
+        channel::message::Message,
         guild::Permissions,
         id::{ChannelId, MessageId, UserId},
         user::User,
     },
-    proto::{
-        action::{Action, BanMember_Type, StatusType},
-        guild_configs::LoggingConfig,
-    },
+    proto::action::{Action, BanMember_Type, StatusType},
 };
-use hourai_redis::{CachedGuild, GuildConfig};
-use hourai_storage::{actions::ActionExecutor, escalation::EscalationManager, Storage};
+use hourai_redis::CachedGuild;
 use regex::Regex;
 use std::{
     collections::HashMap,
@@ -27,47 +22,6 @@ use std::{
 const MAX_PRUNED_MESSAGES: usize = 100;
 const MAX_PRUNED_MESSAGES_PER_BATCH: usize = 100;
 
-pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Result<()> {
-    let result = match ctx.command() {
-        Command::Command("pingmod") => pingmod(&ctx, actions.storage()).await,
-
-        // Admin Commands
-        Command::Command("ban") => ban(&ctx, actions).await,
-        Command::Command("kick") => kick(&ctx, actions.storage()).await,
-        Command::Command("mute") => mute(&ctx, actions).await,
-        Command::Command("deafen") => deafen(&ctx, actions).await,
-        Command::Command("move") => move_cmd(&ctx, actions.storage()).await,
-        Command::Command("prune") => prune(&ctx).await,
-        Command::SubCommand("role", "add") => change_role(&ctx, actions, StatusType::APPLY).await,
-        Command::SubCommand("role", "remove") => {
-            change_role(&ctx, actions, StatusType::UNAPPLY).await
-        }
-
-        // Escalation commands
-        Command::SubCommand("escalate", "up") => escalate(&ctx, actions).await,
-        Command::SubCommand("escalate", "down") => deescalate(&ctx, actions).await,
-        Command::SubCommand("escalate", "history") => escalate_history(&ctx, actions).await,
-        _ => return Err(anyhow::Error::new(CommandError::UnknownCommand)),
-    };
-
-    match result {
-        Ok(response) => ctx.reply(response).await,
-        Err(err) => {
-            let response = Response::ephemeral();
-            if let Some(command_err) = err.downcast_ref::<CommandError>() {
-                ctx.reply(response.content(format!(":x: Error: {}", command_err)))
-                    .await?;
-                Ok(())
-            } else {
-                // TODO(james7132): Add some form of tracing for this.
-                ctx.reply(response.content(":x: Fatal Error: Internal Error has occured."))
-                    .await?;
-                Err(err)
-            }
-        }
-    }
-}
-
 fn parse_duration(duration: &str) -> Result<Duration> {
     humantime::parse_duration(duration).map_err(|err| {
         anyhow::anyhow!(CommandError::InvalidArgument(format!(
@@ -75,42 +29,6 @@ fn parse_duration(duration: &str) -> Result<Duration> {
             duration, err
         )))
     })
-}
-
-async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
-    let guild_id = ctx.guild_id()?;
-    let config: LoggingConfig =
-        GuildConfig::fetch_or_default(guild_id, &mut storage.clone()).await?;
-    let (mention, ping) = hourai_storage::ping_online_mod(guild_id, storage).await?;
-
-    let content = ctx
-        .get_string("reason")
-        .map(|reason| format!("{}: {}", ping, reason))
-        .unwrap_or(ping);
-
-    if config.has_modlog_channel_id() {
-        ctx.http
-            .create_message(ChannelId::new(config.get_modlog_channel_id()).unwrap())
-            .content(&format!(
-                "<@{}> used `/pingmod` to ping {} in <#{}>",
-                ctx.user().id,
-                mention,
-                ctx.channel_id()
-            ))?
-            .allowed_mentions(AllowedMentions::builder().build())
-            .exec()
-            .await?;
-
-        ctx.http
-            .create_message(ctx.channel_id())
-            .content(&content)?
-            .exec()
-            .await?;
-
-        Ok(Response::ephemeral().content(format!("Pinged {} to this channel.", mention)))
-    } else {
-        Ok(Response::direct().content(&content))
-    }
 }
 
 fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> String {
@@ -127,7 +45,7 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
     }
 }
 
-async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
+pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::BAN_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Ban Members"));
@@ -184,7 +102,7 @@ async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response
     Ok(Response::direct().content(format!("{} {} users.", action, users.len() - errors.len())))
 }
 
-async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Kick Members"));
@@ -229,7 +147,7 @@ async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     Ok(Response::direct().content(format!("Kicked {} users.", members.len() - errors.len())))
 }
 
-async fn change_role(
+pub(super) async fn change_role(
     ctx: &CommandContext,
     executor: &ActionExecutor,
     status: StatusType,
@@ -282,7 +200,7 @@ async fn change_role(
     )))
 }
 
-async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
+pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::DEAFEN_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Deafen Members"));
@@ -315,7 +233,7 @@ async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Respo
     Ok(Response::direct().content(format!("Deafened {} users.", members.len() - errors.len())))
 }
 
-async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
+pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MUTE_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Mute Members"));
@@ -348,7 +266,7 @@ async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Respons
     Ok(Response::direct().content(format!("Muted {} users.", members.len() - errors.len())))
 }
 
-async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MOVE_MEMBERS) {
         anyhow::bail!(CommandError::MissingPermission("Move Members"));
@@ -424,7 +342,7 @@ async fn fetch_messages(
     }
 }
 
-async fn prune(ctx: &CommandContext) -> Result<Response> {
+pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
     ctx.guild_id()?;
     let count = ctx.get_int("count").unwrap_or(100) as usize;
     if count > MAX_PRUNED_MESSAGES {
@@ -496,124 +414,4 @@ async fn prune(ctx: &CommandContext) -> Result<Response> {
         total += batch.len();
     }
     Ok(Response::direct().content(format!("Pruned {} messages.", total)))
-}
-
-async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
-    let guild_id = ctx.guild_id()?;
-    if !hourai_storage::is_moderator(
-        guild_id,
-        ctx.command.member.as_ref().unwrap().roles.iter().cloned(),
-        &mut actions.storage().redis().clone(),
-    )
-    .await?
-    {
-        anyhow::bail!(CommandError::MissingPermission(
-            "Only moderators can escalate users."
-        ));
-    }
-    let authorizer = ctx.user();
-    let reason = ctx.get_string("reason")?.as_ref();
-    let amount = ctx.get_int("amount").unwrap_or(1);
-    if amount <= 0 {
-        anyhow::bail!(CommandError::InvalidArgument(
-            "Non-positive `amounts` are not allowed. If you need to deescalate someone, please use \
-             `/escalate down` instead.".to_owned()));
-    }
-    let manager = EscalationManager::new(actions.clone());
-    let guild = manager.guild(guild_id).await?;
-    let mut results = Vec::new();
-    for user_id in ctx.all_users("user") {
-        let history = guild.fetch_history(user_id).await?;
-        let result = history
-            .apply_delta(
-                /*authorizer=*/ authorizer,
-                /*reason=*/ reason,
-                /*diff=*/ amount,
-                /*execute=*/ amount >= 0,
-            )
-            .await;
-        match result {
-            Ok(escalation) => {
-                let expiration = escalation.expiration.map(|date| date.to_rfc2822());
-                let expiration = expiration.as_deref().unwrap_or("Never");
-                results.push(format!(
-                    "<@{}>: Action: {}. Expiration {}",
-                    user_id, escalation.entry.display_name, expiration
-                ));
-            }
-            Err(err) => {
-                tracing::error!("Error while escalating a user: {}", err);
-            }
-        }
-    }
-
-    let response = format!(
-        "Escalated {} users for: '{}'\n{}",
-        results.len(),
-        reason,
-        results.join("\n")
-    );
-    Ok(Response::direct().content(response))
-}
-
-async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
-    let guild_id = ctx.guild_id()?;
-    if !hourai_storage::is_moderator(
-        guild_id,
-        ctx.command.member.as_ref().unwrap().roles.iter().cloned(),
-        &mut actions.storage().redis().clone(),
-    )
-    .await?
-    {
-        anyhow::bail!(CommandError::MissingPermission(
-            "Only moderators can escalate users."
-        ));
-    }
-    let authorizer = ctx.user();
-    let reason = ctx.get_string("reason")?.as_ref();
-    let amount = -ctx.get_int("amount").unwrap_or(1);
-    if amount >= 0 {
-        anyhow::bail!(CommandError::InvalidArgument(
-            "Non-positive `amounts` are not allowed. If you need to deescalate someone, please use \
-             `/escalate down` instead.".to_owned()));
-    }
-    let manager = EscalationManager::new(actions.clone());
-    let guild = manager.guild(guild_id).await?;
-    let mut results = Vec::new();
-    for user_id in ctx.all_users("user") {
-        let history = guild.fetch_history(user_id).await?;
-        let result = history
-            .apply_delta(
-                /*authorizer=*/ authorizer,
-                /*reason=*/ reason,
-                /*diff=*/ amount,
-                /*execute=*/ amount >= 0,
-            )
-            .await;
-        match result {
-            Ok(escalation) => {
-                let expiration = escalation.expiration.map(|date| date.to_rfc2822());
-                let expiration = expiration.as_deref().unwrap_or("Never");
-                results.push(format!(
-                    "<@{}>: Action: {}. Expiration {}",
-                    user_id, escalation.entry.display_name, expiration
-                ));
-            }
-            Err(err) => {
-                tracing::error!("Error while escalating a user: {}", err);
-            }
-        }
-    }
-
-    let response = format!(
-        "Escalated {} users for: '{}'\n{}",
-        results.len(),
-        reason,
-        results.join("\n")
-    );
-    Ok(Response::direct().content(response))
-}
-
-async fn escalate_history(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
-    anyhow::bail!("This command is unfortunately not implemented yet.");
 }
