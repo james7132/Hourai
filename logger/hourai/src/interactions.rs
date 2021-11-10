@@ -9,7 +9,7 @@ use crate::{
         },
         channel::{embed::Embed, message::MessageFlags},
         guild::{PartialMember, Permissions},
-        id::{ChannelId, GuildId, UserId},
+        id::{ChannelId, GuildId, RoleId, UserId},
         user::User,
     },
 };
@@ -217,6 +217,17 @@ impl CommandContext {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::Channel(ref value) => Some(*value),
+                _ => None,
+            })
+            .ok_or(CommandError::MissingArgument(name))
+    }
+
+    /// Attempts to find the first argument with a given name that is of type Role. If no such
+    /// argument is found, return None.
+    pub fn get_role(&self, name: &'static str) -> Result<RoleId, CommandError> {
+        self.option_named(name)
+            .and_then(|option| match option.value {
+                CommandOptionValue::Role(ref value) => Some(*value),
                 _ => None,
             })
             .ok_or(CommandError::MissingArgument(name))

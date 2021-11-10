@@ -161,6 +161,7 @@ pub(super) async fn change_role(
     let members: Vec<_> = ctx.all_users("user").collect();
     let mut base = Action::new();
     base.set_guild_id(guild_id.get());
+    base.mut_change_role().mut_role_ids().push(ctx.get_role("role")?.get());
     base.mut_change_role().set_field_type(status);
     base.set_reason(build_reason(
         if let StatusType::APPLY = status {
