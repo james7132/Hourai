@@ -30,6 +30,14 @@ pub struct Escalation {
     pub expiration: Option<DateTime<Utc>>,
 }
 
+impl Escalation {
+    pub fn expiration(&self) -> String {
+        self.expiration
+            .map(|exp| format!("<t:{}:R>", exp.timestamp()))
+            .unwrap_or_else(|| "Never".into())
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum EscalationError {
     #[error("A non-empty reason must be provided for any escalation.")]
@@ -304,8 +312,6 @@ impl EscalationHistory {
                 .map(|a| a.get_reason())
                 .collect();
             let reasons = reasons.into_iter().collect::<Vec<_>>().join("; ");
-            let expiration = escalation.expiration.map(|exp| exp.to_rfc2822());
-            let expiration = expiration.as_deref().unwrap_or("Never");
             let msg = format!(
                 ":arrow_{}: **<@{}> {} <@{}>**\nReason: {}\nAction: {}\nExpiration: {}",
                 arrow,
@@ -314,7 +320,7 @@ impl EscalationHistory {
                 escalation.entry.subject_id,
                 reasons,
                 escalation.entry.display_name,
-                expiration
+                escalation.expiration()
             );
             self.http()
                 .create_message(modlog_id)
@@ -325,4 +331,5 @@ impl EscalationHistory {
 
         Ok(())
     }
+
 }

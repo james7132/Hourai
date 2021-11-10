@@ -37,11 +37,9 @@ pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> 
             .await;
         match result {
             Ok(escalation) => {
-                let expiration = escalation.expiration.map(|date| date.to_rfc2822());
-                let expiration = expiration.as_deref().unwrap_or("Never");
                 results.push(format!(
-                    "<@{}>: Action: {}. Expiration {}",
-                    user_id, escalation.entry.display_name, expiration
+                    "<@{}>: Action: {}. Expiration: {}",
+                    user_id, escalation.entry.display_name, escalation.expiration()
                 ));
             }
             Err(err) => {
@@ -95,11 +93,9 @@ pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -
             .await;
         match result {
             Ok(escalation) => {
-                let expiration = escalation.expiration.map(|date| date.to_rfc2822());
-                let expiration = expiration.as_deref().unwrap_or("Never");
                 results.push(format!(
                     "<@{}>: Action: {}. Expiration {}",
-                    user_id, escalation.entry.display_name, expiration
+                    user_id, escalation.entry.display_name, escalation.expiration()
                 ));
             }
             Err(err) => {

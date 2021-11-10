@@ -12,12 +12,12 @@ use hourai::{
 };
 use hourai_redis::{CachedMessage, GuildConfig};
 use hourai_sql::Member;
-use hourai_storage::{actions::ActionExecutor, Storage};
-use regex::Regex;
+use hourai_storage::actions::ActionExecutor;
+use regex::{Regex, RegexSet};
 use std::collections::HashSet;
 
 lazy_static! {
-    static ref SLUR_REGEX: Regex = generalize_filters(SLURS);
+    static ref SLUR_REGEX: RegexSet = generalize_filters(SLURS);
     static ref DISCORD_INVITE_REGEX: Regex = Regex::new("discord.gg/([a-zA-Z0-9]+)").unwrap();
 }
 
@@ -35,8 +35,18 @@ pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike
     let mut storage = executor.storage().clone();
     let config: ModerationConfig = GuildConfig::fetch_or_default(guild_id, &mut storage).await?;
 
+    let mut redis = storage.redis().clone();
+    let member = Member::fetch(guild_id, message.author().id())
+        .fetch_one(executor.storage())
+        .await;
+    let moderator = if let Ok(member) = member {
+        hourai_storage::is_moderator(guild_id, member.role_ids(), &mut redis).await?
+    } else {
+        false
+    };
+
     for rule in config.get_message_filter().get_rules() {
-        let reasons = get_filter_reasons(message, rule.get_criteria(), &mut storage).await?;
+        let reasons = get_filter_reasons(moderator, message, rule.get_criteria()).await?;
         if !reasons.is_empty() {
             apply_rule(message, rule.clone(), reasons, executor).await?;
             return Ok(rule.get_delete_message());
@@ -46,13 +56,12 @@ pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike
     Ok(false)
 }
 
-fn generalize_filters(filters: &[&str]) -> Regex {
-    let joined = filters
+fn generalize_filters(filters: &[&str]) -> RegexSet {
+    let generalized = filters
         .iter()
         .map(|filter| generalize_filter(*filter))
-        .collect::<Vec<String>>()
-        .join("|");
-    Regex::new(&format!("({})", joined)).unwrap()
+        .collect::<Vec<String>>();
+    RegexSet::new(&generalized).unwrap()
 }
 
 fn generalize_filter(filter: &str) -> String {
@@ -176,47 +185,33 @@ async fn apply_rule(
 }
 
 async fn get_filter_reasons(
+    moderator: bool,
     message: &impl MessageLike,
     criteria: &MessageFilterRule_Criteria,
-    storage: &Storage,
 ) -> Result<Vec<String>> {
-    let guild_id = message.guild_id().unwrap();
-    let mut redis = storage.redis().clone();
     let mut reasons = Vec::new();
 
     let is_bot = criteria.get_exclude_bots() && message.author().bot();
     let is_in_excluded_channel = criteria
         .get_excluded_channels()
         .contains(&message.channel_id().get());
-    let is_moderator = if criteria.get_exclude_moderators() {
-        let roles: Vec<RoleId> = Member::fetch(guild_id, message.author().id())
-            .fetch_one(storage)
-            .await?
-            .role_ids()
-            .collect();
-        hourai_storage::is_moderator(guild_id, roles.into_iter(), &mut redis).await?
-    } else {
-        false
-    };
+    let is_moderator = criteria.get_exclude_moderators() && moderator;
 
     if is_bot || is_moderator || is_in_excluded_channel {
         return Ok(reasons);
     }
 
-    for regex in criteria.matches.iter() {
-        match Regex::new(&regex) {
-            Ok(regex) => {
-                if regex.is_match(message.content()) {
-                    reasons.push(String::from("Message contains banned word or phrase."));
-                }
+    match RegexSet::new(&criteria.matches) {
+        Ok(regex) => {
+            if regex.is_match(message.content()) {
+                reasons.push(String::from("Message contains banned word or phrase."));
             }
-            Err(err) => {
-                tracing::warn!(
-                    "Error while building regex for message filter ({}): {}",
-                    regex,
-                    err
-                );
-            }
+        }
+        Err(err) => {
+            tracing::warn!(
+                "Error while building regex for message filter: {}",
+                err
+            );
         }
     }
 
