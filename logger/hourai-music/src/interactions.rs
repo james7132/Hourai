@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::{player::PlayerState, queue::MusicQueue, track::Track, ui::*, Client};
+use crate::{player::PlayerState, queue::MusicQueue, track::Track, Client};
 use anyhow::{bail, Result};
 use hourai::{
     interactions::{Command, CommandContext, CommandError, Response},

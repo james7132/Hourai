@@ -118,8 +118,8 @@ pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -
 }
 
 pub(super) async fn escalate_history(
-    ctx: &CommandContext,
-    actions: &ActionExecutor,
+    _ctx: &CommandContext,
+    _actions: &ActionExecutor,
 ) -> Result<Response> {
     anyhow::bail!("This command is unfortunately not implemented yet.");
 }

@@ -5,7 +5,7 @@ use hourai::{
 };
 use hourai_redis::GuildConfig;
 use rand::Rng;
-use twilight_embed_builder::EmbedBuilder;
+
 
 pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
     let choices: Vec<&str> = ctx.all_strings("choice").collect();

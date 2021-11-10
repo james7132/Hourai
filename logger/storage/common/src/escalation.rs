@@ -159,7 +159,7 @@ impl EscalationHistory {
     pub fn current_level(&self) -> i64 {
         let mut level: i64 = -1;
         for entry in self.entries() {
-            level = std::cmp::max(0, level + entry.level_delta as i64);
+            level = std::cmp::max(-1, level + entry.level_delta as i64);
         }
         level
     }

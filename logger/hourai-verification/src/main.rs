@@ -7,14 +7,14 @@ mod rejectors;
 mod verifier;
 
 use hourai::config;
-use std::time::Duration;
+
 use verifier::BoxedVerifier;
 
 #[tokio::main]
 async fn main() {
     let config = config::load_config(config::get_config_path().as_ref());
     let sql = hourai_sql::init(&config).await;
-    let verifiers: Vec<BoxedVerifier> = vec![
+    let _verifiers: Vec<BoxedVerifier> = vec![
         // ---------------------------------------------------------------
         // Suspicion Level Verifiers
         //     Verifiers here are mostly for suspicious characteristics.
