@@ -172,7 +172,7 @@ async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
             .query_async::<RedisPool, ()>(&mut redis)
             .await;
         if let Err(err) = result {
-            error!("Error while flushing statuses: {:?}", err);
+            error!("Error while flushing statuses: {} ({:?})", err, err);
         }
         tokio::time::sleep(Duration::from_secs(60u64)).await;
     }
@@ -193,7 +193,7 @@ impl Client {
             info!("Refreshing bans...");
             for guild_id in self.0.cache.guilds() {
                 if let Err(err) = self.refresh_bans(guild_id).await {
-                    error!("Error while logging bans: {:?}", err);
+                    error!("Error while logging bans: {} ({:?})", err, err);
                 }
             }
             tokio::time::sleep(Duration::from_secs(180u64)).await;
@@ -301,7 +301,7 @@ impl Client {
         };
 
         if let Err(err) = result {
-            error!("Error while running event with {:?}: {}", kind, err);
+            error!("Error while running event with {:?}: {}, {}", kind, err, err);
         }
     }
 
@@ -345,7 +345,7 @@ impl Client {
         };
 
         if let Err(err) = result {
-            error!("Error while running event with {:?}: {}", kind, err);
+            error!("Error while running event with {:?}: {} ({:?})", kind, err, err);
         }
     }
 
@@ -421,7 +421,7 @@ impl Client {
 
     async fn on_member_chunk(&self, evt: MemberChunk) -> Result<()> {
         while let Err(err) = self.log_members(&evt.members).await {
-            error!("Error while chunking members, retrying: {:?}", err);
+            error!("Error while chunking members, retrying: {} ({:?})", err, err);
         }
         Ok(())
     }
@@ -502,8 +502,8 @@ impl Client {
         for thread in evt.threads {
             if let Err(err) = self.http().join_thread(thread.id()).exec().await {
                 error!(
-                    "Error while joining new thread in guild {}: {}",
-                    evt.guild_id, err
+                    "Error while joining new thread in guild {}: {} ({:?})",
+                    evt.guild_id, err, err
                 );
             } else {
                 info!("Joined thread {}", thread.id());

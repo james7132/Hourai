@@ -3,14 +3,14 @@ use futures::future::Future;
 use futures::stream::StreamExt;
 use hourai_sql::{Executor, PendingAction, PendingDeescalation};
 use hourai_storage::{actions::ActionExecutor, escalation::EscalationManager};
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use tokio::time::{Duration, Instant};
 
 const CYCLE_DURATION: Duration = Duration::from_secs(1);
 
-async fn log_error<O, E: Display>(action: &'static str, fut: impl Future<Output = Result<O, E>>) {
+async fn log_error<O, E: Display + Debug>(action: &'static str, fut: impl Future<Output = Result<O, E>>) {
     if let Err(err) = fut.await {
-        tracing::error!("Error while {}: {}", action, err);
+        tracing::error!("Error while {}: {} ({:?})", action, err, err);
     }
 }
 
@@ -37,6 +37,7 @@ pub async fn run_pending_actions(executor: ActionExecutor) {
 }
 
 async fn run_action(executor: ActionExecutor, pending: PendingAction) -> Result<()> {
+    tracing::debug!("Running pending action: {:?}", pending.action());
     executor.execute_action(pending.action()).await?;
     executor.storage().sql().execute(pending.delete()).await?;
     tracing::info!("Ran pending action: {:?}", pending.action());

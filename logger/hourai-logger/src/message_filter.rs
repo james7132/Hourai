@@ -3,7 +3,7 @@ use anyhow::Result;
 use hourai::proto::guild_configs::*;
 use hourai::{
     models::{
-        id::{ChannelId, RoleId},
+        id::{ChannelId},
         message::MessageLike,
         user::UserLike,
         Snowflake,
