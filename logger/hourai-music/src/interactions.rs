@@ -79,8 +79,12 @@ pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) ->
         MusicButtonOption::MUSIC_BUTTON_NEXT_TRACK => {
             skip(&client, &ctx).await?;
         }
-        MusicButtonOption::MUSIC_BUTTON_QUEUE_NEXT_PAGE => {}
-        MusicButtonOption::MUSIC_BUTTON_QUEUE_PREV_PAGE => {}
+        MusicButtonOption::MUSIC_BUTTON_QUEUE_NEXT_PAGE => {
+            shift_queue_page(&client, &ctx, 1).await?;
+        }
+        MusicButtonOption::MUSIC_BUTTON_QUEUE_PREV_PAGE => {
+            shift_queue_page(&client, &ctx, -1).await?;
+        }
         MusicButtonOption::MUSIC_BUTTON_VOLUME_UP => {
             delta_volume(&client, &ctx, 5).await?;
         }
@@ -89,7 +93,7 @@ pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) ->
         }
         _ => return Ok(()),
     }
-
+    ctx.defer_update().await?;
     Ok(())
 }
 
@@ -257,6 +261,7 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
                     queue_ui: None,
                     now_playing_ui_slash: None,
                     queue_ui_slash: None,
+                    queue_page: 0
                 },
             );
             client.start_playing(guild_id).await?;
@@ -446,6 +451,18 @@ async fn delta_volume(
     };
 
     Ok(Response::direct().content(&format!("Set volume to `{}`.", volume)))
+}
+
+async fn shift_queue_page(
+    client: &Client<'static>,
+    ctx: &impl InteractionContext,
+    change: i64,
+) -> Result<Response> {
+    let guild_id = require_playing(client, ctx)?;
+    client.mutate_state(guild_id, move |state| {
+        state.queue_page += change;
+    });
+    Ok(Response::direct().content("Changed page."))
 }
 
 async fn queue(client: &Client<'static>, ctx: CommandContext) -> Result<()> {

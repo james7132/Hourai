@@ -108,6 +108,11 @@ pub trait InteractionContext {
         Ok(())
     }
 
+    async fn defer_update(&self) -> anyhow::Result<()> {
+        self.reply_raw(InteractionResponse::DeferredUpdateMessage).await?;
+        Ok(())
+    }
+
     async fn reply(
         &self,
         data: impl Into<CallbackData> + Send + 'async_trait,

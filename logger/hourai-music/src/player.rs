@@ -11,6 +11,8 @@ pub struct PlayerState {
     pub queue_ui: Option<ui::MessageUI>,
     pub now_playing_ui_slash: Option<interaction_ui::MessageUI>,
     pub queue_ui_slash: Option<interaction_ui::MessageUI>,
+
+    pub queue_page: i64,
 }
 
 impl PlayerState {

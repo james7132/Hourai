@@ -326,6 +326,14 @@ impl Client<'static> {
             .and_then(|kv| kv.value().currently_playing().map(|cp| cp.1))
     }
 
+    /// Gets the currently displayed queue page in a given guild.
+    /// If not playing, return None.
+    pub fn queue_page(&self, guild_id: GuildId) -> Option<i64> {
+        self.states
+            .get(&guild_id)
+            .map(|kv| kv.value().queue_page)
+    }
+
     /// Gets which voice channel the bot is currently connected to in
     /// a guild.
     pub fn get_channel(&self, guild_id: GuildId) -> Option<ChannelId> {

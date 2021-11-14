@@ -86,7 +86,7 @@ where
             builder: T::default(),
         };
 
-        ctx.reply(
+        ctx.defer(
             Response::direct()
                 .content(&dummy.builder.build_content(&dummy))
                 .embed(dummy.builder.build_embed(&dummy)?)
@@ -116,9 +116,7 @@ impl<T: EmbedUIBuilder> Updateable for EmbedUI<T> {
 #[derive(Default)]
 pub struct NowPlayingUI;
 #[derive(Default)]
-pub struct QueueUI {
-    page: usize,
-}
+pub struct QueueUI;
 
 impl EmbedUIBuilder for NowPlayingUI {
     fn build_content(&self, _: &EmbedUI<Self>) -> String {
@@ -197,13 +195,19 @@ impl EmbedUIBuilder for QueueUI {
             Some(len) => len / TRACKS_PER_PAGE,
             None => return not_playing_embed(),
         };
+
+        let current_page = match ui.client.queue_page(ui.guild_id) {
+            Some(current_page) => (current_page % pages as i64),
+            None => return not_playing_embed(),
+        };
+
         let description = ui
             .client
             .get_queue(ui.guild_id, |q| {
                 q.iter()
                     .enumerate()
                     // Add one for the currently playing song.
-                    .skip(self.page * TRACKS_PER_PAGE + 1)
+                    .skip(current_page as usize * TRACKS_PER_PAGE + 1)
                     .take(TRACKS_PER_PAGE)
                     .map(|kv| format_track(kv.0, &kv.1.value))
                     .collect::<Vec<String>>()
@@ -213,7 +217,7 @@ impl EmbedUIBuilder for QueueUI {
         if description.is_empty() {
             build_np_embed(&ui)
         } else {
-            let footer = format!("Page {}/{}", self.page + 1, pages + 1);
+            let footer = format!("Page {}/{}", current_page + 1, pages + 1);
             Ok(EmbedBuilder::new()
                 .description(description)
                 .footer(EmbedFooterBuilder::new(footer))
