@@ -1,7 +1,7 @@
 use crate::{buttons, prelude::*, track::Track, Client};
 use anyhow::Result;
 use hourai::{
-    interactions::{CommandContext, Response},
+    interactions::{CommandContext, InteractionContext, Response},
     models::{
         application::component::{action_row::ActionRow, Component},
         channel::embed::Embed,

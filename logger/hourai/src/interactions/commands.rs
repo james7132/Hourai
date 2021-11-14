@@ -1,97 +1,22 @@
 use crate::{
     http::Client,
+    interactions::{InteractionContext, InteractionError, InteractionResult},
     models::{
-        application::{
-            callback::{CallbackData, InteractionResponse},
-            component::Component,
-            interaction::application_command::{
-                ApplicationCommand, CommandDataOption, CommandOptionValue, InteractionMember,
-            },
+        application::interaction::application_command::{
+            ApplicationCommand, CommandDataOption, CommandOptionValue, InteractionMember,
         },
-        channel::{embed::Embed, message::MessageFlags},
         guild::{PartialMember, Permissions},
-        id::{ChannelId, GuildId, RoleId, UserId},
+        id::{ChannelId, GuildId, InteractionId, RoleId, UserId},
         user::User,
     },
 };
-use anyhow::Result;
 use std::sync::Arc;
-use thiserror::Error;
-
-pub type CommandResult<T> = std::result::Result<T, CommandError>;
-
-#[derive(Debug, Error)]
-pub enum CommandError {
-    #[error("Unkown command. This command is currently unsuable.")]
-    UnknownCommand,
-    #[error("Command can only be used in a server.")]
-    NotInGuild,
-    #[error("Missing argument: {}", .0)]
-    MissingArgument(&'static str),
-    #[error("Invalid argument: {}", .0)]
-    InvalidArgument(String),
-    #[error("User failed to satisfy preconditions: {}", .0)]
-    FailedPrecondition(&'static str),
-    #[error("User is missing permission: `{0}`")]
-    MissingPermission(&'static str),
-    #[error("{0}")]
-    UserError(&'static str),
-}
 
 #[derive(Debug)]
 pub enum Command<'a> {
     Command(&'a str),
     SubCommand(&'a str, &'a str),
     SubGroupCommand(&'a str, &'a str, &'a str),
-}
-
-pub struct Response(CallbackData);
-
-impl Response {
-    pub fn direct() -> Self {
-        Self(CallbackData {
-            allowed_mentions: None,
-            components: None,
-            content: None,
-            embeds: Vec::new(),
-            flags: None,
-            tts: None,
-        })
-    }
-
-    pub fn ephemeral() -> Self {
-        Self::direct().flag(MessageFlags::EPHEMERAL)
-    }
-
-    pub fn content(mut self, content: impl Into<String>) -> Self {
-        self.0.content = Some(content.into());
-        self
-    }
-
-    pub fn embed(mut self, embed: impl Into<Embed>) -> Self {
-        self.0.embeds.push(embed.into());
-        self
-    }
-
-    pub fn flag(mut self, flags: impl Into<MessageFlags>) -> Self {
-        self.0.flags = Some(flags.into() | self.0.flags.unwrap_or(MessageFlags::empty()));
-        self
-    }
-
-    pub fn components(mut self, components: &[Component]) -> Self {
-        if let Some(ref mut comps) = self.0.components {
-            comps.extend(components.iter().cloned());
-        } else {
-            self.0.components = Some(Vec::from(components));
-        }
-        self
-    }
-}
-
-impl From<Response> for CallbackData {
-    fn from(value: Response) -> Self {
-        value.0
-    }
 }
 
 #[derive(Clone)]
@@ -101,32 +26,6 @@ pub struct CommandContext {
 }
 
 impl CommandContext {
-    pub fn http(&self) -> &Arc<Client> {
-        &self.http
-    }
-
-    pub fn guild_id(&self) -> CommandResult<GuildId> {
-        self.command.guild_id.ok_or(CommandError::NotInGuild)
-    }
-
-    pub fn channel_id(&self) -> ChannelId {
-        self.command.channel_id
-    }
-
-    pub fn user(&self) -> &User {
-        let member = self
-            .command
-            .member
-            .as_ref()
-            .and_then(|member| member.user.as_ref());
-        let user = self.command.user.as_ref();
-        user.or(member).unwrap()
-    }
-
-    pub fn member(&self) -> Option<&PartialMember> {
-        self.command.member.as_ref()
-    }
-
     pub fn command<'a>(&'a self) -> Command<'a> {
         let base = self.command.data.name.as_ref();
         if let Some((sub, options)) = Self::get_subcommand(&self.command.data.options) {
@@ -187,57 +86,57 @@ impl CommandContext {
 
     /// Attempts to find the first argument with a given name that is of type Integer. If no such
     /// argument is found, return None.
-    pub fn get_string(&self, name: &'static str) -> Result<&String, CommandError> {
+    pub fn get_string(&self, name: &'static str) -> InteractionResult<&String> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::String(ref value) => Some(value),
                 _ => None,
             })
-            .ok_or(CommandError::MissingArgument(name))
+            .ok_or(InteractionError::MissingArgument(name))
     }
 
     /// Attempts to find the first argument with a given name that is of type Integer. If no such
     /// argument is found, return None.
-    pub fn get_int(&self, name: &'static str) -> Result<i64, CommandError> {
+    pub fn get_int(&self, name: &'static str) -> InteractionResult<i64> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::Integer(ref value) => Some(*value),
                 _ => None,
             })
-            .ok_or(CommandError::MissingArgument(name))
+            .ok_or(InteractionError::MissingArgument(name))
     }
 
     /// Attempts to find the first argument with a given name that is of type User. If no such
     /// argument is found, return None.
-    pub fn get_user(&self, name: &'static str) -> Result<UserId, CommandError> {
+    pub fn get_user(&self, name: &'static str) -> InteractionResult<UserId> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::User(ref value) => Some(*value),
                 _ => None,
             })
-            .ok_or(CommandError::MissingArgument(name))
+            .ok_or(InteractionError::MissingArgument(name))
     }
 
     /// Attempts to find the first argument with a given name that is of type Channel. If no such
     /// argument is found, return None.
-    pub fn get_channel(&self, name: &'static str) -> Result<ChannelId, CommandError> {
+    pub fn get_channel(&self, name: &'static str) -> InteractionResult<ChannelId> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::Channel(ref value) => Some(*value),
                 _ => None,
             })
-            .ok_or(CommandError::MissingArgument(name))
+            .ok_or(InteractionError::MissingArgument(name))
     }
 
     /// Attempts to find the first argument with a given name that is of type Role. If no such
     /// argument is found, return None.
-    pub fn get_role(&self, name: &'static str) -> Result<RoleId, CommandError> {
+    pub fn get_role(&self, name: &'static str) -> InteractionResult<RoleId> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::Role(ref value) => Some(*value),
                 _ => None,
             })
-            .ok_or(CommandError::MissingArgument(name))
+            .ok_or(InteractionError::MissingArgument(name))
     }
 
     /// Checks if a boolean flag is set to true or not. If no flag with the name was found, it
@@ -278,35 +177,6 @@ impl CommandContext {
         all_options
     }
 
-    pub async fn defer(&self, data: impl Into<CallbackData>) -> Result<()> {
-        let response = InteractionResponse::DeferredChannelMessageWithSource(data.into());
-        self.reply_raw(response).await?;
-        Ok(())
-    }
-
-    pub async fn reply(&self, data: impl Into<CallbackData>) -> Result<()> {
-        let response = InteractionResponse::ChannelMessageWithSource(data.into());
-        self.reply_raw(response).await?;
-        Ok(())
-    }
-
-    pub async fn reply_raw(&self, response: InteractionResponse) -> Result<()> {
-        self.http
-            .interaction_callback(self.command.id, &self.command.token, &response)
-            .exec()
-            .await?;
-        Ok(())
-    }
-
-    pub async fn update(&self, content: String) -> Result<()> {
-        self.http
-            .update_interaction_original(&self.command.token)?
-            .content(Some(&content))?
-            .exec()
-            .await?;
-        Ok(())
-    }
-
     fn get_subcommand<'a>(
         options: &'a Vec<CommandDataOption>,
     ) -> Option<(&'a str, &'a Vec<CommandDataOption>)> {
@@ -316,5 +186,41 @@ impl CommandContext {
             }
         }
         None
+    }
+}
+
+impl InteractionContext for CommandContext {
+    fn http(&self) -> &Arc<Client> {
+        &self.http
+    }
+
+    fn id(&self) -> InteractionId {
+        self.command.id
+    }
+
+    fn token(&self) -> &str {
+        &self.command.token
+    }
+
+    fn member(&self) -> Option<&PartialMember> {
+        self.command.member.as_ref()
+    }
+
+    fn guild_id(&self) -> InteractionResult<GuildId> {
+        self.command.guild_id.ok_or(InteractionError::NotInGuild)
+    }
+
+    fn channel_id(&self) -> ChannelId {
+        self.command.channel_id
+    }
+
+    fn user(&self) -> &User {
+        let member = self
+            .command
+            .member
+            .as_ref()
+            .and_then(|member| member.user.as_ref());
+        let user = self.command.user.as_ref();
+        user.or(member).unwrap()
     }
 }

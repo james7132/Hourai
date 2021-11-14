@@ -24,7 +24,7 @@ const MAX_PRUNED_MESSAGES_PER_BATCH: usize = 100;
 
 fn parse_duration(duration: &str) -> Result<Duration> {
     humantime::parse_duration(duration).map_err(|err| {
-        anyhow::anyhow!(CommandError::InvalidArgument(format!(
+        anyhow::anyhow!(InteractionError::InvalidArgument(format!(
             "Cannot parse `{}` as a duration: {}",
             duration, err
         )))
@@ -48,7 +48,7 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
 pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::BAN_MEMBERS) {
-        anyhow::bail!(CommandError::MissingPermission("Ban Members"));
+        anyhow::bail!(InteractionError::MissingPermission("Ban Members"));
     }
     let soft = ctx.get_flag("soft").unwrap_or(false);
     let action = if soft { "Softbanned" } else { "Banned" };
@@ -105,7 +105,7 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
 pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
-        anyhow::bail!(CommandError::MissingPermission("Kick Members"));
+        anyhow::bail!(InteractionError::MissingPermission("Kick Members"));
     }
 
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
@@ -154,7 +154,7 @@ pub(super) async fn change_role(
 ) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MANAGE_ROLES) {
-        anyhow::bail!(CommandError::MissingPermission("Manage Roles"));
+        anyhow::bail!(InteractionError::MissingPermission("Manage Roles"));
     }
 
     let authorizer = ctx.member().expect("Command without user.");
@@ -206,7 +206,7 @@ pub(super) async fn change_role(
 pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::DEAFEN_MEMBERS) {
-        anyhow::bail!(CommandError::MissingPermission("Deafen Members"));
+        anyhow::bail!(InteractionError::MissingPermission("Deafen Members"));
     }
 
     let authorizer = ctx.member().expect("Command without user.");
@@ -239,7 +239,7 @@ pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> R
 pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MUTE_MEMBERS) {
-        anyhow::bail!(CommandError::MissingPermission("Mute Members"));
+        anyhow::bail!(InteractionError::MissingPermission("Mute Members"));
     }
 
     let authorizer = ctx.member().expect("Command without user.");
@@ -272,7 +272,7 @@ pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Res
 pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MOVE_MEMBERS) {
-        anyhow::bail!(CommandError::MissingPermission("Move Members"));
+        anyhow::bail!(InteractionError::MissingPermission("Move Members"));
     }
 
     let authorizer = ctx.member().expect("Command without user.");
@@ -349,7 +349,7 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
     ctx.guild_id()?;
     let count = ctx.get_int("count").unwrap_or(100) as usize;
     if count > MAX_PRUNED_MESSAGES {
-        anyhow::bail!(CommandError::InvalidArgument(
+        anyhow::bail!(InteractionError::InvalidArgument(
             "Prune only supports up to 2000 messages.".to_owned()
         ));
     }
@@ -379,13 +379,15 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
     }
     if let Ok(rgx) = ctx.get_string("match") {
         let regex = Regex::new(&rgx).map_err(|_| {
-            CommandError::InvalidArgument("`match` must be a valid regex or pattern.".to_owned())
+            InteractionError::InvalidArgument(
+                "`match` must be a valid regex or pattern.".to_owned(),
+            )
         })?;
         filters.push(Box::new(move |msg| regex.is_match(&msg.content)));
     }
 
     if !mine && !ctx.has_user_permission(Permissions::MANAGE_MESSAGES) {
-        anyhow::bail!(CommandError::MissingPermission("Manage Messages"));
+        anyhow::bail!(InteractionError::MissingPermission("Manage Messages"));
     }
 
     let authorizer = ctx.member().expect("Command without user.");

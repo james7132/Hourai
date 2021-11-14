@@ -34,14 +34,14 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
         Command::SubCommand("escalate", "history") => {
             escalation::escalate_history(&ctx, actions).await
         }
-        _ => return Err(anyhow::Error::new(CommandError::UnknownCommand)),
+        _ => return Err(anyhow::Error::new(InteractionError::UnknownCommand)),
     };
 
     match result {
         Ok(response) => ctx.reply(response).await,
         Err(err) => {
             let response = Response::ephemeral();
-            if let Some(command_err) = err.downcast_ref::<CommandError>() {
+            if let Some(command_err) = err.downcast_ref::<InteractionError>() {
                 ctx.reply(response.content(format!(":x: Error: {}", command_err)))
                     .await?;
                 Ok(())

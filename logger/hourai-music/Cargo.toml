@@ -14,7 +14,6 @@ dashmap = { default-features = false, version = "4.0" }
 futures = { default-features = false, version = "0.3.12" }
 http = { default-features = false, version = "0.2" }
 hyper = { features = ["client", "http2", "runtime"], version = "0.14" }
-protobuf = "2.22"
 rand = "0.8"
 serde_json = "1.0.62"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }

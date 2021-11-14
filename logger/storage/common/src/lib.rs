@@ -9,7 +9,7 @@ pub use storage::Storage;
 
 use anyhow::Result;
 use hourai::{
-    interactions::CommandError,
+    interactions::InteractionError,
     models::{
         guild::{Guild, Permissions, Role},
         id::{GuildId, RoleId},
@@ -78,7 +78,7 @@ pub async fn ping_online_mod(guild_id: GuildId, storage: &Storage) -> Result<(St
     let online_mods = find_online_moderators(guild_id, storage.sql(), &mut redis).await?;
     let guild = CachedGuild::fetch_resource::<Guild>(guild_id, guild_id, &mut redis)
         .await?
-        .ok_or(CommandError::NotInGuild)?;
+        .ok_or(InteractionError::NotInGuild)?;
 
     let mention: String;
     let ping: String;

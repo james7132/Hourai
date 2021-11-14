@@ -10,7 +10,7 @@ pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> 
     )
     .await?
     {
-        anyhow::bail!(CommandError::MissingPermission(
+        anyhow::bail!(InteractionError::MissingPermission(
             "Only moderators can escalate users."
         ));
     }
@@ -18,7 +18,7 @@ pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> 
     let reason = ctx.get_string("reason")?.as_ref();
     let amount = ctx.get_int("amount").unwrap_or(1);
     if amount <= 0 {
-        anyhow::bail!(CommandError::InvalidArgument(
+        anyhow::bail!(InteractionError::InvalidArgument(
             "Non-positive `amounts` are not allowed. If you need to deescalate someone, please use \
              `/escalate down` instead.".to_owned()));
     }
@@ -68,7 +68,7 @@ pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -
     )
     .await?
     {
-        anyhow::bail!(CommandError::MissingPermission(
+        anyhow::bail!(InteractionError::MissingPermission(
             "Only moderators can escalate users."
         ));
     }
@@ -76,7 +76,7 @@ pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -
     let reason = ctx.get_string("reason")?.as_ref();
     let amount = -ctx.get_int("amount").unwrap_or(1);
     if amount >= 0 {
-        anyhow::bail!(CommandError::InvalidArgument(
+        anyhow::bail!(InteractionError::InvalidArgument(
             "Non-positive `amounts` are not allowed. If you need to deescalate someone, please use \
              `/escalate down` instead.".to_owned()));
     }

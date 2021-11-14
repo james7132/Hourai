@@ -2,12 +2,15 @@ use crate::prelude::*;
 use crate::{interaction_ui::*, player::PlayerState, queue::MusicQueue, track::Track, Client};
 use anyhow::{bail, Result};
 use hourai::{
-    interactions::{Command, CommandContext, CommandError, Response},
+    interactions::*,
     models::{
         id::{ChannelId, GuildId, RoleId},
         UserLike,
     },
-    proto::guild_configs::MusicConfig,
+    proto::{
+        guild_configs::MusicConfig,
+        message_components::{MusicButtonOption},
+    },
 };
 use std::{collections::HashSet, convert::TryFrom};
 use twilight_lavalink::http::LoadType;
@@ -21,10 +24,17 @@ macro_rules! get_player {
 pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Result<()> {
     let result = match ctx.command() {
         Command::SubCommand("music", "play") => play(&client, &ctx).await,
-        Command::SubCommand("music", "pause") => pause(&client, &ctx, true).await,
+        Command::SubCommand("music", "pause") => pause(&client, &ctx, Some(true)).await,
+        Command::SubCommand("music", "unpause") => pause(&client, &ctx, Some(false)).await,
         Command::SubCommand("music", "stop") => stop(&client, &ctx).await,
         Command::SubCommand("music", "shuffle") => shuffle(&client, &ctx).await,
-        Command::SubCommand("music", "skip") => skip(&client, &ctx).await,
+        Command::SubCommand("music", "skip") => {
+            if ctx.get_flag("force").unwrap_or(false) {
+                forceskip(&client, &ctx).await
+            } else {
+                skip(&client, &ctx).await
+            }
+        }
         Command::SubCommand("music", "remove") => remove(&client, &ctx).await,
         Command::SubCommand("music", "nowplaying") => {
             now_playing(&client, ctx).await?;
@@ -35,14 +45,14 @@ pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Res
             return Ok(());
         }
         Command::SubCommand("music", "volume") => volume(&client, &ctx).await,
-        _ => return Err(anyhow::Error::new(CommandError::UnknownCommand)),
+        _ => return Err(anyhow::Error::new(InteractionError::UnknownCommand)),
     };
 
     match result {
         Ok(response) => ctx.reply(response).await,
         Err(err) => {
             let response = Response::ephemeral();
-            if let Some(command_err) = err.downcast_ref::<CommandError>() {
+            if let Some(command_err) = err.downcast_ref::<InteractionError>() {
                 ctx.reply(response.content(format!(":x: Error: {}", command_err)))
                     .await?;
                 Ok(())
@@ -56,38 +66,65 @@ pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Res
     }
 }
 
+pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) -> Result<()> {
+    let proto = ctx.metadata()?;
+    let button = proto.get_music_button();
+    match button.get_button_option() {
+        MusicButtonOption::MUSIC_BUTTON_PLAY_PAUSE => {
+            pause(&client, &ctx, None).await?;
+        }
+        MusicButtonOption::MUSIC_BUTTON_STOP => {
+            stop(&client, &ctx).await?;
+        }
+        MusicButtonOption::MUSIC_BUTTON_NEXT_TRACK => {
+            skip(&client, &ctx).await?;
+        }
+        MusicButtonOption::MUSIC_BUTTON_QUEUE_NEXT_PAGE => {}
+        MusicButtonOption::MUSIC_BUTTON_QUEUE_PREV_PAGE => {}
+        MusicButtonOption::MUSIC_BUTTON_VOLUME_UP => {
+            delta_volume(&client, &ctx, 5).await?;
+        }
+        MusicButtonOption::MUSIC_BUTTON_VOLUME_DOWN => {
+            delta_volume(&client, &ctx, -5).await?;
+        }
+        _ => return Ok(()),
+    }
+
+    Ok(())
+}
+
 async fn require_in_voice_channel(
     client: &Client<'static>,
-    ctx: &CommandContext,
+    ctx: &impl InteractionContext,
 ) -> Result<(GuildId, ChannelId)> {
-    let guild_id = ctx.guild_id()?;
-
     let mut redis = client.redis.clone();
-    let user: Option<u64> = hourai_redis::CachedVoiceState::get_channel(guild_id, ctx.user().id)
+    let guild_id = ctx.guild_id()?;
+    let user_id = ctx.user().id;
+    let user: Option<u64> = hourai_redis::CachedVoiceState::get_channel(guild_id, user_id)
         .query_async(&mut redis)
         .await?;
     let user = user.and_then(ChannelId::new);
     let bot = client.get_channel(guild_id);
     if bot.is_some() && user != bot {
-        bail!(CommandError::FailedPrecondition(
+        bail!(InteractionError::FailedPrecondition(
             "You must be in the same voice channel to play music."
         ));
     } else if let Some(channel) = user {
         Ok((guild_id, channel))
     } else {
-        bail!(CommandError::FailedPrecondition(
+        bail!(InteractionError::FailedPrecondition(
             "You must be in a voice channel to play music."
         ));
     }
 }
 
-fn require_playing(client: &Client<'static>, ctx: &CommandContext) -> Result<GuildId> {
+fn require_playing(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<GuildId> {
     let guild_id = ctx.guild_id()?;
     client
         .states
         .get(&guild_id)
         .filter(|state| state.value().is_playing())
-        .ok_or(CommandError::FailedPrecondition(
+        .ok_or(InteractionError::FailedPrecondition(
             "No music is currently playing.",
         ))?;
     Ok(guild_id)
@@ -99,15 +136,17 @@ fn is_dj(config: &MusicConfig, roles: &[RoleId]) -> bool {
 }
 
 /// Requires that the author is a DJ on the server to use the command.
-async fn require_dj(client: &Client<'static>, ctx: &CommandContext) -> Result<()> {
-    let (guild_id, _) = require_in_voice_channel(client, &ctx).await?;
-    if let Some(ref member) = ctx.command.member {
-        let config = client.get_config(guild_id).await?;
+async fn require_dj(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<()> {
+    let _guild_id = ctx.guild_id()?;
+    let _user_id = ctx.user().id;
+    let (guild_id, _) = require_in_voice_channel(client, ctx).await?;
+    let config = client.get_config(guild_id).await?;
+    if let Some(ref member) = ctx.member() {
         if is_dj(&config, &member.roles) {
             return Ok(());
         }
     }
-    bail!(CommandError::FailedPrecondition(
+    bail!(InteractionError::FailedPrecondition(
         "User must be a DJ to use this command."
     ))
 }
@@ -167,12 +206,9 @@ async fn load_tracks(
 }
 
 async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
-    let (guild_id, channel_id) = require_in_voice_channel(client, &ctx).await?;
+    let (guild_id, channel_id) = require_in_voice_channel(client, ctx).await?;
     let user = ctx.user();
-    let query = match ctx.get_string("query") {
-        Ok(query) => query,
-        Err(_) => return pause(client, ctx, false).await,
-    };
+    let query = ctx.get_string("query")?;
 
     let query = query.trim_matches(|c: char| c.is_whitespace() || c == '<' || c == '>');
     let queries = vec![
@@ -230,10 +266,19 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
     Ok(Response::direct().content(&response))
 }
 
-async fn pause(client: &Client<'static>, ctx: &CommandContext, pause: bool) -> Result<Response> {
+async fn pause(
+    client: &Client<'static>,
+    ctx: &impl InteractionContext,
+    pause: Option<bool>,
+) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     require_dj(client, ctx).await?;
-    get_player!(client, &guild_id).set_pause(pause)?;
+    let pause = {
+        let player = get_player!(client, &guild_id);
+        let pause = pause.unwrap_or(!player.paused());
+        player.set_pause(pause)?;
+        pause
+    };
     let response = if pause {
         "The music bot has been paused."
     } else {
@@ -242,17 +287,14 @@ async fn pause(client: &Client<'static>, ctx: &CommandContext, pause: bool) -> R
     Ok(Response::direct().content(response))
 }
 
-async fn stop(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
+async fn stop(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     require_dj(client, ctx).await?;
     client.disconnect(guild_id).await?;
     Ok(Response::direct().content("The player has been stopped and the queue has been cleared"))
 }
 
-async fn skip(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
-    if ctx.get_flag("force").unwrap_or(false) {
-        return forceskip(client, ctx).await;
-    }
+async fn skip(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     let user_id = ctx.user().id;
     require_in_voice_channel(client, ctx).await?;
@@ -276,21 +318,21 @@ async fn skip(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
 
 async fn remove(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
     if ctx.get_flag("all").unwrap_or(false) {
-        return remove_all(&client, &ctx).await;
+        return remove_all(&client, ctx).await;
     }
 
-    let guild_id = require_playing(client, &ctx)?;
-    require_in_voice_channel(client, &ctx).await?;
+    let guild_id = require_playing(client, ctx)?;
+    require_in_voice_channel(client, ctx).await?;
     let user = ctx.user();
     let idx = ctx.get_int("position")?;
 
     if idx == 0 {
         // Do not allow removing the currently playing song from the queue.
-        bail!(CommandError::InvalidArgument(
+        bail!(InteractionError::InvalidArgument(
             "Cannot remove the currently playing song. Consider using `/skip`.".to_owned()
         ));
     } else if idx < 0 {
-        bail!(CommandError::InvalidArgument(
+        bail!(InteractionError::InvalidArgument(
             "Negative positions are not valid.".to_owned()
         ));
     }
@@ -320,9 +362,9 @@ async fn remove(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
     Ok(Response::direct().content(&response))
 }
 
-async fn remove_all(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
+async fn remove_all(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
-    require_in_voice_channel(client, &ctx).await?;
+    require_in_voice_channel(client, ctx).await?;
     let response = client
         .mutate_state(guild_id, |state| {
             if let Some(count) = state.queue.clear_key(ctx.user().id) {
@@ -337,7 +379,7 @@ async fn remove_all(client: &Client<'static>, ctx: &CommandContext) -> Result<Re
 
 async fn shuffle(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
-    require_in_voice_channel(client, &ctx).await?;
+    require_in_voice_channel(client, ctx).await?;
     let response = client
         .mutate_state(guild_id, |state| {
             if let Some(count) = state.queue.shuffle(ctx.user().id) {
@@ -352,7 +394,7 @@ async fn shuffle(client: &Client<'static>, ctx: &CommandContext) -> Result<Respo
 
 async fn forceskip(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
-    require_dj(client, &ctx).await?;
+    require_dj(client, ctx).await?;
     let response = if let Some(previous) = client.play_next(guild_id).await? {
         format!("Skipped `{}`.", previous)
     } else {
@@ -365,9 +407,9 @@ async fn volume(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
     let guild_id = require_playing(client, ctx)?;
     let volume = ctx.get_int("volume");
     let response = if let Ok(vol) = volume {
-        require_dj(client, &ctx).await?;
+        require_dj(client, ctx).await?;
         if vol < 0 || vol > 150 {
-            bail!(CommandError::InvalidArgument(
+            bail!(InteractionError::InvalidArgument(
                 "Volume must be between 0 and 150.".into()
             ));
         }
@@ -386,6 +428,24 @@ async fn volume(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
         )
     };
     Ok(Response::direct().content(&response))
+}
+
+async fn delta_volume(
+    client: &Client<'static>,
+    ctx: &impl InteractionContext,
+    change: i64,
+) -> Result<Response> {
+    let guild_id = require_playing(client, ctx)?;
+    require_dj(client, ctx).await?;
+    let volume = {
+        let player = get_player!(client, &guild_id);
+        let mut volume = player.volume() as i64;
+        volume = std::cmp::max(150, std::cmp::min(0, volume + change));
+        player.set_volume(volume as u32)?;
+        volume
+    };
+
+    Ok(Response::direct().content(&format!("Set volume to `{}`.", volume)))
 }
 
 async fn queue(client: &Client<'static>, ctx: CommandContext) -> Result<()> {

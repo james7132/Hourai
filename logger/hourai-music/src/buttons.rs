@@ -1,11 +1,11 @@
 use hourai::{
+    interactions::proto_to_custom_id,
     models::{
         application::component::{button::ButtonStyle, *},
         channel::ReactionType,
     },
     proto::message_components::*,
 };
-use protobuf::Message;
 
 const PREVIOUS_BUTTON: &str = "◀️";
 const NEXT_BUTTON: &str = "▶️";
@@ -79,7 +79,7 @@ fn create_button(emoji: &str, ui_type: MusicUIType, button: MusicButtonOption) -
     proto.mut_music_button().set_field_type(ui_type);
     proto.mut_music_button().set_button_option(button);
     Component::Button(Button {
-        custom_id: Some(base64::encode(proto.write_to_bytes().unwrap())),
+        custom_id: Some(proto_to_custom_id(&proto).unwrap()),
         disabled: false,
         emoji: Some(ReactionType::Unicode {
             name: emoji.to_owned(),
