@@ -44,49 +44,65 @@ local command = {
 local commands = [
   command {
     // #001
-    name: "play",
-    description: "Adds a song or playlist in a voice channel.",
-    options: [string {
-      name: "query",
-      description: "The query or URL of the song to add to the queue.",
-    }],
-  },
-  command {
-    // #002
-    name: "pause",
-    description: "Pauses the currently playing song. Only usable by DJs.",
-  },
-  command {
-    // #003
-    name: "stop",
-    description: "Stops the currently playing song and clears the queue. Only usable by DJs.",
-  },
-  command {
-    // #004
-    name: "remove",
-    description: "",
-    options: [
-    integer {
-      name: "position",
-      description: "Position of the song to be removed.",
+    name: "music",
+    description: "Music bot related commands",
+    options: [subcommand {
+      name: "play",
+      description: "Adds a song or playlist in a voice channel.",
+      options: [string {
+        name: "query",
+        description: "The query or URL of the song to add to the queue.",
+      }],
     },
-    boolean {
-      name: "all",
-      description: "If set, remove all of your remaining songs from the queue.",
-    }]
-  },
-  command {
-    // #005
-    name: "skip",
-    description: "Votes to skip the currently playing song.",
-    options: [boolean {
-      name: "force",
-      description: "Optional: Forcibly skips the current song, regardless of how many votes there currently are. Only usable by DJs.",
-    }]
-  },
+    subcommand {
+      name: "pause",
+      description: "Pauses the currently playing song. Only usable by DJs.",
+    },
+    subcommand {
+      name: "stop",
+      description: "Stops the currently playing song and clears the queue. Only usable by DJs.",
+    },
+    subcommand {
+      name: "remove",
+      description: "",
+      options: [
+      integer {
+        name: "position",
+        description: "Position of the song to be removed.",
+      },
+      boolean {
+        name: "all",
+        description: "If set, remove all of your remaining songs from the queue.",
+      }]
+    },
+    subcommand {
+      name: "skip",
+      description: "Votes to skip the currently playing song.",
+      options: [boolean {
+        name: "force",
+        description: "Optional: Forcibly skips the current song, regardless of how many votes there currently are. Only usable by DJs.",
+      }]
+    },
+    subcommand {
+      name: "volume",
+      description: "Gets or sets the volume for the music bot.",
+      options: [integer {
+        name: "force",
+        description: "The volume to set the music bot to. Must be used by a DJ.",
+      }]
+    },
+    subcommand {
+      name: "nowplaying",
+      description: "Shows what's currently playing in the music bot.",
+    },
+    subcommand {
+      name: "queue",
+      description: "Shows what's currently queued to play in the musicbot.",
+    }],
+  }
 
   command {
-    // #006
+    // #002
     name: "role",
     description: "Changes the roles of a given user. Requires Manage Roles.",
     options: [subcommand {
@@ -123,7 +139,7 @@ local commands = [
   },
 
   command {
-    // #007
+    // #003
     name: "ban",
     description: "Bans a user from the server. Requires Ban Members.",
     options: [string {
@@ -143,7 +159,7 @@ local commands = [
   },
 
   command {
-    // #008
+    // #004
     name: "kick",
     description: "Kicks a user from the server. Requires Kick Members.",
     options: [string {
@@ -157,7 +173,7 @@ local commands = [
   },
 
   command {
-    // #009
+    // #005
     name: "move",
     description: "Moves all of the users in a voice channel to another. Requires Move Members.",
     options: [channel {
@@ -172,7 +188,7 @@ local commands = [
   },
 
   command {
-    // #010
+    // #006
     name: "prune",
     description: "Bulk deletes messages up to 14 days old. Requires Manage Messages.",
     options: [integer {
@@ -197,7 +213,7 @@ local commands = [
   },
 
   command {
-    // #011
+    // #007
     name: "mute",
     description: "Server mutes a user from the server. Requires Mute Members.",
     options: [string {
@@ -214,7 +230,7 @@ local commands = [
   },
 
   command {
-    // #012
+    // #008
     name: "deafen",
     description: "Server deafens from the server. Requires Deafen Members.",
     options: [string {
@@ -231,7 +247,7 @@ local commands = [
   },
 
   command {
-    // #013
+    // #009
     name: "choose",
     description: "Randomly chooses between several different choices",
     options: [string {
@@ -242,7 +258,7 @@ local commands = [
   },
 
   command {
-    // #014
+    // #010
     name: "remindme",
     description: "Schedules a reminder up to one year in the future. The bot will
     send you a DM with a reminder at the appropriate time.",
@@ -258,7 +274,7 @@ local commands = [
   },
 
   command {
-    // #015
+    // #011
     name: "pingmod",
     description: "Pings one random online moderator to pay attention to the current channel.",
     options: [string {
@@ -268,7 +284,7 @@ local commands = [
   },
 
   command {
-    // #016
+    // #012
     name: "info",
     options: [subcommand {
       name: "user",
@@ -281,7 +297,7 @@ local commands = [
   },
 
   command {
-    // #017
+    // #013
     name: "verification",
     description: "",
     options: [subcommand {
@@ -314,7 +330,7 @@ local commands = [
   },
 
   command {
-    // #018
+    // #014
     name: "verification",
     description: "",
     options: [subcommand {
@@ -347,7 +363,7 @@ local commands = [
   },
 
   command {
-    // #019
+    // #015
     name: "escalate",
     description: "Progressive tracked moderation.",
     options: [subcommand {

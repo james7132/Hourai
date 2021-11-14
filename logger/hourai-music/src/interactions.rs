@@ -20,15 +20,21 @@ macro_rules! get_player {
 
 pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Result<()> {
     let result = match ctx.command() {
-        Command::Command("play") => play(&client, &ctx).await,
-        Command::Command("pause") => pause(&client, &ctx, true).await,
-        Command::Command("stop") => stop(&client, &ctx).await,
-        Command::Command("shuffle") => shuffle(&client, &ctx).await,
-        Command::Command("skip") => skip(&client, &ctx).await,
-        Command::Command("remove") => remove(&client, &ctx).await,
-        //Command::Command("nowplaying") => now_playing(&client, &ctx).await,
-        //Command::Command("queue") => queue(&client, &ctx).await,
-        Command::Command("volume") => volume(&client, &ctx).await,
+        Command::SubCommand("music", "play") => play(&client, &ctx).await,
+        Command::SubCommand("music", "pause") => pause(&client, &ctx, true).await,
+        Command::SubCommand("music", "stop") => stop(&client, &ctx).await,
+        Command::SubCommand("music", "shuffle") => shuffle(&client, &ctx).await,
+        Command::SubCommand("music", "skip") => skip(&client, &ctx).await,
+        Command::SubCommand("music", "remove") => remove(&client, &ctx).await,
+        Command::SubCommand("music", "nowplaying") => {
+            now_playing(&client, ctx).await?;
+            return Ok(());
+        }
+        Command::SubCommand("music", "queue") => {
+            queue(&client, ctx).await?;
+            return Ok(());
+        }
+        Command::SubCommand("music", "volume") => volume(&client, &ctx).await,
         _ => return Err(anyhow::Error::new(CommandError::UnknownCommand)),
     };
 
