@@ -1,8 +1,14 @@
-use crate::{prelude::*, track::Track, Client};
+use crate::{buttons, prelude::*, track::Track, Client};
 use anyhow::Result;
 use hourai::{
     interactions::{CommandContext, Response},
-    models::{application::component::Component, channel::embed::Embed, id::*, UserLike},
+    models::{
+        application::component::{action_row::ActionRow, Component},
+        channel::embed::Embed,
+        id::*,
+        UserLike,
+    },
+    proto::message_components::MusicUIType,
 };
 use std::time::Duration;
 use tokio::sync::oneshot::error::TryRecvError;
@@ -29,7 +35,7 @@ impl MessageUI {
                         _ => break,
                     },
                     Err(err) => {
-                        tracing::error!("Terminating message UI: {}", err);
+                        tracing::error!("Terminating message UI: {} ({:?})", err, err);
                         break;
                     }
                 }
@@ -51,7 +57,7 @@ pub trait Updateable: Sync {
 pub trait EmbedUIBuilder: Sized + Default + Sync + Send {
     fn build_content(&self, ui: &EmbedUI<Self>) -> String;
     fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed>;
-    fn build_components(&self, ui: &EmbedUI<Self>) -> Result<Vec<Component>> {
+    fn build_components(&self, _: &EmbedUI<Self>) -> Result<Vec<Component>> {
         Ok(vec![])
     }
 }
@@ -83,7 +89,8 @@ where
         ctx.reply(
             Response::direct()
                 .content(&dummy.builder.build_content(&dummy))
-                .embed(dummy.builder.build_embed(&dummy)?),
+                .embed(dummy.builder.build_embed(&dummy)?)
+                .components(&dummy.builder.build_components(&dummy)?),
         )
         .await?;
 
@@ -120,6 +127,18 @@ impl EmbedUIBuilder for NowPlayingUI {
 
     fn build_embed(&self, ui: &EmbedUI<Self>) -> Result<Embed> {
         build_np_embed(ui)
+    }
+
+    fn build_components(&self, _: &EmbedUI<Self>) -> Result<Vec<Component>> {
+        Ok(vec![Component::ActionRow(ActionRow {
+            components: vec![
+                buttons::volume_down_button(MusicUIType::MUSIC_UI_TYPE_NOW_PLAYING),
+                buttons::volume_up_button(MusicUIType::MUSIC_UI_TYPE_NOW_PLAYING),
+                buttons::play_button(MusicUIType::MUSIC_UI_TYPE_NOW_PLAYING),
+                buttons::stop_button(MusicUIType::MUSIC_UI_TYPE_NOW_PLAYING),
+                buttons::skip_button(MusicUIType::MUSIC_UI_TYPE_NOW_PLAYING),
+            ],
+        })])
     }
 }
 
@@ -200,6 +219,18 @@ impl EmbedUIBuilder for QueueUI {
                 .footer(EmbedFooterBuilder::new(footer))
                 .build()?)
         }
+    }
+
+    fn build_components(&self, _: &EmbedUI<Self>) -> Result<Vec<Component>> {
+        Ok(vec![Component::ActionRow(ActionRow {
+            components: vec![
+                buttons::previous_button(MusicUIType::MUSIC_UI_TYPE_QUEUE),
+                buttons::volume_down_button(MusicUIType::MUSIC_UI_TYPE_QUEUE),
+                buttons::play_button(MusicUIType::MUSIC_UI_TYPE_QUEUE),
+                buttons::volume_up_button(MusicUIType::MUSIC_UI_TYPE_QUEUE),
+                buttons::next_button(MusicUIType::MUSIC_UI_TYPE_QUEUE),
+            ],
+        })])
     }
 }
 

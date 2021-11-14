@@ -1,3 +1,4 @@
+mod buttons;
 mod commands;
 mod interaction_ui;
 mod interactions;

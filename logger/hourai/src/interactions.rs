@@ -3,6 +3,7 @@ use crate::{
     models::{
         application::{
             callback::{CallbackData, InteractionResponse},
+            component::Component,
             interaction::application_command::{
                 ApplicationCommand, CommandDataOption, CommandOptionValue, InteractionMember,
             },
@@ -74,6 +75,15 @@ impl Response {
 
     pub fn flag(mut self, flags: impl Into<MessageFlags>) -> Self {
         self.0.flags = Some(flags.into() | self.0.flags.unwrap_or(MessageFlags::empty()));
+        self
+    }
+
+    pub fn components(mut self, components: &[Component]) -> Self {
+        if let Some(ref mut comps) = self.0.components {
+            comps.extend(components.iter().cloned());
+        } else {
+            self.0.components = Some(Vec::from(components));
+        }
         self
     }
 }
