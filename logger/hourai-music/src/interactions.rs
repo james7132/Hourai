@@ -1,10 +1,9 @@
 use crate::prelude::*;
-use crate::{player::PlayerState, queue::MusicQueue, track::Track, Client};
+use crate::{interaction_ui::*, player::PlayerState, queue::MusicQueue, track::Track, Client};
 use anyhow::{bail, Result};
 use hourai::{
     interactions::{Command, CommandContext, CommandError, Response},
     models::{
-        channel::message::MessageFlags,
         id::{ChannelId, GuildId, RoleId},
         UserLike,
     },
@@ -214,6 +213,8 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
                     queue: state_queue,
                     now_playing_ui: None,
                     queue_ui: None,
+                    now_playing_ui_slash: None,
+                    queue_ui_slash: None,
                 },
             );
             client.start_playing(guild_id).await?;
@@ -381,24 +382,24 @@ async fn volume(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
     Ok(Response::direct().content(&response))
 }
 
-//async fn queue(client: &Client<'static>, ctx: CommandContext) -> Result<()> {
-//let guild_id = ctx.guild_id()?;
-//let ui = EmbedUI::<QueueUI>::create(client.clone(), ctx).await?;
-//client.mutate_state(guild_id, move |state| {
-//state
-//.now_playing_ui
-//.replace(MessageUI::run(ui, Duration::from_secs(5)));
-//});
-//Ok(())
-//}
+async fn queue(client: &Client<'static>, ctx: CommandContext) -> Result<()> {
+    let guild_id = ctx.guild_id()?;
+    let ui = EmbedUI::<QueueUI>::create(client.clone(), ctx).await?;
+    client.mutate_state(guild_id, move |state| {
+        state
+            .now_playing_ui_slash
+            .replace(MessageUI::run(ui, Duration::from_secs(5)));
+    });
+    Ok(())
+}
 
-//async fn now_playing(client: &Client<'static>, ctx: CommandContext) -> Result<()> {
-//let guild_id = ctx.guild_id()?;
-//let ui = EmbedUI::<NowPlayingUI>::create(client.clone(), ctx).await?;
-//client.mutate_state(guild_id, move |state| {
-//state
-//.queue_ui
-//.replace(MessageUI::run(ui, Duration::from_secs(5)));
-//});
-//Ok(())
-//}
+async fn now_playing(client: &Client<'static>, ctx: CommandContext) -> Result<()> {
+    let guild_id = ctx.guild_id()?;
+    let ui = EmbedUI::<NowPlayingUI>::create(client.clone(), ctx).await?;
+    client.mutate_state(guild_id, move |state| {
+        state
+            .queue_ui_slash
+            .replace(MessageUI::run(ui, Duration::from_secs(5)));
+    });
+    Ok(())
+}

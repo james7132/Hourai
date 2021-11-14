@@ -257,6 +257,8 @@ async fn play(
                     queue: state_queue,
                     now_playing_ui: None,
                     queue_ui: None,
+                    now_playing_ui_slash: None,
+                    queue_ui_slash: None,
                 },
             );
             client.start_playing(guild_id).await?;

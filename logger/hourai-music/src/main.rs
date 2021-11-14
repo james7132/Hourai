@@ -1,4 +1,5 @@
 mod commands;
+mod interaction_ui;
 mod interactions;
 mod player;
 mod prelude;

@@ -84,12 +84,17 @@ impl From<Response> for CallbackData {
     }
 }
 
+#[derive(Clone)]
 pub struct CommandContext {
     pub http: Arc<Client>,
     pub command: Box<ApplicationCommand>,
 }
 
 impl CommandContext {
+    pub fn http(&self) -> &Arc<Client> {
+        &self.http
+    }
+
     pub fn guild_id(&self) -> CommandResult<GuildId> {
         self.command.guild_id.ok_or(CommandError::NotInGuild)
     }
