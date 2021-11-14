@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use hourai::{
     interactions::{Command, CommandContext, CommandError, Response},
     models::{
+        channel::message::MessageFlags,
         id::{ChannelId, GuildId, RoleId},
         UserLike,
     },
@@ -190,8 +191,8 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
     let response = match queue.len() {
         0 => format!(":bulb: No results found for `{}`", query),
         1 => format!(
-            ":notes: Added `{}` ({}) to the music queue.",
-            &queue[0].info, duration
+            ":notes: Added **[{}](<{}>)** ({}) to the music queue.",
+            &queue[0].info, &queue[0].info.uri, duration
         ),
         x => format!(
             ":notes: Added **{}** tracks ({}) to the music queue.",

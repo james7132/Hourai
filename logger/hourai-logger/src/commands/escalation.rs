@@ -39,7 +39,9 @@ pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> 
             Ok(escalation) => {
                 results.push(format!(
                     "<@{}>: Action: {}. Expiration: {}",
-                    user_id, escalation.entry.display_name, escalation.expiration()
+                    user_id,
+                    escalation.entry.display_name,
+                    escalation.expiration()
                 ));
             }
             Err(err) => {
@@ -95,7 +97,9 @@ pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -
             Ok(escalation) => {
                 results.push(format!(
                     "<@{}>: Action: {}. Expiration {}",
-                    user_id, escalation.entry.display_name, escalation.expiration()
+                    user_id,
+                    escalation.entry.display_name,
+                    escalation.expiration()
                 ));
             }
             Err(err) => {

@@ -6,7 +6,6 @@ use hourai::{
 use hourai_redis::GuildConfig;
 use rand::Rng;
 
-
 pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
     let choices: Vec<&str> = ctx.all_strings("choice").collect();
     if choices.is_empty() {

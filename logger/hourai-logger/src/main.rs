@@ -4,6 +4,7 @@ extern crate lazy_static;
 mod announcements;
 mod commands;
 mod listings;
+mod member_chunker;
 mod message_filter;
 mod message_logging;
 mod pending_events;
@@ -20,7 +21,7 @@ use hourai::{
     models::{
         application::{callback::InteractionResponse, interaction::Interaction},
         channel::{Channel, GuildChannel, Message},
-        gateway::payload::{incoming::*, outgoing::RequestGuildMembers},
+        gateway::payload::incoming::*,
         guild::{member::Member, Permissions, Role},
         id::*,
         user::User,
@@ -124,6 +125,7 @@ async fn main() {
         gateway: gateway.clone(),
         cache: cache.clone(),
         actions: actions.clone(),
+        member_chunker: member_chunker::MemberChunker::new(gateway.clone()),
     }));
 
     info!("Starting gateway...");
@@ -182,6 +184,7 @@ struct ClientRef {
     pub gateway: Arc<Cluster>,
     pub cache: InMemoryCache,
     pub actions: ActionExecutor,
+    pub member_chunker: member_chunker::MemberChunker,
 }
 
 #[derive(Clone)]
@@ -223,18 +226,6 @@ impl Client {
     #[inline(always)]
     pub fn http(&self) -> &Arc<hourai::http::Client> {
         self.0.actions.http()
-    }
-
-    pub async fn chunk_guild(&self, guild_id: GuildId) -> Result<()> {
-        debug!("Chunking guild: {}", guild_id);
-        let request = RequestGuildMembers::builder(guild_id)
-            .presences(true)
-            .query(String::new(), None);
-        self.0
-            .gateway
-            .command(self.shard_id(guild_id), &request)
-            .await?;
-        Ok(())
     }
 
     pub async fn fetch_guild_permissions(
@@ -301,7 +292,10 @@ impl Client {
         };
 
         if let Err(err) = result {
-            error!("Error while running event with {:?}: {}, {}", kind, err, err);
+            error!(
+                "Error while running event with {:?}: {}, {}",
+                kind, err, err
+            );
         }
     }
 
@@ -345,7 +339,10 @@ impl Client {
         };
 
         if let Err(err) = result {
-            error!("Error while running event with {:?}: {} ({:?})", kind, err, err);
+            error!(
+                "Error while running event with {:?}: {} ({:?})",
+                kind, err, err
+            );
         }
     }
 
@@ -420,8 +417,12 @@ impl Client {
     }
 
     async fn on_member_chunk(&self, evt: MemberChunk) -> Result<()> {
+        self.0.member_chunker.push_chunk(&evt);
         while let Err(err) = self.log_members(&evt.members).await {
-            error!("Error while chunking members, retrying: {} ({:?})", err, err);
+            error!(
+                "Error while chunking members, retrying: {} ({:?})",
+                err, err
+            );
         }
         Ok(())
     }
@@ -610,7 +611,7 @@ impl Client {
             info!("Guild Available: {}", guild.id);
         }
 
-        self.chunk_guild(guild.id).await?;
+        self.0.member_chunker.push_guild(guild.id);
         let mut redis = self.storage().redis().clone();
         hourai_redis::CachedGuild::save(&guild)
             .query_async(&mut redis)

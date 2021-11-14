@@ -52,7 +52,10 @@ pub async fn find_moderators(
         .collect();
     Ok(Member::find_with_roles(guild_id, mod_roles)
         .fetch_all(sql)
-        .await?)
+        .await?
+        .into_iter()
+        .filter(|moderator| !moderator.bot)
+        .collect())
 }
 
 pub async fn find_online_moderators(

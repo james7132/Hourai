@@ -2,12 +2,7 @@ use crate::message_logging;
 use anyhow::Result;
 use hourai::proto::guild_configs::*;
 use hourai::{
-    models::{
-        id::{ChannelId},
-        message::MessageLike,
-        user::UserLike,
-        Snowflake,
-    },
+    models::{id::ChannelId, message::MessageLike, user::UserLike, Snowflake},
     util::mentions,
 };
 use hourai_redis::{CachedMessage, GuildConfig};
@@ -208,10 +203,7 @@ async fn get_filter_reasons(
             }
         }
         Err(err) => {
-            tracing::warn!(
-                "Error while building regex for message filter: {}",
-                err
-            );
+            tracing::warn!("Error while building regex for message filter: {}", err);
         }
     }
 

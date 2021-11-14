@@ -8,7 +8,10 @@ use tokio::time::{Duration, Instant};
 
 const CYCLE_DURATION: Duration = Duration::from_secs(1);
 
-async fn log_error<O, E: Display + Debug>(action: &'static str, fut: impl Future<Output = Result<O, E>>) {
+async fn log_error<O, E: Display + Debug>(
+    action: &'static str,
+    fut: impl Future<Output = Result<O, E>>,
+) {
     if let Err(err) = fut.await {
         tracing::error!("Error while {}: {} ({:?})", action, err, err);
     }

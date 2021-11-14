@@ -3,7 +3,9 @@ use crate::models::{
     user::{User, UserLike},
 };
 use anyhow::Result;
-use twilight_embed_builder::{image_source::ImageSource, EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
+use twilight_embed_builder::{
+    image_source::ImageSource, EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder,
+};
 use twilight_util::snowflake::Snowflake;
 
 fn timestamp_to_str(timestamp: i64) -> String {
@@ -13,10 +15,7 @@ fn timestamp_to_str(timestamp: i64) -> String {
 pub fn user(user: &User) -> Result<EmbedBuilder> {
     let thumbnail = ImageSource::url(user.avatar_url())?;
     let mut builder = EmbedBuilder::new()
-        .title(format!(
-            "{}#{:04}",
-            user.name, user.discriminator,
-        ))
+        .title(format!("{}#{:04}", user.name, user.discriminator,))
         .thumbnail(thumbnail)
         .footer(EmbedFooterBuilder::new(format!("ID: {}", user.id)));
 
@@ -26,7 +25,7 @@ pub fn user(user: &User) -> Result<EmbedBuilder> {
 
     builder = builder.field(EmbedFieldBuilder::new(
         "Created on",
-        timestamp_to_str(user.id.timestamp() / 1000)
+        timestamp_to_str(user.id.timestamp() / 1000),
     ));
 
     Ok(builder)

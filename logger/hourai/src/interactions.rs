@@ -44,51 +44,43 @@ pub enum Command<'a> {
     SubGroupCommand(&'a str, &'a str, &'a str),
 }
 
-pub struct Response {
-    data: CallbackData,
-}
+pub struct Response(CallbackData);
 
 impl Response {
     pub fn direct() -> Self {
-        Self {
-            data: CallbackData {
-                allowed_mentions: None,
-                components: None,
-                content: None,
-                embeds: Vec::new(),
-                flags: None,
-                tts: None,
-            },
-        }
+        Self(CallbackData {
+            allowed_mentions: None,
+            components: None,
+            content: None,
+            embeds: Vec::new(),
+            flags: None,
+            tts: None,
+        })
     }
 
     pub fn ephemeral() -> Self {
-        Self {
-            data: CallbackData {
-                allowed_mentions: None,
-                components: None,
-                content: None,
-                embeds: Vec::new(),
-                flags: Some(MessageFlags::EPHEMERAL),
-                tts: None,
-            },
-        }
+        Self::direct().flag(MessageFlags::EPHEMERAL)
     }
 
     pub fn content(mut self, content: impl Into<String>) -> Self {
-        self.data.content = Some(content.into());
+        self.0.content = Some(content.into());
         self
     }
 
     pub fn embed(mut self, embed: impl Into<Embed>) -> Self {
-        self.data.embeds.push(embed.into());
+        self.0.embeds.push(embed.into());
+        self
+    }
+
+    pub fn flag(mut self, flags: impl Into<MessageFlags>) -> Self {
+        self.0.flags = Some(flags.into() | self.0.flags.unwrap_or(MessageFlags::empty()));
         self
     }
 }
 
 impl From<Response> for CallbackData {
     fn from(value: Response) -> Self {
-        value.data
+        value.0
     }
 }
 
