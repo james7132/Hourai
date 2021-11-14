@@ -2,7 +2,7 @@
 name = "hourai-feeds"
 version = "0.1.0"
 authors = ["james7132 <contact@jamessliu.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 hourai = { path = "../hourai" }
