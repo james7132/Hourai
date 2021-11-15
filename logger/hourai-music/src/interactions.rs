@@ -442,13 +442,17 @@ async fn delta_volume(
 ) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     require_dj(client, ctx).await?;
+    let mut config = client.get_config(guild_id).await?;
     let volume = {
+        use std::cmp::{min, max};
         let player = get_player!(client, &guild_id);
-        let mut volume = player.volume() as i64;
-        volume = std::cmp::max(150, std::cmp::min(0, volume + change));
-        player.set_volume(volume as u32)?;
+        let volume = player.volume() as i64;
+        let volume = min(150, max(0, volume + change)) as u32;
+        player.set_volume(volume)?;
         volume
     };
+    config.set_volume(volume as u32);
+    client.set_config(guild_id, config).await?;
 
     Ok(Response::direct().content(&format!("Set volume to `{}`.", volume)))
 }

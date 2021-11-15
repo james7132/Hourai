@@ -28,6 +28,7 @@ impl MessageUI {
     {
         let (tx, mut rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
+            tokio::time::sleep(update_interval).await;
             loop {
                 match ui.update().await {
                     Ok(_) => match rx.try_recv() {
@@ -86,7 +87,7 @@ where
             builder: T::default(),
         };
 
-        ctx.defer(
+        ctx.reply(
             Response::direct()
                 .content(&dummy.builder.build_content(&dummy))
                 .embed(dummy.builder.build_embed(&dummy)?)
@@ -145,6 +146,10 @@ fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
         Some(track) => track,
         None => return not_playing_embed(),
     };
+    let volume = match ui.client.lavalink.players().get(&ui.guild_id) {
+        Some(player) => player.volume(),
+        None => return not_playing_embed(),
+    };
 
     Ok(EmbedBuilder::new()
         .author(
@@ -155,6 +160,7 @@ fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
         .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))
         .description(build_progress_bar(&ui))
         .url(track.info.uri.clone())
+        .footer(EmbedFooterBuilder::new(format!("Volume: {}", volume)))
         .build()?)
 }
 
