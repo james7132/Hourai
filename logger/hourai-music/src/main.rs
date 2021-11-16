@@ -42,6 +42,8 @@ use std::{collections::HashMap, convert::TryFrom, str::FromStr};
 use twilight_command_parser::{CommandParserConfig, Parser};
 use twilight_lavalink::{model::*, Lavalink};
 
+const RESUME_KEY: &str = "MUSIC";
+
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits() | Intents::GUILD_MESSAGES.bits() | Intents::GUILD_VOICE_STATES.bits(),
 );
@@ -83,6 +85,17 @@ async fn main() {
     };
 
     let http_client = Arc::new(init::http_client(&config));
+    let mut redis = hourai_redis::init(&config).await;
+    let sessions = ResumeState::get_sessions(RESUME_KEY, &mut redis).await;
+    let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
+        .shard_scheme(ShardScheme::Auto)
+        .http_client(http_client.clone())
+        .event_types(BOT_EVENTS)
+        .resume_sessions(sessions)
+        .build()
+        .await
+        .expect("Failed to connect to the Discord gateway");
+    let gateway = Arc::new(gateway);
     let current_user = http_client
         .current_user()
         .exec()
@@ -91,19 +104,10 @@ async fn main() {
         .model()
         .await
         .unwrap();
-    let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
-        .shard_scheme(ShardScheme::Auto)
-        .http_client(http_client.clone())
-        .event_types(BOT_EVENTS)
-        .build()
-        .await
-        .expect("Failed to connect to the Discord gateway");
-    let gateway = Arc::new(gateway);
     let lavalink = Arc::new(Lavalink::new(
         current_user.id,
         gateway.shards().len() as u64,
     ));
-    let redis = hourai_redis::init(&config).await;
     let client = Client {
         user_id: current_user.id,
         http_client,
@@ -113,7 +117,7 @@ async fn main() {
         hyper: HyperClient::new(),
         resolver: GaiResolver::new(),
         parser,
-        redis,
+        redis: redis.clone(),
     };
 
     // Start the lavalink node connections.
@@ -125,15 +129,27 @@ async fn main() {
     gateway.up().await;
     info!("Client started.");
 
-    while let Some((_, evt)) = events.next().await {
-        if let Err(err) = lavalink.process(&evt).await {
-            error!("Error while handling Lavalink event: {}", err);
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() =>  { break; }
+            res = events.next() => {
+                if let Some((_, evt)) = res {
+                    if let Err(err) = lavalink.process(&evt).await {
+                        error!("Error while handling Lavalink event: {}", err);
+                    }
+                    tokio::spawn(client.clone().consume_event(evt));
+                } else {
+                    break;
+                }
+            }
         }
-        tokio::spawn(client.clone().consume_event(evt));
     }
 
     info!("Shutting down gateway...");
-    gateway.down();
+    let result = ResumeState::save_sessions(RESUME_KEY, gateway.down_resumable(), &mut redis).await;
+    if let Err(err) = result {
+        tracing::error!("Error while shutting down cluster: {} ({:?})", err, err);
+    }
     info!("Client stopped.");
 }
 
@@ -329,9 +345,7 @@ impl Client<'static> {
     /// Gets the currently displayed queue page in a given guild.
     /// If not playing, return None.
     pub fn queue_page(&self, guild_id: GuildId) -> Option<i64> {
-        self.states
-            .get(&guild_id)
-            .map(|kv| kv.value().queue_page)
+        self.states.get(&guild_id).map(|kv| kv.value().queue_page)
     }
 
     /// Gets which voice channel the bot is currently connected to in

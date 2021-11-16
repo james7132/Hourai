@@ -11,14 +11,17 @@ pub use self::guild_config::CachedGuildConfig;
 use self::keys::{CacheKey, GuildKey, Id};
 use self::protobuf::Protobuf;
 use anyhow::Result;
-use hourai::models::{
-    channel::GuildChannel,
-    guild::{Guild, PartialGuild, Permissions, Role},
-    id::*,
-    voice::VoiceState,
-    MessageLike, Snowflake, UserLike,
+use hourai::{
+    gateway::shard::ResumeSession,
+    models::{
+        channel::GuildChannel,
+        guild::{Guild, PartialGuild, Permissions, Role},
+        id::*,
+        voice::VoiceState,
+        MessageLike, Snowflake, UserLike,
+    },
+    proto::cache::*,
 };
-use hourai::proto::cache::*;
 use redis::{aio::ConnectionLike, FromRedisValue, ToRedisArgs};
 use std::{
     cmp::{Ord, Ordering},
@@ -63,11 +66,11 @@ impl OnlineStatus {
         let key = CacheKey::OnlineStatus(guild_id.get());
         let ids: Vec<Id<u64>> = online.into_iter().map(|id| Id(id.get())).collect();
         self.pipeline
-            .del(key)
+            .del(key.clone())
             .ignore()
-            .sadd(key, ids)
+            .sadd(key.clone(), ids)
             .ignore()
-            .expire(key, 3600);
+            .expire(key.clone(), 3600);
         self
     }
 
@@ -80,7 +83,7 @@ impl OnlineStatus {
         let user_ids: Vec<UserId> = users.into_iter().collect();
         let mut pipe = redis::pipe();
         user_ids.iter().map(|id| Id(id.get())).for_each(|id| {
-            pipe.sismember(key, id);
+            pipe.sismember(key.clone(), id);
         });
         let results: Vec<bool> = pipe.query_async(redis).await?;
         Ok(user_ids
@@ -550,5 +553,43 @@ impl ToProto for Role {
         proto.set_position(self.position);
         proto.set_permissions(self.permissions.bits());
         proto
+    }
+}
+
+pub enum ResumeState {}
+
+impl ResumeState {
+    pub async fn save_sessions<C: ConnectionLike>(
+        key: &str,
+        sessions: HashMap<u64, ResumeSession>,
+        redis: &mut C,
+    ) -> Result<()> {
+        let sessions: Vec<(u64, String)> = sessions
+            .into_iter()
+            .filter_map(|(shard, session)| serde_json::to_string(&session).map(|s| (shard, s)).ok())
+            .collect();
+        redis::Cmd::hset_multiple(CacheKey::ResumeState(key.into()), &sessions)
+            .query_async::<C, i64>(redis)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_sessions<C: ConnectionLike>(
+        key: &str,
+        redis: &mut C,
+    ) -> HashMap<u64, ResumeSession> {
+        let sessions = redis::Cmd::hgetall(CacheKey::ResumeState(key.into()))
+            .query_async::<C, HashMap<u64, String>>(redis)
+            .await;
+        if let Ok(sessions) = sessions {
+            sessions
+                .into_iter()
+                .filter_map(|(shard, session)| {
+                    serde_json::from_str(&session).map(|s| (shard, s)).ok()
+                })
+                .collect()
+        } else {
+            HashMap::new()
+        }
     }
 }

@@ -33,6 +33,7 @@ use hourai_storage::{actions::ActionExecutor, Storage};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
+const RESUME_KEY: &str = "LOGGER";
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits()
         | Intents::GUILD_BANS.bits()
@@ -92,10 +93,12 @@ async fn main() {
         warn!("Failed to update global commands: {:?}", err);
     }
 
+    let sessions = ResumeState::get_sessions(RESUME_KEY, &mut storage.redis().clone()).await;
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
         .event_types(BOT_EVENTS)
+        .resume_sessions(sessions)
         .build()
         .await
         .expect("Failed to connect to the Discord gateway");
@@ -144,18 +147,35 @@ async fn main() {
     tokio::spawn(pending_events::run_pending_actions(actions.clone()));
     tokio::spawn(pending_events::run_pending_deescalations(actions.clone()));
 
-    while let Some((shard_id, evt)) = events.next().await {
-        if evt.kind() == EventType::PresenceUpdate {
-            cache.update(&evt);
-        } else {
-            client.pre_cache_event(&evt).await;
-            cache.update(&evt);
-            tokio::spawn(client.clone().consume_event(shard_id, evt));
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => { break; }
+            res = events.next() => {
+                if let Some((shard_id, evt)) = res {
+                    if evt.kind() == EventType::PresenceUpdate {
+                        cache.update(&evt);
+                    } else {
+                        client.pre_cache_event(&evt).await;
+                        cache.update(&evt);
+                        tokio::spawn(client.clone().consume_event(shard_id, evt));
+                    }
+                } else {
+                    break;
+                }
+            }
         }
     }
 
     info!("Shutting down gateway...");
-    gateway.down();
+    let result = ResumeState::save_sessions(
+        RESUME_KEY,
+        gateway.down_resumable(),
+        &mut storage.redis().clone(),
+    )
+    .await;
+    if let Err(err) = result {
+        tracing::error!("Error while shutting down cluster: {} ({:?})", err, err);
+    }
     info!("Client stopped.");
 }
 

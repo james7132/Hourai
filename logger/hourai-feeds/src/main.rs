@@ -21,10 +21,17 @@ async fn main() {
 
     tokio::spawn(reddit::start(client.clone(), config.reddit));
 
-    while let Some(post) = rx.next().await {
-        tracing::info!("New post: {:?}", post);
-        if let Err(err) = post.broadcast(client.clone()) {
-            tracing::error!("Error while broadcasting post to Discord: {}", err);
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => { break; },
+            res = rx.next() => {
+                if let Some(post) = res {
+                    tracing::info!("New post: {:?}", post);
+                    if let Err(err) = post.broadcast(client.clone()) {
+                        tracing::error!("Error while broadcasting post to Discord: {}", err);
+                    }
+                }
+            }
         }
     }
 }

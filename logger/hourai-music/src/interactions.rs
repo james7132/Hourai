@@ -7,10 +7,7 @@ use hourai::{
         id::{ChannelId, GuildId, RoleId},
         UserLike,
     },
-    proto::{
-        guild_configs::MusicConfig,
-        message_components::{MusicButtonOption},
-    },
+    proto::{guild_configs::MusicConfig, message_components::MusicButtonOption},
 };
 use std::{collections::HashSet, convert::TryFrom};
 use twilight_lavalink::http::LoadType;
@@ -261,7 +258,7 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
                     queue_ui: None,
                     now_playing_ui_slash: None,
                     queue_ui_slash: None,
-                    queue_page: 0
+                    queue_page: 0,
                 },
             );
             client.start_playing(guild_id).await?;
@@ -444,7 +441,7 @@ async fn delta_volume(
     require_dj(client, ctx).await?;
     let mut config = client.get_config(guild_id).await?;
     let volume = {
-        use std::cmp::{min, max};
+        use std::cmp::{max, min};
         let player = get_player!(client, &guild_id);
         let volume = player.volume() as i64;
         let volume = min(150, max(0, volume + change)) as u32;

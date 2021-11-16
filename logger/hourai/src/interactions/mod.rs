@@ -109,7 +109,8 @@ pub trait InteractionContext {
     }
 
     async fn defer_update(&self) -> anyhow::Result<()> {
-        self.reply_raw(InteractionResponse::DeferredUpdateMessage).await?;
+        self.reply_raw(InteractionResponse::DeferredUpdateMessage)
+            .await?;
         Ok(())
     }
 

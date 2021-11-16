@@ -8,7 +8,7 @@ use hourai::models::{
 use redis::{ErrorKind, FromRedisValue, RedisError, RedisWrite, ToRedisArgs};
 
 /// The single byte key prefix for all keys stored in Redis.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub enum CacheKey {
     /// Protobuf configs for per server configuration. Stored in the form of hashes with individual
     /// configs as hash values, keyed by the corresponding CachedGuildConfig subkey.
@@ -21,6 +21,8 @@ pub enum CacheKey {
     Guild(/* Guild ID */ u64),
     /// Cached voice state data.
     VoiceState(/* Guild ID */ u64),
+    /// Resume State
+    ResumeState(/* Name */ String),
 }
 
 impl CacheKey {
@@ -31,6 +33,7 @@ impl CacheKey {
             Self::Messages(_, _) => 3_u8,
             Self::Guild(_) => 4_u8,
             Self::VoiceState(_) => 5_u8,
+            Self::ResumeState(_) => 6_u8,
         }
     }
 }
@@ -48,6 +51,9 @@ impl ToRedisArgs for CacheKey {
             }
             Self::Guild(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
             Self::VoiceState(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
+            Self::ResumeState(key) => {
+                PrefixedKey(self.prefix(), key.as_str()).write_redis_args(out)
+            }
         }
     }
 }
@@ -166,6 +172,16 @@ impl ToRedisArgs for PrefixedKey<(u64, u64)> {
         BigEndian::write_u64(&mut key_enc[1..9], self.1 .0);
         BigEndian::write_u64(&mut key_enc[9..17], self.1 .1);
         out.write_arg(&key_enc[..]);
+    }
+}
+
+impl ToRedisArgs for PrefixedKey<&str> {
+    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
+    where
+        W: RedisWrite,
+    {
+        self.0.write_redis_args(out);
+        self.1.write_redis_args(out);
     }
 }
 
