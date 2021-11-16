@@ -601,6 +601,10 @@ impl MusicQueue {
         redis::Cmd::set(CacheKey::MusicQueue(guild_id.get()), Protobuf(state))
     }
 
+    pub fn has_saved_state(guild_id: GuildId) -> redis::Cmd {
+        redis::Cmd::exists(CacheKey::MusicQueue(guild_id.get()))
+    }
+
     pub async fn load<C: ConnectionLike>(
         guild_id: GuildId,
         redis: &mut C,

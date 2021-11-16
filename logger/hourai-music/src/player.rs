@@ -16,6 +16,18 @@ pub struct PlayerState {
 }
 
 impl PlayerState {
+    pub fn new() -> Self {
+        Self {
+            skip_votes: HashSet::new(),
+            queue: MusicQueue::new(),
+            now_playing_ui: None,
+            queue_ui: None,
+            now_playing_ui_slash: None,
+            queue_ui_slash: None,
+            queue_page: 0,
+        }
+    }
+
     pub fn currently_playing(&self) -> Option<(UserId, Track)> {
         self.queue.peek().map(|item| (item.key, item.value.clone()))
     }

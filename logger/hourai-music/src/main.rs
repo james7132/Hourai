@@ -24,6 +24,7 @@ use hourai::{
     models::{
         application::{callback::InteractionResponse, interaction::Interaction},
         gateway::payload::outgoing::UpdateVoiceState,
+        guild::Guild,
         id::*,
     },
     proto::{guild_configs::MusicConfig, music_bot::MusicStateProto},
@@ -218,7 +219,7 @@ impl Client<'static> {
             Event::ChannelCreate(_) => Ok(()),
             Event::ChannelDelete(_) => Ok(()),
             Event::ChannelUpdate(_) => Ok(()),
-            Event::GuildCreate(_) => Ok(()),
+            Event::GuildCreate(evt) => self.on_guild_create(evt.0).await,
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
                     self.disconnect(evt.id).await
@@ -240,6 +241,27 @@ impl Client<'static> {
         if let Err(err) = result {
             error!("Error while running event with {:?}: {:?}", kind, err);
         }
+    }
+
+    async fn on_guild_create(self, evt: Guild) -> Result<()> {
+        // Do not load state if there is already an existing player for a guild.
+        if !self.states.contains_key(&evt.id) {
+            return Ok(());
+        }
+
+        let mut conn = self.redis.clone();
+        let exists: std::result::Result<bool, _> = hourai_redis::MusicQueue::has_saved_state(evt.id)
+            .query_async(&mut conn)
+            .await;
+        if exists.unwrap_or(false) {
+            self.states.insert(evt.id, PlayerState::new());
+            let state = self.load_state(evt.id).await?;
+            let channel_id = ChannelId::new(state.get_channel_id()).unwrap();
+            self.connect(evt.id, channel_id).await?;
+            self.start_playing(evt.id).await?;
+        }
+
+        Ok(())
     }
 
     async fn on_interaction_create(self, evt: Interaction) -> Result<()> {
@@ -328,11 +350,14 @@ impl Client<'static> {
 
     pub async fn save_state(&self, guild_id: GuildId) -> Result<()> {
         let mut conn = self.redis.clone();
-        if let Some(state) = self
-            .states
-            .get(&guild_id)
-            .map(|kv| kv.value().save_to_proto())
-        {
+        let state = self.states.get(&guild_id).map(|kv| kv.value().save_to_proto());
+        if let Some(mut state) = state {
+            let channel_id = self.lavalink
+                .players()
+                .get(&guild_id)
+                .map(|kv| kv.channel_id().unwrap())
+                .unwrap();
+            state.set_channel_id(channel_id.get());
             hourai_redis::MusicQueue::save(guild_id, state)
                 .query_async(&mut conn)
                 .await?;
@@ -345,14 +370,14 @@ impl Client<'static> {
         Ok(())
     }
 
-    pub async fn load_state(&self, guild_id: GuildId) -> Result<()> {
+    pub async fn load_state(&self, guild_id: GuildId) -> Result<MusicStateProto> {
         let mut conn = self.redis.clone();
         let state = hourai_redis::MusicQueue::load(guild_id, &mut conn).await?;
-        self.mutate_state(guild_id, move |player| {
-            player.load_from_proto(state);
+        self.mutate_state(guild_id, |player| {
+            player.load_from_proto(state.clone());
         });
         tracing::info!("Loaded player state for guild {}", guild_id);
-        Ok(())
+        Ok(state)
     }
 
     /// Gets some information about a guild's player queue.
@@ -465,6 +490,7 @@ impl Client<'static> {
         } else {
             self.disconnect(guild_id).await?;
         }
+        self.save_state(guild_id).await?;
         Ok(prev)
     }
 
