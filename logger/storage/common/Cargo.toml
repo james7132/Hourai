@@ -16,3 +16,4 @@ either = "1.6"
 futures = { default-features = false, version = "0.3" }
 sqlx-core = "0.5"
 thiserror = "1.0"
+tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
