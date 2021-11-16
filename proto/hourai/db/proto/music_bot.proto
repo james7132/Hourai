@@ -1,0 +1,35 @@
+syntax = "proto2";
+
+import "hourai/db/proto/cache.proto";
+
+package hourai.db.proto;
+
+// NEXT ID: 5
+message MusicStateProto {
+  optional /* actually required */ TrackProto currently_playing = 1;
+  optional /* actually required */ uint64 position = 2;
+  repeated uint64 skip_votes = 3;
+  optional MusicQueueProto queue = 4;
+}
+
+// NEXT ID: 2
+message MusicQueueProto {
+  repeated UserQueueProto user_queues = 1;
+}
+
+// NEXT ID: 3
+message UserQueueProto {
+  optional /* actually required */ uint64 user_id = 1;
+  repeated TrackProto tracks = 2;
+}
+
+// NEXT ID: 8
+message TrackProto {
+  optional /* actually required */ CachedUserProto requestor = 1;
+  optional string title = 2;
+  optional string author = 3;
+  optional /* actually required */ string uri = 4;
+  optional /* actually required */ uint64 length = 5;
+  optional /* actually required */ bool is_stream = 6;
+  optional /* actually required */ bytes track_data = 7;
+}

@@ -20,7 +20,7 @@ use hourai::{
         voice::VoiceState,
         MessageLike, Snowflake, UserLike,
     },
-    proto::cache::*,
+    proto::{cache::*, music_bot::MusicStateProto},
 };
 use redis::{aio::ConnectionLike, FromRedisValue, ToRedisArgs};
 use std::{
@@ -591,5 +591,17 @@ impl ResumeState {
         } else {
             HashMap::new()
         }
+    }
+}
+
+pub enum MusicQueue {}
+
+impl MusicQueue {
+    pub async fn save(guild_id: GuildId, state: MusicStateProto) -> redis::Cmd {
+        redis::Cmd::set(CacheKey::MusicQueue(guild_id.get()), Protobuf(state))
+    }
+
+    pub async fn clear(guild_id: GuildId) -> redis::Cmd {
+        redis::Cmd::del(CacheKey::MusicQueue(guild_id.get()))
     }
 }

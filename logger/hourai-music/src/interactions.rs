@@ -346,7 +346,7 @@ async fn remove(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
     let response = client
         .mutate_state(guild_id, |state| {
             match state.queue.get(idx).map(|kv| kv.value.clone()) {
-                Some(track) if user.id == track.requestor.id || dj => {
+                Some(track) if user.id.get() == track.requestor.get_id() || dj => {
                     state.queue.remove(idx);
                     format!("Removed `{}` from the queue.", track.info)
                 }

@@ -1,6 +1,6 @@
 use crate::{interaction_ui, queue::MusicQueue, track::*, ui};
 use anyhow::Result;
-use hourai::models::id::UserId;
+use hourai::{models::id::UserId, proto::music_bot::*};
 use std::collections::HashSet;
 use twilight_lavalink::model::*;
 
@@ -22,6 +22,24 @@ impl PlayerState {
 
     pub fn is_playing(&self) -> bool {
         self.queue.peek().is_some()
+    }
+
+    pub fn save_to_proto(&self) -> MusicStateProto {
+        let mut proto = MusicStateProto::new();
+        *proto.mut_queue() = MusicQueueProto::from(&self.queue);
+        proto
+            .skip_votes
+            .extend(self.skip_votes.iter().map(|id| id.get()));
+        proto
+    }
+
+    pub fn load_from_proto(&mut self, mut state: MusicStateProto) {
+        self.queue = state.take_queue().into();
+        self.skip_votes = state
+            .skip_votes
+            .into_iter()
+            .filter_map(UserId::new)
+            .collect();
     }
 }
 
@@ -53,5 +71,33 @@ pub trait PlayerExt {
 impl PlayerExt for twilight_lavalink::player::Player {
     fn as_player(&self) -> &twilight_lavalink::player::Player {
         self
+    }
+}
+
+impl From<MusicQueueProto> for MusicQueue<UserId, Track> {
+    fn from(value: MusicQueueProto) -> Self {
+        let mut queue = Self::new();
+        for user_queue in value.user_queues {
+            let user_id = UserId::new(user_queue.get_user_id()).unwrap();
+            for track in user_queue.tracks {
+                queue.push(user_id, track.into());
+            }
+        }
+        queue
+    }
+}
+
+impl From<&MusicQueue<UserId, Track>> for MusicQueueProto {
+    fn from(value: &MusicQueue<UserId, Track>) -> Self {
+        let mut proto = Self::new();
+        for key in value.keys() {
+            let mut queue = UserQueueProto::new();
+            queue.set_user_id(key.get());
+            for track in value.iter_with_key(key) {
+                queue.tracks.push(track.clone().into());
+            }
+            proto.user_queues.push(queue);
+        }
+        proto
     }
 }

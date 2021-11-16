@@ -23,6 +23,8 @@ pub enum CacheKey {
     VoiceState(/* Guild ID */ u64),
     /// Resume State
     ResumeState(/* Name */ String),
+    /// The stored music queues for each server. Used to restore the music state after a restart.
+    MusicQueue(/* Guild ID */ u64),
 }
 
 impl CacheKey {
@@ -34,6 +36,7 @@ impl CacheKey {
             Self::Guild(_) => 4_u8,
             Self::VoiceState(_) => 5_u8,
             Self::ResumeState(_) => 6_u8,
+            Self::MusicQueue(_) => 7_u8,
         }
     }
 }
@@ -54,6 +57,7 @@ impl ToRedisArgs for CacheKey {
             Self::ResumeState(key) => {
                 PrefixedKey(self.prefix(), key.as_str()).write_redis_args(out)
             }
+            Self::MusicQueue(key) => PrefixedKey(self.prefix(), *key).write_redis_args(out),
         }
     }
 }

@@ -342,7 +342,7 @@ async fn remove(
     let response = client
         .mutate_state(guild_id, |state| {
             match state.queue.get(idx).map(|kv| kv.value.clone()) {
-                Some(track) if author == track.requestor.id || dj => {
+                Some(track) if author.get() == track.requestor.get_id() || dj => {
                     state.queue.remove(idx);
                     format!("Removed `{}` from the queue.", track.info)
                 }

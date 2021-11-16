@@ -1,4 +1,7 @@
-use hourai::models::{id::GuildId, user::User};
+use hourai::{
+    models::{id::GuildId, user::User},
+    proto::{cache::CachedUserProto, music_bot::TrackProto},
+};
 use std::convert::TryFrom;
 use std::{fmt, time::Duration};
 use tracing::error;
@@ -25,7 +28,7 @@ impl fmt::Display for TrackInfo {
 
 #[derive(Clone)]
 pub struct Track {
-    pub requestor: User,
+    pub requestor: CachedUserProto,
     pub info: TrackInfo,
     pub track: Vec<u8>,
 }
@@ -59,9 +62,55 @@ impl TryFrom<(User, twilight_lavalink::http::Track)> for Track {
     type Error = base64::DecodeError;
     fn try_from(value: (User, twilight_lavalink::http::Track)) -> Result<Self, Self::Error> {
         Ok(Self {
-            requestor: value.0,
+            requestor: CachedUserProto::from(value.0),
             info: TrackInfo::from(value.1.info),
             track: decode_track(value.1.track)?,
         })
+    }
+}
+
+impl From<Track> for TrackProto {
+    fn from(value: Track) -> Self {
+        let mut proto = Self::new();
+        *proto.mut_requestor() = value.requestor;
+        if let Some(title) = value.info.title {
+            proto.set_title(title);
+        }
+        if let Some(author) = value.info.author {
+            proto.set_author(author);
+        }
+        proto.set_uri(value.info.uri);
+        proto.set_length(value.info.length.as_millis() as u64);
+        proto.set_is_stream(value.info.is_stream);
+        *proto.mut_track_data() = value.track;
+
+        proto
+    }
+}
+
+impl From<TrackProto> for Track {
+    fn from(mut value: TrackProto) -> Self {
+        let title = if value.has_title() {
+            Some(value.take_title())
+        } else {
+            None
+        };
+        let author = if value.has_author() {
+            Some(value.take_author())
+        } else {
+            None
+        };
+
+        Self {
+            requestor: value.take_requestor(),
+            info: TrackInfo {
+                title,
+                author,
+                uri: value.take_uri(),
+                length: Duration::from_millis(value.get_length()),
+                is_stream: value.get_is_stream(),
+            },
+            track: value.take_track_data(),
+        }
     }
 }

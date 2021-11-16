@@ -159,6 +159,18 @@ where
             indexer: self.index_iter(),
         }
     }
+
+    pub fn keys(&self) -> impl Iterator<Item = K> + '_ {
+        self.0.iter().map(|(k, _)| *k)
+    }
+
+    pub fn iter_with_key(&self, key: K) -> Vec<&V> {
+        self.0
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, queue)| queue.iter().collect())
+            .unwrap_or_else(|| Vec::new())
+    }
 }
 
 struct MusicQueueIndexer<'a, K, V> {

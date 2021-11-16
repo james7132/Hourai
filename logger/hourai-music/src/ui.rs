@@ -182,7 +182,7 @@ impl EmbedUIBuilder for QueueUI {
                 format_duration(track.info.length),
                 track.info,
                 track.info.uri,
-                track.requestor.id
+                track.requestor.get_id()
             )
         }
 
