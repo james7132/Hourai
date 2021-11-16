@@ -256,9 +256,12 @@ impl Client<'static> {
         if exists.unwrap_or(false) {
             self.states.insert(evt.id, PlayerState::new());
             let state = self.load_state(evt.id).await?;
-            let channel_id = ChannelId::new(state.get_channel_id()).unwrap();
-            self.connect(evt.id, channel_id).await?;
-            self.start_playing(evt.id).await?;
+            if let Some(channel_id) = ChannelId::new(state.get_channel_id()) {
+                self.connect(evt.id, channel_id).await?;
+                self.start_playing(evt.id).await?;
+            } else {
+                self.states.remove(&evt.id);
+            }
         }
 
         Ok(())
@@ -355,9 +358,11 @@ impl Client<'static> {
             let channel_id = self.lavalink
                 .players()
                 .get(&guild_id)
-                .map(|kv| kv.channel_id().unwrap())
-                .unwrap();
-            state.set_channel_id(channel_id.get());
+                .map(|kv| kv.channel_id())
+                .flatten();
+            if let Some(channel_id) = channel_id {
+                state.set_channel_id(channel_id.get());
+            }
             hourai_redis::MusicQueue::save(guild_id, state)
                 .query_async(&mut conn)
                 .await?;

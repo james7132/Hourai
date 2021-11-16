@@ -6,7 +6,7 @@ use crate::{
             ApplicationCommand, CommandDataOption, CommandOptionValue, InteractionMember,
         },
         guild::{PartialMember, Permissions},
-        id::{ChannelId, GuildId, InteractionId, RoleId, UserId},
+        id::{ApplicationId, ChannelId, GuildId, InteractionId, RoleId, UserId},
         user::User,
     },
 };
@@ -196,6 +196,10 @@ impl InteractionContext for CommandContext {
 
     fn id(&self) -> InteractionId {
         self.command.id
+    }
+
+    fn application_id(&self) -> ApplicationId {
+        self.command.application_id
     }
 
     fn token(&self) -> &str {

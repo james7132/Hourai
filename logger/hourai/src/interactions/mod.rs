@@ -13,7 +13,7 @@ use crate::{
         },
         channel::{embed::Embed, message::MessageFlags},
         guild::{PartialMember, Permissions},
-        id::{ChannelId, GuildId, InteractionId},
+        id::{ApplicationId, ChannelId, GuildId, InteractionId},
         user::User,
     },
 };
@@ -93,6 +93,7 @@ impl From<Response> for CallbackData {
 pub trait InteractionContext {
     fn http(&self) -> &Arc<http::Client>;
     fn id(&self) -> InteractionId;
+    fn application_id(&self) -> ApplicationId;
     fn token(&self) -> &str;
     fn member(&self) -> Option<&PartialMember>;
     fn guild_id(&self) -> InteractionResult<GuildId>;

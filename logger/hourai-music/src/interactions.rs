@@ -19,6 +19,7 @@ macro_rules! get_player {
 }
 
 pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Result<()> {
+    ctx.http().set_application_id(ctx.application_id());
     let result = match ctx.command() {
         Command::SubCommand("music", "play") => play(&client, &ctx).await,
         Command::SubCommand("music", "pause") => pause(&client, &ctx, Some(true)).await,
@@ -64,6 +65,7 @@ pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Res
 }
 
 pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) -> Result<()> {
+    ctx.http().set_application_id(ctx.application_id());
     let proto = ctx.metadata()?;
     let button = proto.get_music_button();
     match button.get_button_option() {

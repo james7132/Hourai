@@ -4,7 +4,7 @@ use crate::{
     models::{
         application::interaction::message_component::MessageComponentInteraction,
         guild::PartialMember,
-        id::{ChannelId, GuildId, InteractionId},
+        id::{ApplicationId, ChannelId, GuildId, InteractionId},
         user::User,
     },
     proto::message_components::MessageComponentProto,
@@ -37,6 +37,10 @@ impl InteractionContext for ComponentContext {
 
     fn id(&self) -> InteractionId {
         self.component.id
+    }
+
+    fn application_id(&self) -> ApplicationId {
+        self.component.application_id
     }
 
     fn token(&self) -> &str {
