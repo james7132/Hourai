@@ -264,7 +264,7 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
             client.start_playing(guild_id).await?;
         }
     }
-
+    client.save_state(guild_id).await?;
     Ok(Response::direct().content(&response))
 }
 
@@ -286,6 +286,7 @@ async fn pause(
     } else {
         "The music bot has been unpaused."
     };
+    client.save_state(guild_id).await?;
     Ok(Response::direct().content(response))
 }
 
@@ -293,6 +294,7 @@ async fn stop(client: &Client<'static>, ctx: &impl InteractionContext) -> Result
     let guild_id = require_playing(client, ctx)?;
     require_dj(client, ctx).await?;
     client.disconnect(guild_id).await?;
+    client.save_state(guild_id).await?;
     Ok(Response::direct().content("The player has been stopped and the queue has been cleared"))
 }
 
@@ -315,6 +317,7 @@ async fn skip(client: &Client<'static>, ctx: &impl InteractionContext) -> Result
         format!("Total votes: `{}/{}`.", votes, required)
     };
 
+    client.save_state(guild_id).await?;
     Ok(Response::direct().content(&response))
 }
 
@@ -361,6 +364,7 @@ async fn remove(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
         })
         .unwrap();
 
+    client.save_state(guild_id).await?;
     Ok(Response::direct().content(&response))
 }
 
@@ -376,6 +380,7 @@ async fn remove_all(client: &Client<'static>, ctx: &impl InteractionContext) -> 
             }
         })
         .unwrap();
+    client.save_state(guild_id).await?;
     Ok(Response::direct().content(&response))
 }
 
@@ -391,6 +396,7 @@ async fn shuffle(client: &Client<'static>, ctx: &CommandContext) -> Result<Respo
             }
         })
         .unwrap();
+    client.save_state(guild_id).await?;
     Ok(Response::direct().content(&response))
 }
 
@@ -402,6 +408,7 @@ async fn forceskip(client: &Client<'static>, ctx: &CommandContext) -> Result<Res
     } else {
         "There is nothing in the queue right now.".to_owned()
     };
+    client.save_state(guild_id).await?;
     Ok(Response::direct().content(&response))
 }
 

@@ -57,14 +57,18 @@ impl ActionExecutor {
             }
             Some(Action_oneof_details::direct_message(ref info)) => {
                 if let Err(err) = self.execute_direct_message(action, &info).await {
-                    tracing::error!("Error while sending a message to a given channel \
-                                     for an action: {}", err);
+                    tracing::error!(
+                        "Error while sending a message to a given channel for an action: {}",
+                        err
+                    );
                 }
             }
             Some(Action_oneof_details::send_message(ref info)) => {
                 if let Err(err) = self.execute_send_message(&info).await {
-                    tracing::error!("Error while sending a message to a given channel \
-                                     for an action: {}", err);
+                    tracing::error!(
+                        "Error while sending a message to a given channel for an action: {}",
+                        err
+                    );
                 }
             }
             None => panic!("Cannot run action without a specified type"),

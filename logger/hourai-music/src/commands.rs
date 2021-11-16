@@ -265,7 +265,7 @@ async fn play(
             client.start_playing(guild_id).await?;
         }
     }
-
+    client.save_state(guild_id).await?;
     ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
@@ -291,6 +291,7 @@ async fn stop(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
         .content("The player has been stopped and the queue has been cleared")?
         .exec()
         .await?;
+    client.save_state(guild_id).await?;
     Ok(())
 }
 
@@ -312,6 +313,7 @@ async fn skip(client: &Client<'static>, ctx: commands::Context<'_>) -> Result<()
         format!("Total votes: `{}/{}`.", votes, required)
     };
 
+    client.save_state(guild_id).await?;
     ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
@@ -356,7 +358,7 @@ async fn remove(
             }
         })
         .unwrap();
-
+    client.save_state(guild_id).await?;
     ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
@@ -373,6 +375,7 @@ async fn remove_all(client: &Client<'static>, ctx: commands::Context<'_>) -> Res
             }
         })
         .unwrap();
+    client.save_state(guild_id).await?;
     ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
@@ -389,6 +392,7 @@ async fn shuffle(client: &Client<'static>, ctx: commands::Context<'_>) -> Result
             }
         })
         .unwrap();
+    client.save_state(guild_id).await?;
     ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }
@@ -401,6 +405,7 @@ async fn forceskip(client: &Client<'static>, ctx: commands::Context<'_>) -> Resu
     } else {
         "There is nothing in the queue right now.".to_owned()
     };
+    client.save_state(guild_id).await?;
     ctx.respond().content(&response)?.exec().await?;
     Ok(())
 }

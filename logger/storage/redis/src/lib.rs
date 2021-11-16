@@ -597,11 +597,22 @@ impl ResumeState {
 pub enum MusicQueue {}
 
 impl MusicQueue {
-    pub async fn save(guild_id: GuildId, state: MusicStateProto) -> redis::Cmd {
+    pub fn save(guild_id: GuildId, state: MusicStateProto) -> redis::Cmd {
         redis::Cmd::set(CacheKey::MusicQueue(guild_id.get()), Protobuf(state))
     }
 
-    pub async fn clear(guild_id: GuildId) -> redis::Cmd {
+    pub async fn load<C: ConnectionLike>(
+        guild_id: GuildId,
+        redis: &mut C,
+    ) -> Result<MusicStateProto> {
+        let state: Protobuf<MusicStateProto> =
+            redis::Cmd::get(CacheKey::MusicQueue(guild_id.get()))
+                .query_async(redis)
+                .await?;
+        Ok(state.0)
+    }
+
+    pub fn clear(guild_id: GuildId) -> redis::Cmd {
         redis::Cmd::del(CacheKey::MusicQueue(guild_id.get()))
     }
 }

@@ -26,7 +26,7 @@ use hourai::{
         gateway::payload::outgoing::UpdateVoiceState,
         id::*,
     },
-    proto::guild_configs::MusicConfig,
+    proto::{guild_configs::MusicConfig, music_bot::MusicStateProto},
 };
 use hourai_redis::*;
 use http::Uri;
@@ -323,6 +323,35 @@ impl Client<'static> {
         GuildConfig::set::<MusicConfig>(guild_id, config)
             .query_async(&mut conn)
             .await?;
+        Ok(())
+    }
+
+    pub async fn save_state(&self, guild_id: GuildId) -> Result<()> {
+        let mut conn = self.redis.clone();
+        if let Some(state) = self
+            .states
+            .get(&guild_id)
+            .map(|kv| kv.value().save_to_proto())
+        {
+            hourai_redis::MusicQueue::save(guild_id, state)
+                .query_async(&mut conn)
+                .await?;
+        } else {
+            hourai_redis::MusicQueue::clear(guild_id)
+                .query_async(&mut conn)
+                .await?;
+        }
+        tracing::info!("Saved player state for guild {}", guild_id);
+        Ok(())
+    }
+
+    pub async fn load_state(&self, guild_id: GuildId) -> Result<()> {
+        let mut conn = self.redis.clone();
+        let state = hourai_redis::MusicQueue::load(guild_id, &mut conn).await?;
+        self.mutate_state(guild_id, move |player| {
+            player.load_from_proto(state);
+        });
+        tracing::info!("Loaded player state for guild {}", guild_id);
         Ok(())
     }
 
