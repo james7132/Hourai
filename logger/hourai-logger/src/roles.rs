@@ -8,7 +8,6 @@ use hourai::{
     },
     proto::{cache::CachedRoleProto, guild_configs::*},
 };
-use hourai_redis::{CachedGuild, GuildConfig};
 use hourai_storage::Storage;
 use std::collections::HashMap;
 
@@ -24,8 +23,11 @@ async fn get_roles(
 }
 
 async fn get_role_flags(storage: &Storage, guild_id: GuildId) -> Result<HashMap<u64, RoleFlags>> {
-    let config: RoleConfig =
-        GuildConfig::fetch_or_default(guild_id, &mut storage.redis().clone()).await?;
+    let config: RoleConfig = storage
+        .redis()
+        .guild_configs()
+        .fetch_or_default(guild_id)
+        .await?;
     Ok(config
         .get_settings()
         .iter()
@@ -34,8 +36,11 @@ async fn get_role_flags(storage: &Storage, guild_id: GuildId) -> Result<HashMap<
 }
 
 async fn get_verification_role(storage: &Storage, guild_id: GuildId) -> Result<Option<RoleId>> {
-    let config: VerificationConfig =
-        GuildConfig::fetch_or_default(guild_id, &mut storage.redis().clone()).await?;
+    let config: VerificationConfig = storage
+        .redis()
+        .guild_configs()
+        .fetch_or_default(guild_id)
+        .await?;
 
     if config.get_enabled() && config.has_role_id() {
         Ok(RoleId::new(config.get_role_id()))
@@ -54,25 +59,23 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         Err(err) => anyhow::bail!(err),
     };
 
-    let mut redis = client.storage().redis().clone();
-    let perms = CachedGuild::guild_permissions(
-        guild_id,
-        client.user_id(),
-        bot_roles.iter().cloned(),
-        &mut redis,
-    )
-    .await?;
+    let redis = client.storage().redis();
+    let mut guild = redis.guild(guild_id);
+    let perms = guild
+        .guild_permissions(client.user_id(), bot_roles.iter().cloned())
+        .await?;
     if !perms.contains(Permissions::MANAGE_ROLES) {
         return Ok(());
     }
 
     let user_roles = match get_roles(client.storage(), guild_id, user_id).await {
-        Ok(roles) => CachedGuild::role_set(guild_id, &roles, &mut redis).await?,
+        Ok(roles) => guild.role_set(&roles).await?,
         Err(hourai_sql::Error::RowNotFound) => return Ok(()),
         Err(err) => anyhow::bail!(err),
     };
 
-    let max_role = CachedGuild::role_set(guild_id, &bot_roles, &mut redis)
+    let max_role = guild
+        .role_set(&bot_roles)
         .await?
         .highest()
         .cloned()

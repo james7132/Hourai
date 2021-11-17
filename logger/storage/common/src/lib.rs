@@ -16,7 +16,7 @@ use hourai::{
     },
     proto::cache::CachedRoleProto,
 };
-use hourai_redis::{CachedGuild, OnlineStatus, RedisPool};
+use hourai_redis::RedisClient;
 use hourai_sql::{Member, SqlPool};
 use rand::Rng;
 use std::collections::HashSet;
@@ -31,9 +31,11 @@ pub fn is_moderator_role(role: &CachedRoleProto) -> bool {
 
 pub async fn find_moderator_roles(
     guild_id: GuildId,
-    redis: &mut RedisPool,
+    redis: &RedisClient,
 ) -> Result<Vec<CachedRoleProto>> {
-    Ok(CachedGuild::fetch_all_resources::<Role>(guild_id, redis)
+    Ok(redis
+        .guild(guild_id)
+        .fetch_all_resources::<Role>()
         .await?
         .into_values()
         .filter(is_moderator_role)
@@ -43,7 +45,7 @@ pub async fn find_moderator_roles(
 pub async fn find_moderators(
     guild_id: GuildId,
     sql: &SqlPool,
-    redis: &mut RedisPool,
+    redis: &RedisClient,
 ) -> Result<Vec<Member>> {
     let mod_roles: Vec<RoleId> = find_moderator_roles(guild_id, redis)
         .await?
@@ -61,12 +63,13 @@ pub async fn find_moderators(
 pub async fn find_online_moderators(
     guild_id: GuildId,
     sql: &SqlPool,
-    redis: &mut RedisPool,
+    redis: &RedisClient,
 ) -> Result<Vec<Member>> {
     let mods = find_moderators(guild_id, sql, redis).await?;
-    let online =
-        OnlineStatus::find_online(guild_id, mods.iter().map(|member| member.user_id()), redis)
-            .await?;
+    let online = redis
+        .online_status()
+        .find_online(guild_id, mods.iter().map(|member| member.user_id()))
+        .await?;
     Ok(mods
         .into_iter()
         .filter(|member| online.contains(&member.user_id()))
@@ -74,9 +77,11 @@ pub async fn find_online_moderators(
 }
 
 pub async fn ping_online_mod(guild_id: GuildId, storage: &Storage) -> Result<(String, String)> {
-    let mut redis = storage.redis().clone();
-    let online_mods = find_online_moderators(guild_id, storage.sql(), &mut redis).await?;
-    let guild = CachedGuild::fetch_resource::<Guild>(guild_id, guild_id, &mut redis)
+    let online_mods = find_online_moderators(guild_id, storage.sql(), storage.redis()).await?;
+    let guild = storage
+        .redis()
+        .guild(guild_id)
+        .fetch_resource::<Guild>(guild_id)
         .await?
         .ok_or(InteractionError::NotInGuild)?;
 
@@ -97,7 +102,7 @@ pub async fn ping_online_mod(guild_id: GuildId, storage: &Storage) -> Result<(St
 pub async fn is_moderator(
     guild_id: GuildId,
     mut roles: impl Iterator<Item = RoleId>,
-    redis: &mut RedisPool,
+    redis: &RedisClient,
 ) -> Result<bool> {
     let moderator_roles: HashSet<RoleId> = find_moderator_roles(guild_id, redis)
         .await?

@@ -38,7 +38,7 @@ use hyper::{
     service::Service,
     Body, Request,
 };
-use std::{collections::HashMap, convert::TryFrom, str::FromStr};
+use std::{convert::TryFrom, str::FromStr};
 use twilight_command_parser::{CommandParserConfig, Parser};
 use twilight_lavalink::{model::*, Lavalink};
 
@@ -85,8 +85,8 @@ async fn main() {
     };
 
     let http_client = Arc::new(init::http_client(&config));
-    let mut redis = hourai_redis::init(&config).await;
-    let sessions = ResumeState::get_sessions(RESUME_KEY, &mut redis).await;
+    let redis = hourai_redis::init(&config).await;
+    let sessions = redis.resume_states().get_sessions(RESUME_KEY).await;
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
@@ -146,7 +146,10 @@ async fn main() {
     }
 
     info!("Shutting down gateway...");
-    let result = ResumeState::save_sessions(RESUME_KEY, gateway.down_resumable(), &mut redis).await;
+    let result = redis
+        .resume_states()
+        .save_sessions(RESUME_KEY, gateway.down_resumable())
+        .await;
     if let Err(err) = result {
         tracing::error!("Error while shutting down cluster: {} ({:?})", err, err);
     }
@@ -162,7 +165,7 @@ pub struct Client<'a> {
     pub lavalink: Arc<twilight_lavalink::Lavalink>,
     pub states: Arc<DashMap<GuildId, PlayerState>>,
     pub resolver: GaiResolver,
-    pub redis: RedisPool,
+    pub redis: RedisClient,
     pub parser: Parser<'a>,
 }
 
@@ -248,11 +251,8 @@ impl Client<'static> {
             return Ok(());
         }
 
-        let mut conn = self.redis.clone();
         let exists: std::result::Result<bool, _> =
-            hourai_redis::MusicQueue::has_saved_state(evt.id)
-                .query_async(&mut conn)
-                .await;
+            self.redis.music_queues().has_saved_state(evt.id).await;
         if exists.unwrap_or(false) {
             self.states.insert(evt.id, PlayerState::new());
             let state = self.load_state(evt.id).await?;
@@ -337,22 +337,21 @@ impl Client<'static> {
 
     /// Gets the music config for a server.
     pub async fn get_config(&self, guild_id: GuildId) -> Result<MusicConfig> {
-        let mut conn = self.redis.clone();
-        let config: MusicConfig = GuildConfig::fetch_or_default(guild_id, &mut conn).await?;
+        let config: MusicConfig = self
+            .redis
+            .guild_configs()
+            .fetch_or_default(guild_id)
+            .await?;
         Ok(config)
     }
 
     /// Sets the music config for the sever.
     pub async fn set_config(&self, guild_id: GuildId, config: MusicConfig) -> Result<()> {
-        let mut conn = self.redis.clone();
-        GuildConfig::set::<MusicConfig>(guild_id, config)
-            .query_async(&mut conn)
-            .await?;
+        self.redis.guild_configs().set(guild_id, config).await?;
         Ok(())
     }
 
     pub async fn save_state(&self, guild_id: GuildId) -> Result<()> {
-        let mut conn = self.redis.clone();
         let state = self
             .states
             .get(&guild_id)
@@ -367,21 +366,16 @@ impl Client<'static> {
             if let Some(channel_id) = channel_id {
                 state.set_channel_id(channel_id.get());
             }
-            hourai_redis::MusicQueue::save(guild_id, state)
-                .query_async(&mut conn)
-                .await?;
+            self.redis.music_queues().save(guild_id, state).await?;
         } else {
-            hourai_redis::MusicQueue::clear(guild_id)
-                .query_async(&mut conn)
-                .await?;
+            self.redis.music_queues().clear(guild_id).await?;
         }
         tracing::info!("Saved player state for guild {}", guild_id);
         Ok(())
     }
 
     pub async fn load_state(&self, guild_id: GuildId) -> Result<MusicStateProto> {
-        let mut conn = self.redis.clone();
-        let state = hourai_redis::MusicQueue::load(guild_id, &mut conn).await?;
+        let state = self.redis.music_queues().load(guild_id).await?;
         self.mutate_state(guild_id, |player| {
             player.load_from_proto(state.clone());
         });
@@ -424,14 +418,8 @@ impl Client<'static> {
     /// If not in a voice channel, returns 0.
     pub async fn count_listeners(&self, guild_id: GuildId) -> Result<usize> {
         Ok(if let Some(channel_id) = self.get_channel(guild_id) {
-            let mut redis = self.redis.clone();
-            let states: HashMap<u64, u64> = hourai_redis::CachedVoiceState::get_channels(guild_id)
-                .query_async(&mut redis)
-                .await?;
-            states
-                .into_iter()
-                .filter(|(_, v)| *v == channel_id.get())
-                .count()
+            let states = self.redis.voice_states().get_channels(guild_id).await?;
+            states.into_iter().filter(|(_, v)| *v == channel_id).count()
         } else {
             0
         })

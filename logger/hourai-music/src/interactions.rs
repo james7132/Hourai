@@ -100,13 +100,13 @@ async fn require_in_voice_channel(
     client: &Client<'static>,
     ctx: &impl InteractionContext,
 ) -> Result<(GuildId, ChannelId)> {
-    let mut redis = client.redis.clone();
     let guild_id = ctx.guild_id()?;
     let user_id = ctx.user().id;
-    let user: Option<u64> = hourai_redis::CachedVoiceState::get_channel(guild_id, user_id)
-        .query_async(&mut redis)
+    let user: Option<ChannelId> = client
+        .redis
+        .voice_states()
+        .get_channel(guild_id, user_id)
         .await?;
-    let user = user.and_then(ChannelId::new);
     let bot = client.get_channel(guild_id);
     if bot.is_some() && user != bot {
         bail!(InteractionError::FailedPrecondition(

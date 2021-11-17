@@ -13,7 +13,6 @@ use hourai::{
     models::user::User,
     proto::action::{Action, ActionSet},
 };
-use hourai_redis::GuildConfig;
 use hourai_sql::{EscalationEntry, Executor, PendingDeescalation};
 use std::{
     cmp::{max, min},
@@ -70,8 +69,12 @@ impl EscalationManager {
     }
 
     pub async fn guild(&self, guild_id: GuildId) -> Result<GuildEscalationManager> {
-        let config: ModerationConfig =
-            GuildConfig::fetch_or_default(guild_id, &mut self.storage().redis().clone()).await?;
+        let config: ModerationConfig = self
+            .storage()
+            .redis()
+            .guild_configs()
+            .fetch_or_default(guild_id)
+            .await?;
 
         Ok(GuildEscalationManager {
             guild_id,
@@ -297,9 +300,12 @@ impl EscalationHistory {
     }
 
     async fn log_to_modlog(&self, escalation: &Escalation, diff: i64) -> Result<()> {
-        let config: LoggingConfig =
-            GuildConfig::fetch_or_default(self.guild_id(), &mut self.storage().redis().clone())
-                .await?;
+        let config: LoggingConfig = self
+            .storage()
+            .redis()
+            .guild_configs()
+            .fetch_or_default(self.guild_id())
+            .await?;
         if let Some(modlog_id) = ChannelId::new(config.get_modlog_channel_id()) {
             let arrow = if diff > 0 { "up" } else { "down" };
             let esc = if diff > 0 { "escalated" } else { "deescalated" };

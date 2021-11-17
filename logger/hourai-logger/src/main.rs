@@ -93,7 +93,11 @@ async fn main() {
         warn!("Failed to update global commands: {:?}", err);
     }
 
-    let sessions = ResumeState::get_sessions(RESUME_KEY, &mut storage.redis().clone()).await;
+    let sessions = storage
+        .redis()
+        .resume_states()
+        .get_sessions(RESUME_KEY)
+        .await;
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
@@ -167,34 +171,29 @@ async fn main() {
     }
 
     info!("Shutting down gateway...");
-    let result = ResumeState::save_sessions(
-        RESUME_KEY,
-        gateway.down_resumable(),
-        &mut storage.redis().clone(),
-    )
-    .await;
+    let result = storage
+        .redis()
+        .resume_states()
+        .save_sessions(RESUME_KEY, gateway.down_resumable())
+        .await;
     if let Err(err) = result {
         tracing::error!("Error while shutting down cluster: {} ({:?})", err, err);
     }
     info!("Client stopped.");
 }
 
-async fn flush_online(cache: InMemoryCache, mut redis: RedisPool) {
+async fn flush_online(cache: InMemoryCache, redis: RedisClient) {
+    let mut online_status = redis.online_status();
     loop {
-        let mut pipeline = OnlineStatus::new();
         for guild_id in cache.guilds() {
             let presences = match cache.guild_online(guild_id) {
                 Some(p) => p,
                 _ => continue,
             };
-            pipeline.set_online(guild_id, presences);
-        }
-        let result = pipeline
-            .build()
-            .query_async::<RedisPool, ()>(&mut redis)
-            .await;
-        if let Err(err) = result {
-            error!("Error while flushing statuses: {} ({:?})", err, err);
+            let result = online_status.set_online(guild_id, presences).await;
+            if let Err(err) = result {
+                error!("Error while flushing statuses: {} ({:?})", err, err);
+            }
         }
         tokio::time::sleep(Duration::from_secs(60u64)).await;
     }
@@ -256,15 +255,9 @@ impl Client {
         let local_member = hourai_sql::Member::fetch(guild_id, user_id)
             .fetch_one(self.storage().sql())
             .await;
-        let mut redis = self.storage().redis().clone();
+        let mut guild = self.storage().redis().guild(guild_id);
         if let Ok(member) = local_member {
-            hourai_redis::CachedGuild::guild_permissions(
-                guild_id,
-                user_id,
-                member.role_ids(),
-                &mut redis,
-            )
-            .await
+            guild.guild_permissions(user_id, member.role_ids()).await
         } else {
             let roles = self
                 .http()
@@ -274,13 +267,7 @@ impl Client {
                 .model()
                 .await?
                 .roles;
-            hourai_redis::CachedGuild::guild_permissions(
-                guild_id,
-                user_id,
-                roles.into_iter(),
-                &mut redis,
-            )
-            .await
+            guild.guild_permissions(user_id, roles.into_iter()).await
         }
     }
 
@@ -478,9 +465,10 @@ impl Client {
     async fn on_channel_create(&self, evt: ChannelCreate) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
-                let mut redis = self.storage().redis().clone();
-                hourai_redis::CachedGuild::save_resource(guild_id, ch.id(), ch)
-                    .query_async(&mut redis)
+                self.storage()
+                    .redis()
+                    .guild(guild_id)
+                    .save_resource(ch.id(), ch)
                     .await?;
             }
         }
@@ -490,9 +478,10 @@ impl Client {
     async fn on_channel_update(&self, evt: ChannelUpdate) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
-                let mut redis = self.storage().redis().clone();
-                hourai_redis::CachedGuild::save_resource(guild_id, ch.id(), ch)
-                    .query_async(&mut redis)
+                self.storage()
+                    .redis()
+                    .guild(guild_id)
+                    .save_resource(ch.id(), ch)
                     .await?;
             }
         }
@@ -502,9 +491,10 @@ impl Client {
     async fn on_channel_delete(self, evt: ChannelDelete) -> Result<()> {
         if let Channel::Guild(ref ch) = evt.0 {
             if let Some(guild_id) = ch.guild_id() {
-                let mut redis = self.storage().redis().clone();
-                hourai_redis::CachedGuild::delete_resource::<GuildChannel>(guild_id, ch.id())
-                    .query_async(&mut redis)
+                self.storage()
+                    .redis()
+                    .guild(guild_id)
+                    .delete_resource::<GuildChannel>(ch.id())
                     .await?;
             }
         }
@@ -545,10 +535,7 @@ impl Client {
             }
         }
         if !evt.author.bot {
-            CachedMessage::new(evt)
-                .flush()
-                .query_async(&mut self.storage().redis().clone())
-                .await?;
+            self.storage().redis().messages().cache(evt).await?;
         }
         Ok(())
     }
@@ -558,8 +545,8 @@ impl Client {
         //if message_filter::check_message(&self.0.actions, &evt).await? {
         //return Ok(());
         //}
-        let mut redis = self.storage().redis().clone();
-        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut redis).await?;
+        let mut messages = self.storage().redis().messages();
+        let cached = messages.fetch(evt.channel_id, evt.id).await?;
         if let Some(mut msg) = cached {
             if let Some(content) = evt.content {
                 let before = msg.clone();
@@ -569,10 +556,7 @@ impl Client {
                     before.clone(),
                     msg,
                 ));
-                CachedMessage::new(before)
-                    .flush()
-                    .query_async(&mut redis)
-                    .await?;
+                messages.cache(before).await?;
             }
         }
 
@@ -605,8 +589,10 @@ impl Client {
 
     async fn on_message_delete(mut self, evt: MessageDelete) -> Result<()> {
         message_logging::on_message_delete(&mut self, &evt).await?;
-        CachedMessage::delete(evt.channel_id, evt.id)
-            .query_async(&mut self.storage().redis().clone())
+        self.storage()
+            .redis()
+            .messages()
+            .delete(evt.channel_id, evt.id)
             .await?;
         Ok(())
     }
@@ -616,8 +602,10 @@ impl Client {
             self.clone(),
             evt.clone(),
         ));
-        CachedMessage::bulk_delete(evt.channel_id, evt.ids)
-            .query_async(&mut self.storage().redis().clone())
+        self.storage()
+            .redis()
+            .messages()
+            .bulk_delete(evt.channel_id, evt.ids)
             .await?;
         Ok(())
     }
@@ -632,33 +620,26 @@ impl Client {
         }
 
         self.0.member_chunker.push_guild(guild.id);
-        let mut redis = self.storage().redis().clone();
-        hourai_redis::CachedGuild::save(&guild)
-            .query_async(&mut redis)
-            .await?;
-        hourai_redis::CachedVoiceState::update_guild(&guild)
-            .query_async(&mut redis)
-            .await?;
-
+        let redis = self.storage().redis();
+        redis.guild(guild.id).save(&guild).await?;
+        redis.voice_states().update_guild(&guild).await?;
         Ok(())
     }
 
     async fn on_guild_update(self, evt: GuildUpdate) -> Result<()> {
-        hourai_redis::CachedGuild::save_resource(evt.0.id, evt.0.id, &evt.0)
-            .query_async(&mut self.storage().clone())
+        self.storage()
+            .redis()
+            .guild(evt.0.id)
+            .save_resource(evt.0.id, &evt.0)
             .await?;
         Ok(())
     }
 
     async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
         info!("Left guild {}", evt.id);
-        let mut redis = self.storage().redis().clone();
-        hourai_redis::CachedGuild::delete(evt.id)
-            .query_async(&mut redis)
-            .await?;
-        hourai_redis::CachedVoiceState::clear_guild(evt.id)
-            .query_async(&mut redis)
-            .await?;
+        let redis = self.storage().redis();
+        redis.guild(evt.id).delete().await?;
+        redis.voice_states().clear_guild(evt.id).await?;
         let (res1, res2) = futures::join!(
             self.storage()
                 .execute(hourai_sql::Member::clear_guild(evt.id)),
@@ -670,15 +651,19 @@ impl Client {
     }
 
     async fn on_role_create(self, evt: RoleCreate) -> Result<()> {
-        hourai_redis::CachedGuild::save_resource(evt.guild_id, evt.role.id, &evt.role)
-            .query_async(&mut self.storage().redis().clone())
+        self.storage()
+            .redis()
+            .guild(evt.guild_id)
+            .save_resource(evt.role.id, &evt.role)
             .await?;
         Ok(())
     }
 
     async fn on_role_update(self, evt: RoleUpdate) -> Result<()> {
-        hourai_redis::CachedGuild::save_resource(evt.guild_id, evt.role.id, &evt.role)
-            .query_async(&mut self.storage().redis().clone())
+        self.storage()
+            .redis()
+            .guild(evt.guild_id)
+            .save_resource(evt.role.id, &evt.role)
             .await?;
         Ok(())
     }
@@ -688,8 +673,11 @@ impl Client {
             .storage()
             .execute(hourai_sql::Member::clear_role(evt.guild_id, evt.role_id))
             .await;
-        let res2 = hourai_redis::CachedGuild::delete_resource::<Role>(evt.guild_id, evt.role_id)
-            .query_async(&mut self.storage().redis().clone())
+        let res2 = self
+            .storage()
+            .redis()
+            .guild(evt.guild_id)
+            .delete_resource::<Role>(evt.role_id)
             .await;
         self.refresh_bans(evt.guild_id).await?;
         res?;
@@ -702,16 +690,11 @@ impl Client {
             Some(id) => id,
             None => return Ok(()),
         };
-        let mut redis = self.storage().redis().clone();
-        let channel_id: Option<u64> =
-            hourai_redis::CachedVoiceState::get_channel(guild_id, evt.0.user_id)
-                .query_async(&mut redis)
-                .await?;
-        let channel_id = channel_id.and_then(ChannelId::new);
+        let mut voice_state = self.storage().redis().voice_states();
+        let channel_id: Option<ChannelId> =
+            voice_state.get_channel(guild_id, evt.0.user_id).await?;
         announcements::on_voice_update(&self, evt.0.clone(), channel_id).await?;
-        hourai_redis::CachedVoiceState::save(&evt.0)
-            .query_async(&mut redis)
-            .await?;
+        voice_state.save(&evt.0).await?;
         Ok(())
     }
 

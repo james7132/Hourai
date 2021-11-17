@@ -1,7 +1,7 @@
 use either::Either;
 use futures::{future::Future, stream::Stream};
 use hourai::config::HouraiConfig;
-use hourai_redis::{aio::ConnectionLike, Cmd, Pipeline, RedisFuture, RedisPool, Value};
+use hourai_redis::RedisClient;
 use hourai_sql::{
     database::HasStatement, Database, Error as SqlxError, Execute, Executor, SqlDatabase, SqlPool,
 };
@@ -14,11 +14,11 @@ use std::{
 #[derive(Clone)]
 pub struct Storage {
     sql: SqlPool,
-    redis: RedisPool,
+    redis: RedisClient,
 }
 
 impl Storage {
-    pub fn new(sql: SqlPool, redis: RedisPool) -> Self {
+    pub fn new(sql: SqlPool, redis: RedisClient) -> Self {
         Self { sql, redis }
     }
 
@@ -35,7 +35,7 @@ impl Storage {
     }
 
     #[inline(always)]
-    pub fn redis(&self) -> &RedisPool {
+    pub fn redis(&self) -> &RedisClient {
         &self.redis
     }
 }
@@ -82,24 +82,6 @@ impl<'c> Executor<'c> for &Storage {
             ) -> Pin<Box<dyn Future<Output=Result<Describe<Self::Database>, SqlxError>> + Send + 'e>>
             where
                 'c: 'e;
-        }
-    }
-}
-
-impl ConnectionLike for Storage {
-    delegate! {
-        to self.redis {
-            fn req_packed_command<'a>(
-                &'a mut self,
-                cmd: &'a Cmd
-            ) -> RedisFuture<'a, Value>;
-            fn req_packed_commands<'a>(
-                &'a mut self,
-                cmd: &'a Pipeline,
-                offset: usize,
-                count: usize
-            ) -> RedisFuture<'a, Vec<Value>>;
-            fn get_db(&self) -> i64;
         }
     }
 }

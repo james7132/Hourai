@@ -5,15 +5,13 @@ use hourai::{
     models::{
         channel::message::Message,
         guild::Permissions,
-        id::{ChannelId, MessageId, UserId},
+        id::{ChannelId, MessageId},
         user::User,
     },
     proto::action::{Action, BanMember_Type, StatusType},
 };
-use hourai_redis::CachedGuild;
 use regex::Regex;
 use std::{
-    collections::HashMap,
     sync::Arc,
     time::Duration,
     time::{SystemTime, UNIX_EPOCH},
@@ -54,8 +52,11 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
     let action = if soft { "Softbanned" } else { "Banned" };
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
     let storage = executor.storage();
-    let authorizer_roles =
-        CachedGuild::role_set(guild_id, &authorizer.roles, &mut storage.redis().clone()).await?;
+    let authorizer_roles = storage
+        .redis()
+        .guild(guild_id)
+        .role_set(&authorizer.roles)
+        .await?;
 
     // TODO(james7132): Properly display the errors.
     let users: Vec<_> = ctx.all_users("user").collect();
@@ -78,9 +79,11 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
 
     for user_id in users.iter() {
         if let Some(member) = ctx.resolve_member(*user_id) {
-            let roles =
-                CachedGuild::role_set(guild_id, &member.roles, &mut storage.redis().clone())
-                    .await?;
+            let roles = storage
+                .redis()
+                .guild(guild_id)
+                .role_set(&member.roles)
+                .await?;
             if roles >= authorizer_roles {
                 errors.push(format!(
                     "{}: Has higher roles, not authorized to {}.",
@@ -109,8 +112,8 @@ pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Resp
     }
 
     let authorizer = ctx.command.member.as_ref().expect("Command without user.");
-    let authorizer_roles =
-        CachedGuild::role_set(guild_id, &authorizer.roles, &mut storage.redis().clone()).await?;
+    let mut guild = storage.redis().guild(guild_id);
+    let authorizer_roles = guild.role_set(&authorizer.roles).await?;
     let reason = build_reason(
         "Kicked",
         authorizer.user.as_ref().unwrap(),
@@ -121,9 +124,7 @@ pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Resp
     let mut errors = Vec::new();
     for member_id in members.iter() {
         if let Some(member) = ctx.resolve_member(*member_id) {
-            let roles =
-                CachedGuild::role_set(guild_id, &member.roles, &mut storage.redis().clone())
-                    .await?;
+            let roles = guild.role_set(&member.roles).await?;
             if roles >= authorizer_roles {
                 errors.push(format!(
                     "{}: Has higher or equal roles, not authorized to kick.",
@@ -282,8 +283,10 @@ pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<
         ctx.get_string("reason").ok(),
     );
 
-    let states: HashMap<u64, u64> = hourai_redis::CachedVoiceState::get_channels(guild_id)
-        .query_async(&mut storage.redis().clone())
+    let states = storage
+        .redis()
+        .voice_states()
+        .get_channels(guild_id)
         .await?;
 
     let src = ctx.get_channel("src")?;
@@ -292,22 +295,20 @@ pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<
     let mut success = 0;
     let mut errors = Vec::new();
     for (user_id, channel_id) in states {
-        if ChannelId::new(channel_id) != Some(src) {
+        if channel_id != src {
             continue;
         }
-        if let Some(user_id) = UserId::new(user_id) {
-            let request = ctx
-                .http
-                .update_guild_member(guild_id, user_id)
-                .channel_id(Some(dst))
-                .reason(&reason)
-                .unwrap();
-            if let Err(err) = request.exec().await {
-                tracing::error!("Error while running /mute on {}: {}", user_id, err);
-                errors.push(format!("{}: {}", user_id, err));
-            } else {
-                success += 1;
-            }
+        let request = ctx
+            .http
+            .update_guild_member(guild_id, user_id)
+            .channel_id(Some(dst))
+            .reason(&reason)
+            .unwrap();
+        if let Err(err) = request.exec().await {
+            tracing::error!("Error while running /move on {}: {}", user_id, err);
+            errors.push(format!("{}: {}", user_id, err));
+        } else {
+            success += 1;
         }
     }
 

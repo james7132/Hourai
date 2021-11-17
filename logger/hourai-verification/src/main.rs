@@ -16,7 +16,7 @@ use hourai::{
     models::{guild::Member, id::GuildId},
     proto::guild_configs::VerificationConfig,
 };
-use hourai_redis::{GuildConfig, ResumeState};
+
 use hourai_storage::Storage;
 use std::sync::Arc;
 use verifier::BoxedVerifier;
@@ -30,7 +30,11 @@ async fn main() {
     let config = config::load_config(config::get_config_path().as_ref());
     init::init(&config);
     let storage = Storage::init(&config).await;
-    let sessions = ResumeState::get_sessions(RESUME_KEY, &mut storage.redis().clone()).await;
+    let sessions = storage
+        .redis()
+        .resume_states()
+        .get_sessions(RESUME_KEY)
+        .await;
     let http = Arc::new(init::http_client(&config));
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
         .shard_scheme(ShardScheme::Auto)
@@ -63,12 +67,11 @@ async fn main() {
     }
 
     tracing::info!("Shutting down gateway...");
-    let result = ResumeState::save_sessions(
-        RESUME_KEY,
-        gateway.down_resumable(),
-        &mut storage.redis().clone(),
-    )
-    .await;
+    let result = storage
+        .redis()
+        .resume_states()
+        .save_sessions(RESUME_KEY, gateway.down_resumable())
+        .await;
     if let Err(err) = result {
         tracing::error!("Error while shutting down cluster: {} ({:?})", err, err);
     }
@@ -98,18 +101,21 @@ impl Client {
 
     async fn on_member_add(&self, evt: Member) -> Result<()> {
         if !evt.pending {}
-        let config = self.get_config(evt.guild_id).await?;
+        let _config = self.get_config(evt.guild_id).await?;
         Ok(())
     }
 
-    async fn on_member_join(&self, evt: Member) -> Result<()> {
+    async fn on_member_join(&self, _evt: Member) -> Result<()> {
         Ok(())
     }
 
     async fn get_config(&self, guild_id: GuildId) -> Result<VerificationConfig> {
-        let config =
-            GuildConfig::fetch_or_default(guild_id, &mut self.storage.redis().clone()).await?;
-        Ok(config)
+        Ok(self
+            .storage
+            .redis()
+            .guild_configs()
+            .fetch_or_default(guild_id)
+            .await?)
     }
 
     fn make_verifiers(&self) -> Vec<BoxedVerifier> {

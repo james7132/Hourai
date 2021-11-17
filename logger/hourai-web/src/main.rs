@@ -11,7 +11,7 @@ pub(crate) struct AppState {
     config: hourai::config::HouraiConfig,
     http: awc::Client,
     sql: hourai_sql::SqlPool,
-    redis: hourai_redis::RedisPool,
+    redis: hourai_redis::RedisClient,
 }
 
 pub fn api(cfg: &mut web::ServiceConfig) {

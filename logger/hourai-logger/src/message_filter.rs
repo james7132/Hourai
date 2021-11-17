@@ -5,7 +5,7 @@ use hourai::{
     models::{id::ChannelId, message::MessageLike, user::UserLike, Snowflake},
     util::mentions,
 };
-use hourai_redis::{CachedMessage, GuildConfig};
+
 use hourai_sql::Member;
 use hourai_storage::actions::ActionExecutor;
 use regex::{Regex, RegexSet};
@@ -27,15 +27,14 @@ pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike
     } else {
         return Ok(false);
     };
-    let mut storage = executor.storage().clone();
-    let config: ModerationConfig = GuildConfig::fetch_or_default(guild_id, &mut storage).await?;
+    let redis = executor.storage().redis();
+    let config: ModerationConfig = redis.guild_configs().fetch_or_default(guild_id).await?;
 
-    let mut redis = storage.redis().clone();
     let member = Member::fetch(guild_id, message.author().id())
         .fetch_one(executor.storage())
         .await;
     let moderator = if let Ok(member) = member {
-        hourai_storage::is_moderator(guild_id, member.role_ids(), &mut redis).await?
+        hourai_storage::is_moderator(guild_id, member.role_ids(), redis).await?
     } else {
         false
     };
@@ -104,8 +103,11 @@ async fn apply_rule(
         ));
 
         // Delete the message from the cache to avoid logging it when it gets deleted.
-        CachedMessage::delete(message.channel_id(), message.id())
-            .query_async(&mut executor.storage().clone())
+        executor
+            .storage()
+            .redis()
+            .messages()
+            .delete(message.channel_id(), message.id())
             .await?;
 
         let http = executor.http().clone();
@@ -162,9 +164,12 @@ async fn apply_rule(
             reasons.join("\n   - ")
         );
 
-        let config: LoggingConfig =
-            GuildConfig::fetch_or_default(guild_id, &mut executor.storage().redis().clone())
-                .await?;
+        let config: LoggingConfig = executor
+            .storage()
+            .redis()
+            .guild_configs()
+            .fetch_or_default(guild_id)
+            .await?;
         if let Some(modlog_id) = ChannelId::new(config.get_modlog_channel_id()) {
             executor
                 .http()

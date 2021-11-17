@@ -10,7 +10,6 @@ use hourai::models::{
 };
 use hourai::proto::guild_configs::*;
 use hourai::proto::util::IdFilter;
-use hourai_redis::{CachedMessage, GuildConfig};
 use twilight_embed_builder::*;
 
 fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
@@ -75,8 +74,8 @@ pub(super) async fn on_message_update(
         return Ok(());
     }
     let guild_id = before.guild_id().ok_or_else(|| anyhow!("Not in guild."))?;
-    let mut redis = client.storage().redis().clone();
-    let config: LoggingConfig = GuildConfig::fetch_or_default(guild_id, &mut redis).await?;
+    let redis = client.storage().redis();
+    let config: LoggingConfig = redis.guild_configs().fetch_or_default(guild_id).await?;
     let type_config = config.get_edited_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, before.channel_id()) {
@@ -99,12 +98,12 @@ pub(super) async fn on_message_update(
 
 pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) -> Result<()> {
     let guild_id = evt.guild_id.ok_or_else(|| anyhow!("Not in guild."))?;
-    let mut redis = client.storage().redis().clone();
-    let config: LoggingConfig = GuildConfig::fetch_or_default(guild_id, &mut redis).await?;
+    let redis = client.storage().redis();
+    let config: LoggingConfig = redis.guild_configs().fetch_or_default(guild_id).await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {
-        let cached = CachedMessage::fetch(evt.channel_id, evt.id, &mut redis).await?;
+        let cached = redis.messages().fetch(evt.channel_id, evt.id).await?;
         if let Some(msg) = cached {
             if msg.author().bot() {
                 return Ok(());
@@ -129,8 +128,8 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
 
 pub(super) async fn on_message_bulk_delete(client: Client, evt: MessageDeleteBulk) -> Result<()> {
     let guild_id = evt.guild_id.ok_or_else(|| anyhow!("Not in guild."))?;
-    let mut redis = client.storage().redis().clone();
-    let config: LoggingConfig = GuildConfig::fetch_or_default(guild_id, &mut redis).await?;
+    let redis = client.storage().redis();
+    let config: LoggingConfig = redis.guild_configs().fetch_or_default(guild_id).await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
     if output_channel.is_some() && should_log(type_config, evt.channel_id) {

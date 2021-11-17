@@ -1,7 +1,7 @@
 use crate::{prelude::*, AppState};
 use actix_web::{http::StatusCode, web};
 use hourai::{models::id::GuildId, proto::auto_config::*, proto::guild_configs::*};
-use hourai_redis::{CachedGuildConfig, GuildConfig};
+use hourai_redis::CachedGuildConfig;
 
 async fn get_config<T>(
     data: web::Data<AppState>,
@@ -12,7 +12,10 @@ where
 {
     // TODO(james7132): Properly set up authN and authZ for this
     if let Some(guild_id) = GuildId::new(path.into_inner()) {
-        let proto: Option<T> = GuildConfig::fetch(guild_id, &mut data.redis.clone())
+        let proto: Option<T> = data
+            .redis
+            .guild_configs()
+            .fetch(guild_id)
             .await
             .map_err(|_| WebError::GenericHTTPError(StatusCode::NOT_FOUND))?;
         Ok(proto.map(web::Json))

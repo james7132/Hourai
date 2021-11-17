@@ -1,4 +1,3 @@
-use crate::prelude::*;
 use crate::Client;
 use anyhow::Result;
 use hourai::models::channel::Message;

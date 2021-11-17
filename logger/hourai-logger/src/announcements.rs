@@ -6,12 +6,11 @@ use hourai::models::id::*;
 use hourai::models::user::User;
 use hourai::models::voice::VoiceState;
 use hourai::proto::guild_configs::*;
-use hourai_redis::GuildConfig;
 use hourai_storage::Storage;
 use std::sync::Arc;
 
 async fn get_config(storage: &Storage, guild_id: GuildId) -> Result<Option<AnnouncementConfig>> {
-    Ok(GuildConfig::fetch(guild_id, &mut storage.redis().clone()).await?)
+    Ok(storage.redis().guild_configs().fetch(guild_id).await?)
 }
 
 pub async fn on_member_join(client: &Client, guild: GuildId, user: User) -> Result<()> {
@@ -46,18 +45,18 @@ pub async fn on_voice_update(
     state: VoiceState,
     before: Option<ChannelId>,
 ) -> Result<()> {
-    let guild = match state.guild_id {
+    let guild_id = match state.guild_id {
         Some(guild) => guild,
         None => return Ok(()),
     };
-    let mut redis = client.storage().redis().clone();
+    let mut guild = client.storage().redis().guild(guild_id);
     let before_channel = if let Some(id) = before {
-        hourai_redis::CachedGuild::fetch_resource::<GuildChannel>(guild, id, &mut redis).await?
+        guild.fetch_resource::<GuildChannel>(id).await?
     } else {
         None
     };
     let after_channel = if let Some(id) = state.channel_id {
-        hourai_redis::CachedGuild::fetch_resource::<GuildChannel>(guild, id, &mut redis).await?
+        guild.fetch_resource::<GuildChannel>(id).await?
     } else {
         None
     };
@@ -68,7 +67,7 @@ pub async fn on_voice_update(
         Some(member) => member.user.name,
         None => return Ok(()),
     };
-    if let Some(config) = get_config(client.storage(), guild).await? {
+    if let Some(config) = get_config(client.storage(), guild_id).await? {
         // TODO(james7132): let this be customizable.
         let msg = match (before_channel, after_channel) {
             (Some(b), Some(a)) => {

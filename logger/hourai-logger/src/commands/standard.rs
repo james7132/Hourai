@@ -3,7 +3,6 @@ use hourai::{
     models::{channel::message::allowed_mentions::AllowedMentions, id::ChannelId},
     proto::guild_configs::LoggingConfig,
 };
-use hourai_redis::GuildConfig;
 use rand::Rng;
 
 pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
@@ -18,8 +17,11 @@ pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
 
 pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     let guild_id = ctx.guild_id()?;
-    let config: LoggingConfig =
-        GuildConfig::fetch_or_default(guild_id, &mut storage.clone()).await?;
+    let config: LoggingConfig = storage
+        .redis()
+        .guild_configs()
+        .fetch_or_default(guild_id)
+        .await?;
     let (mention, ping) = hourai_storage::ping_online_mod(guild_id, storage).await?;
 
     let content = ctx
