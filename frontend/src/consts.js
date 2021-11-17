@@ -15,7 +15,7 @@ export default {
   links: {
     status: "https://status.hourai.gg/",
     docs: "https://docs.hourai.gg/",
-    bot: `${oauthLink}?client_id=${apiConfig.clientId}&scope=bot`
+    bot: `${oauthLink}?client_id=${apiConfig.clientId}&scope=bot%20applications.commands`
   },
   auth: {
     token_key: "access_token",
