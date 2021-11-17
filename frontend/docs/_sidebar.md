@@ -2,6 +2,7 @@
 - [Getting Started](Getting-Started.md)
 - **Basic Features**
   - [Commands](Commands.md)
+  - [Slash Commands](Slash-Commands.md)
   - [Music](Music.md)
 - **Advanced Features**
   - [Verification](Verification.md)
