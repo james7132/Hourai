@@ -1,6 +1,6 @@
 # Slash Commands
 
-[Slash Commands](slash-commands) are a new first-party way of using commands on
+[Slash Commands][slash-commands] are a new first-party way of using commands on
 Discord. The available slash commands are listed here, many of which have
 [normal command](Commands.md) parallels.
 
@@ -13,7 +13,7 @@ calling user must have the specified Discord permissions.
 
 !> Slash Commands must be explicitly enabled on a server when the bot is joins.
 If typing `/` in chat does not bring up a prompt to use these commands with the
-bot, please use this [link](authorize) to authorize use of these commands.
+bot, please use this [link][authorize] to authorize use of these commands.
 
 ## Standard Commands
 

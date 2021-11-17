@@ -120,24 +120,3 @@ joins into a server. For more detailed information, please see
 |`~validation verify <user>`|Moderator|Runs validation checks on a member who has already joined the server.|
 |`~validation lockdown <timerange>`|Moderator|Temporarily forces all new joins to be manually verified. Good for countering raids.|
 |`~validation disable`|Moderator|Disables verification on the server.|
-
-## Music Commands
-
-!> If a text channel is configured for the music features (default: #music-bot),
-these commands can only be used in that channel.
-
-|Command|Permissions|Description|
-|:------|:----------|:----------|
-|`~play <query|url>`|None|Adds a piece of music to the music queue.|
-|`~nowplaying`|None|Displays a live updating UI with information about the currently playing song.|
-|`~queue`|None|Displays a live updating UI with information about the songs currently in the queue.|
-|`~skip`|None|Casts a vote to skip the current song. Over 50% of the current users in the voice channel must vote to skip before the song is skipped.|
-
-## DJ Commands
-
-|Command|Permissions|Description|
-|:------|:----------|:----------|
-|`~pause`|DJs|Pauses playback from the bot. Use `~play` to resume playback.|
-|`~volume <vol>`|DJs|Changes the volume of the playback. Range is 0-150.|
-|`~forceskip`|DJs|Forcibly skipss the currently playing song, regardless of how many votes to skip have been cast.|
-|`~stop`|DJs|Stop playing music, clears the queue, and has the bot leave the voice channel.|
