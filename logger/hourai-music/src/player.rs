@@ -1,4 +1,4 @@
-use crate::{interaction_ui, queue::MusicQueue, track::*, ui};
+use crate::{interaction_ui, queue::MusicQueue, track::*};
 use anyhow::Result;
 use hourai::{models::id::UserId, proto::music_bot::*};
 use std::collections::HashSet;
@@ -7,10 +7,8 @@ use twilight_lavalink::model::*;
 pub struct PlayerState {
     pub skip_votes: HashSet<UserId>,
     pub queue: MusicQueue<UserId, Track>,
-    pub now_playing_ui: Option<ui::MessageUI>,
-    pub queue_ui: Option<ui::MessageUI>,
-    pub now_playing_ui_slash: Option<interaction_ui::MessageUI>,
-    pub queue_ui_slash: Option<interaction_ui::MessageUI>,
+    pub now_playing_ui: Option<interaction_ui::MessageUI>,
+    pub queue_ui: Option<interaction_ui::MessageUI>,
 
     pub queue_page: i64,
 }
@@ -22,8 +20,6 @@ impl PlayerState {
             queue: MusicQueue::new(),
             now_playing_ui: None,
             queue_ui: None,
-            now_playing_ui_slash: None,
-            queue_ui_slash: None,
             queue_page: 0,
         }
     }

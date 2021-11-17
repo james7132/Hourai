@@ -3,7 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use hourai::cache::InMemoryCache;
 use hourai::models::id::UserId;
-use hourai::models::user::{User, UserFlags};
+use hourai::models::user::{PremiumType, User, UserFlags};
 use std::collections::HashSet;
 
 const VERIFIED_FEATURE: &str = "VERIFIED";
@@ -41,16 +41,21 @@ impl Verifier for DistinguishedUserVerifier {
 }
 
 pub fn user_has_nitro(user: &User) -> bool {
+    let premium = user
+        .premium_type
+        .map(|premium| premium != PremiumType::None)
+        .unwrap_or(false);
     let flag = user
-        .flags
+        .public_flags
         .map(|f| f.contains(UserFlags::EARLY_SUPPORTER))
         .unwrap_or(false);
+    let has_banner = user.banner.is_some();
     let animated = user
         .avatar
         .as_ref()
         .map(|a| a.starts_with("a_"))
         .unwrap_or(false);
-    flag || animated
+    premium || has_banner || flag || animated
 }
 
 pub(super) fn nitro() -> BoxedVerifier {

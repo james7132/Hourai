@@ -6,7 +6,6 @@ mod player;
 mod prelude;
 mod queue;
 mod track;
-mod ui;
 
 use crate::{
     player::PlayerState,
@@ -250,9 +249,10 @@ impl Client<'static> {
         }
 
         let mut conn = self.redis.clone();
-        let exists: std::result::Result<bool, _> = hourai_redis::MusicQueue::has_saved_state(evt.id)
-            .query_async(&mut conn)
-            .await;
+        let exists: std::result::Result<bool, _> =
+            hourai_redis::MusicQueue::has_saved_state(evt.id)
+                .query_async(&mut conn)
+                .await;
         if exists.unwrap_or(false) {
             self.states.insert(evt.id, PlayerState::new());
             let state = self.load_state(evt.id).await?;
@@ -353,9 +353,13 @@ impl Client<'static> {
 
     pub async fn save_state(&self, guild_id: GuildId) -> Result<()> {
         let mut conn = self.redis.clone();
-        let state = self.states.get(&guild_id).map(|kv| kv.value().save_to_proto());
+        let state = self
+            .states
+            .get(&guild_id)
+            .map(|kv| kv.value().save_to_proto());
         if let Some(mut state) = state {
-            let channel_id = self.lavalink
+            let channel_id = self
+                .lavalink
                 .players()
                 .get(&guild_id)
                 .map(|kv| kv.channel_id())

@@ -258,8 +258,6 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
                     queue: state_queue,
                     now_playing_ui: None,
                     queue_ui: None,
-                    now_playing_ui_slash: None,
-                    queue_ui_slash: None,
                     queue_page: 0,
                 },
             );
@@ -480,7 +478,7 @@ async fn queue(client: &Client<'static>, ctx: CommandContext) -> Result<()> {
     let ui = EmbedUI::<QueueUI>::create(client.clone(), ctx).await?;
     client.mutate_state(guild_id, move |state| {
         state
-            .now_playing_ui_slash
+            .now_playing_ui
             .replace(MessageUI::run(ui, Duration::from_secs(5)));
     });
     Ok(())
@@ -491,7 +489,7 @@ async fn now_playing(client: &Client<'static>, ctx: CommandContext) -> Result<()
     let ui = EmbedUI::<NowPlayingUI>::create(client.clone(), ctx).await?;
     client.mutate_state(guild_id, move |state| {
         state
-            .queue_ui_slash
+            .queue_ui
             .replace(MessageUI::run(ui, Duration::from_secs(5)));
     });
     Ok(())
