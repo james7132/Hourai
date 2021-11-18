@@ -620,9 +620,9 @@ impl Client {
         }
 
         self.0.member_chunker.push_guild(guild.id);
-        let redis = self.storage().redis();
-        redis.guild(guild.id).save(&guild).await?;
-        redis.voice_states().update_guild(&guild).await?;
+        let mut redis_guild = self.storage().redis().guild(guild.id);
+        redis_guild.voice_states().update_guild(&guild).await?;
+        redis_guild.save(&guild).await?;
         Ok(())
     }
 
@@ -637,9 +637,9 @@ impl Client {
 
     async fn on_guild_leave(self, evt: GuildDelete) -> Result<()> {
         info!("Left guild {}", evt.id);
-        let redis = self.storage().redis();
-        redis.guild(evt.id).delete().await?;
-        redis.voice_states().clear_guild(evt.id).await?;
+        let mut guild = self.storage().redis().guild(evt.id);
+        guild.voice_states().clear().await?;
+        guild.delete().await?;
         let (res1, res2) = futures::join!(
             self.storage()
                 .execute(hourai_sql::Member::clear_guild(evt.id)),
@@ -690,9 +690,8 @@ impl Client {
             Some(id) => id,
             None => return Ok(()),
         };
-        let mut voice_state = self.storage().redis().voice_states();
-        let channel_id: Option<ChannelId> =
-            voice_state.get_channel(guild_id, evt.0.user_id).await?;
+        let mut voice_state = self.storage().redis().guild(guild_id).voice_states();
+        let channel_id: Option<ChannelId> = voice_state.get_channel(evt.0.user_id).await?;
         announcements::on_voice_update(&self, evt.0.clone(), channel_id).await?;
         voice_state.save(&evt.0).await?;
         Ok(())

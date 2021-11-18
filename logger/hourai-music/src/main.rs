@@ -251,16 +251,12 @@ impl Client<'static> {
             return Ok(());
         }
 
-        let exists: std::result::Result<bool, _> =
-            self.redis.music_queues().has_saved_state(evt.id).await;
+        let guild = self.redis.guild(evt.id);
+        let exists: std::result::Result<bool, _> = guild.music_queue().has_saved_state().await;
         if exists.unwrap_or(false) {
             // The bot will not leave the channel when it restarts, it should still be in the voice
             // channel.
-            let channel_id = self
-                .redis
-                .voice_states()
-                .get_channel(evt.id, self.user_id)
-                .await?;
+            let channel_id = guild.voice_states().get_channel(self.user_id).await?;
             if let Some(channel_id) = channel_id {
                 self.states.insert(evt.id, PlayerState::new());
                 self.load_state(evt.id).await?;
@@ -272,7 +268,7 @@ impl Client<'static> {
                     evt.id
                 );
             } else {
-                self.redis.music_queues().clear(evt.id).await?;
+                guild.music_queue().clear().await?;
             }
         }
 
@@ -349,17 +345,13 @@ impl Client<'static> {
 
     /// Gets the music config for a server.
     pub async fn get_config(&self, guild_id: GuildId) -> Result<MusicConfig> {
-        let config: MusicConfig = self
-            .redis
-            .guild_configs()
-            .fetch_or_default(guild_id)
-            .await?;
+        let config: MusicConfig = self.redis.guild(guild_id).configs().get().await?;
         Ok(config)
     }
 
     /// Sets the music config for the sever.
     pub async fn set_config(&self, guild_id: GuildId, config: MusicConfig) -> Result<()> {
-        self.redis.guild_configs().set(guild_id, config).await?;
+        self.redis.guild(guild_id).configs().set(config).await?;
         Ok(())
     }
 
@@ -368,6 +360,7 @@ impl Client<'static> {
             .states
             .get(&guild_id)
             .map(|kv| kv.value().save_to_proto());
+        let mut queue = self.redis.guild(guild_id).music_queue();
         if let Some(mut state) = state {
             let channel_id = self
                 .lavalink
@@ -378,16 +371,16 @@ impl Client<'static> {
             if let Some(channel_id) = channel_id {
                 state.set_channel_id(channel_id.get());
             }
-            self.redis.music_queues().save(guild_id, state).await?;
+            queue.save(state).await?;
         } else {
-            self.redis.music_queues().clear(guild_id).await?;
+            queue.clear().await?;
         }
         tracing::info!("Saved player state for guild {}", guild_id);
         Ok(())
     }
 
     pub async fn load_state(&self, guild_id: GuildId) -> Result<MusicStateProto> {
-        let state = self.redis.music_queues().load(guild_id).await?;
+        let state = self.redis.guild(guild_id).music_queue().load().await?;
         self.mutate_state(guild_id, |player| {
             player.load_from_proto(state.clone());
         });
@@ -430,7 +423,12 @@ impl Client<'static> {
     /// If not in a voice channel, returns 0.
     pub async fn count_listeners(&self, guild_id: GuildId) -> Result<usize> {
         Ok(if let Some(channel_id) = self.get_channel(guild_id) {
-            let states = self.redis.voice_states().get_channels(guild_id).await?;
+            let states = self
+                .redis
+                .guild(guild_id)
+                .voice_states()
+                .get_channels()
+                .await?;
             states.into_iter().filter(|(_, v)| *v == channel_id).count()
         } else {
             0

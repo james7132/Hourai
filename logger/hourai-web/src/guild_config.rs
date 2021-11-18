@@ -14,8 +14,9 @@ where
     if let Some(guild_id) = GuildId::new(path.into_inner()) {
         let proto: Option<T> = data
             .redis
-            .guild_configs()
-            .fetch(guild_id)
+            .guild(guild_id)
+            .configs()
+            .fetch()
             .await
             .map_err(|_| WebError::GenericHTTPError(StatusCode::NOT_FOUND))?;
         Ok(proto.map(web::Json))

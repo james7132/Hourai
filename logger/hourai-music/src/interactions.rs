@@ -125,8 +125,9 @@ async fn require_in_voice_channel(
     let user_id = ctx.user().id;
     let user: Option<ChannelId> = client
         .redis
+        .guild(guild_id)
         .voice_states()
-        .get_channel(guild_id, user_id)
+        .get_channel(user_id)
         .await?;
     let bot = client.get_channel(guild_id);
     if bot.is_some() && user != bot {

@@ -19,11 +19,7 @@ impl ModLogger {
     }
 
     pub async fn get_guild_modlog(&self, guild_id: GuildId) -> Result<Option<Modlog>> {
-        let config: LoggingConfig = self
-            .redis
-            .guild_configs()
-            .fetch_or_default(guild_id)
-            .await?;
+        let config: LoggingConfig = self.redis.guild(guild_id).configs().get().await?;
 
         Ok(
             ChannelId::new(config.get_modlog_channel_id()).map(|id| Modlog {

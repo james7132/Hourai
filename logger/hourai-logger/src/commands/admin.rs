@@ -291,8 +291,9 @@ pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<
 
     let states = storage
         .redis()
+        .guild(guild_id)
         .voice_states()
-        .get_channels(guild_id)
+        .get_channels()
         .await?;
 
     let src = ctx.get_channel("src")?;

@@ -10,7 +10,7 @@ use hourai_storage::Storage;
 use std::sync::Arc;
 
 async fn get_config(storage: &Storage, guild_id: GuildId) -> Result<Option<AnnouncementConfig>> {
-    Ok(storage.redis().guild_configs().fetch(guild_id).await?)
+    Ok(storage.redis().guild(guild_id).configs().fetch().await?)
 }
 
 pub async fn on_member_join(client: &Client, guild: GuildId, user: User) -> Result<()> {

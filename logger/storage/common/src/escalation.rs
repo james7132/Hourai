@@ -72,8 +72,9 @@ impl EscalationManager {
         let config: ModerationConfig = self
             .storage()
             .redis()
-            .guild_configs()
-            .fetch_or_default(guild_id)
+            .guild(guild_id)
+            .configs()
+            .get()
             .await?;
 
         Ok(GuildEscalationManager {
@@ -303,8 +304,9 @@ impl EscalationHistory {
         let config: LoggingConfig = self
             .storage()
             .redis()
-            .guild_configs()
-            .fetch_or_default(self.guild_id())
+            .guild(self.guild_id())
+            .configs()
+            .get()
             .await?;
         if let Some(modlog_id) = ChannelId::new(config.get_modlog_channel_id()) {
             let arrow = if diff > 0 { "up" } else { "down" };

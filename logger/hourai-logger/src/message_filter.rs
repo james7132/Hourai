@@ -28,7 +28,7 @@ pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike
         return Ok(false);
     };
     let redis = executor.storage().redis();
-    let config: ModerationConfig = redis.guild_configs().fetch_or_default(guild_id).await?;
+    let config: ModerationConfig = redis.guild(guild_id).configs().get().await?;
 
     let member = Member::fetch(guild_id, message.author().id())
         .fetch_one(executor.storage())
@@ -167,8 +167,9 @@ async fn apply_rule(
         let config: LoggingConfig = executor
             .storage()
             .redis()
-            .guild_configs()
-            .fetch_or_default(guild_id)
+            .guild(guild_id)
+            .configs()
+            .get()
             .await?;
         if let Some(modlog_id) = ChannelId::new(config.get_modlog_channel_id()) {
             executor

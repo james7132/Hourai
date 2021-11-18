@@ -110,12 +110,7 @@ impl Client {
     }
 
     async fn get_config(&self, guild_id: GuildId) -> Result<VerificationConfig> {
-        Ok(self
-            .storage
-            .redis()
-            .guild_configs()
-            .fetch_or_default(guild_id)
-            .await?)
+        Ok(self.storage.redis().guild(guild_id).configs().get().await?)
     }
 
     fn make_verifiers(&self) -> Vec<BoxedVerifier> {
