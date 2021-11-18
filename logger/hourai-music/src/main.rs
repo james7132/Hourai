@@ -247,20 +247,32 @@ impl Client<'static> {
 
     async fn on_guild_create(self, evt: Guild) -> Result<()> {
         // Do not load state if there is already an existing player for a guild.
-        if !self.states.contains_key(&evt.id) {
+        if self.states.contains_key(&evt.id) {
             return Ok(());
         }
 
         let exists: std::result::Result<bool, _> =
             self.redis.music_queues().has_saved_state(evt.id).await;
         if exists.unwrap_or(false) {
-            self.states.insert(evt.id, PlayerState::new());
-            let state = self.load_state(evt.id).await?;
-            if let Some(channel_id) = ChannelId::new(state.get_channel_id()) {
+            // The bot will not leave the channel when it restarts, it should still be in the voice
+            // channel.
+            let channel_id = self
+                .redis
+                .voice_states()
+                .get_channel(evt.id, self.user_id)
+                .await?;
+            if let Some(channel_id) = channel_id {
+                self.states.insert(evt.id, PlayerState::new());
+                self.load_state(evt.id).await?;
                 self.connect(evt.id, channel_id).await?;
                 self.start_playing(evt.id).await?;
+                tracing::info!(
+                    "Bot was already in voice channel {} in guild {}. Restored session.",
+                    channel_id,
+                    evt.id
+                );
             } else {
-                self.states.remove(&evt.id);
+                self.redis.music_queues().clear(evt.id).await?;
             }
         }
 

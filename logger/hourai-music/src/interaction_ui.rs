@@ -198,7 +198,7 @@ impl EmbedUIBuilder for QueueUI {
         }
 
         let pages = match ui.client.get_queue(ui.guild_id, |q| q.len()) {
-            Some(len) => len / TRACKS_PER_PAGE,
+            Some(len) => len / TRACKS_PER_PAGE + 1,
             None => return not_playing_embed(),
         };
 
