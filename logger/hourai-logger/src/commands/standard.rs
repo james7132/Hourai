@@ -6,6 +6,7 @@ use hourai::{
 use rand::Rng;
 
 pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
+    ctx.defer().await?;
     let choices: Vec<&str> = ctx.all_strings("choice").collect();
     if choices.is_empty() {
         Ok(Response::ephemeral().content("Nothing to choose from!"))
@@ -16,6 +17,7 @@ pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
 }
 
 pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     let config: LoggingConfig = storage
         .redis()
@@ -55,6 +57,7 @@ pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<R
 }
 
 pub(super) async fn info_user(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
+    ctx.defer().await?;
     let user_id = ctx.get_user("user")?;
     if let Ok(guild_id) = ctx.guild_id() {
         let member = executor

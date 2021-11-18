@@ -21,24 +21,45 @@ macro_rules! get_player {
 pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Result<()> {
     ctx.http().set_application_id(ctx.application_id());
     let result = match ctx.command() {
-        Command::SubCommand("music", "play") => play(&client, &ctx).await,
-        Command::SubCommand("music", "pause") => pause(&client, &ctx, Some(true)).await,
-        Command::SubCommand("music", "unpause") => pause(&client, &ctx, Some(false)).await,
-        Command::SubCommand("music", "stop") => stop(&client, &ctx).await,
-        Command::SubCommand("music", "shuffle") => shuffle(&client, &ctx).await,
+        Command::SubCommand("music", "play") => {
+            ctx.defer().await?;
+            play(&client, &ctx).await
+        }
+        Command::SubCommand("music", "pause") => {
+            ctx.defer().await?;
+            pause(&client, &ctx, Some(true)).await
+        }
+        Command::SubCommand("music", "unpause") => {
+            ctx.defer().await?;
+            pause(&client, &ctx, Some(false)).await
+        }
+        Command::SubCommand("music", "stop") => {
+            ctx.defer().await?;
+            stop(&client, &ctx).await
+        }
+        Command::SubCommand("music", "shuffle") => {
+            ctx.defer().await?;
+            shuffle(&client, &ctx).await
+        }
         Command::SubCommand("music", "skip") => {
+            ctx.defer().await?;
             if ctx.get_flag("force").unwrap_or(false) {
                 forceskip(&client, &ctx).await
             } else {
                 skip(&client, &ctx).await
             }
         }
-        Command::SubCommand("music", "remove") => remove(&client, &ctx).await,
+        Command::SubCommand("music", "remove") => {
+            ctx.defer().await?;
+            remove(&client, &ctx).await
+        }
         Command::SubCommand("music", "nowplaying") => {
+            ctx.defer().await?;
             now_playing(&client, ctx).await?;
             return Ok(());
         }
         Command::SubCommand("music", "queue") => {
+            ctx.defer().await?;
             queue(&client, ctx).await?;
             return Ok(());
         }

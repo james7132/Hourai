@@ -2,6 +2,7 @@ use super::prelude::*;
 use hourai_storage::escalation::EscalationManager;
 
 pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     if !hourai_storage::is_moderator(
         guild_id,
@@ -60,6 +61,7 @@ pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> 
 }
 
 pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     if !hourai_storage::is_moderator(
         guild_id,

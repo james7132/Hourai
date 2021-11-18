@@ -100,11 +100,9 @@ pub trait InteractionContext {
     fn channel_id(&self) -> ChannelId;
     fn user(&self) -> &User;
 
-    async fn defer(
-        &self,
-        data: impl Into<CallbackData> + Send + 'async_trait,
-    ) -> anyhow::Result<()> {
-        let response = InteractionResponse::DeferredChannelMessageWithSource(data.into());
+    async fn defer(&self) -> anyhow::Result<()> {
+        let response = Response::direct();
+        let response = InteractionResponse::DeferredChannelMessageWithSource(response.into());
         self.reply_raw(response).await?;
         Ok(())
     }
@@ -112,15 +110,6 @@ pub trait InteractionContext {
     async fn defer_update(&self) -> anyhow::Result<()> {
         self.reply_raw(InteractionResponse::DeferredUpdateMessage)
             .await?;
-        Ok(())
-    }
-
-    async fn reply(
-        &self,
-        data: impl Into<CallbackData> + Send + 'async_trait,
-    ) -> anyhow::Result<()> {
-        let response = InteractionResponse::ChannelMessageWithSource(data.into());
-        self.reply_raw(response).await?;
         Ok(())
     }
 
@@ -132,10 +121,17 @@ pub trait InteractionContext {
         Ok(())
     }
 
-    async fn update(&self, content: String) -> anyhow::Result<()> {
+    async fn reply(&self, data: impl Into<CallbackData> + Send + 'static) -> anyhow::Result<()> {
+        fn to_option<T>(arr: &[T]) -> Option<&[T]> {
+            (!arr.is_empty()).then(|| arr)
+        }
+
+        let data = data.into();
         self.http()
             .update_interaction_original(self.token())?
-            .content(Some(&content))?
+            .content(data.content.as_deref())?
+            .embeds(to_option(&data.embeds))?
+            .components(data.components.as_deref())?
             .exec()
             .await?;
         Ok(())

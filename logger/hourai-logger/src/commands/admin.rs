@@ -44,6 +44,7 @@ fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> Str
 }
 
 pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::BAN_MEMBERS) {
         anyhow::bail!(InteractionError::MissingPermission("Ban Members"));
@@ -106,6 +107,7 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
 }
 
 pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::KICK_MEMBERS) {
         anyhow::bail!(InteractionError::MissingPermission("Kick Members"));
@@ -153,6 +155,7 @@ pub(super) async fn change_role(
     executor: &ActionExecutor,
     status: StatusType,
 ) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MANAGE_ROLES) {
         anyhow::bail!(InteractionError::MissingPermission("Manage Roles"));
@@ -205,6 +208,7 @@ pub(super) async fn change_role(
 }
 
 pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::DEAFEN_MEMBERS) {
         anyhow::bail!(InteractionError::MissingPermission("Deafen Members"));
@@ -238,6 +242,7 @@ pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> R
 }
 
 pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MUTE_MEMBERS) {
         anyhow::bail!(InteractionError::MissingPermission("Mute Members"));
@@ -271,6 +276,7 @@ pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Res
 }
 
 pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     if !ctx.has_user_permission(Permissions::MOVE_MEMBERS) {
         anyhow::bail!(InteractionError::MissingPermission("Move Members"));
@@ -347,6 +353,7 @@ async fn fetch_messages(
 }
 
 pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
+    ctx.defer().await?;
     ctx.guild_id()?;
     let count = ctx.get_int("count").unwrap_or(100) as usize;
     if count > MAX_PRUNED_MESSAGES {
