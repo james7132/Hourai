@@ -213,12 +213,16 @@ impl Client {
     async fn log_bans(self) {
         loop {
             info!("Refreshing bans...");
-            for guild_id in self.0.cache.guilds() {
-                if let Err(err) = self.refresh_bans(guild_id).await {
-                    error!("Error while logging bans: {} ({:?})", err, err);
-                }
-            }
+            self.log_all_bans(self.0.cache.guilds().into_iter()).await;
             tokio::time::sleep(Duration::from_secs(3600u64)).await;
+        }
+    }
+
+    async fn log_all_bans(&self, guilds: impl Iterator<Item = GuildId>) {
+        for guild_id in guilds {
+            if let Err(err) = self.refresh_bans(guild_id).await {
+                error!("Error while logging bans: {} ({:?})", err, err);
+            }
         }
     }
 
@@ -309,7 +313,7 @@ impl Client {
     async fn consume_event(mut self, shard_id: u64, event: Event) {
         let kind = event.kind();
         let result = match event {
-            Event::Ready(_) => self.on_shard_ready(shard_id).await,
+            Event::Ready(evt) => self.on_shard_ready(shard_id, evt).await,
             Event::BanAdd(evt) => self.on_ban_add(evt).await,
             Event::BanRemove(evt) => self.on_ban_remove(evt).await,
             Event::GuildCreate(evt) => self.on_guild_create(*evt).await,
@@ -353,7 +357,7 @@ impl Client {
         }
     }
 
-    async fn on_shard_ready(self, shard_id: u64) -> Result<()> {
+    async fn on_shard_ready(self, shard_id: u64, evt: Box<Ready>) -> Result<()> {
         let sql = self.storage().sql();
         let (res1, res2) = futures::join!(
             sql.execute(Ban::clear_shard(shard_id, self.total_shards())),
@@ -362,6 +366,9 @@ impl Client {
                 self.total_shards()
             ))
         );
+
+        self.log_all_bans(evt.guilds.into_iter().map(|g| g.id))
+            .await;
 
         res1?;
         res2?;
