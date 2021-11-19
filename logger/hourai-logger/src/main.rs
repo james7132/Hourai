@@ -218,7 +218,7 @@ impl Client {
                     error!("Error while logging bans: {} ({:?})", err, err);
                 }
             }
-            tokio::time::sleep(Duration::from_secs(180u64)).await;
+            tokio::time::sleep(Duration::from_secs(3600u64)).await;
         }
     }
 
