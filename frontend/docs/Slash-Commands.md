@@ -13,10 +13,13 @@ calling user must have the specified Discord permissions.
 
 !> Slash Commands must be explicitly enabled on a server when the bot is joins.
 If typing `/` in chat does not bring up a prompt to use these commands with the
-bot, please use this [link][authorize] to authorize use of these commands.
+bot, please use this [link][authorize] to authorize use of these commands. It is
+not required to remove the bot from an existing server to authorize creating
+slash commands, and may take up to an hour to propagate to the authorized
+servers.
 
 !> Slash Commands are currently in an open beta. There may be notable bugs or
-unstable results when using them. If you have any issue using them, please either
+unstable results when using them. If you have any issue using them, please
 join the [support Discord](https://discord.gg/UydKWHX) for further support.
 
 ## Standard Commands
