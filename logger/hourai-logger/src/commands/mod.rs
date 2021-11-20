@@ -34,8 +34,10 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
         Command::SubCommand("escalate", "history") => {
             escalation::escalate_history(&ctx, actions).await
         }
-        _ => return Err(anyhow::Error::new(InteractionError::UnknownCommand)),
+        _ => return Ok(()),
     };
+
+    tracing::info!("Recieved command: {:?}", ctx.command);
 
     match result {
         Ok(response) => ctx.reply(response).await,
