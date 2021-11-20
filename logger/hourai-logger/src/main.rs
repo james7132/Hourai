@@ -212,9 +212,9 @@ pub struct Client(Arc<ClientRef>);
 impl Client {
     async fn log_bans(self) {
         loop {
-            info!("Refreshing bans...");
+            tracing::info!("Refreshing bans...");
             self.log_all_bans(self.0.cache.guilds().into_iter()).await;
-            tokio::time::sleep(Duration::from_secs(3600u64)).await;
+            tokio::time::sleep(Duration::from_secs(86400u64)).await;
         }
     }
 
