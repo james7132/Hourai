@@ -19,7 +19,6 @@ macro_rules! get_player {
 }
 
 pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Result<()> {
-    ctx.http().set_application_id(ctx.application_id());
     let result = match ctx.command() {
         Command::SubCommand("music", "play") => {
             ctx.defer().await?;
@@ -63,7 +62,10 @@ pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Res
             queue(&client, ctx).await?;
             return Ok(());
         }
-        Command::SubCommand("music", "volume") => volume(&client, &ctx).await,
+        Command::SubCommand("music", "volume") => {
+            ctx.defer().await?;
+            volume(&client, &ctx).await
+        },
         _ => return Err(anyhow::Error::new(InteractionError::UnknownCommand)),
     };
 

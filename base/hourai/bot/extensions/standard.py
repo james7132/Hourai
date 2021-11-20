@@ -253,9 +253,8 @@ class Standard(cogs.BaseCog):
     @commands.command()
     async def invite(self, ctx):
         app_info = await ctx.bot.application_info()
-        link = discord.utils.oauth_url(
-                        str(app_info.id),
-                        permissions=discord.Permissions.all())
+        link = (f"https://discord.com/api/oauth2/authorize"
+                f"?client_id={app_info.id}&scope=bot%20applications.commands")
         await ctx.send(f'Use this link to add me to your server: {link}')
 
     @commands.command()
