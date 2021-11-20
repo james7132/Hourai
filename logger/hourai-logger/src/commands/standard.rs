@@ -17,7 +17,7 @@ pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
 }
 
 pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
-    ctx.defer().await?;
+    ctx.defer_ephemeral().await?;
     let guild_id = ctx.guild_id()?;
     let config: LoggingConfig = storage.redis().guild(guild_id).configs().get().await?;
     let (mention, ping) = hourai_storage::ping_online_mod(guild_id, storage).await?;

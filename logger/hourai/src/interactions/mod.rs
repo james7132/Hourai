@@ -107,6 +107,13 @@ pub trait InteractionContext {
         Ok(())
     }
 
+    async fn defer_ephemeral(&self) -> anyhow::Result<()> {
+        let response = Response::ephemeral();
+        let response = InteractionResponse::DeferredChannelMessageWithSource(response.into());
+        self.reply_raw(response).await?;
+        Ok(())
+    }
+
     async fn defer_update(&self) -> anyhow::Result<()> {
         self.reply_raw(InteractionResponse::DeferredUpdateMessage)
             .await?;
@@ -127,6 +134,7 @@ pub trait InteractionContext {
         }
 
         let data = data.into();
+        self.http().set_application_id(self.application_id());
         self.http()
             .update_interaction_original(self.token())?
             .content(data.content.as_deref())?
