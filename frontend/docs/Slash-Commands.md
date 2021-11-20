@@ -15,6 +15,10 @@ calling user must have the specified Discord permissions.
 If typing `/` in chat does not bring up a prompt to use these commands with the
 bot, please use this [link][authorize] to authorize use of these commands.
 
+!> Slash Commands are currently in an open beta. There may be notable bugs or
+unstable results when using them. If you have any issue using them, please either
+join the [support Discord](https://discord.gg/UydKWHX) for further support.
+
 ## Standard Commands
 
 |Command|Permissions|Description|
