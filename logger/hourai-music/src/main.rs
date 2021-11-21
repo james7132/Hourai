@@ -259,9 +259,14 @@ impl Client<'static> {
             let channel_id = guild.voice_states().get_channel(self.user_id).await?;
             if let Some(channel_id) = channel_id {
                 self.states.insert(evt.id, PlayerState::new());
-                self.load_state(evt.id).await?;
+                let state = self.load_state(evt.id).await?;
                 self.connect(evt.id, channel_id).await?;
-                self.start_playing(evt.id).await?;
+                if state.has_position() {
+                    self.start_playing(evt.id, Some(state.get_position()))
+                        .await?;
+                } else {
+                    self.start_playing(evt.id, None).await?;
+                }
                 tracing::info!(
                     "Bot was already in voice channel {} in guild {}. Restored session.",
                     channel_id,
@@ -313,6 +318,7 @@ impl Client<'static> {
                 Ok(())
             }
             IncomingEvent::TrackEnd(evt) => self.on_track_end(evt).await,
+            IncomingEvent::PlayerUpdate(evt) => self.save_state(evt.guild_id).await,
             _ => Ok(()),
         };
 
@@ -362,14 +368,13 @@ impl Client<'static> {
             .map(|kv| kv.value().save_to_proto());
         let mut queue = self.redis.guild(guild_id).music_queue();
         if let Some(mut state) = state {
-            let channel_id = self
+            let position = self
                 .lavalink
                 .players()
                 .get(&guild_id)
-                .map(|kv| kv.channel_id())
-                .flatten();
-            if let Some(channel_id) = channel_id {
-                state.set_channel_id(channel_id.get());
+                .map(|kv| kv.position());
+            if let Some(position) = position {
+                state.set_position(position);
             }
             queue.save(state).await?;
         } else {
@@ -464,7 +469,7 @@ impl Client<'static> {
         Ok(())
     }
 
-    pub async fn start_playing(&self, guild_id: GuildId) -> Result<()> {
+    pub async fn start_playing(&self, guild_id: GuildId, position: Option<i64>) -> Result<()> {
         if let Some(track) = self.currently_playing(guild_id) {
             let config = self.get_config(guild_id).await?;
             let player = self.lavalink.player(guild_id).await?;
@@ -475,6 +480,9 @@ impl Client<'static> {
             };
             player.set_volume(volume)?;
             player.play(&track)?;
+            if let Some(position) = position {
+                player.seek(position)?;
+            }
         }
         Ok(())
     }

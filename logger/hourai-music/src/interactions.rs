@@ -65,7 +65,7 @@ pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Res
         Command::SubCommand("music", "volume") => {
             ctx.defer().await?;
             volume(&client, &ctx).await
-        },
+        }
         _ => return Err(anyhow::Error::new(InteractionError::UnknownCommand)),
     };
 
@@ -285,7 +285,7 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
                     queue_page: 0,
                 },
             );
-            client.start_playing(guild_id).await?;
+            client.start_playing(guild_id, None).await?;
         }
     }
     client.save_state(guild_id).await?;

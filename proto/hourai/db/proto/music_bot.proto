@@ -4,13 +4,13 @@ import "hourai/db/proto/cache.proto";
 
 package hourai.db.proto;
 
-// NEXT ID: 6
+// NEXT ID: 8
 message MusicStateProto {
-  repeated uint64 skip_votes = 3;
+  optional int64 position = 6;
+  repeated fixed64 skip_votes = 3;
   optional MusicQueueProto queue = 4;
-  optional uint64 channel_id = 5;
 
-  reserved 1, 2;
+  reserved 1, 2, 5, 7;
 }
 
 // NEXT ID: 2

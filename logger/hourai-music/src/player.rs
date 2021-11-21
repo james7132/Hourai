@@ -60,6 +60,12 @@ pub trait PlayerExt {
         Ok(())
     }
 
+    fn seek(&self, position: i64) -> Result<()> {
+        let player = self.as_player();
+        player.send(Seek::new(player.guild_id(), position))?;
+        Ok(())
+    }
+
     fn set_pause(&self, paused: bool) -> Result<()> {
         let player = self.as_player();
         player.send(Pause::from((player.guild_id(), paused)))?;
