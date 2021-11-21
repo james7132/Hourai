@@ -249,6 +249,7 @@ pub struct Member {
     pub bot: bool,
     pub present: bool,
     pub premium_since: Option<DateTime<Utc>>,
+    pub avatar: Option<String>,
 }
 
 impl From<&TwilightMember> for Member {
@@ -262,6 +263,7 @@ impl From<&TwilightMember> for Member {
             bot: member.user.bot,
             present: true,
             premium_since: premium,
+            avatar: member.avatar.clone(),
         }
     }
 }
@@ -277,6 +279,7 @@ impl From<&MemberUpdate> for Member {
             bot: member.user.bot,
             present: true,
             premium_since: premium,
+            avatar: member.avatar.clone(),
         }
     }
 }
@@ -310,16 +313,26 @@ impl Member {
 
     pub fn insert<'a>(self) -> SqlQuery<'a> {
         sqlx::query(
-            "INSERT INTO members (guild_id, user_id, role_ids, nickname, present, bot, premium_since) \
-                     VALUES ($1, $2, $3, $4, true, $5, $6) \
-                     ON CONFLICT ON CONSTRAINT members_pkey \
-                     DO UPDATE SET \
-                        role_ids = excluded.role_ids, \
-                        nickname = excluded.nickname, \
-                        premium_since = excluded.premium_since, \
-                        bot = excluded.bot, \
-                        last_seen = now(), \
-                        present = true",
+            "INSERT INTO members (
+                guild_id,
+                user_id,
+                role_ids,
+                nickname,
+                present,
+                bot,
+                premium_since
+                avatar
+            ) \
+            VALUES ($1, $2, $3, $4, true, $5, $6, $7) \
+            ON CONFLICT ON CONSTRAINT members_pkey \
+            DO UPDATE SET \
+                role_ids = excluded.role_ids, \
+                nickname = excluded.nickname, \
+                premium_since = excluded.premium_since, \
+                avatar = excluded.avatar, \
+                bot = excluded.bot, \
+                last_seen = now(), \
+                present = true",
         )
         .bind(self.guild_id)
         .bind(self.user_id)
@@ -327,6 +340,7 @@ impl Member {
         .bind(self.nickname)
         .bind(self.bot)
         .bind(self.premium_since)
+        .bind(self.avatar)
     }
 
     pub fn count_guilds<'a>() -> SqlQueryAs<'a, (i64,)> {
