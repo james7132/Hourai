@@ -14,13 +14,13 @@ struct DistinguishedUserVerifier(InMemoryCache);
 impl Verifier for DistinguishedUserVerifier {
     async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         let flags = ctx.member().user.flags.unwrap_or_else(UserFlags::empty);
-        if flags.contains(UserFlags::DISCORD_EMPLOYEE) {
+        if flags.contains(UserFlags::STAFF) {
             ctx.add_approval_reason("User is Discord Staff.");
         }
-        if flags.contains(UserFlags::DISCORD_PARTNER) {
+        if flags.contains(UserFlags::PARTNER) {
             ctx.add_approval_reason("User is a Discord Partner.");
         }
-        if flags.contains(UserFlags::VERIFIED_BOT_DEVELOPER) {
+        if flags.contains(UserFlags::VERIFIED_DEVELOPER) {
             ctx.add_approval_reason("User is a verified bot developer.");
         }
         // TODO(james7123): This will not scale to multiple processes
@@ -47,7 +47,7 @@ pub fn user_has_nitro(user: &User) -> bool {
         .unwrap_or(false);
     let flag = user
         .public_flags
-        .map(|f| f.contains(UserFlags::EARLY_SUPPORTER))
+        .map(|f| f.contains(UserFlags::PREMIUM_EARLY_SUPPORTER))
         .unwrap_or(false);
     let has_banner = user.banner.is_some();
     let animated = user

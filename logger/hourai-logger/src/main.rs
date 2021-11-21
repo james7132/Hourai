@@ -284,11 +284,12 @@ impl Client {
                     let member = Member {
                         guild_id: evt.guild_id,
                         nick: evt.nick.clone(),
+                        avatar: None,
                         pending: false,
                         premium_since: evt.premium_since.clone(),
                         roles: evt.roles.clone(),
                         user: evt.user.clone(),
-                        joined_at: Some(evt.joined_at.clone()),
+                        joined_at: evt.joined_at.clone(),
 
                         // Unknown/dummy fields.
                         deaf: false,

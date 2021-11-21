@@ -34,12 +34,10 @@ pub fn user(user: &User) -> Result<EmbedBuilder> {
 pub fn member(member: &Member) -> Result<EmbedBuilder> {
     let mut builder = user(&member.user)?;
 
-    if let Some(ts) = member.joined_at {
-        builder = builder.field(EmbedFieldBuilder::new(
-            "Joined at",
-            timestamp_to_str(ts.as_secs() as i64),
-        ));
-    }
+    builder = builder.field(EmbedFieldBuilder::new(
+        "Joined at",
+        timestamp_to_str(member.joined_at.as_secs() as i64),
+    ));
 
     if let Some(ts) = member.premium_since {
         builder = builder.field(EmbedFieldBuilder::new(
