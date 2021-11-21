@@ -39,6 +39,8 @@ local role = option {
 local command = {
   name: error "Must override command name",
   description: error "Must override command description",
+  options: [],
+  version: 1,
 };
 
 local commands = [
@@ -99,7 +101,7 @@ local commands = [
       name: "queue",
       description: "Shows what's currently queued to play in the musicbot.",
     }],
-  }
+  },
 
   command {
     // #002
@@ -116,7 +118,7 @@ local commands = [
         name: "duration",
         description: "Optional: sets when to undo the change. (i.e. 6d for 6 days, 2h for 2 hours.)",
       }] + [user {
-        name: "user",
+        name: "user_" + x,
         description: "The user to add the role to.",
       }
       for x in std.range(1, 23)]
@@ -131,7 +133,7 @@ local commands = [
         name: "duration",
         description: "Optional: sets when to undo the change. (i.e. 6d for 6 days, 2h for 2 hours.)",
       }] + [user {
-        name: "user",
+        name: "user_" + x,
         description: "The user to add the role to.",
       }
       for x in std.range(1, 23)]
@@ -152,7 +154,7 @@ local commands = [
       name: "soft",
       description: "Optional: If true, immediately unbans after banning. Useful for mass deleting messages without permanent changes."
     }] + [user {
-      name: "user",
+      name: "user_" + x,
       description: "The user to ban.",
     }
     for x in std.range(1, 22)]
@@ -166,7 +168,7 @@ local commands = [
       name: "reason",
       description: "Optional: the reason for the kick.",
     }] + [user {
-      name: "user",
+      name: "user_" + x,
       description: "The user to kick from the server.",
     }
     for x in std.range(1, 24)]
@@ -223,7 +225,7 @@ local commands = [
       name: "duration",
       description: "Optional: sets when to undo the change. (i.e. 6d for 6 days, 2h for 2 hours.)",
     }] + [user {
-      name: "user",
+      name: "user_" + x,
       description: "The user to mute.",
     }
     for x in std.range(1, 23)]
@@ -240,7 +242,7 @@ local commands = [
       name: "duration",
       description: "Optional: sets when to undo the change. (i.e. 6d for 6 days, 2h for 2 hours.)",
     }] + [user {
-      name: "user",
+      name: "user_" + x,
       description: "The user to deafen.",
     }
     for x in std.range(1, 24)]
@@ -251,7 +253,7 @@ local commands = [
     name: "choose",
     description: "Randomly chooses between several different choices",
     options: [string {
-      name: "choice",
+      name: "choice_" + x,
       description: "A choice to choose from.",
     }
     for x in std.range(1, 24)]
@@ -286,11 +288,13 @@ local commands = [
   command {
     // #012
     name: "info",
+    description: "Provides detailed information about things on Discord.",
     options: [subcommand {
       name: "user",
       description: "Provides detailed information about a user.",
       options: [user {
         name: "user",
+        description: "The user to find information on",
         required: true
       }]
     }]
@@ -377,7 +381,7 @@ local commands = [
         name: "amount",
         description: "Defaults to 1. Number of levels to go up.",
       }] + [user {
-        name: "user",
+        name: "user_" + x,
         description: "The user to kick from the server.",
       }
       for x in std.range(1, 24)]
@@ -392,7 +396,7 @@ local commands = [
         name: "amount",
         description: "Defaults to 1. Number of levels to go down.",
       }] + [user {
-        name: "user",
+        name: "user_" + x,
         description: "The user to kick from the server.",
       }
       for x in std.range(1, 24)]
@@ -406,7 +410,6 @@ local commands = [
       }]
     }],
   },
-
 ];
 
 local env(suffix) = {
@@ -426,8 +429,6 @@ local env(suffix) = {
       database: "hourai",
 
       connection_string: "%s+%s://%s:%s@%s/%s" % [
-        self.connector, self.dialect, self.user, self.password, self.host,
-        self.database
       ],
     },
 

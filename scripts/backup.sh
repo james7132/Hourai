@@ -4,10 +4,11 @@
 
 set -e
 
-tmp_dir=$(mktemp -d -t hourai-backup-XXXXXXXXXX)
-
 now=$(date +%Y-%m-%d"_"%H_%M_%S)
 now_b2=$(date +%Y-%m-%d)
+tmp_dir="$HOME/backups/database/$now_b2/"
+mkdir -p $tmp_dir
+
 archive=dump_$now.tar.gz
 
 psql_dump="$tmp_dir/dump.psql"

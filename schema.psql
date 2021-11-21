@@ -92,7 +92,8 @@ CREATE TABLE public.members (
     present boolean DEFAULT false NOT NULL,
     last_seen timestamp with time zone DEFAULT now() NOT NULL,
     bot boolean DEFAULT false NOT NULL,
-    premium_since timestamp with time zone
+    premium_since timestamp with time zone,
+    avatar text
 );
 ALTER TABLE public.members OWNER TO hourai;
 CREATE TABLE public.oauth (
@@ -105,8 +106,7 @@ ALTER TABLE public.oauth OWNER TO hourai;
 CREATE TABLE public.pending_actions (
     id integer NOT NULL,
     "timestamp" timestamp with time zone NOT NULL,
-    data bytea NOT NULL,
-    ts timestamp without time zone NOT NULL
+    data bytea NOT NULL
 );
 ALTER TABLE public.pending_actions OWNER TO hourai;
 CREATE SEQUENCE public.pending_actions_id_seq
