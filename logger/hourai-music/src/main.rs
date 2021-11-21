@@ -281,7 +281,6 @@ impl Client<'static> {
     }
 
     async fn on_interaction_create(self, evt: Interaction) -> Result<()> {
-        info!("Recieved interaction: {:?}", evt);
         match evt {
             Interaction::Ping(ping) => {
                 self.http_client

@@ -66,8 +66,10 @@ pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Res
             ctx.defer().await?;
             volume(&client, &ctx).await
         }
-        _ => return Err(anyhow::Error::new(InteractionError::UnknownCommand)),
+        _ => return Ok(()),
     };
+
+    tracing::info!("Recieved command: {:?}", ctx.command);
 
     match result {
         Ok(response) => ctx.reply(response).await,
@@ -115,6 +117,13 @@ pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) ->
         }
         _ => return Ok(()),
     }
+
+    tracing::info!(
+        "Recieved message component interactoin: {:?} {:?}",
+        button.get_button_option(),
+        ctx.component
+    );
+
     ctx.defer_update().await?;
     Ok(())
 }
