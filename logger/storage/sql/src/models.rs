@@ -343,6 +343,17 @@ impl Member {
         .bind(self.avatar)
     }
 
+    pub fn has_nitro<'a>(user_id: UserId) -> SqlQueryAs<'a, (bool,)> {
+        sqlx::query_as("SELECT EXISTS( \
+                SELECT 1 FROM members \
+                WHERE \
+                    user_id = $1 AND \
+                    present AND \
+                    (premium_since IS NOT NULL OR avatar IS NOT NULL)
+            )")
+            .bind(user_id.get() as i64)
+    }
+
     pub fn count_guilds<'a>() -> SqlQueryAs<'a, (i64,)> {
         sqlx::query_as("SELECT count(distinct guild_id) FROM members")
     }
