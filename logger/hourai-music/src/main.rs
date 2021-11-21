@@ -379,7 +379,7 @@ impl Client<'static> {
         } else {
             queue.clear().await?;
         }
-        tracing::info!("Saved player state for guild {}", guild_id);
+        tracing::debug!("Saved player state for guild {}", guild_id);
         Ok(())
     }
 
@@ -388,7 +388,7 @@ impl Client<'static> {
         self.mutate_state(guild_id, |player| {
             player.load_from_proto(state.clone());
         });
-        tracing::info!("Loaded player state for guild {}", guild_id);
+        tracing::debug!("Loaded player state for guild {}", guild_id);
         Ok(state)
     }
 
