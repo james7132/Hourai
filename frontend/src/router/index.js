@@ -1,4 +1,4 @@
-import { store } from '@/store.js'
+import { store } from '@/store'
 import utils from '@/utils.js'
 
 import { createRouter, createWebHistory } from 'vue-router'

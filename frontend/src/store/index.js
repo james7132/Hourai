@@ -1,5 +1,6 @@
+import { createStore } from 'vuex'
+
 import qs from 'qs'
-import Vuex from "vuex"
 import Api from "@/api.js"
 import consts from '@/consts.js'
 
@@ -96,16 +97,25 @@ let guilds = {
     }
 }
 
-const store = Vuex.createStore({
+API.store = store
+
+export default {
+  API,
+  store: createStore({
     strict: process.env.NODE_ENV !== 'production',
     modules: {
         auth,
         guilds
+    },
+    state: {
+    },
+    mutations: {
+    },
+    actions: {
+    },
+    modules: {
+        auth,
+        guilds
     }
-})
-API.store = store
-
-export {
-    API,
-    store
+  })
 }
