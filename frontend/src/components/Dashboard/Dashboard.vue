@@ -1,7 +1,7 @@
 <template>
   <div id="dashboard" class="full-height">
     <b-loading :is-full-page="true"
-      :active.sync="isLoading"
+      v-model:active="isLoading"
       :can-cancel="false"></b-loading>
     <DashboardNavbar v-if="!isLoading"></DashboardNavbar>
     <div id="content" class="container" v-if="!isLoading">

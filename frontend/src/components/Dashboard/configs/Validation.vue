@@ -5,7 +5,7 @@
       </b-switch>
     </b-field>
     <b-field>
-      <template slot="label">
+      <template v-slot:label>
         <b-tooltip type="is-primary"
         label="The role to give users upon verification.">
           Verified Role

@@ -96,7 +96,7 @@ let guilds = {
     }
 }
 
-const store = new Vuex.Store({
+const store = Vuex.createStore({
     strict: process.env.NODE_ENV !== 'production',
     modules: {
         auth,

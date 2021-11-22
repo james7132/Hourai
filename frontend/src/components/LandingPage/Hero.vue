@@ -77,7 +77,7 @@ export default {
       intervalStats: ''
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     clearInterval(this.intervalStats)
   },
   methods: {

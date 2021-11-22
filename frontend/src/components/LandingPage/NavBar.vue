@@ -1,10 +1,10 @@
 <template>
   <div class="container">
     <b-navbar>
-      <template slot="start">
+      <template v-slot:start>
         <NavbarSocial></NavbarSocial>
       </template>
-      <template slot="end">
+      <template v-slot:end>
         <b-navbar-item
          v-for="link in links"
          v-bind:key="link.id"

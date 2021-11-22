@@ -2,7 +2,7 @@
   <div id="dashboard">
     <b-loading
       :is-full-page="true"
-      :active.sync="isLoading"
+      v-model:active="isLoading"
       :can-cancel="false"
     ></b-loading>
     <DashboardNavbar v-if="!isLoading" title="Dashboard">l </DashboardNavbar>
@@ -25,7 +25,7 @@
                      :label="`Add bot to ${guild.name}`">
             <a class="icon-container full-size" :href="getInviteLink(guild)">
               <GuildIcon classes="is-size-4" :guild="guild">
-                <template slot="overlay">
+                <template v-slot:overlay>
                   <div class="overlay is-text-center">
                     <b-icon type="is-primary" size="is-large"
                             pack="fa" icon="plus"/>

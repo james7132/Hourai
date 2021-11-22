@@ -1,7 +1,7 @@
 <template>
   <div>
     <b-field>
-      <template slot="label">
+      <template v-slot:label>
         <b-tooltip type="is-primary"
         label="If set, the bot will write activity logs to this channel.">
           Modlog Channel
