@@ -20,10 +20,23 @@ data types and how long Hourai retains them after their deletion from Discord.
   after they leave the server. This is used to allow Hourai to restore roles to
   users that leave and rejoin the server. All role information about a server is
   deleted upon removing the bot from a server.
+- Server Invites - On servers where the bot has verification enabled and has
+  Manage Server, Hourai caches a local copy of all server invites for the
+  explicit puprose of finding which server invite was used by a new member to
+  join the server during verification. This information is not stored in any
+  persistent way and is immediately removed upon either a bot restart or the
+  bot's removal from the server.
 - Reddit Posts - the titles of posts on these sites may appear in Hourai's logs,
   even if the post was deleted from the source site. No public way of seeing the
   output of these logs is available. These logs are persisted for a maximum of
   30 days.
+- Message content and metadata are cached for up to 24 hours for the purposes of
+  logging deleted and edited messages to a server's modlog channel. Upon
+  deleting and/or editing messages, a log message to a server's modlog will be
+  created mirroring the deleted/edited content. Cached messages that are deleted
+  on Discord's end will then immediately be removed from the cache.
+- Message content and metadata from the Discord gateway are also used, but not
+  stored, for the purposes of automated message filtering.
 - All other data used by Hourai is pulled transitively from the Discord Gateway
   and is removed upon invalidation of that state (i.e. a user's nickname change
   will be wiped as soon as the gateway reports it.)
