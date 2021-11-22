@@ -2,7 +2,7 @@
   <fragment>
     <figure v-if="guild.icon" :class="allImageClasses" v-bind="$attrs">
       <img class="is-rounded" :src="imageLink">
-      <slot #overlay></slot>
+      <slot></slot>
     </figure>
     <div v-if="!guild.icon" :class="allMissingClasses">
       {{missingName}}
