@@ -1,6 +1,7 @@
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
 use actix_web::{body::Body, web, HttpRequest, HttpResponse};
+use hourai_redis::RedisError;
 use thiserror::Error;
 
 pub type WebResult<T> = Result<T, WebError>;
@@ -23,7 +24,7 @@ pub enum WebError {
     #[error("HTTP Error: {}", .0)]
     GenericHTTPError(StatusCode),
     #[error("Redis Error: {}", .0)]
-    RedisError(#[from] redis::RedisError),
+    RedisError(#[from] RedisError),
     #[error("SQL Error: {}", .0)]
     SqlError(#[from] sqlx::Error),
     #[error("Missing Header: {}", .0)]

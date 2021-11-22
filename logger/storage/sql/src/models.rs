@@ -320,7 +320,7 @@ impl Member {
                 nickname,
                 present,
                 bot,
-                premium_since
+                premium_since,
                 avatar
             ) \
             VALUES ($1, $2, $3, $4, true, $5, $6, $7) \

@@ -22,10 +22,6 @@ thiserror = "1.0"
 time = "0.2"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 
-[dependencies.redis]
-version = "0.20"
-features = ["aio", "tokio-comp", "connection-manager"]
-
 [dependencies.sqlx]
 default-features = false
 features = ["runtime-tokio-rustls", "postgres", "macros", "chrono"]
