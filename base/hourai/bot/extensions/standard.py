@@ -163,8 +163,7 @@ class Standard(cogs.BaseCog):
             msg_embed.add_field(name='Owner',
                                 value=f'{owner.name}#{owner.discriminator}')
         msg_embed.add_field(name='Members', value=str(guild.member_count))
-        embed._add_time_field(msg_embed, 'Created On', guild.created_at,
-                              datetime.utcnow())
+        embed._add_time_field(msg_embed, 'Created On', guild.created_at)
         msg_embed.add_field(name='Region', value=str(guild.region))
         if guild.premium_subscription_count:
             value = (f'{guild.premium_subscription_count} '
