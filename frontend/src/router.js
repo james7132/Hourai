@@ -1,7 +1,8 @@
+import Vue from 'vue'
+import VueRouter from 'vue-router'
+
 import { store } from '@/store.js'
 import utils from '@/utils.js'
-
-import { createRouter, createWebHistory } from 'vue-router'
 
 import LandingPage from '@/components/LandingPage/LandingPage.vue'
 import GuildSelect from '@/components/Dashboard/GuildSelect.vue'
@@ -10,19 +11,19 @@ import GuildViews from '@/components/Dashboard/configs/router.js'
 import Login from '@/components/Login.vue'
 import NotFoundComponent from '@/components/NotFoundComponent.vue'
 
+Vue.use(VueRouter)
 
-const routes = [
-  {
+let routes = [{
     path: "/",
     component: LandingPage,
-  }, {
+}, {
     path: '/login',
     name: 'login',
     component: Login,
     meta: {
         title: 'Login'
     }
-  }, {
+}, {
     path: '/dash',
     name: 'dashboard',
     component: GuildSelect,
@@ -30,7 +31,7 @@ const routes = [
         requiresAuth: true,
         title: 'Dashboard'
     },
-  }, {
+}, {
     path: '/dash/:guild_id(\\d+)',
     name: 'dashboard-guild',
     component: Dashboard,
@@ -53,16 +54,14 @@ const routes = [
             params: to.params
         }
     }
-  }, {
-    path: '/:pathMatch(.*)*',
-    name: 'not-found',
+}, {
+    path: '*',
     component: NotFoundComponent
-  }
-]
+}]
 
-const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
-  routes
+let router = new VueRouter({
+    mode: 'history',
+    routes
 })
 
 async function authenticationCheck(to) {
@@ -84,11 +83,6 @@ async function authenticationCheck(to) {
         }
     }
     return true
-}
-
-
-function findNearestRoute(route, criteria) {
-    return route.matched.slice().reverse().find(criteria)
 }
 
 async function getTitle(title, to) {
@@ -116,6 +110,10 @@ async function getTitle(title, to) {
     return title
 }
 
+function findNearestRoute(route, criteria) {
+    return route.matched.slice().reverse().find(criteria)
+}
+
 // Update meta tags and doc title
 async function updateMeta(to) {
     const attribute = "data-vue-router-controlled"
@@ -141,7 +139,6 @@ async function updateMeta(to) {
         return tag
     }).forEach(tag => document.head.appendChild(tag))
 }
-
 
 // This callback runs before every route change, including on page load.
 router.beforeEach(async (to, from, next) => {

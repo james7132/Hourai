@@ -3,7 +3,7 @@
     <figure class="image is-128x128">
       <img class="is-rounded"
         src="https://www.rightpointe.com/wp-content/uploads/2018/02/hardhat.svg">
-      <slot></slot>
+      <slot #overlay></slot>
     </figure>
     <h1>Under Construction.</h1>
     <h2>Coming soon!</h2>
