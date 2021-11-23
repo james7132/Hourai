@@ -90,29 +90,35 @@ pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Res
 }
 
 pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) -> Result<()> {
-    ctx.http().set_application_id(ctx.application_id());
     let proto = ctx.metadata()?;
     let button = proto.get_music_button();
     match button.get_button_option() {
         MusicButtonOption::MUSIC_BUTTON_PLAY_PAUSE => {
+            ctx.defer_update().await?;
             pause(&client, &ctx, None).await?;
         }
         MusicButtonOption::MUSIC_BUTTON_STOP => {
+            ctx.defer_update().await?;
             stop(&client, &ctx).await?;
         }
         MusicButtonOption::MUSIC_BUTTON_NEXT_TRACK => {
+            ctx.defer_update().await?;
             skip(&client, &ctx).await?;
         }
         MusicButtonOption::MUSIC_BUTTON_QUEUE_NEXT_PAGE => {
+            ctx.defer_update().await?;
             shift_queue_page(&client, &ctx, 1).await?;
         }
         MusicButtonOption::MUSIC_BUTTON_QUEUE_PREV_PAGE => {
+            ctx.defer_update().await?;
             shift_queue_page(&client, &ctx, -1).await?;
         }
         MusicButtonOption::MUSIC_BUTTON_VOLUME_UP => {
+            ctx.defer_update().await?;
             delta_volume(&client, &ctx, 5).await?;
         }
         MusicButtonOption::MUSIC_BUTTON_VOLUME_DOWN => {
+            ctx.defer_update().await?;
             delta_volume(&client, &ctx, -5).await?;
         }
         _ => return Ok(()),
@@ -124,7 +130,6 @@ pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) ->
         ctx.component
     );
 
-    ctx.defer_update().await?;
     Ok(())
 }
 
