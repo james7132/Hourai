@@ -17,21 +17,21 @@
     "buefy": "^0.9.3",
     "core-js": "^3.6.5",
     "es6-promise": "^4.2.8",
-    "vue": "^3.0.0-beta.1",
+    "vue": "^2.6.12",
     "vue-fragment": "^1.5.1",
     "vue-router": "3.4.8",
-    "vuex": "^4.0.0-alpha.1"
+    "vuex": "^3.5.1"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^4.5.15",
     "@vue/cli-plugin-eslint": "^4.5.15",
     "@vue/cli-service": "^4.5.15",
-    "@vue/compiler-sfc": "^3.0.0-beta.1",
     "babel-eslint": "^10.1.0",
     "eslint": "^6.7.2",
-    "eslint-plugin-vue": "^7.0.0-alpha.0",
+    "eslint-plugin-vue": "^6.2.2",
     "node-sass": "^6.0.1",
-    "sass-loader": "^10.2.0"
+    "sass-loader": "^10.2.0",
+    "vue-template-compiler": "^2.6.12"
   },
   "eslintConfig": {
     "root": true,
@@ -39,7 +39,7 @@
       "node": true
     },
     "extends": [
-      "plugin:vue/vue3-essential",
+      "plugin:vue/essential",
       "eslint:recommended"
     ],
     "parserOptions": {

@@ -1,11 +1,11 @@
 <template>
   <div>
-    <b-loading v-model:active="isLoading"
+    <b-loading :active.sync="isLoading"
       :can-cancel="false"></b-loading>
     <div v-if="!isLoading">
       <span>{{updated.voice_channel_id}}</span>
       <b-field>
-        <template v-slot:label>
+        <template slot="label">
           <b-tooltip type="is-primary"
           label="If set, the bot will only play music in this channel.">
             Music Voice Channel
@@ -19,7 +19,7 @@
         <div class="column">
           <span>{{updated.dj_role_id}}</span>
           <b-field>
-            <template v-slot:label>
+            <template slot="label">
               <b-tooltip type="is-primary"
               label="Users with these roles will be able to use DJ level music commands.">
                 DJ Roles
@@ -34,7 +34,7 @@
         <div class="column">
           <span>{{updated.text_channel_id}}</span>
           <b-field>
-            <template v-slot:label>
+            <template slot="label">
               <b-tooltip type="is-primary"
               label="If any are set, music commands can only be used in these channels">
                 Text Channels

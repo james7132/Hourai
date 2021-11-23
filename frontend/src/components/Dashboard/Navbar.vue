@@ -1,6 +1,6 @@
 <template>
     <b-navbar wrapper-class="container" shadow>
-      <template v-slot:start>
+      <template slot="start">
         <b-navbar-item tag="router-link" to="/dash" v-if="selectedGuild">
           <b-icon pack="fa" icon="arrow-left"/>
         </b-navbar-item>
@@ -11,7 +11,7 @@
           {{selectedGuild.name}}
         </b-navbar-item>
       </template>
-      <template v-slot:end>
+      <template slot="end">
         <b-tooltip label="Add to Server" position="is-bottom">
           <b-navbar-item>
             <b-icon pack="fa" icon="plus"/>
