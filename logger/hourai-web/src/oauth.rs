@@ -1,7 +1,7 @@
 use crate::{prelude::*, AppState};
 use actix_web::{
     cookie::{Cookie, SameSite},
-    dev::Body,
+    dev::AnyBody,
     get, post, web, HttpRequest, HttpResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -44,7 +44,7 @@ struct TokenResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     scope: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    expires_in: Option<u64>,
+    expires_in: Option<i64>,
 }
 
 #[post("/token")]
@@ -72,7 +72,7 @@ async fn token(
     let data: TokenResponse = if response.status().is_success() {
         response.json().await?
     } else {
-        let body = Body::Bytes(response.body().await?);
+        let body = AnyBody::Bytes(response.body().await?);
         return Ok(HttpResponse::build(response.status()).body(body));
     };
 
@@ -120,7 +120,7 @@ async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> WebResult<
     let data: TokenResponse = if response.status().is_success() {
         response.json().await?
     } else {
-        let body = Body::Bytes(response.body().await?);
+        let body = AnyBody::Bytes(response.body().await?);
         return Ok(HttpResponse::build(response.status()).body(body));
     };
 
