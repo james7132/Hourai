@@ -10,7 +10,7 @@ use hourai::{
     },
     proto::message_components::MusicUIType,
 };
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use tokio::sync::oneshot::error::TryRecvError;
 use twilight_embed_builder::*;
 
@@ -27,9 +27,10 @@ impl MessageUI {
         U: Updateable + Send + 'static,
     {
         let (tx, mut rx) = tokio::sync::oneshot::channel();
+        let expiration = Instant::now() + Duration::from_secs(600);
         tokio::spawn(async move {
             tokio::time::sleep(update_interval).await;
-            loop {
+            while Instant::now() < expiration {
                 match ui.update().await {
                     Ok(_) => match rx.try_recv() {
                         Err(TryRecvError::Empty) => tokio::time::sleep(update_interval).await,
@@ -41,6 +42,7 @@ impl MessageUI {
                     }
                 }
             }
+            tracing::info!("Terminating message UI: timeout");
         });
         Self { cancel: tx }
     }
