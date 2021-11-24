@@ -39,9 +39,25 @@ pub async fn run_pending_actions(executor: ActionExecutor) {
     }
 }
 
+fn is_client_error(err: &anyhow::Error) -> bool {
+    use hourai::http::error::*;
+    if let Some(err) = err.downcast_ref::<Error>()  {
+        if let ErrorType::Response { status, .. } = err.kind() {
+            return status.is_client_error();
+        }
+    }
+    return false;
+}
+
 async fn run_action(executor: ActionExecutor, pending: PendingAction) -> Result<()> {
     tracing::debug!("Running pending action: {:?}", pending.action());
-    executor.execute_action(pending.action()).await?;
+    if let Err(err) = executor.execute_action(pending.action()).await {
+        if !is_client_error(&err) {
+            return Err(err);
+        } else {
+            tracing::error!("Client Error while running pending actions: {}", err);
+        }
+    }
     executor.storage().sql().execute(pending.delete()).await?;
     tracing::info!("Ran pending action: {:?}", pending.action());
     Ok(())
