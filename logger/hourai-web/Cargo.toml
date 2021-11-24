@@ -14,7 +14,7 @@ protobuf = "2.22"
 awc = { version = "3.0.0-beta.11", features = ["rustls"] }
 futures = { default-features = false, version = "0.3.12" }
 tracing-futures = "0.2"
-#tracing-actix-web = "0.5.0-beta.2"
+tracing-actix-web = "0.5.0-beta.3"
 uuid = { version = "0.8", features = ["v4"] }
 serde = "1.0"
 serde_json = "1.0"

@@ -34,7 +34,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            //.wrap(tracing_actix_web::TracingLogger::default())
+            .wrap(tracing_actix_web::TracingLogger::default())
             .app_data(web::Data::new(AppState {
                 config: config.clone(),
                 http: awc::Client::new(),
