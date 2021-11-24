@@ -558,3 +558,51 @@ impl PendingAction {
         sqlx::query("DELETE FROM pending_actions WHERE id = $1").bind(self.id)
     }
 }
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct Oauth {
+    pub user_id: i64,
+    pub slug: String,
+    pub access_token: String,
+    pub refresh_token: String,
+    pub access_expiration: DateTime<Utc>,
+    pub refresh_expiration: DateTime<Utc>,
+}
+
+impl Oauth {
+    pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
+        sqlx::query_as("SELECT * FROM oauth WHERE refresh_expiration < now()")
+    }
+
+    pub fn insert<'a>(&self) -> SqlQuery<'a> {
+        sqlx::query("INSERT INTO oauth VALUES ($1, $2, $3, $4, $5, $6)")
+            .bind(self.user_id)
+            .bind(self.slug.clone())
+            .bind(self.access_token.clone())
+            .bind(self.refresh_token.clone())
+            .bind(self.access_expiration.clone())
+            .bind(self.refresh_expiration.clone())
+    }
+
+    pub fn update<'a>(&self) -> SqlQuery<'a> {
+        sqlx::query("UPDATE oauth SET
+                        access_token = $3,
+                        access_expiration = $4
+                     WHERE user_id = $1 AND slug = $2")
+            .bind(self.user_id)
+            .bind(self.slug.clone())
+            .bind(self.access_token.clone())
+            .bind(self.access_expiration.clone())
+    }
+
+    pub fn invalidate_user<'a>(user_id: UserId) -> SqlQuery<'a> {
+        sqlx::query("DELETE FROM oauth WHERE user_id = $1")
+            .bind(user_id.get() as i64)
+    }
+
+    pub fn delete<'a>(&self) -> SqlQuery<'a> {
+        sqlx::query("DELETE FROM oauth WHERE user_id = $1 AND slug = $2")
+            .bind(self.user_id)
+            .bind(self.slug.clone())
+    }
+}
