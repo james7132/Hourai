@@ -1,44 +1,91 @@
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
-use actix_web::{body::Body, web, HttpRequest, HttpResponse};
-use hourai_redis::RedisError;
+use actix_web::{body::AnyBody, web::Json, HttpResponse};
+use std::fmt::Display;
 use thiserror::Error;
 
-pub type WebResult<T> = Result<T, WebError>;
-pub type JsonResult<T> = WebResult<web::Json<T>>;
+pub type Result<T> = core::result::Result<T, actix_web::Error>;
+pub type JsonResult<T> = Result<Json<T>>;
 
-pub fn require_header<'a>(request: &'a HttpRequest, key: &str) -> WebResult<&'a str> {
-    if let Some(value) = request.headers().get(key) {
-        value
-            .to_str()
-            .map_err(|_| WebError::MissingHeader(key.to_owned()))
-    } else {
-        Err(WebError::MissingHeader(key.to_owned()))
+pub fn http_error<T>(
+    status_code: StatusCode,
+    message: impl Display,
+) -> Result<T> {
+    Err(InternalError {
+        message: message.to_string(),
+        status_code,
+    }
+    .into())
+}
+
+pub fn http_internal_error<T>(message: impl Display) -> Result<T> {
+    http_error(StatusCode::INTERNAL_SERVER_ERROR, message)
+}
+
+pub trait IntoHttpError<T> {
+    fn http_error(
+        self,
+        status_code: StatusCode,
+        message: impl Display,
+    ) -> Result<T>;
+
+    fn http_internal_error(self, message: impl Display) -> Result<T>
+    where
+        Self: std::marker::Sized,
+    {
+        self.http_error(StatusCode::INTERNAL_SERVER_ERROR, message)
+    }
+}
+
+impl<T, E: std::fmt::Debug> IntoHttpError<T> for core::result::Result<T, E> {
+    fn http_error(
+        self,
+        status_code: StatusCode,
+        message: impl Display,
+    ) -> core::result::Result<T, actix_web::Error> {
+        match self {
+            Ok(val) => Ok(val),
+            Err(err) => {
+                tracing::error!("http_error: {:?}", err);
+                Err(InternalError {
+                    message: message.to_string(),
+                    status_code,
+                }
+                .into())
+            }
+        }
+    }
+}
+
+impl<T> IntoHttpError<T> for Option<T> {
+    fn http_error(
+        self,
+        status_code: StatusCode,
+        message: impl Display,
+    ) -> Result<T> {
+        match self {
+            Some(val) => Ok(val),
+            None => {
+                Err(InternalError {
+                    message: message.to_string(),
+                    status_code,
+                }
+                .into())
+            }
+        }
     }
 }
 
 #[derive(Error, Debug)]
-pub enum WebError {
-    #[error("Generic response error: {}", .0)]
-    ResponseError(Box<dyn std::error::Error>),
-    #[error("HTTP Error: {}", .0)]
-    GenericHTTPError(StatusCode),
-    #[error("Redis Error: {}", .0)]
-    RedisError(#[from] RedisError),
-    #[error("SQL Error: {}", .0)]
-    SqlError(#[from] sqlx::Error),
-    #[error("Missing Header: {}", .0)]
-    MissingHeader(String),
-    #[error("Invalid request signature.")]
-    FailedVerification,
+#[error("{}", .message)]
+pub struct InternalError {
+    status_code: StatusCode,
+    message: String,
 }
 
-impl WebError {
-    pub const UNAUTHORIZED: WebError = WebError::GenericHTTPError(StatusCode::UNAUTHORIZED);
-    pub const NOT_FOUND: WebError = WebError::GenericHTTPError(StatusCode::UNAUTHORIZED);
-
+impl InternalError {
     pub fn message(&self) -> String {
-        if self.status_code().is_server_error() {
+        if self.status_code.is_server_error() {
             self.status_code()
                 .canonical_reason()
                 .map(|r| r.to_owned())
@@ -49,28 +96,8 @@ impl WebError {
     }
 }
 
-impl From<StatusCode> for WebError {
-    fn from(value: StatusCode) -> Self {
-        WebError::GenericHTTPError(value)
-    }
-}
-
-macro_rules! box_error {
-    ($type:ty) => {
-        impl From<$type> for WebError {
-            fn from(value: $type) -> Self {
-                WebError::ResponseError(Box::new(value))
-            }
-        }
-    };
-}
-
-box_error!(awc::error::JsonPayloadError);
-box_error!(awc::error::PayloadError);
-box_error!(awc::error::SendRequestError);
-
-impl ResponseError for WebError {
-    fn error_response(&self) -> HttpResponse<Body> {
+impl ResponseError for InternalError {
+    fn error_response(&self) -> HttpResponse<AnyBody> {
         HttpResponse::build(self.status_code()).json(serde_json::json!({
             "status": self.status_code().as_u16(),
             "message": self.message()
@@ -78,12 +105,6 @@ impl ResponseError for WebError {
     }
 
     fn status_code(&self) -> StatusCode {
-        match self {
-            Self::ResponseError(err) => err.status_code(),
-            Self::GenericHTTPError(code) => *code,
-            Self::MissingHeader(_) => StatusCode::BAD_REQUEST,
-            Self::FailedVerification => StatusCode::UNAUTHORIZED,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        }
+        self.status_code
     }
 }

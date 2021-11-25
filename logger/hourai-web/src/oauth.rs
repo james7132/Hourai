@@ -2,6 +2,7 @@ use crate::{prelude::*, AppState};
 use actix_web::{
     cookie::{Cookie, SameSite},
     dev::AnyBody,
+    http::StatusCode,
     get, post, web, HttpRequest, HttpResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -51,7 +52,7 @@ struct TokenResponse {
 async fn token(
     state: web::Data<AppState>,
     request: web::Json<TokenRequest>,
-) -> WebResult<HttpResponse> {
+) -> Result<HttpResponse> {
     let body = serde_urlencoded::to_string(DiscordTokenRequest {
         client_id: state.config.discord.client_id.as_str(),
         client_secret: state.config.discord.client_secret.as_str(),
@@ -67,10 +68,11 @@ async fn token(
         .insert_header(("Accept", "application/json"))
         .insert_header(("Content-Type", "application/x-www-form-urlencoded"))
         .send_body(body)
-        .await?;
+        .await
+        .http_internal_error("Failed to make a POST to Discord OAuth.")?;
 
     let data: TokenResponse = if response.status().is_success() {
-        response.json().await?
+        response.json().await.http_internal_error("Failed to make a POST to Discord OAuth.")?
     } else {
         let body = AnyBody::Bytes(response.body().await?);
         return Ok(HttpResponse::build(response.status()).body(body));
@@ -91,13 +93,12 @@ async fn token(
 }
 
 #[get("/refresh")]
-async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> WebResult<HttpResponse> {
+async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> Result<HttpResponse> {
     // TODO(james7132): Validate this against the refresh tokens stored locally to see if
     // they're valid.
-    let refresh_token = match request.cookie(COOKIE_KEY) {
-        Some(ref cookie) => cookie.value().to_owned(),
-        None => return Err(WebError::UNAUTHORIZED),
-    };
+    let refresh_token = request.cookie(COOKIE_KEY)
+        .map(|cookie| cookie.value().to_owned())
+        .http_error(StatusCode::UNAUTHORIZED, "Missing refresh token.")?;
 
     let data = serde_urlencoded::to_string(DiscordRefreshRequest {
         client_id: state.config.discord.client_id.as_str(),
@@ -115,10 +116,11 @@ async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> WebResult<
         .insert_header(("Accept", "application/json"))
         .insert_header(("Content-Type", "application/x-www-form-urlencoded"))
         .send_body(data)
-        .await?;
+        .await
+        .http_internal_error("Failed to refresh access token")?;
 
     let data: TokenResponse = if response.status().is_success() {
-        response.json().await?
+        response.json().await.http_internal_error("Failed to refresh access_token.")?
     } else {
         let body = AnyBody::Bytes(response.body().await?);
         return Ok(HttpResponse::build(response.status()).body(body));
@@ -128,12 +130,12 @@ async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> WebResult<
 }
 
 #[post("/logout")]
-async fn logout(request: HttpRequest) -> WebResult<HttpResponse> {
+async fn logout(request: HttpRequest) -> Result<HttpResponse> {
     // TODO(james7132): Remove token from database.
     if let Some(ref refresh_token) = request.cookie(COOKIE_KEY) {
         Ok(HttpResponse::NoContent().del_cookie(refresh_token).finish())
     } else {
-        Err(WebError::UNAUTHORIZED)
+        http_error(StatusCode::UNAUTHORIZED, "Missing login credentials.")
     }
 }
 

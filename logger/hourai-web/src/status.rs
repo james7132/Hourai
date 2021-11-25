@@ -19,11 +19,13 @@ struct ShardStatus {
 async fn bot_status(data: web::Data<AppState>) -> JsonResult<BotStatus> {
     let guilds = hourai_sql::Member::count_guilds()
         .fetch_one(&data.sql)
-        .await?
+        .await
+        .http_internal_error("Failed to fetch guild count")?
         .0;
     let members = hourai_sql::Member::count_members()
         .fetch_one(&data.sql)
-        .await?
+        .await
+        .http_internal_error("Failed to fetch member count")?
         .0;
     Ok(web::Json(BotStatus {
         shards: vec![ShardStatus {

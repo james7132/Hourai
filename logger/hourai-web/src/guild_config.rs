@@ -6,24 +6,24 @@ use hourai_redis::CachedGuildConfig;
 async fn get_config<T>(
     data: web::Data<AppState>,
     path: web::Path<u64>,
-) -> Result<Option<web::Json<T>>, WebError>
+) -> Result<Option<web::Json<T>>>
 where
     T: protobuf::Message + CachedGuildConfig + serde::Serialize,
 {
     // TODO(james7132): Properly set up authN and authZ for this
     if let Some(guild_id) = GuildId::new(path.into_inner()) {
-        let proto: Option<T> = data
+        let proto  = data
             .redis
             .guild(guild_id)
             .configs()
             .fetch()
             .await
-            .map_err(|_| WebError::GenericHTTPError(StatusCode::NOT_FOUND))?;
+            .http_error(StatusCode::NOT_FOUND, "Guild not found")?;
         Ok(proto.map(web::Json))
     } else {
-        Err(WebError::GenericHTTPError(StatusCode::NOT_FOUND))
+        http_error(StatusCode::NOT_FOUND, "Guild not found")
     }
-}
+ }
 
 fn add_config<T: protobuf::Message + CachedGuildConfig + serde::Serialize>(
     cfg: &mut web::ServiceConfig,
