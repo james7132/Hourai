@@ -12,19 +12,19 @@ use redis::{ErrorKind, FromRedisValue, RedisError, RedisWrite, ToRedisArgs};
 pub enum CacheKey {
     /// Protobuf configs for per server configuration. Stored in the form of hashes with individual
     /// configs as hash values, keyed by the corresponding CachedGuildConfig subkey.
-    GuildConfigs(/* Guild ID */ u64),
+    GuildConfigs(GuildId),
     /// Redis sets of per-server user IDs of online users.
-    OnlineStatus(/* Guild ID */ u64),
+    OnlineStatus(GuildId),
     /// Messages cached.
-    Messages(/* Channel ID */ u64, /* Message ID */ u64),
+    Messages(ChannelId, MessageId),
     /// Cached guild data.
-    Guild(/* Guild ID */ u64),
+    Guild(GuildId),
     /// Cached voice state data.
-    VoiceState(/* Guild ID */ u64),
+    VoiceState(GuildId),
     /// Resume State
     ResumeState(/* Name */ String),
     /// The stored music queues for each server. Used to restore the music state after a restart.
-    MusicQueue(/* Guild ID */ u64),
+    MusicQueue(GuildId),
 }
 
 impl CacheKey {
@@ -47,17 +47,17 @@ impl ToRedisArgs for CacheKey {
         W: RedisWrite,
     {
         match self {
-            Self::GuildConfigs(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
-            Self::OnlineStatus(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
+            Self::GuildConfigs(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
+            Self::OnlineStatus(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
             Self::Messages(ch_id, msg_id) => {
-                PrefixedKey(self.prefix(), (*ch_id, *msg_id)).write_redis_args(out)
+                PrefixedKey(self.prefix(), (ch_id.get(), msg_id.get())).write_redis_args(out)
             }
-            Self::Guild(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
-            Self::VoiceState(id) => PrefixedKey(self.prefix(), *id).write_redis_args(out),
+            Self::Guild(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
+            Self::VoiceState(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
             Self::ResumeState(key) => {
                 PrefixedKey(self.prefix(), key.as_str()).write_redis_args(out)
             }
-            Self::MusicQueue(key) => PrefixedKey(self.prefix(), *key).write_redis_args(out),
+            Self::MusicQueue(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
         }
     }
 }
