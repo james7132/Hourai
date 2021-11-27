@@ -199,7 +199,15 @@ async fn load_tracks(
 ) -> Option<Vec<twilight_lavalink::http::Track>> {
     let response = match client.load_tracks(node, query).await {
         Ok(tracks) => tracks,
-        Err(_) => return None,
+        Err(err) => {
+            tracing::error!(
+                "Error while loading tracks for query {}: {} ({:?}",
+                query,
+                err,
+                err
+            );
+            return None;
+        }
     };
 
     if response.tracks.is_empty() {
@@ -232,7 +240,7 @@ async fn load_tracks(
             .selected_track
             .and_then(|idx| tracks.get(idx as usize))
             .map(|track| vec![track.clone()])
-            .unwrap_or_else(|| tracks),
+            .unwrap_or(tracks),
         LoadedTracks {
             load_type: LoadType::LoadFailed,
             ..

@@ -7,10 +7,7 @@ use thiserror::Error;
 pub type Result<T> = core::result::Result<T, actix_web::Error>;
 pub type JsonResult<T> = Result<Json<T>>;
 
-pub fn http_error<T>(
-    status_code: StatusCode,
-    message: impl Display,
-) -> Result<T> {
+pub fn http_error<T>(status_code: StatusCode, message: impl Display) -> Result<T> {
     Err(InternalError {
         message: message.to_string(),
         status_code,
@@ -23,11 +20,7 @@ pub fn http_internal_error<T>(message: impl Display) -> Result<T> {
 }
 
 pub trait IntoHttpError<T> {
-    fn http_error(
-        self,
-        status_code: StatusCode,
-        message: impl Display,
-    ) -> Result<T>;
+    fn http_error(self, status_code: StatusCode, message: impl Display) -> Result<T>;
 
     fn http_internal_error(self, message: impl Display) -> Result<T>
     where
@@ -58,20 +51,14 @@ impl<T, E: std::fmt::Debug> IntoHttpError<T> for core::result::Result<T, E> {
 }
 
 impl<T> IntoHttpError<T> for Option<T> {
-    fn http_error(
-        self,
-        status_code: StatusCode,
-        message: impl Display,
-    ) -> Result<T> {
+    fn http_error(self, status_code: StatusCode, message: impl Display) -> Result<T> {
         match self {
             Some(val) => Ok(val),
-            None => {
-                Err(InternalError {
-                    message: message.to_string(),
-                    status_code,
-                }
-                .into())
+            None => Err(InternalError {
+                message: message.to_string(),
+                status_code,
             }
+            .into()),
         }
     }
 }

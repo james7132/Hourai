@@ -41,8 +41,7 @@ async fn main() -> std::io::Result<()> {
                 sql: sql.clone(),
                 redis: redis.clone(),
             }))
-            .service(web::scope("/api")
-            .configure(api))
+            .service(web::scope("/api").configure(api))
     })
     .bind(format!("0.0.0.0:{}", port))?
     .run()

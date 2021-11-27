@@ -2,8 +2,9 @@ use crate::{prelude::*, AppState};
 use actix_web::{
     cookie::{Cookie, SameSite},
     dev::AnyBody,
+    get,
     http::StatusCode,
-    get, post, web, HttpRequest, HttpResponse,
+    post, web, HttpRequest, HttpResponse,
 };
 use serde::{Deserialize, Serialize};
 use time::Duration;
@@ -72,7 +73,10 @@ async fn token(
         .http_internal_error("Failed to make a POST to Discord OAuth.")?;
 
     let data: TokenResponse = if response.status().is_success() {
-        response.json().await.http_internal_error("Failed to make a POST to Discord OAuth.")?
+        response
+            .json()
+            .await
+            .http_internal_error("Failed to make a POST to Discord OAuth.")?
     } else {
         let body = AnyBody::Bytes(response.body().await?);
         return Ok(HttpResponse::build(response.status()).body(body));
@@ -96,7 +100,8 @@ async fn token(
 async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> Result<HttpResponse> {
     // TODO(james7132): Validate this against the refresh tokens stored locally to see if
     // they're valid.
-    let refresh_token = request.cookie(COOKIE_KEY)
+    let refresh_token = request
+        .cookie(COOKIE_KEY)
         .map(|cookie| cookie.value().to_owned())
         .http_error(StatusCode::UNAUTHORIZED, "Missing refresh token.")?;
 
@@ -120,7 +125,10 @@ async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> Result<Htt
         .http_internal_error("Failed to refresh access token")?;
 
     let data: TokenResponse = if response.status().is_success() {
-        response.json().await.http_internal_error("Failed to refresh access_token.")?
+        response
+            .json()
+            .await
+            .http_internal_error("Failed to refresh access_token.")?
     } else {
         let body = AnyBody::Bytes(response.body().await?);
         return Ok(HttpResponse::build(response.status()).body(body));

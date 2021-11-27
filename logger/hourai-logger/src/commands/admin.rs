@@ -1,7 +1,7 @@
 use super::prelude::*;
 use futures::{channel::mpsc, future, prelude::*};
 use hourai::{
-    http::request::prelude::AuditLogReason,
+    http::request::AuditLogReason,
     models::{
         channel::message::Message,
         guild::Permissions,

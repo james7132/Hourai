@@ -344,14 +344,16 @@ impl Member {
     }
 
     pub fn has_nitro<'a>(user_id: UserId) -> SqlQueryAs<'a, (bool,)> {
-        sqlx::query_as("SELECT EXISTS( \
+        sqlx::query_as(
+            "SELECT EXISTS( \
                 SELECT 1 FROM members \
                 WHERE \
                     user_id = $1 AND \
                     present AND \
                     (premium_since IS NOT NULL OR avatar IS NOT NULL)
-            )")
-            .bind(user_id.get() as i64)
+            )",
+        )
+        .bind(user_id.get() as i64)
     }
 
     pub fn count_guilds<'a>() -> SqlQueryAs<'a, (i64,)> {
@@ -585,19 +587,20 @@ impl Oauth {
     }
 
     pub fn update<'a>(&self) -> SqlQuery<'a> {
-        sqlx::query("UPDATE oauth SET
+        sqlx::query(
+            "UPDATE oauth SET
                         access_token = $3,
                         access_expiration = $4
-                     WHERE user_id = $1 AND slug = $2")
-            .bind(self.user_id)
-            .bind(self.slug.clone())
-            .bind(self.access_token.clone())
-            .bind(self.access_expiration.clone())
+                     WHERE user_id = $1 AND slug = $2",
+        )
+        .bind(self.user_id)
+        .bind(self.slug.clone())
+        .bind(self.access_token.clone())
+        .bind(self.access_expiration.clone())
     }
 
     pub fn invalidate_user<'a>(user_id: UserId) -> SqlQuery<'a> {
-        sqlx::query("DELETE FROM oauth WHERE user_id = $1")
-            .bind(user_id.get() as i64)
+        sqlx::query("DELETE FROM oauth WHERE user_id = $1").bind(user_id.get() as i64)
     }
 
     pub fn delete<'a>(&self) -> SqlQuery<'a> {

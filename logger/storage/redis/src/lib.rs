@@ -126,8 +126,11 @@ pub struct GuildConfig(GuildCache);
 impl GuildConfig {
     pub async fn fetch<T: ::protobuf::Message + CachedGuildConfig>(&mut self) -> Result<Option<T>> {
         let key = CacheKey::GuildConfigs(self.0.guild_id);
-        let response: Option<Compressed<Protobuf<T>>> = redis::Cmd::hget(key, vec![T::SUBKEY])
-            .query_async(self.0.redis.connection_mut())
+        let response: Option<Compressed<Protobuf<T>>> = self
+            .0
+            .redis
+            .connection_mut()
+            .hget(key, vec![T::SUBKEY])
             .await?;
         Ok(response.map(|c| c.0 .0))
     }
@@ -141,8 +144,10 @@ impl GuildConfig {
         value: T,
     ) -> Result<()> {
         let key = CacheKey::GuildConfigs(self.0.guild_id);
-        redis::Cmd::hset(key, vec![T::SUBKEY], Compressed(Protobuf(value)))
-            .query_async(self.0.redis.connection_mut())
+        self.0
+            .redis
+            .connection_mut()
+            .hset(key, vec![T::SUBKEY], Compressed(Protobuf(value)))
             .await?;
         Ok(())
     }
@@ -170,8 +175,9 @@ impl MessageCache {
 
         let key = CacheKey::Messages(message.channel_id(), message.id());
         // Keep 1 day's worth of messages cached.
-        redis::Cmd::set_ex(key, Protobuf(msg), 86400)
-            .query_async(self.0.connection_mut())
+        self.0
+            .connection_mut()
+            .set_ex(key, Protobuf(msg), 86400)
             .await?;
 
         Ok(())
@@ -183,9 +189,7 @@ impl MessageCache {
         message_id: MessageId,
     ) -> Result<Option<CachedMessageProto>> {
         let key = CacheKey::Messages(channel_id, message_id);
-        let proto: Option<Protobuf<CachedMessageProto>> = redis::Cmd::get(key)
-            .query_async(self.0.connection_mut())
-            .await?;
+        let proto: Option<Protobuf<CachedMessageProto>> = self.0.connection_mut().get(key).await?;
         Ok(proto.map(|msg| {
             let mut proto = msg.0;
             proto.set_id(message_id.get());
@@ -207,9 +211,7 @@ impl MessageCache {
             .into_iter()
             .map(|id| CacheKey::Messages(channel_id, id))
             .collect();
-        redis::Cmd::del(keys)
-            .query_async(self.0.connection_mut())
-            .await?;
+        self.0.connection_mut().del(keys).await?;
         Ok(())
     }
 }
@@ -220,9 +222,7 @@ impl VoiceStateCache {
     pub async fn update_guild(&mut self, guild: &Guild) -> Result<()> {
         assert!(self.0.guild_id == guild.id);
         let mut pipe = redis::pipe();
-        pipe.atomic()
-            .del(CacheKey::VoiceState(guild.id))
-            .ignore();
+        pipe.atomic().del(CacheKey::VoiceState(guild.id)).ignore();
         for state in guild.voice_states.iter() {
             pipe.add_command(self.save_cmd(state)).ignore();
         }
@@ -231,18 +231,22 @@ impl VoiceStateCache {
     }
 
     pub async fn get_channel(&mut self, user_id: UserId) -> Result<Option<ChannelId>> {
-        let channel_id: Option<u64> =
-            redis::Cmd::hget(CacheKey::VoiceState(self.0.guild_id), user_id.get())
-                .query_async(self.0.redis.connection_mut())
-                .await?;
+        let channel_id: Option<u64> = self
+            .0
+            .redis
+            .connection_mut()
+            .hget(CacheKey::VoiceState(self.0.guild_id), user_id.get())
+            .await?;
         Ok(channel_id.and_then(ChannelId::new))
     }
 
     pub async fn get_channels(&mut self) -> Result<HashMap<UserId, ChannelId>> {
-        let all_users: HashMap<u64, u64> =
-            redis::Cmd::hgetall(CacheKey::VoiceState(self.0.guild_id))
-                .query_async(self.0.redis.connection_mut())
-                .await?;
+        let all_users: HashMap<u64, u64> = self
+            .0
+            .redis
+            .connection_mut()
+            .hgetall(CacheKey::VoiceState(self.0.guild_id))
+            .await?;
         Ok(all_users
             .into_iter()
             .filter_map(|(user, channel)| {
@@ -259,8 +263,10 @@ impl VoiceStateCache {
     }
 
     pub async fn clear(&mut self) -> Result<()> {
-        redis::Cmd::del(CacheKey::VoiceState(self.0.guild_id))
-            .query_async(self.0.redis.connection_mut())
+        self.0
+            .redis
+            .connection_mut()
+            .del(CacheKey::VoiceState(self.0.guild_id))
             .await?;
         Ok(())
     }
@@ -315,8 +321,9 @@ impl GuildCache {
 
     /// Deletes all of the cached information about a guild from the cache.
     pub async fn delete(&mut self) -> Result<()> {
-        redis::Cmd::del(CacheKey::Guild(self.guild_id))
-            .query_async(self.redis.connection_mut())
+        self.redis
+            .connection_mut()
+            .del(CacheKey::Guild(self.guild_id))
             .await?;
         Ok(())
     }
@@ -330,8 +337,10 @@ impl GuildCache {
         GuildKey: From<T::Id> + ToRedisArgs,
     {
         let guild_key = CacheKey::Guild(self.guild_id);
-        let proto: Option<Protobuf<T::Proto>> = redis::Cmd::hget(guild_key, resource_id.into())
-            .query_async(self.redis.connection_mut())
+        let proto: Option<Protobuf<T::Proto>> = self
+            .redis
+            .connection_mut()
+            .hget(guild_key, resource_id.into())
             .await?;
         Ok(proto.map(|proto| proto.0))
     }
@@ -346,9 +355,8 @@ impl GuildCache {
         // TODO(james7132): Using HGETALL here is super inefficient with guilds with high
         // role/channel counts, see if this is avoidable.
         let guild_key = CacheKey::Guild(self.guild_id);
-        let response: HashMap<GuildKey, redis::Value> = redis::Cmd::hgetall(guild_key)
-            .query_async(self.redis.connection_mut())
-            .await?;
+        let response: HashMap<GuildKey, redis::Value> =
+            self.redis.connection_mut().hgetall(guild_key).await?;
         let mut protos = HashMap::new();
         for (key, value) in response.into_iter() {
             if key.prefix() != T::PREFIX {
@@ -380,10 +388,11 @@ impl GuildCache {
                 let guild_key = CacheKey::Guild(self.guild_id);
                 let resource_keys: Vec<GuildKey> =
                     resource_ids.iter().map(|id| id.clone().into()).collect();
-                let protos: Vec<Option<Protobuf<T::Proto>>> =
-                    redis::Cmd::hget(guild_key, resource_keys)
-                        .query_async(self.redis.connection_mut())
-                        .await?;
+                let protos: Vec<Option<Protobuf<T::Proto>>> = self
+                    .redis
+                    .connection_mut()
+                    .hget(guild_key, resource_keys)
+                    .await?;
                 protos
                     .into_iter()
                     .filter_map(|p| p.map(|proto| proto.0))
@@ -404,11 +413,7 @@ impl GuildCache {
         let proto = Protobuf(data.to_proto());
         self.redis
             .connection_mut()
-            .hset(
-                CacheKey::Guild(self.guild_id),
-                resource_id.into(),
-                proto,
-            )
+            .hset(CacheKey::Guild(self.guild_id), resource_id.into(), proto)
             .await?;
         Ok(())
     }
@@ -418,11 +423,7 @@ impl GuildCache {
         GuildKey: From<T::Id> + ToRedisArgs,
     {
         let proto = Protobuf(data.to_proto());
-        redis::Cmd::hset(
-            CacheKey::Guild(self.guild_id),
-            resource_id.into(),
-            proto,
-        )
+        redis::Cmd::hset(CacheKey::Guild(self.guild_id), resource_id.into(), proto)
     }
 
     /// Deletes a resource from the cache.
@@ -641,8 +642,9 @@ impl ResumeStates {
             .into_iter()
             .filter_map(|(shard, session)| serde_json::to_string(&session).map(|s| (shard, s)).ok())
             .collect();
-        redis::Cmd::hset_multiple(CacheKey::ResumeState(key.into()), &sessions)
-            .query_async(self.0.connection_mut())
+        self.0
+            .connection_mut()
+            .hset_multiple(CacheKey::ResumeState(key.into()), &sessions)
             .await?;
         Ok(())
     }
@@ -668,30 +670,39 @@ pub struct MusicQueues(GuildCache);
 
 impl MusicQueues {
     pub async fn save(&mut self, state: MusicStateProto) -> Result<()> {
-        redis::Cmd::set(CacheKey::MusicQueue(self.0.guild_id), Protobuf(state))
-            .query_async(self.0.redis.connection_mut())
+        self.0
+            .redis
+            .connection_mut()
+            .set(CacheKey::MusicQueue(self.0.guild_id), Protobuf(state))
             .await?;
         Ok(())
     }
 
     pub async fn has_saved_state(&mut self) -> Result<bool> {
-        let present: bool = redis::Cmd::exists(CacheKey::MusicQueue(self.0.guild_id))
-            .query_async(self.0.redis.connection_mut())
+        let present: bool = self
+            .0
+            .redis
+            .connection_mut()
+            .exists(CacheKey::MusicQueue(self.0.guild_id))
             .await?;
         Ok(present)
     }
 
     pub async fn load(&mut self) -> Result<MusicStateProto> {
-        let state: Protobuf<MusicStateProto> =
-            redis::Cmd::get(CacheKey::MusicQueue(self.0.guild_id))
-                .query_async(self.0.redis.connection_mut())
-                .await?;
+        let state: Protobuf<MusicStateProto> = self
+            .0
+            .redis
+            .connection_mut()
+            .get(CacheKey::MusicQueue(self.0.guild_id))
+            .await?;
         Ok(state.0)
     }
 
     pub async fn clear(&mut self) -> Result<()> {
-        redis::Cmd::del(CacheKey::MusicQueue(self.0.guild_id))
-            .query_async(self.0.redis.connection_mut())
+        self.0
+            .redis
+            .connection_mut()
+            .del(CacheKey::MusicQueue(self.0.guild_id))
             .await?;
         Ok(())
     }

@@ -41,7 +41,7 @@ pub async fn run_pending_actions(executor: ActionExecutor) {
 
 fn is_client_error(err: &anyhow::Error) -> bool {
     use hourai::http::error::*;
-    if let Some(err) = err.downcast_ref::<Error>()  {
+    if let Some(err) = err.downcast_ref::<Error>() {
         if let ErrorType::Response { status, .. } = err.kind() {
             return status.is_client_error();
         }

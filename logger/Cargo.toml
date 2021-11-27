@@ -14,3 +14,9 @@ members = [
 [profile.release]
 opt-level = 3
 lto = true
+
+[patch.crates-io]
+twilight-model = { git = "https://github.com/james7132/twilight", branch = 'lavalink-playlist' }
+twilight-http = { git = "https://github.com/james7132/twilight", branch = 'lavalink-playlist' }
+twilight-gateway = { git = "https://github.com/james7132/twilight", branch = 'lavalink-playlist' }
+twilight-lavalink = { git = "https://github.com/james7132/twilight", branch = 'lavalink-playlist' }

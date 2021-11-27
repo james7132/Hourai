@@ -12,7 +12,7 @@ where
 {
     // TODO(james7132): Properly set up authN and authZ for this
     if let Some(guild_id) = GuildId::new(path.into_inner()) {
-        let proto  = data
+        let proto = data
             .redis
             .guild(guild_id)
             .configs()
@@ -23,7 +23,7 @@ where
     } else {
         http_error(StatusCode::NOT_FOUND, "Guild not found")
     }
- }
+}
 
 fn add_config<T: protobuf::Message + CachedGuildConfig + serde::Serialize>(
     cfg: &mut web::ServiceConfig,

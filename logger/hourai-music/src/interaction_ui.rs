@@ -10,7 +10,7 @@ use hourai::{
     },
     proto::message_components::MusicUIType,
 };
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 use tokio::sync::oneshot::error::TryRecvError;
 use twilight_embed_builder::*;
 
