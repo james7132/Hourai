@@ -9,6 +9,7 @@ mod message_filter;
 mod message_logging;
 mod pending_events;
 mod roles;
+mod utils;
 
 use anyhow::Result;
 use core::time::Duration;

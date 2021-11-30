@@ -1,3 +1,4 @@
+use crate::utils;
 use super::prelude::*;
 use futures::{channel::mpsc, future, prelude::*};
 use hourai::{
@@ -17,7 +18,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-const MAX_PRUNED_MESSAGES: usize = 100;
+const MAX_PRUNED_MESSAGES: usize = 2000;
 const MAX_PRUNED_MESSAGES_PER_BATCH: usize = 100;
 
 fn parse_duration(duration: &str) -> Result<Duration> {
@@ -333,33 +334,35 @@ async fn fetch_messages(
         .unwrap()
         .as_secs()
         - TWO_WEEKS_SECS;
-    let mut oldest = MessageId::new(u64::MAX).unwrap();
+    let mut oldest = None;
     loop {
-        let messages = http
-            .channel_messages(channel_id)
-            .before(oldest)
-            .exec()
+        let fut = if let Some(oldest) = oldest {
+            http.channel_messages(channel_id).before(oldest).exec()
+        } else {
+            http.channel_messages(channel_id).exec()
+        };
+        let messages = fut
             .await?
             .model()
             .await?;
         for message in messages {
-            oldest = std::cmp::min(oldest, message.id);
+            oldest = oldest.map(|oldest| oldest.min(message.id)).or(Some(message.id));
             if message.timestamp.as_secs() < limit {
                 return Ok(());
-            } else {
-                tx.unbounded_send(message)?;
+            } else if let Err(_) = tx.unbounded_send(message) {
+                return Ok(());
             }
         }
     }
 }
 
 pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
-    ctx.defer().await?;
     ctx.guild_id()?;
+    ctx.defer().await?;
     let count = ctx.get_int("count").unwrap_or(100) as usize;
     if count > MAX_PRUNED_MESSAGES {
         anyhow::bail!(InteractionError::InvalidArgument(
-            "Prune only supports up to 2000 messages.".to_owned()
+            format!("Prune only supports up to {} messages.", MAX_PRUNED_MESSAGES)
         ));
     }
 
@@ -407,9 +410,12 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
     );
 
     let (tx, rx) = mpsc::unbounded();
-    tokio::spawn(fetch_messages(ctx.channel_id(), ctx.http.clone(), tx));
+    tokio::spawn(utils::log_error(
+            "fetching messages to prune",
+            fetch_messages(ctx.channel_id(), ctx.http.clone(), tx)));
 
     let batches: Vec<Vec<MessageId>> = rx
+        .skip(1)
         .take(count)
         .filter(move |msg| future::ready(filters.iter().all(|f| f(msg))))
         .map(|msg| msg.id)
@@ -420,11 +426,23 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
 
     let mut total = 0;
     for batch in batches {
-        ctx.http
-            .delete_messages(ctx.channel_id(), &batch)
-            .reason(&reason)?
-            .exec()
-            .await?;
+        match batch.len() {
+            0 => break,
+            1 => {
+                ctx.http
+                    .delete_message(ctx.channel_id(), batch[0])
+                    .reason(&reason)?
+                    .exec()
+                    .await?;
+            }
+            _ => {
+                ctx.http
+                    .delete_messages(ctx.channel_id(), &batch)
+                    .reason(&reason)?
+                    .exec()
+                    .await?;
+            }
+        }
         total += batch.len();
     }
     Ok(Response::direct().content(format!("Pruned {} messages.", total)))
