@@ -34,42 +34,8 @@ in the future. Time uses shorthand (i.e. 2d for 2 days into the future).|
 
 ## Moderation Commands
 
-?> A good number of these commands take optional `reason` parameter. This will
-be written into the audit log when provided.
-
-|Command|Permissions|Description|
-|:------|:----------|:----------|
-|`~kick <user(s)> <reason>`|Kick Members|Kicks all provided users from the serverr.|
-|`~ban <user(s)> <reason>`|Ban Members|Bans all provided users from the server.  Can be used with user IDs to ban users outside of the server.|
-|`~ban clean`|Ban Members|Cleans up the server's banlist and removes all deleted users from it.|
-|`~softban <user(s)> <reason>`|Kick Members (User), Ban Members (Bot)|Bans then unbans a user from the server, deleteing the last 7 days of messages from them without leaving a lasting ban.|
-|`~mute <user(s)> <reason>`|Mute Members|Server mutes all provided users.|
-|`~unmute <user(s)> <reason>`|Mute Members|Server unmutes all provided users.|
-|`~deafen <user(s)>`|Deafen Members|Server deafen all provided users.|
-|`~undeafen <user(s)>`|Deafen Members|Server undeafens all provided users.|
-|`~move <src> <dst>`|Move Members|Moves all users from one voice channel to another.|
-|`~nickname <nickname> <user(s)>`|Manage Nicknames|Changes the nicknames of all provided users to a specified name. Must be shorter than 32 characters.|
-|`~role add <role> <user(s)>`|Manage Roles|Adds a role to all provided users.|
-|`~role remove <role> <user(s)>`|Manage Roles|Removes a role to all provided users.|
-|`~prune <count>`|Manage Messages|Deletes the last `count` messages. Defaults to 100.\*|
-|`~prune user <user(s)>`|Manage Messages|Deletes all messages from the specified users in the last 100 messages.\*|
-|`~prune embed <count>`|Manage Messages|Deletes all messages with an embed, attachment, image, or video in the last `count` messages. Defaults to 100.\*|
-|`~prune bot <count>`|Manage Messages|Deletes all messages from a bot in the last `count` messages. Defaults to 100.\*|
-|`~prune mine <count>`|None|Deletes all messages from the command user in the last `count` messages. Defaults to 100.\*|
-|`~prune mention <count>`|Manage Messages|Deletes all messages that mentions a user or role in the last `count` messages. Defaults to 100.\*|
-|`~prune match <pattern>`|Manage Messages|Deletes all messages that match a specific pattern in the last 100 messages.\*|
-|`~prune match <pattern>`|Manage Messages|Deletes all messages that match a specific pattern in the last 100 messages.\*|
-|`~temp ban <time> <user(s)>`|Ban Members|Temporarily bans a user from the server. The bot will automatically undo it when time is up.|
-|`~temp mute <time> <user(s)>`|Mute Members|Temporarily mutes all provided users. The bot will automatically undo it when time is up.|
-|`~temp unmute <time> <user(s)>`|Mute Members| Temporarily unmutes all provided users. The bot will automatically undo it when time is up.|
-|`~temp deafen <time> <user(s)>`|Deafen Members|Temporarily deafens all provided users. The bot will automatically undo it when time is up.|
-|`~temp undeafen <time> <user(s)>`|Deafen Members|Temporarily undeafens all users. The bot will automatically undo it when time is up.|
-|`~temp role add <time> <role> <user(s)>`|Deafen Members|Temporarily adds a role to all provided users. The bot will automatically undo it when time is up.|
-|`~temp role remove <time> <role> <user(s)>`|Deafen Members|Temporarily removes a role to all provided users. The bot will automatically undo it when time is up.|
-|`~escalate <reason> <user(s)>`|Escalate Members|Escalates all provided user in accordance with the server's confiugred escalation ladder.|
-|`~escalate history <user>`|None|Shows the escalation history for a given user.|
-
-\* - Prune commands cannot delete messages older than 14 days.
+!> All of these commands have been migrated to [Slash
+Commands](Slash-Commands.md). Please use those intead.
 
 ## Logging Commands
 
