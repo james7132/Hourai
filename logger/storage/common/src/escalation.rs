@@ -226,10 +226,9 @@ impl EscalationHistory {
             actions.mut_action().push(action);
         }
 
-        let display_name = if let Some(rung) = current_rung {
-            rung.get_display_name()
-        } else {
-            "Deescalate"
+        let display_name = match current_rung {
+            Some(rung) if diff >= 0 => rung.get_display_name(),
+            _ => "Deescalate",
         };
 
         let entry = self.create_entry(&authorizer, actions, display_name, diff);
