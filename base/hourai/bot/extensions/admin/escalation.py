@@ -12,79 +12,23 @@ from hourai.utils import fake, checks, format
 log = logging.getLogger(__name__)
 
 
-def require_escalation_config(ctx):
-    if ctx.guild is None:
-        raise commands.NoPrivateMessage()
-    if not ctx.guild.config.moderation.HasField('escalation_ladder'):
-        raise commands.CheckFailure(
-            message="No escalation ladder has been configured for this server."
-                    " Please configure one before running this command.")
-    return True
+async def deprecation_notice(ctx, alt):
+    await ctx.send(
+        f"This command is deprecated and will be removed soon. Please use the "
+        f"`/{alt}` slash command instead. For more information on how to use "
+        f"Hourai's Slash Commands, please read the documentation here: "
+        f"https://docs.hourai.gg/Slash-Commands.")
 
 
 class EscalationMixin:
 
-    @commands.group(name='escalate', invoke_without_command=True)
-    @checks.is_moderator()
-    @commands.check(require_escalation_config)
-    async def escalate(self, ctx, reason: str, *users: discord.Member):
-        """Escalates a user and applies the appropriate moderation action.
-
-        A history of escalation events can be seen with ~escalate history.
-        See: ~help escalate history.
-
-        Requires the escalation ladder to be configured properly.
-        For more information:
-        https://github.com/james7132/Hourai/wiki/Escalation-Ladder
-        """
-        async def escalate_user(user):
-            history = escalation_history.UserEscalationHistory(
-                self.bot, user, ctx.guild)
-            try:
-                result = await history.escalate(ctx.author, reason)
-                response = (f"Action: {result.current_rung.display_name}. "
-                            f"Next Time: {result.next_rung.display_name}. ")
-                expiration = 'Expiration: Never'
-                if result.expiration is not None:
-                    expiration = f'Expiration: {str(result.expiration)}'
-                return response + expiration
-            except escalation_history.EscalationException as e:
-                return 'Error: ' + e.message
-
-        results = await asyncio.gather(*[escalate_user(u) for u in users])
-        lines = [f"{u.name}: {res}" for u, res in zip(users, results)]
-        await ctx.send("\n".join(lines))
+    @commands.group(name='escalate')
+    async def escalate(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "escalate up")
 
     @commands.command(name='deescalate')
-    @checks.is_moderator()
-    @commands.check(require_escalation_config)
     async def deescalate(self, ctx, reason: str, *users: discord.Member):
-        """Deesclates a user and applies the appropriate moderation action.
-
-        A history of escalation events can be seen with ~escalate history.
-        See: ~help escalate history.
-
-        Requires the escalation ladder to be configured properly.
-        For more information:
-        https://github.com/james7132/Hourai/wiki/Escalation-Ladder
-        """
-        async def escalate_user(user):
-            history = escalation_history.UserEscalationHistory(
-                self.bot, user, ctx.guild)
-            try:
-                result = await history.deescalate(ctx.author, reason)
-                response = (f"Action: Deescalation. "
-                            f"Next Time: {result.next_rung.display_name}. ")
-                expiration = 'Expiration: Never'
-                if result.expiration is not None:
-                    expiration = f'Expiration: {str(result.expiration)}'
-                return response + expiration
-            except escalation_history.EscalationException as e:
-                return 'Error: ' + e.message
-
-        results = await asyncio.gather(*[escalate_user(u) for u in users])
-        lines = [f"{u.name}: {res}" for u, res in zip(users, results)]
-        await ctx.send("\n".join(lines))
+        await deprecation_notice(ctx, "escalate down")
 
     @escalate.command(name='history')
     async def escalate_history(self, ctx,

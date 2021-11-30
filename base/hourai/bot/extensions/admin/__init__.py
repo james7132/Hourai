@@ -12,33 +12,9 @@ from hourai.db import proto
 from hourai.bot import cogs
 
 
-MAX_PRUNE_LOOKBACK = timedelta(days=14)
 DELETE_WAIT_DURATION = 60
 
 log = logging.getLogger(__name__)
-
-
-async def batch_do(members, func):
-    async def _do(member):
-        result = ':thumbsup:'
-        try:
-            await func(member)
-        except discord.Forbidden:
-            result = "Bot has insufficient permissions."
-        except Exception as e:
-            result = str(e)
-        return f"{member}: {result}"
-    results = await asyncio.gather(*[_do(member) for member in members])
-    return dict(zip(members, results))
-
-
-def create_action(member):
-    return proto.Action(user_id=member.id, guild_id=member.guild.id)
-
-
-def create_reason(ctx, action, reason):
-    reason_prefix = f"{action} by {ctx.author}"
-    return f"{reason_prefix} for: {reason}" if reason else reason_prefix
 
 
 async def check_role_manager(ctx, *targets):
@@ -58,6 +34,14 @@ async def check_role_manager(ctx, *targets):
     return True
 
 
+async def deprecation_notice(ctx, alt):
+    await ctx.send(
+        f"This command is deprecated and will be removed soon. Please use the "
+        f"`/{alt}` slash command instead. For more information on how to use "
+        f"Hourai's Slash Commands, please read the documentation here: "
+        f"https://docs.hourai.gg/Slash-Commands.")
+
+
 class Admin(escalation.EscalationMixin, cogs.BaseCog):
 
     def __init__(self, bot):
@@ -67,245 +51,33 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
     # General Admin commands
     # --------------------------------------------------------------------------
 
-    async def _admin_action(self, ctx, members, func):
-        results = await batch_do(members, func)
-        await ctx.send(f"Executed command: `{ctx.message.clean_content}`\n"
-                       + utils.format.vertical_list(results.values()),
-                       delete_after=DELETE_WAIT_DURATION)
-
     @commands.command(name="kick")
-    @commands.guild_only()
-    @commands.has_permissions(kick_members=True)
-    @commands.bot_has_permissions(kick_members=True)
-    async def kick(self, ctx, members: commands.Greedy[discord.Member],
-                   *, reason: str = None):
-        """Kicks all specified users.
+    async def kick(self, ctx, *, remainder: str = None):
+        await deprecation_notice(ctx, "kick")
 
-        An optional reason can be specified, which will be logged to the audit
-        log.
-
-        Examples:
-          ~kick @bob
-          ~kick @bob Spam
-          ~kick @bob Alice#1234 208460178863947776
-
-        Requires Kick Members (User and Bot)
-        """
-        reason = create_reason(ctx, "Kicked", reason)
-        await self._admin_action(ctx, members, lambda m: m.kick(reason=reason))
-
-    @commands.group(name="ban", invoke_without_subcommand=True)
-    @commands.guild_only()
-    @commands.has_permissions(ban_members=True)
-    @commands.bot_has_permissions(ban_members=True)
-    async def ban(self, ctx,
-                  members: commands.Greedy[typing.Union[int, discord.Member]],
-                  *, reason: str = None):
-        """Bans all specified users from the server.
-
-        Can be used with user ID(s) to ban users outside the server. An
-        optional reason can be specified, which will be logged to the audit
-        log.
-
-        Examples:
-          ~ban @bob
-          ~ban @bob Raiding.
-          ~ban @bob Alice#1234 208460178863947776
-          ~ban @bob Alice#1234 208460178863947776 Targetted harassment.
-
-        Requires Ban Members (User and Bot)
-        """
-        reason = create_reason(ctx, "Banned", reason)
-
-        def _ban(member):
-            if isinstance(member, int):
-                member = fake.FakeSnowflake(id=member)
-            return ctx.guild.ban(member, delete_message_days=0, reason=reason)
-        await self._admin_action(ctx, members, _ban)
-
-    @ban.command(name="clean")
-    async def ban_clean(self, ctx):
-        """Unbans all deleted users the server to clean up the banlist.
-
-        This only unbans users that are assured to be deleted. Discord's
-        servers will be queried to ensure the user is deleted before they're
-        unbanned.
-
-        Requires Ban Members (User and Bot)
-        """
-        msg = await ctx.send(content="Cleaning bans...")
-        bans = await ctx.guild.bans()
-        deleted_bans = [utils.is_deleted_user(b.user) for b in bans]
-
-        async def clean_ban(ban):
-            try:
-                await ctx.bot.fetch_user(ban.user.id)
-            except discord.NotFound:
-                reason = f"Ban cleaned by {ctx.author}. Deleted user."
-                await ctx.guild.unban(ban.user, reason=reason)
-                return 1
-            except Exception:
-                pass
-            return 0
-
-        async with ctx.typing():
-            tasks = [clean_ban(b) for b in deleted_bans]
-            count = sum(await asyncio.gather(*tasks))
-
-        try:
-            await msg.edit(
-                    f"Cleaned **{count}** deleted users from the banlist")
-        except discord.NotFound:
-            pass
+    @commands.command(name="ban")
+    async def ban(self, ctx, *, remainder: str = None):
+        await deprecation_notice(ctx, "ban")
 
     @commands.command(name="softban")
-    @commands.guild_only()
-    @commands.has_permissions(kick_members=True)
-    @commands.bot_has_permissions(ban_members=True)
-    async def softban(self, ctx, members: commands.Greedy[discord.Member],
-                      *, reason: str = None):
-        """Bans then unbans all specified users from the server.
-
-        Deletes the last 7 days of messages from the softbanned users.
-        An optional reason can be specified, which will be logged to the audit
-        log.
-
-        Examples:
-          ~softban @bob
-          ~softban @bob Raiding.
-          ~softban @bob Alice#1234 208460178863947776
-
-        Requires Kick Members (User), Ban Members (Bot)
-        """
-        reason = create_reason(ctx, "Softbanned", reason)
-
-        async def _softban(member):
-            await member.ban(delete_message_days=7, reason=reason)
-            await member.guild.unban(member)
-        await self._admin_action(ctx, members, _softban)
+    async def softban(self, ctx, *, remainder: str = None):
+        await deprecation_notice(ctx, "ban")
 
     @commands.command(name="mute")
-    @commands.guild_only()
-    @commands.has_permissions(mute_members=True)
-    @commands.bot_has_permissions(mute_members=True)
-    async def mute(self, ctx, members: commands.Greedy[discord.Member],
-                   *, reason: str = None):
-        """Server mutes all specified users.
-
-        An optional reason can be specified, which will be logged to the audit
-        log.
-
-        Examples:
-          ~mute @bob
-          ~mute @bob Screaming in voice chat.
-          ~mute @bob Alice#1234 208460178863947776
-
-        Requires Mute Members (User and Bot)
-        """
-        reason = create_reason(ctx, "Muted", reason)
-
-        def _mute(member):
-            return member.edit(mute=True, reason=reason)
-        await self._admin_action(ctx, members, _mute)
-
-    @commands.command(name="unmute")
-    @commands.guild_only()
-    @commands.has_permissions(mute_members=True)
-    @commands.bot_has_permissions(mute_members=True)
-    async def unmute(self, ctx, members: commands.Greedy[discord.Member],
-                     *, reason: str = None):
-        """Server unmutes all specified users.
-
-        Examples:
-          ~unmute @bob
-          ~unmute @bob Alice#1234 208460178863947776
-
-        Requires Mute Members (User and Bot)
-        """
-        reason = create_reason(ctx, "Muted", reason)
-
-        def _unmute(member):
-            return member.edit(mute=False, reason=reason)
-        await self._admin_action(ctx, members, _unmute)
+    async def mute(self, ctx, *, remainder: str = None):
+        await deprecation_notice(ctx, "mute")
 
     @commands.command(name="deafen")
-    @commands.guild_only()
-    @commands.has_permissions(deafen_members=True)
-    @commands.bot_has_permissions(deafen_members=True)
-    async def deafen(self, ctx, members: commands.Greedy[discord.Member],
-                     *, reason: str = None):
-        """Deafens all specified users.
-
-        An optional reason can be specified, which will be logged to the audit
-        log.
-
-        Examples:
-          ~deafen @bob
-          ~deafen @bob Screaming in voice chat.
-          ~deafen @bob Alice#1234 208460178863947776
-
-        Requires Deafen Members (User and Bot)
-        """
-        reason = create_reason(ctx, "Deafened", reason)
-
-        def _deafen(member):
-            return member.edit(deafen=True, reason=reason)
-        await self._admin_action(ctx, members, _deafen)
-
-    @commands.command(name="undeafen")
-    @commands.guild_only()
-    @commands.has_permissions(deafen_members=True)
-    @commands.bot_has_permissions(deafen_members=True)
-    async def undeafen(self, ctx, members: commands.Greedy[discord.Member],
-                       *, reason: str = None):
-        """Server undeafens all specified users.
-
-        An optional reason can be specified, which will be logged to the audit
-        log.
-
-        Examples:
-          ~undeafen @bob
-          ~undeafen @bob Alice#1234 208460178863947776
-
-        Requires Deafen Members (User and Bot)
-        """
-        reason = create_reason(ctx, "Undeafened", reason)
-
-        def _undeafen(member):
-            return member.edit(deafen=False, reason=reason)
-        await self._admin_action(ctx, members, _undeafen)
+    async def deafen(self, ctx, *, remainder: str = None):
+        await deprecation_notice(ctx, "deafen")
 
     @commands.command(name="move")
-    @commands.guild_only()
-    @commands.has_guild_permissions(move_members=True)
-    @commands.bot_has_guild_permissions(move_members=True)
-    async def move(self, ctx,
-                   src: discord.VoiceChannel,
-                   dst: discord.VoiceChannel):
-        """Moves all members in one voice channel to another.
-        Only supports moving up to 100 members at once.
-
-        Examples:
-          ~move General AFK
-          ~move "General 1" "General 2"
-
-        Requires Move Members (User and Bot)
-        """
-        ids = list(src.voice_states.keys())
-        limit = min(len(ids), 100)
-        members = await ctx.guild.query_members(limit=limit, user_ids=ids)
-        await self._admin_action(ctx, members, lambda m: m.move_to(dst))
+    async def move(self, ctx, *, remainder: str = None):
+        await deprecation_notice(ctx, "move")
 
     @commands.command(name="nickname")
-    @commands.guild_only()
-    @commands.has_permissions(manage_nicknames=True)
-    @commands.bot_has_permissions(manage_nicknames=True)
-    async def nickname(self, ctx, name: str, *members: discord.Member):
-        """Nicknames all specified users.
-
-        Requires Manage Nicknames (User and Bot)
-        """
-        await self._admin_action(ctx, members, lambda m: m.edit(nick=name))
+    async def nickname(self, ctx,  *members: discord.Member):
+        await deprecation_notice(ctx, "nickname")
 
     # -------------------------------------------------------------------------
     # Role commands
@@ -317,70 +89,17 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         pass
 
     @role.command(name="list")
-    async def role_list(self, ctx):
+    async def role_list(self, ctx, *, remainder: str):
         """Lists all of the roles on the server."""
         await ctx.send(format.code_list(r.name for r in ctx.guild.roles))
 
     @role.command(name="add")
-    @commands.guild_only()
-    @commands.has_permissions(manage_roles=True)
-    @commands.bot_has_permissions(manage_roles=True)
-    async def role_add(self, ctx, role: discord.Role,
-                       *members: discord.Member):
-        """Adds a role to server members.
-
-        Examples:
-          ~role add Moderator @bob
-          ~role add Silenced @bob Alice#1234 208460178863947776
-
-        To temporarily add a role to a user, see ~help temp role add.
-        Requires Manage Roles (User and Bot)
-        """
-        if not (await check_role_manager(ctx, role)):
-            return
-
-        def make_action(member):
-            action = create_action(member)
-            action.change_role.type = proto.StatusType.APPLY
-            action.change_role.role_ids.append(role.id)
-            action.reason = (f'Role added by {ctx.author.name}.\n' +
-                             ctx.message.jump_url)
-            return action
-        await ctx.bot.action_manager.execute_all(
-            make_action(m) for m in members)
-        # TODO(james7132): Have this reflect the results of the actions
-        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+    async def role_add(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "role add")
 
     @role.command(name="remove")
-    @commands.guild_only()
-    @commands.has_permissions(manage_roles=True)
-    @commands.bot_has_permissions(manage_roles=True)
-    async def role_remove(self, ctx, role: discord.Role,
-                          *members: discord.Member):
-        """Removes a role to server members.
-
-        Examples:
-          ~role remove Moderator @bob
-          ~role remove Silenced @bob Alice#1234 208460178863947776
-
-        To temporarily remove a role to a user, see ~help temp role remove.
-        Requires Manage Roles (User and Bot)
-        """
-        if not (await check_role_manager(ctx, role)):
-            return
-
-        def make_action(member):
-            action = create_action(member)
-            action.change_role.type = proto.StatusType.UNAPPLY
-            action.change_role.role_ids.append(role.id)
-            action.reason = (f'Role removed by {ctx.author.name}.\n' +
-                             ctx.message.jump_url)
-            return action
-
-        await ctx.bot.action_manager.execute_all(
-            make_action(m) for m in members)
-        # TODO(james7132): Have this reflect the results of the actions
-        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+    async def role_remove(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "role remove")
 
     @role.command(name="allow")
     @commands.guild_only()
@@ -508,295 +227,37 @@ class Admin(escalation.EscalationMixin, cogs.BaseCog):
         pass
 
     @temp.group(name="ban")
-    @commands.guild_only()
-    @commands.has_permissions(ban_members=True)
-    @commands.bot_has_permissions(ban_members=True)
-    async def temp_ban(self, ctx, duration: utils.human_timedelta,
-                       *members: discord.Member):
-        """Temporarily bans all specified users from the server.
-
-        Examples:
-          ~temp ban 1d @bob
-          ~temp ban 30m @bob Alice#1234 208460178863947776
-
-        Requires Ban Members (User and Bot)
-        """
-        def make_action(member):
-            action = create_action(member)
-            action.ban.type = proto.BanMember.BAN
-            action.duration = int(duration.total_seconds())
-            action.reason = (f'Temp Ban by {ctx.author.name}.\n' +
-                             ctx.message.jump_url)
-            return action
-        await ctx.bot.action_manager.execute_all(
-            make_action(m) for m in members)
-        # TODO(james7132): Have this reflect the results of the actions
-        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+    async def temp_ban(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "")
 
     @temp.group(name="mute")
-    @commands.guild_only()
-    @commands.has_permissions(mute_members=True)
-    @commands.bot_has_permissions(mute_members=True)
-    async def temp_mute(self, ctx, duration: utils.human_timedelta,
-                        *members: discord.Member):
-        """Temporarily server mutes all specified users.
-
-        Examples:
-          ~temp mute 1d @bob
-          ~temp mute 30m @bob Alice#1234 208460178863947776
-
-        Requires Mute Members (User and Bot)
-        """
-        def make_action(member):
-            action = create_action(member)
-            action.mute.type = proto.MuteMember.MUTE
-            action.duration = int(duration.total_seconds())
-            action.reason = (f'Temp mute by {ctx.author.name}.\n' +
-                             ctx.message.jump_url)
-            return action
-        await ctx.bot.action_manager.execute_all(
-            make_action(m) for m in members)
-        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+    async def temp_mute(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "mute")
 
     @temp.group(name="deafen")
-    @commands.guild_only()
-    @commands.has_permissions(mute_members=True)
-    @commands.bot_has_permissions(mute_members=True)
-    async def temp_deafen(self, ctx, duration: utils.human_timedelta,
-                          *members: discord.Member):
-        """Temporarily server deafen all specified users.
-
-        Examples:
-          ~temp deafen 1d @bob
-          ~temp deafen 30m @bob Alice#1234 208460178863947776
-
-        Requires Deafen  Members (User and Bot)
-        """
-        def make_action(member):
-            action = create_action(member)
-            action.deafen.type = proto.StatusType.APPLY
-            action.duration = int(duration.total_seconds())
-            action.reason = (f'Temp deafen by {ctx.author.name}.\n' +
-                             ctx.message.jump_url)
-            return action
-        await ctx.bot.action_manager.execute_all(
-            make_action(m) for m in members)
-        # TODO(james7132): Have this reflect the results of the actions
-        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+    async def temp_deafen(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "deafen")
 
     @temp.group(name="role")
-    async def temp_role(self, ctx):
+    async def temp_role(self, ctx, *, remainder: str):
         """Group of commands for temporarily altering roles."""
         pass
 
     @temp_role.command(name="add")
-    @commands.guild_only()
-    @commands.has_permissions(manage_roles=True)
-    @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role_add(self, ctx, duration: utils.human_timedelta,
-                            role: discord.Role, *members: discord.Member):
-        """Temporarily add a role to all specified users.
+    async def temp_role_add(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "role add")
 
-        Examples:
-          ~temp role add 1d Moderator @bob
-          ~temp role add 30m Silenced @bob Alice#1234 208460178863947776
-
-        Requires Manage Roles (User and Bot)
-        """
-        if not (await check_role_manager(ctx, role)):
-            return
-
-        def make_action(member):
-            action = create_action(member)
-            action.change_role.type = proto.StatusType.APPLY
-            action.change_role.role_ids.append(role.id)
-            action.duration = int(duration.total_seconds())
-            action.reason = (f'Temp role by {ctx.author.name}.\n' +
-                             ctx.message.jump_url)
-            return action
-        await ctx.bot.action_manager.execute_all(
-            make_action(m) for m in members)
-        # TODO(james7132): Have this reflect the results of the actions
-        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
-
-    @temp_role.command(name="role")
-    @commands.guild_only()
-    @commands.has_permissions(manage_roles=True)
-    @commands.bot_has_permissions(manage_roles=True)
-    async def temp_role_remove(self, ctx, duration: utils.human_timedelta,
-                               role: discord.Role, *members: discord.Member):
-        """Temporarily removes a role to all specified users.
-
-        Examples:
-          ~temp role remove 1d Moderator @bob
-          ~temp role remove 30m Silenced @bob Alice#1234 208460178863947776
-
-        Requires Manage Roles (User and Bot)
-        """
-        if not (await check_role_manager(ctx, role)):
-            return
-
-        def make_action(member):
-            action = create_action(member)
-            action.change_role.type = proto.StatusType.UNAPPLY
-            action.change_role.role_ids.append(role.id)
-            action.duration = int(duration.total_seconds())
-            action.reason = (f'Temp role by {ctx.author.name}.\n' +
-                             ctx.message.jump_url)
-            return action
-        await ctx.bot.action_manager.execute_all(
-            make_action(m) for m in members)
-        # TODO(james7132): Have this reflect the results of the actions
-        await ctx.send(':thumbsup:', delete_after=DELETE_WAIT_DURATION)
+    @temp_role.command(name="remove")
+    async def temp_role_remove(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "role remove")
 
     # -------------------------------------------------------------------------
     # Prune commands
     # -------------------------------------------------------------------------
 
-    async def _prune(self, ctx, count=100, predicate=None):
-        predicate = predicate or (lambda m: True)
-        max_lookback = datetime.utcnow() - MAX_PRUNE_LOOKBACK
-
-        def _msg_filter(msg):
-            return msg != ctx.message and predicate(msg)
-
-        async def _batcher():
-            batch = []
-            seen = 0
-            async for msg in ctx.history():
-                seen += 1
-                if seen > count or msg.created_at < max_lookback:
-                    break
-                if msg == ctx.message or not predicate(msg):
-                    continue
-                batch.append(msg)
-                if len(batch) >= 100:
-                    yield list(batch)
-                    batch.clear()
-            if len(batch) > 0:
-                yield list(batch)
-
-        seen_messages = 0
-        async for batch in _batcher():
-            assert len(batch) > 0
-            await ctx.channel.delete_messages(batch)
-            seen_messages += len(batch)
-        return seen_messages
-
-    @commands.group(name="prune", invoke_without_command=True)
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True)
-    async def prune(self, ctx, count: int = 100):
-        """Prunes messages in the current channel.
-
-        Up to [count] messages will be deleted. By default this is 100.
-        Messages over 14 days old will not be deleted.
-        Requires: Manage Messages (User and Bot)
-        """
-        count = await self._prune(ctx, count=count)
-        await ctx.send(f":thumbsup: Deleted {count} messages.",
-                       delete_after=DELETE_WAIT_DURATION)
-
-    @prune.command(name="user")
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True)
-    async def prune_user(self, ctx, *users: discord.User):
-        """Prunes messages in the current channel that belong to specific users.
-
-        Up to 100 messages will be deleted.
-        Messages over 14 days old will not be deleted.
-        Requires: Manage Messages (User and Bot)
-        """
-        users = set(users)
-        count = await self._prune(ctx, predicate=lambda m: m.author in users)
-        await ctx.send(f":thumbsup: Deleted {count} messages.",
-                       delete_after=DELETE_WAIT_DURATION)
-
-    @prune.command(name="embed")
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True)
-    async def prune_embed(self, ctx, count: int = 100):
-        """Prunes messages in the current channel that have an embed.
-
-        Up to [count] messages will be deleted. Defaults to 100.
-        Messages over 14 days old will not be deleted.
-        Requires: Manage Messages (User and Bot)
-        """
-
-        def msg_filter(m):
-            return len(m.attachments) + len(m.embeds) > 0
-        count = await self._prune(ctx, predicate=msg_filter)
-        await ctx.send(f":thumbsup: Deleted {count} messages.",
-                       delete_after=DELETE_WAIT_DURATION)
-
-    @prune.command(name="bot")
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True)
-    async def prune_bot(self, ctx, count: int = 100):
-        """Prunes messages in the current channel sent by bots.
-
-        Up to [count] messages will be deleted. Defaults to 100.
-        Messages over 14 days old will not be deleted.
-        Requires: Manage Messages (User and Bot)
-        """
-        def msg_filter(m):
-            return m.author.bot
-        count = await self._prune(ctx, count=count, predicate=msg_filter)
-        await ctx.send(f":thumbsup: Deleted {count} messages.",
-                       delete_after=DELETE_WAIT_DURATION)
-
-    @prune.command(name="mine")
-    @commands.bot_has_permissions(manage_messages=True)
-    async def prune_mine(self, ctx, count: int = 100):
-        """Prunes messages in the current channel from the caller.
-
-        Up to [count] messages will be deleted. Defaults to 100.
-        Messages over 14 days old will not be deleted.
-        Requires: Manage Messages (Bot)
-        """
-        def msg_filter(m):
-            return m.author == ctx.author
-        count = await self._prune(ctx, count=count, predicate=msg_filter)
-        await ctx.send(f":thumbsup: Deleted {count} messages.",
-                       delete_after=DELETE_WAIT_DURATION)
-
-    @prune.command(name="mention")
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True)
-    async def prune_mention(self, ctx, count: int = 100):
-        """Prunes messages in the current channel that mentions anyone.
-
-        Up to [count] messages will be deleted. Defaults to 100.
-        Messages over 14 days old will not be deleted.
-        Requires: Manage Messages (User and Bot)
-        """
-        def msg_filter(m):
-            return len(m.mentions) + len(m.role_mentions) > 0 or \
-                m.mention_everyone
-        count = await self._prune(ctx, count=count, predicate=msg_filter)
-        await ctx.send(f":thumbsup: Deleted {count} messages.",
-                       delete_after=DELETE_WAIT_DURATION)
-
-    @prune.command(name="match")
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True)
-    async def prune_match(self, ctx, regex: str):
-        """Prunes messages in the current channel that matches a pattern.
-
-        Example: ~prune match hi matches "hi", "high", "hiiiii".
-
-        Up to 100 messages will be deleted.
-        Messages over 14 days old will not be deleted.
-        Requires: Manage Messages (User and Bot)
-        """
-        regex = re.compile(regex)
-
-        def msg_filter(m):
-            return regex.search(m.clean_content)
-        count = await self._prune(ctx, predicate=msg_filter)
-        await ctx.send(f":thumbsup: Deleted {count} messages.",
-                       delete_after=DELETE_WAIT_DURATION)
-
+    @commands.group(name="prune")
+    async def prune(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "prune")
 
 def setup(bot):
     bot.add_cog(Admin(bot))
