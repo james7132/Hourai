@@ -11,7 +11,20 @@ here: https://discord.gg/UydKWHX.
 Beta features are highlighted in bold and are not available to the general public
 just yet. These need to be manually enabled and configured by the bot owner(s).
 
-## v1.4.2 (TBD)
+## v2.0.0 (11/29/2021)
+
+ * (Almost) all commands have been moved to [Slash
+   Commands](https://docs.hourai.gg/Slash-Commands). A few remaining normal
+   commands remain to be migrated. These commands should generally be easier to
+   use than the original commands used by the bot.
+ * (Almost) all reaction-button style features have been replaced with Discord's
+   official button message components.
+ * [Music] Fix: Fixed an issue with loading YouTube playlists.
+ * [Music] Feature: The bot will now persist the playing state across restarts.
+   No more losing your 600-song music bot queue when Discord resets the bot's
+   connection to their servers.
+
+## v1.4.2 (3/16/2021)
 
  * [Automation] **Beta Feature: Customizable Message Filtering.** Supports
    automatically removing and/or notifying moderators for potentially
