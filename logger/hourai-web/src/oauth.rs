@@ -52,13 +52,14 @@ struct TokenResponse {
 #[post("/token")]
 async fn token(
     state: web::Data<AppState>,
-    request: web::Json<TokenRequest>,
+    request: HttpRequest,
+    token_request: web::Json<TokenRequest>,
 ) -> Result<HttpResponse> {
     let body = serde_urlencoded::to_string(DiscordTokenRequest {
         client_id: state.config.discord.client_id.as_str(),
         client_secret: state.config.discord.client_secret.as_str(),
         redirect_uri: state.config.discord.redirect_uri.as_str(),
-        code: request.code.as_str(),
+        code: token_request.code.as_str(),
         grant_type: "authorization_code",
     })
     .unwrap();
@@ -82,10 +83,15 @@ async fn token(
         return Ok(HttpResponse::build(response.status()).body(body));
     };
 
+    let host = request.headers()
+        .get("Host")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("hourai.gg");
+
     // TODO(james7132): Store the refresh and access tokens in a database with explicit
     // expiration dates.
     let refresh_cookie = Cookie::build(COOKIE_KEY, data.refresh_token.as_str())
-        .domain("hourai.gg")
+        .domain(host)
         .path("/api/oauth/refresh")
         .max_age(Duration::days(7)) // 7 days
         .same_site(SameSite::Strict)
