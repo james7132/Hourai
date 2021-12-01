@@ -83,7 +83,8 @@ async fn token(
         return Ok(HttpResponse::build(response.status()).body(body));
     };
 
-    let host = request.headers()
+    let host = request
+        .headers()
         .get("Host")
         .and_then(|value| value.to_str().ok())
         .unwrap_or("hourai.gg");

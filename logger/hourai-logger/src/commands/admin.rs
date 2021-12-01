@@ -1,5 +1,5 @@
-use crate::utils;
 use super::prelude::*;
+use crate::utils;
 use futures::{channel::mpsc, future, prelude::*};
 use hourai::{
     http::request::AuditLogReason,
@@ -341,12 +341,11 @@ async fn fetch_messages(
         } else {
             http.channel_messages(channel_id).exec()
         };
-        let messages = fut
-            .await?
-            .model()
-            .await?;
+        let messages = fut.await?.model().await?;
         for message in messages {
-            oldest = oldest.map(|oldest| oldest.min(message.id)).or(Some(message.id));
+            oldest = oldest
+                .map(|oldest| oldest.min(message.id))
+                .or(Some(message.id));
             if message.timestamp.as_secs() < limit {
                 return Ok(());
             } else if let Err(_) = tx.unbounded_send(message) {
@@ -361,9 +360,10 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
     ctx.defer().await?;
     let count = ctx.get_int("count").unwrap_or(100) as usize;
     if count > MAX_PRUNED_MESSAGES {
-        anyhow::bail!(InteractionError::InvalidArgument(
-            format!("Prune only supports up to {} messages.", MAX_PRUNED_MESSAGES)
-        ));
+        anyhow::bail!(InteractionError::InvalidArgument(format!(
+            "Prune only supports up to {} messages.",
+            MAX_PRUNED_MESSAGES
+        )));
     }
 
     let mut filters: Vec<Box<dyn Fn(&Message) -> bool + Send + 'static>> = Vec::new();
@@ -411,8 +411,9 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
 
     let (tx, rx) = mpsc::unbounded();
     tokio::spawn(utils::log_error(
-            "fetching messages to prune",
-            fetch_messages(ctx.channel_id(), ctx.http.clone(), tx)));
+        "fetching messages to prune",
+        fetch_messages(ctx.channel_id(), ctx.http.clone(), tx),
+    ));
 
     let batches: Vec<Vec<MessageId>> = rx
         .skip(1)

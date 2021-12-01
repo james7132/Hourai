@@ -9,4 +9,3 @@ pub async fn log_error<O, E: Display + Debug>(
         tracing::error!("Error while {}: {} ({:?})", action, err, err);
     }
 }
-

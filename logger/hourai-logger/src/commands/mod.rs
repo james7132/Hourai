@@ -1,4 +1,5 @@
 mod admin;
+mod config;
 mod escalation;
 mod prelude;
 mod standard;
@@ -34,6 +35,25 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
         Command::SubCommand("escalate", "history") => {
             escalation::escalate_history(&ctx, actions).await
         }
+        // Config commands
+        Command::SubGroupCommand("config", "reddit", "add") => config::reddit_add(&ctx).await,
+        Command::SubGroupCommand("config", "reddit", "remove") => config::reddit_remove(&ctx).await,
+        Command::SubGroupCommand("config", "reddit", "list") => config::reddit_list(&ctx).await,
+
+        Command::SubGroupCommand("config", "set", "dj") => config::setdj(&ctx).await,
+        Command::SubGroupCommand("config", "set", "modlog") => config::setmodlog(&ctx).await,
+
+        Command::SubGroupCommand("config", "announce", "join") => config::announce_join(&ctx).await,
+        Command::SubGroupCommand("config", "announce", "leave") => {
+            config::announce_leave(&ctx).await
+        }
+        Command::SubGroupCommand("config", "announce", "ban") => config::announce_ban(&ctx).await,
+        Command::SubGroupCommand("config", "announce", "voice") => {
+            config::announce_voice(&ctx).await
+        }
+
+        Command::SubGroupCommand("config", "log", "edited") => config::log_edited(&ctx).await,
+        Command::SubGroupCommand("config", "log", "deleted") => config::log_deleted(&ctx).await,
         _ => return Ok(()),
     };
 

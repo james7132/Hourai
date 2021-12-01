@@ -42,9 +42,8 @@ use twilight_lavalink::{model::*, Lavalink};
 
 const RESUME_KEY: &str = "MUSIC";
 
-const BOT_INTENTS: Intents = Intents::from_bits_truncate(
-    Intents::GUILDS.bits() | Intents::GUILD_VOICE_STATES.bits(),
-);
+const BOT_INTENTS: Intents =
+    Intents::from_bits_truncate(Intents::GUILDS.bits() | Intents::GUILD_VOICE_STATES.bits());
 
 const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
     EventTypeFlags::CHANNEL_CREATE.bits()

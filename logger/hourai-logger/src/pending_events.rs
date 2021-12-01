@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::utils;
+use anyhow::Result;
 use futures::stream::StreamExt;
 use hourai_sql::{Executor, PendingAction, PendingDeescalation};
 use hourai_storage::{actions::ActionExecutor, escalation::EscalationManager};
