@@ -335,39 +335,6 @@ local commands = [
 
   command {
     // #014
-    name: "verification",
-    description: "",
-    options: [subcommand {
-      name: "verify",
-      description: "Required: the user that is being inspected.",
-      options: [user {
-        name: "user",
-        description: "The user to run verification manually on.",
-        required: true,
-      }]
-    }, subcommand {
-      name: "setup",
-      description: "Sets up verification on the current server.",
-      options: [role {
-        name: "role",
-        description: "Optional: The verification role that is to be given out upon verification.",
-      }]
-    }, subcommand {
-      name: "propagate",
-      description: "Distributes the verification role to all users currently on the server.",
-    }, subcommand {
-      name: "purge",
-      description: "Kicks all users that have not been verified within a specified timeframe from the server. Requires Kick Members.",
-      options: [string {
-        name: "lookback",
-        description: "Required: Maximum unverified time since joining the server.",
-        required: true,
-      }]
-    }]
-  },
-
-  command {
-    // #015
     name: "escalate",
     description: "Progressive tracked moderation.",
     options: [subcommand {
@@ -408,6 +375,89 @@ local commands = [
         description: "The user to kick from the server.",
         required: true,
       }]
+    }],
+  },
+
+  command {
+    // #015
+    name: "config",
+    description: "Configure the bot.",
+    options: [subcommand_group {
+      name: "announce",
+      description: "Enables/disables announcements in this channel.",
+      options: [subcommand {
+        name: "join",
+        description: "Enables/disables announcements of user joins in this channel.",
+        options: [],
+      }, subcommand {
+        name: "leave",
+        description: "Enables/disables announcements of user leaves in this channel.",
+        options: [],
+      }, subcommand {
+        name: "ban",
+        description: "Enables/disables announcements of user bans in this channel.",
+        options: [],
+      }, subcommand {
+        name: "voice",
+        description: "Enables/disables announcements of voice channel changes in this channel.",
+        options: [],
+      }],
+    }, subcommand_group {
+      name: "log",
+      description: "Enables/disables logging of messsages for this server.",
+      options: [subcommand {
+        name: "edited",
+        description: "Enables/disables announcements of user joins in this channel.",
+        options: [],
+      }, subcommand {
+        name: "deleted",
+        description: "Enables/disables announcements of user leaves in this channel.",
+        options: [],
+      }],
+    }, subcommand_group {
+      name: "set",
+      description: "Designate specific roles/channels for the bot.",
+      options: [subcommand {
+        name: "dj",
+        description: "Enables/disables announcements of user joins in this channel.",
+        options: [role {
+          name: "role",
+          description: "The new DJ role. All roles above it will have DJ perms.",
+          required: true,
+        }],
+      }, subcommand {
+        name: "modlog",
+        description: "Enables/disables announcements of user leaves in this channel.",
+        options: [channel {
+          name: "channel",
+          description: "The modlog channel.",
+          required: true,
+        }],
+      }],
+    }, subcommand_group {
+      name: "reddit",
+      description: "Changes reddit feeds in the current channel.",
+      options: [subcommand {
+        name: "add",
+        description: "Adds a subreddit feed to the current channel.",
+        options: [string {
+          name: "subreddit",
+          description: "The subreddit to add to the channel.",
+          required: true,
+        }],
+      }, subcommand {
+        name: "remove",
+        description: "Removes a subreddit feed to the current channel.",
+        options: [string {
+          name: "subreddit",
+          description: "The subreddit to remove from the channel.",
+          required: true,
+        }],
+      }, subcommand {
+        name: "list",
+        description: "Lists all subreddit feeds in the current channel.",
+        options: [],
+      }],
     }],
   },
 ];
