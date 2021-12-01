@@ -35,6 +35,14 @@ def die(val):
                 modifier=modifier, mod_type=match.group(3))
 
 
+async def deprecation_notice(ctx, alt):
+    await ctx.send(
+        f"This command is deprecated and will be removed soon. Please use the "
+        f"`/{alt}` slash command instead. For more information on how to use "
+        f"Hourai's Slash Commands, please read the documentation here: "
+        f"https://docs.hourai.gg/Slash-Commands.")
+
+
 class Standard(cogs.BaseCog):
 
     def __init__(self):
@@ -367,6 +375,52 @@ class Standard(cogs.BaseCog):
         await ctx.guild.flush_config()
         await ctx.send(f"Set **{role}** as the DJ for this server.")
 
+    @commands.command()
+    async def play(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music play")
+
+    @commands.command()
+    async def pause(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music pause")
+
+    @commands.command()
+    async def stop(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music stop")
+
+    @commands.command()
+    async def skip(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music skip")
+
+    @commands.command()
+    async def forceskip(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music skip")
+
+    @commands.command()
+    async def remove(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music remove")
+
+    @commands.command()
+    async def removeall(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music remove")
+
+    @commands.command()
+    async def volume(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music volume")
+
+    @commands.command()
+    @commands.guild_only()
+    async def nowplaying(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music nowplaying")
+
+    @commands.command()
+    @commands.guild_only()
+    async def np(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music nowplaying")
+
+    @commands.command()
+    @commands.guild_only()
+    async def queue(self, ctx, *, remainder: str):
+        await deprecation_notice(ctx, "music queue")
 
 def setup(bot):
     standard = Standard()

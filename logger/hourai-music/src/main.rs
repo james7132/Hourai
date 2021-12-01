@@ -1,5 +1,4 @@
 mod buttons;
-mod commands;
 mod interaction_ui;
 mod interactions;
 mod player;
@@ -39,13 +38,12 @@ use hyper::{
     Body, Request,
 };
 use std::{convert::TryFrom, str::FromStr};
-use twilight_command_parser::{CommandParserConfig, Parser};
 use twilight_lavalink::{model::*, Lavalink};
 
 const RESUME_KEY: &str = "MUSIC";
 
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
-    Intents::GUILDS.bits() | Intents::GUILD_MESSAGES.bits() | Intents::GUILD_VOICE_STATES.bits(),
+    Intents::GUILDS.bits() | Intents::GUILD_VOICE_STATES.bits(),
 );
 
 const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
@@ -55,7 +53,6 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
         | EventTypeFlags::GUILD_CREATE.bits()
         | EventTypeFlags::GUILD_DELETE.bits()
         | EventTypeFlags::INTERACTION_CREATE.bits()
-        | EventTypeFlags::MESSAGE_CREATE.bits()
         | EventTypeFlags::READY.bits()
         | EventTypeFlags::VOICE_SERVER_UPDATE.bits()
         | EventTypeFlags::VOICE_STATE_UPDATE.bits(),
@@ -65,24 +62,6 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
 async fn main() {
     let config = config::load_config(config::get_config_path().as_ref());
     init::init(&config);
-
-    let parser = {
-        let mut parser = CommandParserConfig::new();
-        parser.add_prefix(config.command_prefix.clone());
-        parser.add_command("play", false);
-        parser.add_command("pause", false);
-        parser.add_command("stop", false);
-        parser.add_command("shuffle", false);
-        parser.add_command("skip", false);
-        parser.add_command("forceskip", false);
-        parser.add_command("remove", false);
-        parser.add_command("volume", false);
-        parser.add_command("removeall", false);
-        parser.add_command("nowplaying", false);
-        parser.add_command("np", false);
-        parser.add_command("queue", false);
-        Parser::new(parser)
-    };
 
     let http_client = Arc::new(init::http_client(&config));
     let redis = hourai_redis::init(&config).await;
@@ -115,8 +94,6 @@ async fn main() {
         gateway: gateway.clone(),
         states: Arc::new(DashMap::new()),
         hyper: HyperClient::new(),
-        resolver: GaiResolver::new(),
-        parser,
         redis: redis.clone(),
     };
 
@@ -157,19 +134,17 @@ async fn main() {
 }
 
 #[derive(Clone)]
-pub struct Client<'a> {
+pub struct Client {
     pub user_id: UserId,
     pub http_client: Arc<hourai::http::Client>,
     pub hyper: HyperClient<HttpConnector>,
     pub gateway: Arc<Cluster>,
     pub lavalink: Arc<twilight_lavalink::Lavalink>,
     pub states: Arc<DashMap<GuildId, PlayerState>>,
-    pub resolver: GaiResolver,
     pub redis: RedisClient,
-    pub parser: Parser<'a>,
 }
 
-impl Client<'static> {
+impl Client {
     async fn connect_node(
         &mut self,
         uri: &Uri,
@@ -177,7 +152,8 @@ impl Client<'static> {
     ) -> Result<IncomingEvents> {
         let name = Name::from_str(uri.host().unwrap()).unwrap();
         let pass = password.into();
-        for mut address in self.resolver.call(name).await? {
+        let mut resolver = GaiResolver::new();
+        for mut address in resolver.call(name).await? {
             if let Some(port) = uri.port_u16() {
                 address.set_port(port);
             }
@@ -230,7 +206,6 @@ impl Client<'static> {
                 }
             }
             Event::InteractionCreate(evt) => self.on_interaction_create(evt.0).await,
-            Event::MessageCreate(evt) => commands::on_message_create(self, evt.0).await,
             Event::Ready(_) => Ok(()),
             Event::VoiceStateUpdate(_) => Ok(()),
             Event::VoiceServerUpdate(_) => Ok(()),

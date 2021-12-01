@@ -2,7 +2,6 @@
 extern crate lazy_static;
 
 pub mod cache;
-pub mod commands;
 pub mod config;
 pub mod init;
 pub mod interactions;

@@ -31,8 +31,6 @@ twilight-embed-builder = "0.7"
 twilight-model = "0.7"
 twilight-util = { version = "0.7", features = ["snowflake"] }
 regex = "1.5"
-# Feature based optional dependencies
-twilight-command-parser= "0.7"
 
 [dependencies.twilight-gateway]
 version = "0.7"

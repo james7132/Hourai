@@ -22,7 +22,7 @@ async def deprecation_notice(ctx, alt):
 
 class EscalationMixin:
 
-    @commands.group(name='escalate')
+    @commands.group(name='escalate', invoke_without_command=True)
     async def escalate(self, ctx, *, remainder: str):
         await deprecation_notice(ctx, "escalate up")
 

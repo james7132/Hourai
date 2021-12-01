@@ -69,7 +69,7 @@ pub struct EmbedUI<T>
 where
     T: EmbedUIBuilder + Default,
 {
-    pub client: crate::Client<'static>,
+    pub client: crate::Client,
     pub context: CommandContext,
     pub guild_id: GuildId,
     builder: T,
@@ -79,7 +79,7 @@ impl<T> EmbedUI<T>
 where
     T: EmbedUIBuilder + Default,
 {
-    pub async fn create(client: Client<'static>, ctx: CommandContext) -> Result<Self> {
+    pub async fn create(client: Client, ctx: CommandContext) -> Result<Self> {
         let guild_id = ctx.guild_id()?;
 
         let dummy = Self {

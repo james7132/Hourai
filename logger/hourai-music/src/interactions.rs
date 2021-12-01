@@ -18,7 +18,7 @@ macro_rules! get_player {
     };
 }
 
-pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Result<()> {
+pub async fn handle_command(client: Client, ctx: CommandContext) -> Result<()> {
     let result = match ctx.command() {
         Command::SubCommand("music", "play") => {
             ctx.defer().await?;
@@ -89,7 +89,7 @@ pub async fn handle_command(client: Client<'static>, ctx: CommandContext) -> Res
     }
 }
 
-pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) -> Result<()> {
+pub async fn handle_component(client: Client, ctx: ComponentContext) -> Result<()> {
     let proto = ctx.metadata()?;
     let button = proto.get_music_button();
     match button.get_button_option() {
@@ -134,7 +134,7 @@ pub async fn handle_component(client: Client<'static>, ctx: ComponentContext) ->
 }
 
 async fn require_in_voice_channel(
-    client: &Client<'static>,
+    client: &Client,
     ctx: &impl InteractionContext,
 ) -> Result<(GuildId, ChannelId)> {
     let guild_id = ctx.guild_id()?;
@@ -159,7 +159,7 @@ async fn require_in_voice_channel(
     }
 }
 
-fn require_playing(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<GuildId> {
+fn require_playing(client: &Client, ctx: &impl InteractionContext) -> Result<GuildId> {
     let guild_id = ctx.guild_id()?;
     client
         .states
@@ -177,7 +177,7 @@ fn is_dj(config: &MusicConfig, roles: &[RoleId]) -> bool {
 }
 
 /// Requires that the author is a DJ on the server to use the command.
-async fn require_dj(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<()> {
+async fn require_dj(client: &Client, ctx: &impl InteractionContext) -> Result<()> {
     let _guild_id = ctx.guild_id()?;
     let _user_id = ctx.user().id;
     let (guild_id, _) = require_in_voice_channel(client, ctx).await?;
@@ -193,7 +193,7 @@ async fn require_dj(client: &Client<'static>, ctx: &impl InteractionContext) -> 
 }
 
 async fn load_tracks(
-    client: &Client<'static>,
+    client: &Client,
     node: &Node,
     query: &str,
 ) -> Option<Vec<twilight_lavalink::http::Track>> {
@@ -254,7 +254,7 @@ async fn load_tracks(
     Some(tracks)
 }
 
-async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
+async fn play(client: &Client, ctx: &CommandContext) -> Result<Response> {
     let (guild_id, channel_id) = require_in_voice_channel(client, ctx).await?;
     let user = ctx.user();
     let query = ctx.get_string("query")?;
@@ -315,7 +315,7 @@ async fn play(client: &Client<'static>, ctx: &CommandContext) -> Result<Response
 }
 
 async fn pause(
-    client: &Client<'static>,
+    client: &Client,
     ctx: &impl InteractionContext,
     pause: Option<bool>,
 ) -> Result<Response> {
@@ -336,7 +336,7 @@ async fn pause(
     Ok(Response::direct().content(response))
 }
 
-async fn stop(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<Response> {
+async fn stop(client: &Client, ctx: &impl InteractionContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     require_dj(client, ctx).await?;
     client.disconnect(guild_id).await?;
@@ -344,7 +344,7 @@ async fn stop(client: &Client<'static>, ctx: &impl InteractionContext) -> Result
     Ok(Response::direct().content("The player has been stopped and the queue has been cleared"))
 }
 
-async fn skip(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<Response> {
+async fn skip(client: &Client, ctx: &impl InteractionContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     let user_id = ctx.user().id;
     require_in_voice_channel(client, ctx).await?;
@@ -367,7 +367,7 @@ async fn skip(client: &Client<'static>, ctx: &impl InteractionContext) -> Result
     Ok(Response::direct().content(&response))
 }
 
-async fn remove(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
+async fn remove(client: &Client, ctx: &CommandContext) -> Result<Response> {
     if ctx.get_flag("all").unwrap_or(false) {
         return remove_all(&client, ctx).await;
     }
@@ -414,7 +414,7 @@ async fn remove(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
     Ok(Response::direct().content(&response))
 }
 
-async fn remove_all(client: &Client<'static>, ctx: &impl InteractionContext) -> Result<Response> {
+async fn remove_all(client: &Client, ctx: &impl InteractionContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     require_in_voice_channel(client, ctx).await?;
     let response = client
@@ -430,7 +430,7 @@ async fn remove_all(client: &Client<'static>, ctx: &impl InteractionContext) -> 
     Ok(Response::direct().content(&response))
 }
 
-async fn shuffle(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
+async fn shuffle(client: &Client, ctx: &CommandContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     require_in_voice_channel(client, ctx).await?;
     let response = client
@@ -446,7 +446,7 @@ async fn shuffle(client: &Client<'static>, ctx: &CommandContext) -> Result<Respo
     Ok(Response::direct().content(&response))
 }
 
-async fn forceskip(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
+async fn forceskip(client: &Client, ctx: &CommandContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     require_dj(client, ctx).await?;
     let response = if let Some(previous) = client.play_next(guild_id).await? {
@@ -458,7 +458,7 @@ async fn forceskip(client: &Client<'static>, ctx: &CommandContext) -> Result<Res
     Ok(Response::direct().content(&response))
 }
 
-async fn volume(client: &Client<'static>, ctx: &CommandContext) -> Result<Response> {
+async fn volume(client: &Client, ctx: &CommandContext) -> Result<Response> {
     let guild_id = require_playing(client, ctx)?;
     let volume = ctx.get_int("volume");
     let response = if let Ok(vol) = volume {
@@ -486,7 +486,7 @@ async fn volume(client: &Client<'static>, ctx: &CommandContext) -> Result<Respon
 }
 
 async fn delta_volume(
-    client: &Client<'static>,
+    client: &Client,
     ctx: &impl InteractionContext,
     change: i64,
 ) -> Result<Response> {
@@ -508,7 +508,7 @@ async fn delta_volume(
 }
 
 async fn shift_queue_page(
-    client: &Client<'static>,
+    client: &Client,
     ctx: &impl InteractionContext,
     change: i64,
 ) -> Result<Response> {
@@ -519,7 +519,7 @@ async fn shift_queue_page(
     Ok(Response::direct().content("Changed page."))
 }
 
-async fn queue(client: &Client<'static>, ctx: CommandContext) -> Result<()> {
+async fn queue(client: &Client, ctx: CommandContext) -> Result<()> {
     let guild_id = ctx.guild_id()?;
     let ui = EmbedUI::<QueueUI>::create(client.clone(), ctx).await?;
     client.mutate_state(guild_id, move |state| {
@@ -530,7 +530,7 @@ async fn queue(client: &Client<'static>, ctx: CommandContext) -> Result<()> {
     Ok(())
 }
 
-async fn now_playing(client: &Client<'static>, ctx: CommandContext) -> Result<()> {
+async fn now_playing(client: &Client, ctx: CommandContext) -> Result<()> {
     let guild_id = ctx.guild_id()?;
     let ui = EmbedUI::<NowPlayingUI>::create(client.clone(), ctx).await?;
     client.mutate_state(guild_id, move |state| {
