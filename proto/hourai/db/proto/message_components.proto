@@ -1,12 +1,21 @@
 syntax = "proto2";
 
+import "hourai/db/proto/action.proto";
+
 package hourai.db.proto;
 
 message MessageComponentProto {
   oneof component {
     VerificationButton verification_button = 1;
     MusicButton music_button = 2;
+    ActionButton action_button = 3;
   }
+}
+
+// NEXT ID: 3
+message ActionButton {
+  optional /* actually required */ fixed64 required_permissions = 1;
+  optional /* actually required */ ActionSet actions = 2;
 }
 
 // NEXT ID: 4

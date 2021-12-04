@@ -2,6 +2,7 @@
 extern crate lazy_static;
 
 mod announcements;
+mod buttons;
 mod commands;
 mod listings;
 mod member_chunker;

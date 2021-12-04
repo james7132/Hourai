@@ -155,8 +155,7 @@ fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
 
     Ok(EmbedBuilder::new()
         .author(
-            EmbedAuthorBuilder::new()
-                .name(track.requestor.display_name())
+            EmbedAuthorBuilder::new(track.requestor.display_name())
                 .icon_url(ImageSource::url(track.requestor.avatar_url())?),
         )
         .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))

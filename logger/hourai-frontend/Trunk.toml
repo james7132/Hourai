@@ -1,0 +1,17 @@
+[build]
+target = "index.html"
+release = false
+dist = "dist"
+public_url = "/"
+
+[serve]
+addr = "0.0.0.0"
+port = 8080
+open = false
+
+[clean]
+dist = "dist"
+
+[[proxy]]
+rewrite = "/api/v1/"
+backend = "https://hourai.gg/api/v1/"

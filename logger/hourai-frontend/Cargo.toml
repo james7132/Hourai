@@ -1,0 +1,10 @@
+[package]
+name = "hourai-frontend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+yew = { git = "https://github.com/yewstack/yew" }
+yew-router = { git = "https://github.com/yewstack/yew" }
+ybc = { git = "https://github.com/dungeonfog/ybc", branch="yew-0-19-update" }
+wee_alloc = "0.4"

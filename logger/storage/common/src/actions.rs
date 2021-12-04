@@ -71,6 +71,14 @@ impl ActionExecutor {
                     );
                 }
             }
+            Some(Action_oneof_details::delete_messages(ref info)) => {
+                if let Err(err) = self.execute_delete_messages(&info).await {
+                    tracing::error!(
+                        "Error while deleteing a message to a given channel for an action: {}",
+                        err
+                    );
+                }
+            }
             None => panic!("Cannot run action without a specified type"),
         };
 
@@ -306,6 +314,28 @@ impl ActionExecutor {
             .content(info.get_content())?
             .exec()
             .await?;
+        Ok(())
+    }
+
+    async fn execute_delete_messages(&self, info: &DeleteMessages) -> Result<()> {
+        let channel_id = ChannelId::new(info.get_channel_id()).unwrap();
+        let message_ids: Vec<MessageId> =
+            info.message_ids.iter().cloned().filter_map(MessageId::new).collect();
+        match message_ids.len() {
+            0 => return Ok(()),
+            1 => {
+                self.http
+                    .delete_message(channel_id, message_ids[0])
+                    .exec()
+                    .await?;
+            }
+            _ => {
+                self.http
+                    .delete_messages(channel_id, &message_ids)
+                    .exec()
+                    .await?;
+            }
+        }
         Ok(())
     }
 }

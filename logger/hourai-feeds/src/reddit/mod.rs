@@ -156,8 +156,7 @@ fn make_embed(source: Submission) -> Result<Embed> {
         .url(format!("https://reddit.com{}", source.permalink))
         .color(0xFF4301)
         .author(
-            EmbedAuthorBuilder::new()
-                .name(format!("/u/{}", source.author))
+            EmbedAuthorBuilder::new(format!("/u/{}", source.author))
                 .url(format!("https://reddit.com/u/{}", source.author)),
         );
 

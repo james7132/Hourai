@@ -154,7 +154,7 @@ impl CommandContext {
             .data
             .resolved
             .as_ref()
-            .and_then(|r| r.users.iter().find(|m| m.id == id))
+            .and_then(|r| r.users.get(&id))
     }
 
     pub fn resolve_member(&self, id: UserId) -> Option<&InteractionMember> {
@@ -162,7 +162,7 @@ impl CommandContext {
             .data
             .resolved
             .as_ref()
-            .and_then(|r| r.members.iter().find(|m| m.id == id))
+            .and_then(|r| r.members.get(&id))
     }
 
     fn flatten_options(options: &Vec<CommandDataOption>) -> Vec<&CommandDataOption> {

@@ -346,7 +346,7 @@ async fn fetch_messages(
             oldest = oldest
                 .map(|oldest| oldest.min(message.id))
                 .or(Some(message.id));
-            if message.timestamp.as_secs() < limit {
+            if message.timestamp.as_secs() < limit as i64 {
                 return Ok(());
             } else if let Err(_) = tx.unbounded_send(message) {
                 return Ok(());
