@@ -121,7 +121,7 @@ class Auto(cogs.BaseCog):
 
     async def execute_actions(self, actions):
         for action in actions:
-            await self.bot.actions.execute(action)
+            await self.bot.action_manager.execute(action)
 
     async def get_events(self, guild, event_type):
         config = guild.config.auto
