@@ -23,7 +23,7 @@ use hourai::{
         application::{callback::InteractionResponse, interaction::Interaction},
         gateway::payload::outgoing::UpdateVoiceState,
         guild::Guild,
-        id::*,
+        id::{marker::*, Id},
     },
     proto::{guild_configs::MusicConfig, music_bot::MusicStateProto},
 };
@@ -134,12 +134,12 @@ async fn main() {
 
 #[derive(Clone)]
 pub struct Client {
-    pub user_id: UserId,
+    pub user_id: Id<UserMarker>,
     pub http_client: Arc<hourai::http::Client>,
     pub hyper: HyperClient<HttpConnector>,
     pub gateway: Arc<Cluster>,
     pub lavalink: Arc<twilight_lavalink::Lavalink>,
-    pub states: Arc<DashMap<GuildId, PlayerState>>,
+    pub states: Arc<DashMap<Id<GuildMarker>, PlayerState>>,
     pub redis: RedisClient,
 }
 
@@ -258,6 +258,7 @@ impl Client {
         match evt {
             Interaction::Ping(ping) => {
                 self.http_client
+                    .interaction(ping.application_id)
                     .interaction_callback(ping.id, &ping.token, &InteractionResponse::Pong)
                     .exec()
                     .await?;
@@ -323,18 +324,18 @@ impl Client {
     }
 
     /// Gets the music config for a server.
-    pub async fn get_config(&self, guild_id: GuildId) -> Result<MusicConfig> {
+    pub async fn get_config(&self, guild_id: Id<GuildMarker>) -> Result<MusicConfig> {
         let config: MusicConfig = self.redis.guild(guild_id).configs().get().await?;
         Ok(config)
     }
 
     /// Sets the music config for the sever.
-    pub async fn set_config(&self, guild_id: GuildId, config: MusicConfig) -> Result<()> {
+    pub async fn set_config(&self, guild_id: Id<GuildMarker>, config: MusicConfig) -> Result<()> {
         self.redis.guild(guild_id).configs().set(config).await?;
         Ok(())
     }
 
-    pub async fn save_state(&self, guild_id: GuildId) -> Result<()> {
+    pub async fn save_state(&self, guild_id: Id<GuildMarker>) -> Result<()> {
         let state = self
             .states
             .get(&guild_id)
@@ -357,7 +358,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn load_state(&self, guild_id: GuildId) -> Result<MusicStateProto> {
+    pub async fn load_state(&self, guild_id: Id<GuildMarker>) -> Result<MusicStateProto> {
         let state = self.redis.guild(guild_id).music_queue().load().await?;
         self.mutate_state(guild_id, |player| {
             player.load_from_proto(state.clone());
@@ -367,16 +368,16 @@ impl Client {
     }
 
     /// Gets some information about a guild's player queue.
-    pub fn get_queue<F, R>(&self, guild_id: GuildId, f: F) -> Option<R>
+    pub fn get_queue<F, R>(&self, guild_id: Id<GuildMarker>, f: F) -> Option<R>
     where
-        F: Fn(&MusicQueue<UserId, Track>) -> R,
+        F: Fn(&MusicQueue<Id<UserMarker>, Track>) -> R,
     {
         self.states.get(&guild_id).map(|kv| f(&kv.value().queue))
     }
 
     /// Gets the currently playing track in a given guild.
     /// If not playing, return None.
-    pub fn currently_playing(&self, guild_id: GuildId) -> Option<Track> {
+    pub fn currently_playing(&self, guild_id: Id<GuildMarker>) -> Option<Track> {
         self.states
             .get(&guild_id)
             .and_then(|kv| kv.value().currently_playing().map(|cp| cp.1))
@@ -384,13 +385,13 @@ impl Client {
 
     /// Gets the currently displayed queue page in a given guild.
     /// If not playing, return None.
-    pub fn queue_page(&self, guild_id: GuildId) -> Option<i64> {
+    pub fn queue_page(&self, guild_id: Id<GuildMarker>) -> Option<i64> {
         self.states.get(&guild_id).map(|kv| kv.value().queue_page)
     }
 
     /// Gets which voice channel the bot is currently connected to in
     /// a guild.
-    pub fn get_channel(&self, guild_id: GuildId) -> Option<ChannelId> {
+    pub fn get_channel(&self, guild_id: Id<GuildMarker>) -> Option<Id<ChannelMarker>> {
         self.lavalink
             .players()
             .get(&guild_id)
@@ -399,7 +400,7 @@ impl Client {
 
     /// Counts the number of users in the same voice channel as the bot.
     /// If not in a voice channel, returns 0.
-    pub async fn count_listeners(&self, guild_id: GuildId) -> Result<usize> {
+    pub async fn count_listeners(&self, guild_id: Id<GuildMarker>) -> Result<usize> {
         Ok(if let Some(channel_id) = self.get_channel(guild_id) {
             let states = self
                 .redis
@@ -413,7 +414,10 @@ impl Client {
         })
     }
 
-    pub async fn get_node(&self, guild_id: GuildId) -> Result<Arc<twilight_lavalink::Node>> {
+    pub async fn get_node(
+        &self,
+        guild_id: Id<GuildMarker>,
+    ) -> Result<Arc<twilight_lavalink::Node>> {
         Ok(match self.lavalink.players().get(&guild_id) {
             Some(kv) => kv.node().clone(),
             None => self.lavalink.best().await?,
@@ -437,12 +441,16 @@ impl Client {
         Ok(serde_json::from_slice::<LoadedTracks>(&response_bytes)?)
     }
 
-    async fn play(&self, guild_id: GuildId, track: &Track) -> Result<()> {
+    async fn play(&self, guild_id: Id<GuildMarker>, track: &Track) -> Result<()> {
         self.lavalink.player(guild_id).await?.play(track)?;
         Ok(())
     }
 
-    pub async fn start_playing(&self, guild_id: GuildId, position: Option<i64>) -> Result<()> {
+    pub async fn start_playing(
+        &self,
+        guild_id: Id<GuildMarker>,
+        position: Option<i64>,
+    ) -> Result<()> {
         if let Some(track) = self.currently_playing(guild_id) {
             let config = self.get_config(guild_id).await?;
             let player = self.lavalink.player(guild_id).await?;
@@ -462,7 +470,7 @@ impl Client {
 
     /// Plays the next item in the queue.
     /// Panics if a player does not exist.
-    pub async fn play_next(&self, guild_id: GuildId) -> Result<Option<TrackInfo>> {
+    pub async fn play_next(&self, guild_id: Id<GuildMarker>) -> Result<Option<TrackInfo>> {
         let prev = {
             if let Some(mut kv) = self.states.get_mut(&guild_id) {
                 let state = kv.value_mut();
@@ -482,7 +490,11 @@ impl Client {
         Ok(prev)
     }
 
-    pub async fn connect(&self, guild_id: GuildId, channel_id: ChannelId) -> Result<()> {
+    pub async fn connect(
+        &self,
+        guild_id: Id<GuildMarker>,
+        channel_id: Id<ChannelMarker>,
+    ) -> Result<()> {
         self.gateway
             .command(
                 self.gateway.shard_id(guild_id),
@@ -496,7 +508,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn disconnect(&self, guild_id: GuildId) -> Result<()> {
+    pub async fn disconnect(&self, guild_id: Id<GuildMarker>) -> Result<()> {
         self.gateway
             .command(
                 self.gateway.shard_id(guild_id),
@@ -513,7 +525,7 @@ impl Client {
         Ok(())
     }
 
-    pub fn mutate_state<F, R>(&self, guild_id: GuildId, f: F) -> Option<R>
+    pub fn mutate_state<F, R>(&self, guild_id: Id<GuildMarker>, f: F) -> Option<R>
     where
         F: FnOnce(&mut PlayerState) -> R,
     {

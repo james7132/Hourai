@@ -3,14 +3,14 @@ use super::Snowflake;
 use crate::proto::cache::{CachedMessageProto, CachedUserProto};
 use twilight_model::channel::{embed::Embed, Attachment, Message};
 use twilight_model::gateway::payload::incoming::MessageUpdate;
-use twilight_model::id::*;
+use twilight_model::id::{marker::*, Id};
 use twilight_model::user::User;
 
-pub trait MessageLike: Snowflake<MessageId> {
+pub trait MessageLike: Snowflake<Id<MessageMarker>> {
     type Author: UserLike;
 
-    fn channel_id(&self) -> ChannelId;
-    fn guild_id(&self) -> Option<GuildId>;
+    fn channel_id(&self) -> Id<ChannelMarker>;
+    fn guild_id(&self) -> Option<Id<GuildMarker>>;
     fn author(&self) -> &Self::Author;
     fn content(&self) -> &str;
     fn embeds(&self) -> &[Embed];
@@ -32,20 +32,20 @@ pub trait MessageLike: Snowflake<MessageId> {
     }
 }
 
-impl Snowflake<MessageId> for Message {
-    fn id(&self) -> MessageId {
+impl Snowflake<Id<MessageMarker>> for Message {
+    fn id(&self) -> Id<MessageMarker> {
         self.id
     }
 }
 
-impl Snowflake<MessageId> for CachedMessageProto {
-    fn id(&self) -> MessageId {
-        unsafe { MessageId::new_unchecked(self.get_id()) }
+impl Snowflake<Id<MessageMarker>> for CachedMessageProto {
+    fn id(&self) -> Id<MessageMarker> {
+        Id::new(self.get_id())
     }
 }
 
-impl Snowflake<MessageId> for MessageUpdate {
-    fn id(&self) -> MessageId {
+impl Snowflake<Id<MessageMarker>> for MessageUpdate {
+    fn id(&self) -> Id<MessageMarker> {
         self.id
     }
 }
@@ -53,11 +53,11 @@ impl Snowflake<MessageId> for MessageUpdate {
 impl MessageLike for Message {
     type Author = User;
 
-    fn channel_id(&self) -> ChannelId {
+    fn channel_id(&self) -> Id<ChannelMarker> {
         self.channel_id
     }
 
-    fn guild_id(&self) -> Option<GuildId> {
+    fn guild_id(&self) -> Option<Id<GuildMarker>> {
         self.guild_id
     }
 
@@ -81,11 +81,11 @@ impl MessageLike for Message {
 impl MessageLike for MessageUpdate {
     type Author = User;
 
-    fn channel_id(&self) -> ChannelId {
+    fn channel_id(&self) -> Id<ChannelMarker> {
         self.channel_id
     }
 
-    fn guild_id(&self) -> Option<GuildId> {
+    fn guild_id(&self) -> Option<Id<GuildMarker>> {
         self.guild_id
     }
 
@@ -109,13 +109,13 @@ impl MessageLike for MessageUpdate {
 impl MessageLike for CachedMessageProto {
     type Author = CachedUserProto;
 
-    fn channel_id(&self) -> ChannelId {
-        unsafe { ChannelId::new_unchecked(self.get_channel_id()) }
+    fn channel_id(&self) -> Id<ChannelMarker> {
+        Id::new(self.get_channel_id())
     }
 
-    fn guild_id(&self) -> Option<GuildId> {
+    fn guild_id(&self) -> Option<Id<GuildMarker>> {
         if self.has_guild_id() {
-            unsafe { Some(GuildId::new_unchecked(self.get_guild_id())) }
+            Some(Id::new(self.get_guild_id()))
         } else {
             None
         }

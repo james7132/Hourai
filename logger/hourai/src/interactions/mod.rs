@@ -13,7 +13,10 @@ use crate::{
         },
         channel::{embed::Embed, message::MessageFlags},
         guild::{PartialMember, Permissions},
-        id::{ApplicationId, ChannelId, GuildId, InteractionId},
+        id::{
+            marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker},
+            Id,
+        },
         user::User,
     },
 };
@@ -50,7 +53,7 @@ impl Response {
             allowed_mentions: None,
             components: None,
             content: None,
-            embeds: Vec::new(),
+            embeds: None,
             flags: None,
             tts: None,
         })
@@ -66,7 +69,11 @@ impl Response {
     }
 
     pub fn embed(mut self, embed: impl Into<Embed>) -> Self {
-        self.0.embeds.push(embed.into());
+        if let Some(embeds) = self.0.embeds.as_mut() {
+            embeds.push(embed.into())
+        } else {
+            self.0.embeds = Some(vec![embed.into()]);
+        }
         self
     }
 
@@ -94,12 +101,12 @@ impl From<Response> for CallbackData {
 #[async_trait::async_trait]
 pub trait InteractionContext {
     fn http(&self) -> &Arc<http::Client>;
-    fn id(&self) -> InteractionId;
-    fn application_id(&self) -> ApplicationId;
+    fn id(&self) -> Id<InteractionMarker>;
+    fn application_id(&self) -> Id<ApplicationMarker>;
     fn token(&self) -> &str;
     fn member(&self) -> Option<&PartialMember>;
-    fn guild_id(&self) -> InteractionResult<GuildId>;
-    fn channel_id(&self) -> ChannelId;
+    fn guild_id(&self) -> InteractionResult<Id<GuildMarker>>;
+    fn channel_id(&self) -> Id<ChannelMarker>;
     fn user(&self) -> &User;
 
     async fn defer(&self) -> anyhow::Result<()> {
@@ -124,6 +131,7 @@ pub trait InteractionContext {
 
     async fn reply_raw(&self, response: InteractionResponse) -> anyhow::Result<()> {
         self.http()
+            .interaction(self.application_id())
             .interaction_callback(self.id(), self.token(), &response)
             .exec()
             .await?;
@@ -131,16 +139,12 @@ pub trait InteractionContext {
     }
 
     async fn reply(&self, data: impl Into<CallbackData> + Send + 'static) -> anyhow::Result<()> {
-        fn to_option<T>(arr: &[T]) -> Option<&[T]> {
-            (!arr.is_empty()).then(|| arr)
-        }
-
         let data = data.into();
-        self.http().set_application_id(self.application_id());
         self.http()
-            .update_interaction_original(self.token())?
+            .interaction(self.application_id())
+            .update_interaction_original(self.token())
             .content(data.content.as_deref())?
-            .embeds(to_option(&data.embeds))?
+            .embeds(data.embeds.as_deref())?
             .components(data.components.as_deref())?
             .exec()
             .await?;

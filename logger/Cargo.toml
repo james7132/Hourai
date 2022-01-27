@@ -2,7 +2,7 @@
 members = [
   "hourai",
   "hourai-feeds",
-  "hourai-frontend",
+  #"hourai-frontend",
   "hourai-logger",
   "hourai-music",
   "hourai-verification",

@@ -12,7 +12,10 @@ use hourai::{
     interactions::InteractionError,
     models::{
         guild::{Guild, Permissions, Role},
-        id::{GuildId, RoleId},
+        id::{
+            marker::{GuildMarker, RoleMarker},
+            Id,
+        },
     },
     proto::cache::CachedRoleProto,
 };
@@ -30,7 +33,7 @@ pub fn is_moderator_role(role: &CachedRoleProto) -> bool {
 }
 
 pub async fn find_moderator_roles(
-    guild_id: GuildId,
+    guild_id: Id<GuildMarker>,
     redis: &RedisClient,
 ) -> Result<Vec<CachedRoleProto>> {
     Ok(redis
@@ -43,14 +46,14 @@ pub async fn find_moderator_roles(
 }
 
 pub async fn find_moderators(
-    guild_id: GuildId,
+    guild_id: Id<GuildMarker>,
     sql: &SqlPool,
     redis: &RedisClient,
 ) -> Result<Vec<Member>> {
-    let mod_roles: Vec<RoleId> = find_moderator_roles(guild_id, redis)
+    let mod_roles: Vec<Id<RoleMarker>> = find_moderator_roles(guild_id, redis)
         .await?
         .into_iter()
-        .filter_map(|role| RoleId::new(role.get_role_id()))
+        .map(|role| Id::new(role.get_role_id()))
         .collect();
     Ok(Member::find_with_roles(guild_id, mod_roles)
         .fetch_all(sql)
@@ -61,7 +64,7 @@ pub async fn find_moderators(
 }
 
 pub async fn find_online_moderators(
-    guild_id: GuildId,
+    guild_id: Id<GuildMarker>,
     sql: &SqlPool,
     redis: &RedisClient,
 ) -> Result<Vec<Member>> {
@@ -76,7 +79,10 @@ pub async fn find_online_moderators(
         .collect())
 }
 
-pub async fn ping_online_mod(guild_id: GuildId, storage: &Storage) -> Result<(String, String)> {
+pub async fn ping_online_mod(
+    guild_id: Id<GuildMarker>,
+    storage: &Storage,
+) -> Result<(String, String)> {
     let online_mods = find_online_moderators(guild_id, storage.sql(), storage.redis()).await?;
     let guild = storage
         .redis()
@@ -100,14 +106,14 @@ pub async fn ping_online_mod(guild_id: GuildId, storage: &Storage) -> Result<(St
 }
 
 pub async fn is_moderator(
-    guild_id: GuildId,
-    mut roles: impl Iterator<Item = RoleId>,
+    guild_id: Id<GuildMarker>,
+    mut roles: impl Iterator<Item = Id<RoleMarker>>,
     redis: &RedisClient,
 ) -> Result<bool> {
-    let moderator_roles: HashSet<RoleId> = find_moderator_roles(guild_id, redis)
+    let moderator_roles: HashSet<Id<RoleMarker>> = find_moderator_roles(guild_id, redis)
         .await?
         .iter()
-        .filter_map(|role| RoleId::new(role.get_role_id()))
+        .map(|role| Id::new(role.get_role_id()))
         .collect();
     Ok(roles.any(move |role_id| moderator_roles.contains(&role_id)))
 }

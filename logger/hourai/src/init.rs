@@ -1,4 +1,4 @@
-use crate::{config::HouraiConfig, models::id::ApplicationId};
+use crate::config::HouraiConfig;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::{convert::TryFrom, future::Future, pin::Pin, sync::Arc};
@@ -37,7 +37,7 @@ pub fn cluster(
     config: &HouraiConfig,
     intents: twilight_gateway::Intents,
 ) -> twilight_gateway::cluster::ClusterBuilder {
-    let cluster = twilight_gateway::Cluster::builder(&config.discord.bot_token, intents);
+    let cluster = twilight_gateway::Cluster::builder(config.discord.bot_token.clone(), intents);
     if let Some(ref uri) = config.discord.gateway_queue {
         let queue = GatewayQueue(hyper::Uri::try_from(uri.clone()).unwrap());
         cluster.queue(Arc::new(queue))
@@ -48,19 +48,16 @@ pub fn cluster(
 
 pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
     debug!("Creating Discord HTTP client");
-    let application_id = ApplicationId::new(config.discord.application_id).unwrap();
     // Use the twilight HTTP proxy when configured
     if let Some(proxy) = config.discord.proxy.as_ref() {
         twilight_http::Client::builder()
             .token(config.discord.bot_token.clone())
             .proxy(proxy.clone(), true)
             .ratelimiter(None)
-            .application_id(application_id)
             .build()
     } else {
         twilight_http::Client::builder()
             .token(config.discord.bot_token.clone())
-            .application_id(application_id)
             .build()
     }
 }

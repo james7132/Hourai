@@ -25,7 +25,7 @@ use hourai::{
         channel::{Channel, GuildChannel, Message},
         gateway::payload::incoming::*,
         guild::{member::Member, Permissions, Role},
-        id::*,
+        id::{marker::*, Id},
         user::User,
     },
 };
@@ -87,8 +87,8 @@ async fn main() {
 
     info!("Updating commands...");
     if let Err(err) = http_client
+        .interaction(config.discord.application_id)
         .set_global_commands(&config.commands)
-        .expect("Failed to create global commands")
         .exec()
         .await
     {
@@ -220,7 +220,7 @@ impl Client {
         }
     }
 
-    async fn log_all_bans(&self, guilds: impl Iterator<Item = GuildId>) {
+    async fn log_all_bans(&self, guilds: impl Iterator<Item = Id<GuildMarker>>) {
         for guild_id in guilds {
             if let Err(err) = self.refresh_bans(guild_id).await {
                 error!("Error while logging bans: {} ({:?})", err, err);
@@ -235,11 +235,11 @@ impl Client {
 
     /// Gets the shard ID for a guild.
     #[inline(always)]
-    pub fn shard_id(&self, guild_id: GuildId) -> u64 {
+    pub fn shard_id(&self, guild_id: Id<GuildMarker>) -> u64 {
         (guild_id.get() >> 22) % self.total_shards()
     }
 
-    pub fn user_id(&self) -> UserId {
+    pub fn user_id(&self) -> Id<UserMarker> {
         self.0.actions.current_user().id
     }
 
@@ -255,8 +255,8 @@ impl Client {
 
     pub async fn fetch_guild_permissions(
         &self,
-        guild_id: GuildId,
-        user_id: UserId,
+        guild_id: Id<GuildMarker>,
+        user_id: Id<UserMarker>,
     ) -> Result<Permissions> {
         let local_member = hourai_sql::Member::fetch(guild_id, user_id)
             .fetch_one(self.storage().sql())
@@ -292,6 +292,7 @@ impl Client {
                         roles: evt.roles.clone(),
                         user: evt.user.clone(),
                         joined_at: evt.joined_at.clone(),
+                        communication_disabled_until: None,
 
                         // Unknown/dummy fields.
                         deaf: false,
@@ -577,6 +578,7 @@ impl Client {
         match evt {
             Interaction::Ping(ping) => {
                 self.http()
+                    .interaction(ping.application_id)
                     .interaction_callback(ping.id, &ping.token, &InteractionResponse::Pong)
                     .exec()
                     .await?;
@@ -700,7 +702,7 @@ impl Client {
             None => return Ok(()),
         };
         let mut voice_state = self.storage().redis().guild(guild_id).voice_states();
-        let channel_id: Option<ChannelId> = voice_state.get_channel(evt.0.user_id).await?;
+        let channel_id: Option<Id<ChannelMarker>> = voice_state.get_channel(evt.0.user_id).await?;
         announcements::on_voice_update(&self, evt.0.clone(), channel_id).await?;
         voice_state.save(&evt.0).await?;
         Ok(())
@@ -729,7 +731,7 @@ impl Client {
         Ok(())
     }
 
-    async fn refresh_bans(&self, guild_id: GuildId) -> Result<()> {
+    async fn refresh_bans(&self, guild_id: Id<GuildMarker>) -> Result<()> {
         let perms = self
             .fetch_guild_permissions(guild_id, self.user_id())
             .await?;

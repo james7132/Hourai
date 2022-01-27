@@ -1,7 +1,11 @@
 use crate::{SqlPool, Username};
 use anyhow::Result;
 use hourai::{
-    models::{guild::Member, id::UserId, user::User},
+    models::{
+        guild::Member,
+        id::{marker::UserMarker, Id},
+        user::User,
+    },
     util::whois,
 };
 use twilight_embed_builder::EmbedBuilder;
@@ -26,7 +30,7 @@ pub async fn member(sql: &SqlPool, member: &Member) -> Result<EmbedBuilder> {
     Ok(builder)
 }
 
-async fn build_description(sql: &SqlPool, user_id: UserId) -> Result<Option<String>> {
+async fn build_description(sql: &SqlPool, user_id: Id<UserMarker>) -> Result<Option<String>> {
     let usernames = Username::fetch(user_id, Some(USERNAME_LIMIT))
         .fetch_all(sql)
         .await?;

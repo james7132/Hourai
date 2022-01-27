@@ -13,24 +13,21 @@ use std::{collections::HashSet, sync::Arc};
 use twilight_model::{
     gateway::presence::{Presence, Status, UserOrId},
     guild::{Guild, Member},
-    id::{GuildId, UserId},
+    id::{
+        marker::{GuildMarker, UserMarker},
+        Id,
+    },
 };
-
-#[derive(Debug)]
-struct GuildItem<T> {
-    data: Arc<T>,
-    guild_id: GuildId,
-}
 
 // When adding a field here, be sure to add it to `InMemoryCache::clear` if
 // necessary.
 #[derive(Debug, Default)]
 struct InMemoryCacheRef {
     config: Arc<Config>,
-    guilds: DashSet<GuildId>,
-    guild_presences: DashMap<GuildId, HashSet<UserId>>,
-    unavailable_guilds: DashSet<GuildId>,
-    pending_members: DashSet<(GuildId, UserId)>,
+    guilds: DashSet<Id<GuildMarker>>,
+    guild_presences: DashMap<Id<GuildMarker>, HashSet<Id<UserMarker>>>,
+    unavailable_guilds: DashSet<Id<GuildMarker>>,
+    pending_members: DashSet<(Id<GuildMarker>, Id<UserMarker>)>,
 }
 
 /// A thread-safe, in-memory-process cache of Discord data. It can be cloned and
@@ -104,7 +101,7 @@ impl InMemoryCache {
 
     /// Checks if a member is pending in a speciifc guild.
     /// This runs O(1) time.
-    pub fn is_pending(&self, guild_id: GuildId, user_id: UserId) -> bool {
+    pub fn is_pending(&self, guild_id: Id<GuildMarker>, user_id: Id<UserMarker>) -> bool {
         self.0.pending_members.contains(&(guild_id, user_id))
     }
 
@@ -113,7 +110,7 @@ impl InMemoryCache {
     /// This is an O(n) operation. This requires the [`GUILDS`] intent.
     ///
     /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
-    pub fn guilds(&self) -> Vec<GuildId> {
+    pub fn guilds(&self) -> Vec<Id<GuildMarker>> {
         self.0.guilds.iter().map(|r| *r.key()).collect()
     }
 
@@ -125,7 +122,7 @@ impl InMemoryCache {
     /// This requires the [`GUILD_PRESENCES`] intent.
     ///
     /// [`GUILD_PRESENCES`]: ::twilight_model::gateway::Intents::GUILD_PRESENCES
-    pub fn guild_online(&self, guild_id: GuildId) -> Option<HashSet<UserId>> {
+    pub fn guild_online(&self, guild_id: Id<GuildMarker>) -> Option<HashSet<Id<UserMarker>>> {
         self.0
             .guild_presences
             .get(&guild_id)
@@ -137,7 +134,7 @@ impl InMemoryCache {
     /// This is an O(1) operation. This requires the [`GUILD_PRESENCES`] intent.
     ///
     /// [`GUILD_PRESENCES`]: ::twilight_model::gateway::Intents::GUILD_PRESENCES
-    pub fn presence(&self, guild_id: GuildId, user_id: UserId) -> bool {
+    pub fn presence(&self, guild_id: Id<GuildMarker>, user_id: Id<UserMarker>) -> bool {
         self.0
             .guild_presences
             .get(&guild_id)
@@ -171,7 +168,7 @@ impl InMemoryCache {
         self.0.unavailable_guilds.remove(&guild.id);
     }
 
-    fn cache_member(&self, guild_id: GuildId, member: &Member) {
+    fn cache_member(&self, guild_id: Id<GuildMarker>, member: &Member) {
         let id = (guild_id, member.user.id);
         if member.pending {
             self.0.pending_members.insert(id);
@@ -180,13 +177,17 @@ impl InMemoryCache {
         }
     }
 
-    fn cache_members(&self, guild_id: GuildId, members: impl IntoIterator<Item = Member>) {
+    fn cache_members(&self, guild_id: Id<GuildMarker>, members: impl IntoIterator<Item = Member>) {
         for member in members {
             self.cache_member(guild_id, &member);
         }
     }
 
-    fn cache_presences(&self, guild_id: GuildId, presences: impl IntoIterator<Item = Presence>) {
+    fn cache_presences(
+        &self,
+        guild_id: Id<GuildMarker>,
+        presences: impl IntoIterator<Item = Presence>,
+    ) {
         if let Some(mut kv) = self.0.guild_presences.get_mut(&guild_id) {
             for presence in presences {
                 let user_id = presence_user_id(&presence);
@@ -199,7 +200,12 @@ impl InMemoryCache {
         }
     }
 
-    fn cache_presence(&self, guild_id: GuildId, user_id: UserId, status: Status) -> bool {
+    fn cache_presence(
+        &self,
+        guild_id: Id<GuildMarker>,
+        user_id: Id<UserMarker>,
+        status: Status,
+    ) -> bool {
         let online = status == Status::Online;
         if let Some(mut kv) = self.0.guild_presences.get_mut(&guild_id) {
             if online {
@@ -211,7 +217,7 @@ impl InMemoryCache {
         online
     }
 
-    fn unavailable_guild(&self, guild_id: GuildId) {
+    fn unavailable_guild(&self, guild_id: Id<GuildMarker>) {
         self.0.unavailable_guilds.insert(guild_id);
         self.0.guilds.remove(&guild_id);
     }
@@ -223,7 +229,7 @@ impl InMemoryCache {
     }
 }
 
-pub fn presence_user_id(presence: &Presence) -> UserId {
+pub fn presence_user_id(presence: &Presence) -> Id<UserMarker> {
     match presence.user {
         UserOrId::User(ref u) => u.id,
         UserOrId::UserId { id } => id,

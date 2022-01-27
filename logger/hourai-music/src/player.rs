@@ -1,12 +1,15 @@
 use crate::{interaction_ui, queue::MusicQueue, track::*};
 use anyhow::Result;
-use hourai::{models::id::UserId, proto::music_bot::*};
+use hourai::{
+    models::id::{marker::*, Id},
+    proto::music_bot::*,
+};
 use std::collections::HashSet;
 use twilight_lavalink::model::*;
 
 pub struct PlayerState {
-    pub skip_votes: HashSet<UserId>,
-    pub queue: MusicQueue<UserId, Track>,
+    pub skip_votes: HashSet<Id<UserMarker>>,
+    pub queue: MusicQueue<Id<UserMarker>, Track>,
     pub now_playing_ui: Option<interaction_ui::MessageUI>,
     pub queue_ui: Option<interaction_ui::MessageUI>,
 
@@ -24,7 +27,7 @@ impl PlayerState {
         }
     }
 
-    pub fn currently_playing(&self) -> Option<(UserId, Track)> {
+    pub fn currently_playing(&self) -> Option<(Id<UserMarker>, Track)> {
         self.queue.peek().map(|item| (item.key, item.value.clone()))
     }
 
@@ -43,11 +46,7 @@ impl PlayerState {
 
     pub fn load_from_proto(&mut self, mut state: MusicStateProto) {
         self.queue = state.take_queue().into();
-        self.skip_votes = state
-            .skip_votes
-            .into_iter()
-            .filter_map(UserId::new)
-            .collect();
+        self.skip_votes = state.skip_votes.into_iter().map(Id::new).collect();
     }
 }
 
@@ -88,11 +87,11 @@ impl PlayerExt for twilight_lavalink::player::Player {
     }
 }
 
-impl From<MusicQueueProto> for MusicQueue<UserId, Track> {
+impl From<MusicQueueProto> for MusicQueue<Id<UserMarker>, Track> {
     fn from(value: MusicQueueProto) -> Self {
         let mut queue = Self::new();
         for user_queue in value.user_queues {
-            let user_id = UserId::new(user_queue.get_user_id()).unwrap();
+            let user_id = Id::new(user_queue.get_user_id());
             for track in user_queue.tracks {
                 queue.push(user_id, track.into());
             }
@@ -101,8 +100,8 @@ impl From<MusicQueueProto> for MusicQueue<UserId, Track> {
     }
 }
 
-impl From<&MusicQueue<UserId, Track>> for MusicQueueProto {
-    fn from(value: &MusicQueue<UserId, Track>) -> Self {
+impl From<&MusicQueue<Id<UserMarker>, Track>> for MusicQueueProto {
+    fn from(value: &MusicQueue<Id<UserMarker>, Track>) -> Self {
         let mut proto = Self::new();
         for key in value.keys() {
             let mut queue = UserQueueProto::new();

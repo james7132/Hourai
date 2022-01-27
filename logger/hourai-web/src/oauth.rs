@@ -1,13 +1,12 @@
 use crate::{prelude::*, AppState};
 use actix_web::{
-    cookie::{Cookie, SameSite},
-    dev::AnyBody,
+    body::BoxBody,
+    cookie::{time::Duration, Cookie, SameSite},
     get,
     http::StatusCode,
     post, web, HttpRequest, HttpResponse,
 };
 use serde::{Deserialize, Serialize};
-use time::Duration;
 
 const TOKEN_URL: &str = "https://discord.com/api/oauth2/token";
 const COOKIE_KEY: &str = "discord_refresh_token";
@@ -79,7 +78,7 @@ async fn token(
             .await
             .http_internal_error("Failed to make a POST to Discord OAuth.")?
     } else {
-        let body = AnyBody::Bytes(response.body().await?);
+        let body = BoxBody::new(response.body().await?);
         return Ok(HttpResponse::build(response.status()).body(body));
     };
 
@@ -137,7 +136,7 @@ async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> Result<Htt
             .await
             .http_internal_error("Failed to refresh access_token.")?
     } else {
-        let body = AnyBody::Bytes(response.body().await?);
+        let body = BoxBody::new(response.body().await?);
         return Ok(HttpResponse::build(response.status()).body(body));
     };
 
@@ -147,8 +146,11 @@ async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> Result<Htt
 #[post("/logout")]
 async fn logout(request: HttpRequest) -> Result<HttpResponse> {
     // TODO(james7132): Remove token from database.
-    if let Some(ref refresh_token) = request.cookie(COOKIE_KEY) {
-        Ok(HttpResponse::NoContent().del_cookie(refresh_token).finish())
+    if let Some(mut refresh_token) = request.cookie(COOKIE_KEY) {
+        refresh_token.make_removal();
+        Ok(HttpResponse::NoContent()
+            .cookie(refresh_token.clone())
+            .finish())
     } else {
         http_error(StatusCode::UNAUTHORIZED, "Missing login credentials.")
     }

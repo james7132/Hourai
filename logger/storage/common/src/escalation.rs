@@ -3,7 +3,10 @@ use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use hourai::{
     http,
-    models::id::{ChannelId, GuildId, UserId},
+    models::id::{
+        marker::{GuildMarker, UserMarker},
+        Id,
+    },
     proto::{
         escalation::EscalationLadderRung,
         guild_configs::{LoggingConfig, ModerationConfig},
@@ -68,7 +71,7 @@ impl EscalationManager {
         &self.0
     }
 
-    pub async fn guild(&self, guild_id: GuildId) -> Result<GuildEscalationManager> {
+    pub async fn guild(&self, guild_id: Id<GuildMarker>) -> Result<GuildEscalationManager> {
         let config: ModerationConfig = self
             .storage()
             .redis()
@@ -87,14 +90,14 @@ impl EscalationManager {
 
 #[derive(Clone)]
 pub struct GuildEscalationManager {
-    guild_id: GuildId,
+    guild_id: Id<GuildMarker>,
     manager: EscalationManager,
     config: ModerationConfig,
 }
 
 impl GuildEscalationManager {
     #[inline(always)]
-    pub fn guild_id(&self) -> GuildId {
+    pub fn guild_id(&self) -> Id<GuildMarker> {
         self.guild_id
     }
 
@@ -118,7 +121,7 @@ impl GuildEscalationManager {
         self.manager.executor()
     }
 
-    pub async fn fetch_history(&self, user_id: UserId) -> Result<EscalationHistory> {
+    pub async fn fetch_history(&self, user_id: Id<UserMarker>) -> Result<EscalationHistory> {
         let entries = EscalationEntry::fetch(self.guild_id, user_id)
             .fetch_all(self.storage().sql())
             .await?;
@@ -131,19 +134,19 @@ impl GuildEscalationManager {
 }
 
 pub struct EscalationHistory {
-    user_id: UserId,
+    user_id: Id<UserMarker>,
     manager: GuildEscalationManager,
     entries: Vec<EscalationEntry>,
 }
 
 impl EscalationHistory {
     #[inline(always)]
-    pub fn user_id(&self) -> UserId {
+    pub fn user_id(&self) -> Id<UserMarker> {
         self.user_id
     }
 
     #[inline(always)]
-    pub fn guild_id(&self) -> GuildId {
+    pub fn guild_id(&self) -> Id<GuildMarker> {
         self.manager.guild_id()
     }
 
@@ -307,34 +310,33 @@ impl EscalationHistory {
             .configs()
             .get()
             .await?;
-        if let Some(modlog_id) = ChannelId::new(config.get_modlog_channel_id()) {
-            let arrow = if diff > 0 { "up" } else { "down" };
-            let esc = if diff > 0 { "escalated" } else { "deescalated" };
-            let reasons: HashSet<&str> = escalation
-                .entry
-                .action
-                .0
-                .get_action()
-                .iter()
-                .map(|a| a.get_reason())
-                .collect();
-            let reasons = reasons.into_iter().collect::<Vec<_>>().join("; ");
-            let msg = format!(
-                ":arrow_{}: **<@{}> {} <@{}>**\nReason: {}\nAction: {}\nExpiration: {}",
-                arrow,
-                escalation.entry.authorizer_id,
-                esc,
-                escalation.entry.subject_id,
-                reasons,
-                escalation.entry.display_name,
-                escalation.expiration()
-            );
-            self.http()
-                .create_message(modlog_id)
-                .content(&msg)?
-                .exec()
-                .await?;
-        }
+        let modlog_id = Id::new(config.get_modlog_channel_id());
+        let arrow = if diff > 0 { "up" } else { "down" };
+        let esc = if diff > 0 { "escalated" } else { "deescalated" };
+        let reasons: HashSet<&str> = escalation
+            .entry
+            .action
+            .0
+            .get_action()
+            .iter()
+            .map(|a| a.get_reason())
+            .collect();
+        let reasons = reasons.into_iter().collect::<Vec<_>>().join("; ");
+        let msg = format!(
+            ":arrow_{}: **<@{}> {} <@{}>**\nReason: {}\nAction: {}\nExpiration: {}",
+            arrow,
+            escalation.entry.authorizer_id,
+            esc,
+            escalation.entry.subject_id,
+            reasons,
+            escalation.entry.display_name,
+            escalation.expiration()
+        );
+        self.http()
+            .create_message(modlog_id)
+            .content(&msg)?
+            .exec()
+            .await?;
 
         Ok(())
     }

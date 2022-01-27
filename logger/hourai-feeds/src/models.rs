@@ -1,6 +1,9 @@
 use anyhow::Result;
 use hourai::http::error::ErrorType as HttpErrorType;
-use hourai::models::{channel::embed::Embed, id::ChannelId};
+use hourai::models::{
+    channel::embed::Embed,
+    id::{marker::ChannelMarker, Id},
+};
 use hourai_sql::{
     sql_types::chrono::{DateTime, Utc},
     Executor, SqlQuery, SqlQueryAs,
@@ -9,7 +12,7 @@ use tracing::error;
 
 #[derive(Debug)]
 pub struct Post {
-    channel_ids: Vec<ChannelId>,
+    channel_ids: Vec<Id<ChannelMarker>>,
     content: Option<String>,
     embed: Option<Embed>,
 }
@@ -31,7 +34,7 @@ impl Post {
 
     async fn push(
         client: crate::Client,
-        channel_id: ChannelId,
+        channel_id: Id<ChannelMarker>,
         content: Option<String>,
         embed: Option<Embed>,
     ) -> Result<()> {
@@ -104,7 +107,7 @@ impl Feed {
             .bind(self.id)
     }
 
-    pub fn delete_feed_channel<'a>(channel_id: ChannelId) -> SqlQuery<'a> {
+    pub fn delete_feed_channel<'a>(channel_id: Id<ChannelMarker>) -> SqlQuery<'a> {
         sqlx::query("DELETE FROM feed_channels WHERE channel_id = $1").bind(channel_id.get() as i64)
     }
 
@@ -113,7 +116,7 @@ impl Feed {
             channel_ids: self
                 .channel_ids
                 .iter()
-                .filter_map(|id| ChannelId::new(*id as u64))
+                .map(|id| Id::new(*id as u64))
                 .collect(),
             content,
             embed,

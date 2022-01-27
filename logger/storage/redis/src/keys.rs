@@ -3,7 +3,7 @@ use byteorder::{BigEndian, ByteOrder};
 use hourai::models::{
     channel::GuildChannel,
     guild::{Guild, Role},
-    id::*,
+    id::{marker::*, Id as TwilightId},
 };
 use redis::{ErrorKind, FromRedisValue, RedisError, RedisWrite, ToRedisArgs};
 
@@ -12,19 +12,19 @@ use redis::{ErrorKind, FromRedisValue, RedisError, RedisWrite, ToRedisArgs};
 pub enum CacheKey {
     /// Protobuf configs for per server configuration. Stored in the form of hashes with individual
     /// configs as hash values, keyed by the corresponding CachedGuildConfig subkey.
-    GuildConfigs(GuildId),
+    GuildConfigs(TwilightId<GuildMarker>),
     /// Redis sets of per-server user IDs of online users.
-    OnlineStatus(GuildId),
+    OnlineStatus(TwilightId<GuildMarker>),
     /// Messages cached.
-    Messages(ChannelId, MessageId),
+    Messages(TwilightId<ChannelMarker>, TwilightId<MessageMarker>),
     /// Cached guild data.
-    Guild(GuildId),
+    Guild(TwilightId<GuildMarker>),
     /// Cached voice state data.
-    VoiceState(GuildId),
+    VoiceState(TwilightId<GuildMarker>),
     /// Resume State
     ResumeState(/* Name */ String),
     /// The stored music queues for each server. Used to restore the music state after a restart.
-    MusicQueue(GuildId),
+    MusicQueue(TwilightId<GuildMarker>),
 }
 
 impl CacheKey {
@@ -68,9 +68,9 @@ pub enum GuildKey {
     /// Guild level data. No secondary key. Maps to a CachedGuildProto.
     Guild,
     /// Role level data. Requires role id as secondary key. Maps to CachedRoleProto.
-    Role(RoleId),
+    Role(TwilightId<RoleMarker>),
     /// Channels. Requires channel id as secondary key. Maps to CachedGuildChannelProto.
-    Channel(ChannelId),
+    Channel(TwilightId<ChannelMarker>),
 }
 
 impl GuildKey {
@@ -101,14 +101,14 @@ impl FromRedisValue for GuildKey {
         if let redis::Value::Data(data) = value {
             match (data.get(0), data.len()) {
                 (Some(&Guild::PREFIX), _) => Ok(Self::Guild),
-                (Some(&Role::PREFIX), len) if len >= 9 => unsafe {
+                (Some(&Role::PREFIX), len) if len >= 9 => {
                     let id = BigEndian::read_u64(&data[1..9]);
-                    Ok(Self::Role(RoleId::new_unchecked(id)))
-                },
-                (Some(&GuildChannel::PREFIX), len) if len >= 9 => unsafe {
+                    Ok(Self::Role(TwilightId::new(id)))
+                }
+                (Some(&GuildChannel::PREFIX), len) if len >= 9 => {
                     let id = BigEndian::read_u64(&data[1..9]);
-                    Ok(Self::Channel(ChannelId::new_unchecked(id)))
-                },
+                    Ok(Self::Channel(TwilightId::new(id)))
+                }
                 _ => Err(RedisError::from((
                     ErrorKind::ResponseError,
                     "Invalid GuildKey",
@@ -123,20 +123,20 @@ impl FromRedisValue for GuildKey {
     }
 }
 
-impl From<GuildId> for GuildKey {
-    fn from(_: GuildId) -> Self {
+impl From<TwilightId<GuildMarker>> for GuildKey {
+    fn from(_: TwilightId<GuildMarker>) -> Self {
         Self::Guild
     }
 }
 
-impl From<RoleId> for GuildKey {
-    fn from(value: RoleId) -> Self {
+impl From<TwilightId<RoleMarker>> for GuildKey {
+    fn from(value: TwilightId<RoleMarker>) -> Self {
         Self::Role(value)
     }
 }
 
-impl From<ChannelId> for GuildKey {
-    fn from(value: ChannelId) -> Self {
+impl From<TwilightId<ChannelMarker>> for GuildKey {
+    fn from(value: TwilightId<ChannelMarker>) -> Self {
         Self::Channel(value)
     }
 }

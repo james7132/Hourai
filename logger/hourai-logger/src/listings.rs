@@ -1,5 +1,5 @@
 use hourai::config::HouraiConfig;
-use hourai::models::id::UserId;
+use hourai::models::id::{marker::UserMarker, Id};
 use reqwest::RequestBuilder;
 use serde_json::json;
 use std::time::Duration;
@@ -35,7 +35,7 @@ pub async fn run_push_listings(client: crate::Client, config: HouraiConfig, inte
 
 fn post_discord_bots(
     http: &reqwest::Client,
-    user_id: UserId,
+    user_id: Id<UserMarker>,
     config: &HouraiConfig,
     count: i64,
 ) -> RequestBuilder {
@@ -55,7 +55,7 @@ fn post_discord_bots(
 
 fn post_discord_boats(
     http: &reqwest::Client,
-    user_id: UserId,
+    user_id: Id<UserMarker>,
     config: &HouraiConfig,
     count: i64,
 ) -> RequestBuilder {
@@ -72,7 +72,7 @@ fn post_discord_boats(
 
 fn post_top_gg(
     http: &reqwest::Client,
-    user_id: UserId,
+    user_id: Id<UserMarker>,
     config: &HouraiConfig,
     count: i64,
 ) -> RequestBuilder {

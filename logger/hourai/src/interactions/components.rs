@@ -4,7 +4,10 @@ use crate::{
     models::{
         application::interaction::message_component::MessageComponentInteraction,
         guild::PartialMember,
-        id::{ApplicationId, ChannelId, GuildId, InteractionId},
+        id::{
+            marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker},
+            Id,
+        },
         user::User,
     },
     proto::message_components::MessageComponentProto,
@@ -35,11 +38,11 @@ impl InteractionContext for ComponentContext {
         &self.http
     }
 
-    fn id(&self) -> InteractionId {
+    fn id(&self) -> Id<InteractionMarker> {
         self.component.id
     }
 
-    fn application_id(&self) -> ApplicationId {
+    fn application_id(&self) -> Id<ApplicationMarker> {
         self.component.application_id
     }
 
@@ -47,11 +50,11 @@ impl InteractionContext for ComponentContext {
         &self.component.token
     }
 
-    fn guild_id(&self) -> InteractionResult<GuildId> {
+    fn guild_id(&self) -> InteractionResult<Id<GuildMarker>> {
         self.component.guild_id.ok_or(InteractionError::NotInGuild)
     }
 
-    fn channel_id(&self) -> ChannelId {
+    fn channel_id(&self) -> Id<ChannelMarker> {
         self.component.channel_id
     }
 

@@ -5,7 +5,7 @@ use hourai::{
     models::{
         application::component::{action_row::ActionRow, Component},
         channel::embed::Embed,
-        id::*,
+        id::{marker::*, Id},
         UserLike,
     },
     proto::message_components::MusicUIType,
@@ -71,7 +71,7 @@ where
 {
     pub client: crate::Client,
     pub context: CommandContext,
-    pub guild_id: GuildId,
+    pub guild_id: Id<GuildMarker>,
     builder: T,
 }
 
@@ -106,7 +106,8 @@ impl<T: EmbedUIBuilder> Updateable for EmbedUI<T> {
     async fn update(&self) -> Result<()> {
         self.context
             .http()
-            .update_interaction_original(&self.context.command.token)?
+            .interaction(self.context.application_id())
+            .update_interaction_original(&self.context.command.token)
             .content(Some(&self.builder.build_content(self)))?
             .embeds(Some(&[self.builder.build_embed(self)?]))?
             .components(Some(&self.builder.build_components(self)?))?

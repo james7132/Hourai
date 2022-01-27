@@ -5,7 +5,7 @@ use chrono::Utc;
 use hourai::models::{
     datetime::Timestamp,
     gateway::payload::incoming::{MessageDelete, MessageDeleteBulk},
-    id::*,
+    id::{marker::*, Id},
     MessageLike, Snowflake, UserLike,
 };
 use hourai::proto::guild_configs::*;
@@ -47,14 +47,14 @@ fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {
     return true;
 }
 
-fn should_log(config: &MessageLoggingConfig, channel_id: ChannelId) -> bool {
+fn should_log(config: &MessageLoggingConfig, channel_id: Id<ChannelMarker>) -> bool {
     config.get_enabled() && meets_id_filter(config.get_channel_filter(), channel_id.get())
 }
 
 fn get_output_channel(
     config: &LoggingConfig,
     type_config: &MessageLoggingConfig,
-) -> Option<ChannelId> {
+) -> Option<Id<ChannelMarker>> {
     let id = if config.has_modlog_channel_id() {
         config.get_modlog_channel_id()
     } else if type_config.has_output_channel_id() {
@@ -62,7 +62,7 @@ fn get_output_channel(
     } else {
         return None;
     };
-    ChannelId::new(id)
+    Some(Id::new(id))
 }
 
 pub(super) async fn on_message_update(

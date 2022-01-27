@@ -2,7 +2,7 @@ use super::{context, verifier::*};
 use anyhow::Result;
 use async_trait::async_trait;
 use hourai::cache::InMemoryCache;
-use hourai::models::id::UserId;
+use hourai::models::id::{marker::UserMarker, Id};
 use hourai::models::user::{PremiumType, User, UserFlags};
 use std::collections::HashSet;
 
@@ -53,7 +53,7 @@ pub fn user_has_nitro(user: &User) -> bool {
     let animated = user
         .avatar
         .as_ref()
-        .map(|a| a.starts_with("a_"))
+        .map(|a| a.is_animated())
         .unwrap_or(false);
     premium || has_banner || flag || animated
 }
@@ -65,8 +65,8 @@ pub(super) fn nitro() -> BoxedVerifier {
     )
 }
 
-pub(super) fn bot_owners(owners: impl IntoIterator<Item = UserId>) -> BoxedVerifier {
-    let owner_ids: HashSet<UserId> = owners.into_iter().collect();
+pub(super) fn bot_owners(owners: impl IntoIterator<Item = Id<UserMarker>>) -> BoxedVerifier {
+    let owner_ids: HashSet<Id<UserMarker>> = owners.into_iter().collect();
     GenericVerifier::new_approver("User is an owner of this bot.", move |ctx| {
         Ok(owner_ids.contains(&ctx.member().user.id))
     })

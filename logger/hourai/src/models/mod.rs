@@ -9,6 +9,7 @@ pub use twilight_model::guild;
 pub use twilight_model::id;
 pub use twilight_model::invite;
 pub use twilight_model::oauth;
+pub use twilight_model::util;
 pub use twilight_model::voice;
 
 use chrono::prelude::DateTime;
@@ -38,17 +39,8 @@ pub trait SnowflakeId: Clone + Copy {
     fn as_u64(&self) -> u64;
 }
 
-macro_rules! snowflake_id {
-    ($id:ty) => {
-        impl SnowflakeId for $id {
-            fn as_u64(&self) -> u64 {
-                self.get()
-            }
-        }
-    };
+impl<T: Copy> SnowflakeId for id::Id<T> {
+    fn as_u64(&self) -> u64 {
+        self.get()
+    }
 }
-
-snowflake_id!(id::UserId);
-snowflake_id!(id::MessageId);
-snowflake_id!(id::ChannelId);
-snowflake_id!(id::GuildId);

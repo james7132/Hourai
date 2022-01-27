@@ -4,7 +4,10 @@ use anyhow::{bail, Result};
 use hourai::{
     interactions::*,
     models::{
-        id::{ChannelId, GuildId, RoleId},
+        id::{
+            marker::{ChannelMarker, GuildMarker, RoleMarker},
+            Id,
+        },
         UserLike,
     },
     proto::{guild_configs::MusicConfig, message_components::MusicButtonOption},
@@ -136,10 +139,10 @@ pub async fn handle_component(client: Client, ctx: ComponentContext) -> Result<(
 async fn require_in_voice_channel(
     client: &Client,
     ctx: &impl InteractionContext,
-) -> Result<(GuildId, ChannelId)> {
+) -> Result<(Id<GuildMarker>, Id<ChannelMarker>)> {
     let guild_id = ctx.guild_id()?;
     let user_id = ctx.user().id;
-    let user: Option<ChannelId> = client
+    let user: Option<Id<ChannelMarker>> = client
         .redis
         .guild(guild_id)
         .voice_states()
@@ -159,7 +162,7 @@ async fn require_in_voice_channel(
     }
 }
 
-fn require_playing(client: &Client, ctx: &impl InteractionContext) -> Result<GuildId> {
+fn require_playing(client: &Client, ctx: &impl InteractionContext) -> Result<Id<GuildMarker>> {
     let guild_id = ctx.guild_id()?;
     client
         .states
@@ -171,7 +174,7 @@ fn require_playing(client: &Client, ctx: &impl InteractionContext) -> Result<Gui
     Ok(guild_id)
 }
 
-fn is_dj(config: &MusicConfig, roles: &[RoleId]) -> bool {
+fn is_dj(config: &MusicConfig, roles: &[Id<RoleMarker>]) -> bool {
     let dj_roles = config.get_dj_role_id();
     roles.iter().any(|id| dj_roles.contains(&id.get()))
 }

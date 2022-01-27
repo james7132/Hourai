@@ -6,7 +6,13 @@ use crate::{
             ApplicationCommand, CommandDataOption, CommandOptionValue, InteractionMember,
         },
         guild::{PartialMember, Permissions},
-        id::{ApplicationId, ChannelId, GuildId, InteractionId, RoleId, UserId},
+        id::{
+            marker::{
+                ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker, RoleMarker,
+                UserMarker,
+            },
+            Id,
+        },
         user::User,
     },
 };
@@ -67,7 +73,7 @@ impl CommandContext {
     }
 
     /// Gets all of the User options with a given option name.
-    pub fn all_users(&self, name: &'static str) -> impl Iterator<Item = UserId> + '_ {
+    pub fn all_users(&self, name: &'static str) -> impl Iterator<Item = Id<UserMarker>> + '_ {
         self.all_options_named(name)
             .filter_map(|opt| match opt.value {
                 CommandOptionValue::User(user) => Some(user),
@@ -108,7 +114,7 @@ impl CommandContext {
 
     /// Attempts to find the first argument with a given name that is of type User. If no such
     /// argument is found, return None.
-    pub fn get_user(&self, name: &'static str) -> InteractionResult<UserId> {
+    pub fn get_user(&self, name: &'static str) -> InteractionResult<Id<UserMarker>> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::User(ref value) => Some(*value),
@@ -119,7 +125,7 @@ impl CommandContext {
 
     /// Attempts to find the first argument with a given name that is of type Channel. If no such
     /// argument is found, return None.
-    pub fn get_channel(&self, name: &'static str) -> InteractionResult<ChannelId> {
+    pub fn get_channel(&self, name: &'static str) -> InteractionResult<Id<ChannelMarker>> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::Channel(ref value) => Some(*value),
@@ -130,7 +136,7 @@ impl CommandContext {
 
     /// Attempts to find the first argument with a given name that is of type Role. If no such
     /// argument is found, return None.
-    pub fn get_role(&self, name: &'static str) -> InteractionResult<RoleId> {
+    pub fn get_role(&self, name: &'static str) -> InteractionResult<Id<RoleMarker>> {
         self.option_named(name)
             .and_then(|option| match option.value {
                 CommandOptionValue::Role(ref value) => Some(*value),
@@ -149,7 +155,7 @@ impl CommandContext {
             })
     }
 
-    pub fn resolve_user(&self, id: UserId) -> Option<&User> {
+    pub fn resolve_user(&self, id: Id<UserMarker>) -> Option<&User> {
         self.command
             .data
             .resolved
@@ -157,7 +163,7 @@ impl CommandContext {
             .and_then(|r| r.users.get(&id))
     }
 
-    pub fn resolve_member(&self, id: UserId) -> Option<&InteractionMember> {
+    pub fn resolve_member(&self, id: Id<UserMarker>) -> Option<&InteractionMember> {
         self.command
             .data
             .resolved
@@ -194,11 +200,11 @@ impl InteractionContext for CommandContext {
         &self.http
     }
 
-    fn id(&self) -> InteractionId {
+    fn id(&self) -> Id<InteractionMarker> {
         self.command.id
     }
 
-    fn application_id(&self) -> ApplicationId {
+    fn application_id(&self) -> Id<ApplicationMarker> {
         self.command.application_id
     }
 
@@ -210,11 +216,11 @@ impl InteractionContext for CommandContext {
         self.command.member.as_ref()
     }
 
-    fn guild_id(&self) -> InteractionResult<GuildId> {
+    fn guild_id(&self) -> InteractionResult<Id<GuildMarker>> {
         self.command.guild_id.ok_or(InteractionError::NotInGuild)
     }
 
-    fn channel_id(&self) -> ChannelId {
+    fn channel_id(&self) -> Id<ChannelMarker> {
         self.command.channel_id
     }
 

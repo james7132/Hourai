@@ -2,7 +2,7 @@ use crate::RedisClient;
 use anyhow::Result;
 use hourai::{
     http::{request::channel::message::create_message::CreateMessage, Client},
-    models::id::{ChannelId, GuildId},
+    models::id::{marker::*, Id},
     proto::guild_configs::LoggingConfig,
 };
 use std::sync::Arc;
@@ -18,22 +18,20 @@ impl ModLogger {
         Self { http, redis }
     }
 
-    pub async fn get_guild_modlog(&self, guild_id: GuildId) -> Result<Option<Modlog>> {
+    pub async fn get_guild_modlog(&self, guild_id: Id<GuildMarker>) -> Result<Modlog> {
         let config: LoggingConfig = self.redis.guild(guild_id).configs().get().await?;
 
-        Ok(
-            ChannelId::new(config.get_modlog_channel_id()).map(|id| Modlog {
-                http: self.http.clone(),
-                channel_id: id,
-            }),
-        )
+        Ok(Modlog {
+            http: self.http.clone(),
+            channel_id: Id::new(config.get_modlog_channel_id()),
+        })
     }
 }
 
 #[derive(Clone)]
 pub struct Modlog {
     http: Arc<Client>,
-    channel_id: ChannelId,
+    channel_id: Id<ChannelMarker>,
 }
 
 impl Modlog {

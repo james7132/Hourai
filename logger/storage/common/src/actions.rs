@@ -4,7 +4,10 @@ use chrono::{Duration, Utc};
 use futures::future::{BoxFuture, FutureExt};
 use hourai::{
     http::{self, request::AuditLogReason},
-    models::{id::*, user::User},
+    models::{
+        id::{marker::*, Id},
+        user::User,
+    },
     proto::action::*,
 };
 use hourai_sql::{Member, PendingAction};
@@ -132,8 +135,8 @@ impl ActionExecutor {
     }
 
     async fn execute_kick(&self, action: &Action) -> Result<()> {
-        let guild_id = GuildId::new(action.get_guild_id()).unwrap();
-        let user_id = UserId::new(action.get_user_id()).unwrap();
+        let guild_id = Id::new(action.get_guild_id());
+        let user_id = Id::new(action.get_user_id());
         self.http
             .remove_guild_member(guild_id, user_id)
             .reason(action.get_reason())?
@@ -143,8 +146,8 @@ impl ActionExecutor {
     }
 
     async fn execute_ban(&self, action: &Action, info: &BanMember) -> Result<()> {
-        let guild_id = GuildId::new(action.get_guild_id()).unwrap();
-        let user_id = UserId::new(action.get_user_id()).unwrap();
+        let guild_id = Id::new(action.get_guild_id());
+        let user_id = Id::new(action.get_user_id());
         if info.get_field_type() != BanMember_Type::UNBAN {
             self.http
                 .create_ban(guild_id, user_id)
@@ -169,8 +172,8 @@ impl ActionExecutor {
         info: &'a EscalateMember,
     ) -> BoxFuture<'a, Result<()>> {
         async move {
-            let guild_id = GuildId::new(action.get_guild_id()).unwrap();
-            let user_id = UserId::new(action.get_user_id()).unwrap();
+            let guild_id = Id::new(action.get_guild_id());
+            let user_id = Id::new(action.get_user_id());
             let manager = EscalationManager::new(self.clone());
             let guild = manager.guild(guild_id).await?;
             let history = guild.fetch_history(user_id).await?;
@@ -188,8 +191,8 @@ impl ActionExecutor {
     }
 
     async fn execute_mute(&self, action: &Action, info: &MuteMember) -> Result<()> {
-        let guild_id = GuildId::new(action.get_guild_id()).unwrap();
-        let user_id = UserId::new(action.get_user_id()).unwrap();
+        let guild_id = Id::new(action.get_guild_id());
+        let user_id = Id::new(action.get_user_id());
         let mute = match info.get_field_type() {
             StatusType::APPLY => true,
             StatusType::UNAPPLY => false,
@@ -216,8 +219,8 @@ impl ActionExecutor {
     }
 
     async fn execute_deafen(&self, action: &Action, info: &DeafenMember) -> Result<()> {
-        let guild_id = GuildId::new(action.get_guild_id()).unwrap();
-        let user_id = UserId::new(action.get_user_id()).unwrap();
+        let guild_id = Id::new(action.get_guild_id());
+        let user_id = Id::new(action.get_user_id());
         let deafen = match info.get_field_type() {
             StatusType::APPLY => true,
             StatusType::UNAPPLY => false,
@@ -244,8 +247,8 @@ impl ActionExecutor {
     }
 
     async fn execute_change_role(&self, action: &Action, info: &ChangeRole) -> Result<()> {
-        let guild_id = GuildId::new(action.get_guild_id()).unwrap();
-        let user_id = UserId::new(action.get_user_id()).unwrap();
+        let guild_id = Id::new(action.get_guild_id());
+        let user_id = Id::new(action.get_user_id());
         let member = Member::fetch(guild_id, user_id)
             .fetch_one(self.storage().sql())
             .await?;
@@ -254,13 +257,9 @@ impl ActionExecutor {
             return Ok(());
         }
 
-        let role_ids: HashSet<RoleId> = info
-            .get_role_ids()
-            .iter()
-            .cloned()
-            .filter_map(RoleId::new)
-            .collect();
-        let mut roles: HashSet<RoleId> = member.role_ids().collect();
+        let role_ids: HashSet<Id<RoleMarker>> =
+            info.get_role_ids().iter().cloned().map(Id::new).collect();
+        let mut roles: HashSet<Id<RoleMarker>> = member.role_ids().collect();
         match info.get_field_type() {
             StatusType::APPLY => {
                 roles.extend(role_ids);
@@ -279,7 +278,7 @@ impl ActionExecutor {
             }
         };
 
-        let roles: Vec<RoleId> = roles.into_iter().collect();
+        let roles: Vec<Id<RoleMarker>> = roles.into_iter().collect();
         self.http
             .update_guild_member(guild_id, user_id)
             .roles(&roles)
@@ -290,7 +289,7 @@ impl ActionExecutor {
     }
 
     async fn execute_direct_message(&self, action: &Action, info: &DirectMessage) -> Result<()> {
-        let user_id = UserId::new(action.get_user_id()).unwrap();
+        let user_id = Id::new(action.get_user_id());
         let channel = self
             .http
             .create_private_channel(user_id)
@@ -308,7 +307,7 @@ impl ActionExecutor {
     }
 
     async fn execute_send_message(&self, info: &SendMessage) -> Result<()> {
-        let channel_id = ChannelId::new(info.get_channel_id()).unwrap();
+        let channel_id = Id::new(info.get_channel_id());
         self.http
             .create_message(channel_id)
             .content(info.get_content())?
@@ -318,9 +317,9 @@ impl ActionExecutor {
     }
 
     async fn execute_delete_messages(&self, info: &DeleteMessages) -> Result<()> {
-        let channel_id = ChannelId::new(info.get_channel_id()).unwrap();
-        let message_ids: Vec<MessageId> =
-            info.message_ids.iter().cloned().filter_map(MessageId::new).collect();
+        let channel_id = Id::new(info.get_channel_id());
+        let message_ids: Vec<Id<MessageMarker>> =
+            info.message_ids.iter().cloned().map(Id::new).collect();
         match message_ids.len() {
             0 => return Ok(()),
             1 => {

@@ -1,6 +1,6 @@
 use super::prelude::*;
 use hourai::{
-    models::{channel::message::allowed_mentions::AllowedMentions, id::ChannelId},
+    models::{channel::message::allowed_mentions::AllowedMentions, id::Id},
     proto::guild_configs::LoggingConfig,
 };
 use rand::Rng;
@@ -29,7 +29,7 @@ pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<R
 
     if config.has_modlog_channel_id() {
         ctx.http
-            .create_message(ChannelId::new(config.get_modlog_channel_id()).unwrap())
+            .create_message(Id::new(config.get_modlog_channel_id()))
             .content(&format!(
                 "<@{}> used `/pingmod` to ping {} in <#{}>",
                 ctx.user().id,

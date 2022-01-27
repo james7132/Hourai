@@ -3,7 +3,7 @@ use anyhow::Result;
 use hourai::{
     models::{
         guild::{Member, Permissions},
-        id::*,
+        id::{marker::*, Id},
         RoleFlags,
     },
     proto::{cache::CachedRoleProto, guild_configs::*},
@@ -13,16 +13,19 @@ use std::collections::HashMap;
 
 async fn get_roles(
     storage: &Storage,
-    guild_id: GuildId,
-    user_id: UserId,
-) -> hourai_sql::Result<Vec<RoleId>> {
+    guild_id: Id<GuildMarker>,
+    user_id: Id<UserMarker>,
+) -> hourai_sql::Result<Vec<Id<RoleMarker>>> {
     hourai_sql::Member::fetch(guild_id, user_id)
         .fetch_one(storage.sql())
         .await
         .map(|member| member.role_ids().collect())
 }
 
-async fn get_role_flags(storage: &Storage, guild_id: GuildId) -> Result<HashMap<u64, RoleFlags>> {
+async fn get_role_flags(
+    storage: &Storage,
+    guild_id: Id<GuildMarker>,
+) -> Result<HashMap<u64, RoleFlags>> {
     let config: RoleConfig = storage.redis().guild(guild_id).configs().get().await?;
     Ok(config
         .get_settings()
@@ -31,11 +34,14 @@ async fn get_role_flags(storage: &Storage, guild_id: GuildId) -> Result<HashMap<
         .collect())
 }
 
-async fn get_verification_role(storage: &Storage, guild_id: GuildId) -> Result<Option<RoleId>> {
+async fn get_verification_role(
+    storage: &Storage,
+    guild_id: Id<GuildMarker>,
+) -> Result<Option<Id<RoleMarker>>> {
     let config: VerificationConfig = storage.redis().guild(guild_id).configs().get().await?;
 
     if config.get_enabled() && config.has_role_id() {
-        Ok(RoleId::new(config.get_role_id()))
+        Ok(Some(Id::new(config.get_role_id())))
     } else {
         Ok(None)
     }
@@ -74,7 +80,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         .unwrap_or_else(|| CachedRoleProto::default());
 
     let flags = get_role_flags(client.storage(), guild_id).await?;
-    let mut restorable: Vec<RoleId> = user_roles
+    let mut restorable: Vec<Id<RoleMarker>> = user_roles
         .iter()
         .filter(|role| {
             let role_flags = flags
@@ -83,7 +89,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
                 .unwrap_or_else(RoleFlags::empty);
             role < &&max_role && role_flags.contains(RoleFlags::RESTORABLE)
         })
-        .filter_map(|role| RoleId::new(role.get_role_id()))
+        .map(|role| Id::new(role.get_role_id()))
         .collect();
 
     // Do not give out the verification role if it is enabled.

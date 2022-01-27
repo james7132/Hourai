@@ -6,16 +6,16 @@ use hourai::{
         gateway::payload::{
             incoming::MemberChunk, outgoing::request_guild_members::RequestGuildMembers,
         },
-        id::GuildId,
+        id::{marker::GuildMarker, Id},
     },
     prelude::*,
 };
 use std::{collections::VecDeque, sync::Arc};
 
 enum Message {
-    Guild(GuildId),
+    Guild(Id<GuildMarker>),
     GuildChunk {
-        guild_id: GuildId,
+        guild_id: Id<GuildMarker>,
         chunk_count: u32,
         chunk_index: u32,
     },
@@ -31,7 +31,7 @@ impl MemberChunker {
         Self(tx)
     }
 
-    pub fn push_guild(&self, guild_id: GuildId) {
+    pub fn push_guild(&self, guild_id: Id<GuildMarker>) {
         self.0.unbounded_send(Message::Guild(guild_id)).ok();
     }
 
@@ -94,7 +94,7 @@ impl MemberChunker {
         }
     }
 
-    async fn chunk_guild(gateway: &Arc<Cluster>, guild_id: GuildId) -> Result<()> {
+    async fn chunk_guild(gateway: &Arc<Cluster>, guild_id: Id<GuildMarker>) -> Result<()> {
         tracing::debug!("Chunking guild: {}", guild_id);
         let request = RequestGuildMembers::builder(guild_id)
             .presences(true)

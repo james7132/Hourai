@@ -1,24 +1,24 @@
 use super::guild::Member;
-use super::id::UserId;
+use super::id::{marker::UserMarker, Id};
 use super::Snowflake;
 use crate::proto::cache::CachedUserProto;
-pub use twilight_model::user::*;
+pub use twilight_model::{user::*, util::image_hash::ImageHash};
 
 const DEFAULT_AVATAR_COUNT: u64 = 5;
 const BASE_ASSET_URI: &str = "https://cdn.discordapp.com";
 
-pub trait UserLike: Snowflake<UserId> {
+pub trait UserLike: Snowflake<Id<UserMarker>> {
     fn name(&self) -> &str;
     fn discriminator(&self) -> u16;
-    fn avatar_hash(&self) -> Option<&str>;
+    fn avatar_hash(&self) -> Option<ImageHash>;
     fn bot(&self) -> bool;
 
     fn avatar_url(&self) -> String {
-        let format = if self.is_avatar_animated() {
-            "gif"
-        } else {
-            "webp"
-        };
+        let is_animated = self
+            .avatar_hash()
+            .map(|hash| hash.is_animated())
+            .unwrap_or(false);
+        let format = if is_animated { "gif" } else { "webp" };
         self.avatar_url_as(format, 1024)
     }
 
@@ -42,32 +42,26 @@ pub trait UserLike: Snowflake<UserId> {
         format!("{}/embed/avatars/{}.png", BASE_ASSET_URI, idx)
     }
 
-    fn is_avatar_animated(&self) -> bool {
-        self.avatar_hash()
-            .map(|hash| hash.starts_with("a_"))
-            .unwrap_or(false)
-    }
-
     fn display_name(&self) -> String {
         format!("{}#{:04}", self.name(), self.discriminator())
     }
 }
 
-impl Snowflake<UserId> for User {
-    fn id(&self) -> UserId {
+impl Snowflake<Id<UserMarker>> for User {
+    fn id(&self) -> Id<UserMarker> {
         self.id
     }
 }
 
-impl Snowflake<UserId> for Member {
-    fn id(&self) -> UserId {
+impl Snowflake<Id<UserMarker>> for Member {
+    fn id(&self) -> Id<UserMarker> {
         self.user.id
     }
 }
 
-impl Snowflake<UserId> for CachedUserProto {
-    fn id(&self) -> UserId {
-        unsafe { UserId::new_unchecked(self.get_id()) }
+impl Snowflake<Id<UserMarker>> for CachedUserProto {
+    fn id(&self) -> Id<UserMarker> {
+        Id::new(self.get_id())
     }
 }
 
@@ -80,8 +74,8 @@ impl UserLike for User {
         self.discriminator
     }
 
-    fn avatar_hash(&self) -> Option<&str> {
-        self.avatar.as_deref()
+    fn avatar_hash(&self) -> Option<ImageHash> {
+        self.avatar
     }
 
     fn bot(&self) -> bool {
@@ -98,8 +92,8 @@ impl UserLike for Member {
         self.user.discriminator
     }
 
-    fn avatar_hash(&self) -> Option<&str> {
-        self.user.avatar.as_deref()
+    fn avatar_hash(&self) -> Option<ImageHash> {
+        self.user.avatar
     }
 
     fn bot(&self) -> bool {
@@ -116,9 +110,9 @@ impl UserLike for CachedUserProto {
         self.get_discriminator() as u16
     }
 
-    fn avatar_hash(&self) -> Option<&str> {
+    fn avatar_hash(&self) -> Option<ImageHash> {
         if self.has_avatar() {
-            Some(self.get_avatar())
+            ImageHash::parse(self.get_avatar().as_bytes()).ok()
         } else {
             None
         }

@@ -2,18 +2,21 @@ use crate::Client;
 use anyhow::Result;
 use hourai::models::channel::GuildChannel;
 use hourai::models::gateway::payload::incoming::{BanAdd, MemberRemove};
-use hourai::models::id::*;
+use hourai::models::id::{marker::*, Id};
 use hourai::models::user::User;
 use hourai::models::voice::VoiceState;
 use hourai::proto::guild_configs::*;
 use hourai_storage::Storage;
 use std::sync::Arc;
 
-async fn get_config(storage: &Storage, guild_id: GuildId) -> Result<Option<AnnouncementConfig>> {
+async fn get_config(
+    storage: &Storage,
+    guild_id: Id<GuildMarker>,
+) -> Result<Option<AnnouncementConfig>> {
     Ok(storage.redis().guild(guild_id).configs().fetch().await?)
 }
 
-pub async fn on_member_join(client: &Client, guild: GuildId, user: User) -> Result<()> {
+pub async fn on_member_join(client: &Client, guild: Id<GuildMarker>, user: User) -> Result<()> {
     if let Some(config) = get_config(client.storage(), guild).await? {
         // TODO(james7132): let this be customizable.
         let msg = format!("<@{}> has joined the server.", user.id);
@@ -43,7 +46,7 @@ pub async fn on_member_ban(client: &Client, evt: BanAdd) -> Result<()> {
 pub async fn on_voice_update(
     client: &Client,
     state: VoiceState,
-    before: Option<ChannelId>,
+    before: Option<Id<ChannelMarker>>,
 ) -> Result<()> {
     let guild_id = match state.guild_id {
         Some(guild) => guild,
@@ -90,7 +93,11 @@ pub async fn on_voice_update(
 }
 
 pub fn broadcast(client: &Client, config: &AnnouncementTypeConfig, message: String) {
-    async fn push(http: Arc<hourai::http::Client>, channel: ChannelId, msg: String) -> Result<()> {
+    async fn push(
+        http: Arc<hourai::http::Client>,
+        channel: Id<ChannelMarker>,
+        msg: String,
+    ) -> Result<()> {
         http.create_message(channel).content(&msg)?.exec().await?;
         Ok(())
     }
@@ -99,7 +106,7 @@ pub fn broadcast(client: &Client, config: &AnnouncementTypeConfig, message: Stri
         .get_channel_ids()
         .iter()
         .cloned()
-        .filter_map(ChannelId::new);
+        .map(Id::<ChannelMarker>::new);
     for channel_id in channel_ids {
         let http = client.http().clone();
         let msg = message.clone();

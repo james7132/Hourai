@@ -1,5 +1,8 @@
 use hourai::{
-    models::{id::GuildId, user::User},
+    models::{
+        id::{marker::GuildMarker, Id},
+        user::User,
+    },
     proto::{cache::CachedUserProto, music_bot::TrackProto},
 };
 use std::convert::TryFrom;
@@ -34,7 +37,7 @@ pub struct Track {
 }
 
 impl Track {
-    pub fn play(&self, guild_id: GuildId) -> Play {
+    pub fn play(&self, guild_id: Id<GuildMarker>) -> Play {
         Play::new(guild_id, base64::encode(&self.track), None, None, false)
     }
 }

@@ -41,7 +41,7 @@ pub mod proto {
             proto.set_discriminator(value.discriminator as u32);
             proto.set_bot(value.bot());
             if let Some(avatar) = value.avatar_hash() {
-                proto.set_avatar(avatar.to_owned());
+                proto.set_avatar(avatar.to_string());
             }
             proto
         }

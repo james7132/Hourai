@@ -10,7 +10,7 @@ anyhow = "1.0"
 chrono = "0.4"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 protobuf = "2.22"
-twilight-embed-builder = "0.8"
+twilight-embed-builder = "0.9"
 
 [dependencies.sqlx]
 default-features = false

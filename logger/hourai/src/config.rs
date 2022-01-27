@@ -5,7 +5,10 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
 };
-use twilight_model::application::command::Command;
+use twilight_model::{
+    application::command::Command,
+    id::{marker::ApplicationMarker, Id},
+};
 
 const DEFAULT_ENV: &str = "dev";
 
@@ -50,7 +53,7 @@ pub struct MusicNode {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct DiscordConfig {
-    pub application_id: u64,
+    pub application_id: Id<ApplicationMarker>,
     pub client_id: String,
     pub client_secret: String,
     pub redirect_uri: String,

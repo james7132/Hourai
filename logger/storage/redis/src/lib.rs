@@ -16,7 +16,7 @@ use hourai::{
     models::{
         channel::GuildChannel,
         guild::{Guild, PartialGuild, Permissions, Role},
-        id::*,
+        id::{marker::*, Id as TwilightId},
         voice::VoiceState,
         MessageLike, Snowflake, UserLike,
     },
@@ -26,7 +26,6 @@ use redis::{FromRedisValue, ToRedisArgs};
 use std::{
     cmp::{Ord, Ordering},
     collections::{HashMap, HashSet},
-    hash::Hash,
     ops::Deref,
 };
 use tracing::debug;
@@ -62,7 +61,7 @@ impl RedisClient {
         OnlineStatus(self.clone())
     }
 
-    pub fn guild(&self, guild_id: GuildId) -> GuildCache {
+    pub fn guild(&self, guild_id: TwilightId<GuildMarker>) -> GuildCache {
         GuildCache {
             guild_id,
             redis: self.clone(),
@@ -83,8 +82,8 @@ pub struct OnlineStatus(RedisClient);
 impl OnlineStatus {
     pub async fn set_online(
         &mut self,
-        guild_id: GuildId,
-        online: impl IntoIterator<Item = UserId>,
+        guild_id: TwilightId<GuildMarker>,
+        online: impl IntoIterator<Item = TwilightId<UserMarker>>,
     ) -> Result<()> {
         let key = CacheKey::OnlineStatus(guild_id);
         let ids: Vec<Id<u64>> = online.into_iter().map(|id| Id(id.get())).collect();
@@ -102,11 +101,11 @@ impl OnlineStatus {
 
     pub async fn find_online(
         &mut self,
-        guild_id: GuildId,
-        users: impl IntoIterator<Item = UserId>,
-    ) -> Result<HashSet<UserId>> {
+        guild_id: TwilightId<GuildMarker>,
+        users: impl IntoIterator<Item = TwilightId<UserMarker>>,
+    ) -> Result<HashSet<TwilightId<UserMarker>>> {
         let key = CacheKey::OnlineStatus(guild_id);
-        let user_ids: Vec<UserId> = users.into_iter().collect();
+        let user_ids: Vec<TwilightId<UserMarker>> = users.into_iter().collect();
         let mut pipe = redis::pipe();
         user_ids.iter().map(|id| Id(id.get())).for_each(|id| {
             pipe.sismember(key.clone(), id);
@@ -170,7 +169,7 @@ impl MessageCache {
         user.set_discriminator(author.discriminator() as u32);
         user.set_bot(author.bot());
         if let Some(avatar) = author.avatar_hash() {
-            user.set_avatar(avatar.to_owned());
+            user.set_avatar(avatar.to_string());
         }
 
         let key = CacheKey::Messages(message.channel_id(), message.id());
@@ -185,8 +184,8 @@ impl MessageCache {
 
     pub async fn fetch(
         &mut self,
-        channel_id: ChannelId,
-        message_id: MessageId,
+        channel_id: TwilightId<ChannelMarker>,
+        message_id: TwilightId<MessageMarker>,
     ) -> Result<Option<CachedMessageProto>> {
         let key = CacheKey::Messages(channel_id, message_id);
         let proto: Option<Protobuf<CachedMessageProto>> = self.0.connection_mut().get(key).await?;
@@ -198,14 +197,18 @@ impl MessageCache {
         }))
     }
 
-    pub async fn delete(&mut self, channel_id: ChannelId, id: MessageId) -> Result<()> {
+    pub async fn delete(
+        &mut self,
+        channel_id: TwilightId<ChannelMarker>,
+        id: TwilightId<MessageMarker>,
+    ) -> Result<()> {
         self.bulk_delete(channel_id, vec![id]).await
     }
 
     pub async fn bulk_delete(
         &mut self,
-        channel_id: ChannelId,
-        ids: impl IntoIterator<Item = MessageId>,
+        channel_id: TwilightId<ChannelMarker>,
+        ids: impl IntoIterator<Item = TwilightId<MessageMarker>>,
     ) -> Result<()> {
         let keys: Vec<CacheKey> = ids
             .into_iter()
@@ -230,17 +233,22 @@ impl VoiceStateCache {
         Ok(())
     }
 
-    pub async fn get_channel(&mut self, user_id: UserId) -> Result<Option<ChannelId>> {
+    pub async fn get_channel(
+        &mut self,
+        user_id: TwilightId<UserMarker>,
+    ) -> Result<Option<TwilightId<ChannelMarker>>> {
         let channel_id: Option<u64> = self
             .0
             .redis
             .connection_mut()
             .hget(CacheKey::VoiceState(self.0.guild_id), user_id.get())
             .await?;
-        Ok(channel_id.and_then(ChannelId::new))
+        Ok(channel_id.map(TwilightId::new))
     }
 
-    pub async fn get_channels(&mut self) -> Result<HashMap<UserId, ChannelId>> {
+    pub async fn get_channels(
+        &mut self,
+    ) -> Result<HashMap<TwilightId<UserMarker>, TwilightId<ChannelMarker>>> {
         let all_users: HashMap<u64, u64> = self
             .0
             .redis
@@ -249,9 +257,7 @@ impl VoiceStateCache {
             .await?;
         Ok(all_users
             .into_iter()
-            .filter_map(|(user, channel)| {
-                UserId::new(user).and_then(|u| ChannelId::new(channel).map(|ch| (u, ch)))
-            })
+            .map(|(user, channel)| (TwilightId::new(user), TwilightId::new(channel)))
             .collect())
     }
 
@@ -283,7 +289,7 @@ impl VoiceStateCache {
 
 #[derive(Clone)]
 pub struct GuildCache {
-    guild_id: GuildId,
+    guild_id: TwilightId<GuildMarker>,
     redis: RedisClient,
 }
 
@@ -331,16 +337,17 @@ impl GuildCache {
     /// Gets a cached resource from the cache.
     pub async fn fetch_resource<T: GuildResource>(
         &mut self,
-        resource_id: T::Id,
+        resource_id: TwilightId<T::Marker>,
     ) -> Result<Option<T::Proto>>
     where
-        GuildKey: From<T::Id> + ToRedisArgs,
+        GuildKey: From<TwilightId<T::Marker>> + ToRedisArgs,
     {
         let guild_key = CacheKey::Guild(self.guild_id);
+        let resource_key = GuildKey::from(resource_id);
         let proto: Option<Protobuf<T::Proto>> = self
             .redis
             .connection_mut()
-            .hget(guild_key, resource_id.into())
+            .hget(guild_key, resource_key)
             .await?;
         Ok(proto.map(|proto| proto.0))
     }
@@ -348,9 +355,9 @@ impl GuildCache {
     /// Fetches multiple resources from the cache.
     pub async fn fetch_all_resources<T: GuildResource>(
         &mut self,
-    ) -> Result<HashMap<T::Id, T::Proto>>
+    ) -> Result<HashMap<TwilightId<T::Marker>, T::Proto>>
     where
-        GuildKey: From<T::Id> + ToRedisArgs,
+        GuildKey: From<TwilightId<T::Marker>> + ToRedisArgs,
     {
         // TODO(james7132): Using HGETALL here is super inefficient with guilds with high
         // role/channel counts, see if this is avoidable.
@@ -372,22 +379,25 @@ impl GuildCache {
     /// Fetches multiple resources from the cache.
     pub async fn fetch_resources<T: GuildResource>(
         &mut self,
-        resource_ids: &[T::Id],
+        resource_ids: &[TwilightId<T::Marker>],
     ) -> Result<Vec<T::Proto>>
     where
-        GuildKey: From<T::Id> + ToRedisArgs,
+        T::Marker: Clone,
+        GuildKey: From<TwilightId<T::Marker>> + ToRedisArgs,
     {
         Ok(match resource_ids.len() {
             0 => vec![],
             1 => self
-                .fetch_resource::<T>(resource_ids[0])
+                .fetch_resource::<T>(resource_ids[0].clone())
                 .await?
                 .into_iter()
                 .collect(),
             _ => {
                 let guild_key = CacheKey::Guild(self.guild_id);
-                let resource_keys: Vec<GuildKey> =
-                    resource_ids.iter().map(|id| id.clone().into()).collect();
+                let resource_keys: Vec<_> = resource_ids
+                    .iter()
+                    .map(|id| GuildKey::from(id.clone()))
+                    .collect();
                 let protos: Vec<Option<Protobuf<T::Proto>>> = self
                     .redis
                     .connection_mut()
@@ -404,42 +414,55 @@ impl GuildCache {
     /// Saves a resoruce into the cache.
     pub async fn save_resource<T: GuildResource>(
         &mut self,
-        resource_id: T::Id,
+        resource_id: TwilightId<T::Marker>,
         data: &T,
     ) -> Result<()>
     where
-        GuildKey: From<T::Id> + ToRedisArgs,
+        GuildKey: From<TwilightId<T::Marker>> + ToRedisArgs,
     {
+        let guild_key = CacheKey::Guild(self.guild_id);
+        let resource_key = GuildKey::from(resource_id);
         let proto = Protobuf(data.to_proto());
         self.redis
             .connection_mut()
-            .hset(CacheKey::Guild(self.guild_id), resource_id.into(), proto)
+            .hset(guild_key, resource_key, proto)
             .await?;
         Ok(())
     }
 
-    fn save_resource_cmd<T: GuildResource>(&self, resource_id: T::Id, data: &T) -> redis::Cmd
+    fn save_resource_cmd<T: GuildResource>(
+        &self,
+        resource_id: TwilightId<T::Marker>,
+        data: &T,
+    ) -> redis::Cmd
     where
-        GuildKey: From<T::Id> + ToRedisArgs,
+        GuildKey: From<TwilightId<T::Marker>> + ToRedisArgs,
     {
+        let guild_key = CacheKey::Guild(self.guild_id);
+        let resource_key = GuildKey::from(resource_id);
         let proto = Protobuf(data.to_proto());
-        redis::Cmd::hset(CacheKey::Guild(self.guild_id), resource_id.into(), proto)
+        redis::Cmd::hset(guild_key, resource_key, proto)
     }
 
     /// Deletes a resource from the cache.
-    pub async fn delete_resource<T: GuildResource>(&mut self, resource_id: T::Id) -> Result<()>
+    pub async fn delete_resource<T: GuildResource>(
+        &mut self,
+        resource_id: TwilightId<T::Marker>,
+    ) -> Result<()>
     where
-        GuildKey: From<T::Id> + ToRedisArgs,
+        GuildKey: From<TwilightId<T::Marker>> + ToRedisArgs,
     {
+        let guild_key = CacheKey::Guild(self.guild_id);
+        let resource_key = GuildKey::from(resource_id);
         self.redis
             .connection_mut()
-            .hdel(CacheKey::Guild(self.guild_id), resource_id.into())
+            .hdel(guild_key, resource_key)
             .await?;
         Ok(())
     }
 
     /// Fetches a `RoleSet` from the provided guild and role IDs.
-    pub async fn role_set(&mut self, role_ids: &[RoleId]) -> Result<RoleSet> {
+    pub async fn role_set(&mut self, role_ids: &[TwilightId<RoleMarker>]) -> Result<RoleSet> {
         Ok(RoleSet(self.fetch_resources::<Role>(role_ids).await?))
     }
 
@@ -448,8 +471,8 @@ impl GuildCache {
     /// Permissions::empty.
     pub async fn guild_permissions(
         &mut self,
-        user_id: UserId,
-        role_ids: impl Iterator<Item = RoleId>,
+        user_id: TwilightId<UserMarker>,
+        role_ids: impl Iterator<Item = TwilightId<RoleMarker>>,
     ) -> Result<Permissions> {
         // The owner has all permissions.
         if let Some(guild) = self.fetch_resource::<Guild>(self.guild_id).await? {
@@ -461,8 +484,8 @@ impl GuildCache {
         }
 
         // The everyone role ID is the same as the guild ID.
-        let mut role_ids: Vec<RoleId> = role_ids.collect();
-        role_ids.push(RoleId(self.guild_id.0));
+        let mut role_ids: Vec<TwilightId<RoleMarker>> = role_ids.collect();
+        role_ids.push(self.guild_id.cast());
         Ok(self.role_set(&role_ids).await?.guild_permissions())
     }
 }
@@ -523,20 +546,20 @@ pub trait ToProto {
 }
 
 pub trait GuildResource: ToProto {
-    type Id: Into<GuildKey> + Copy + Eq + Hash;
+    type Marker;
     type Subkey;
     const PREFIX: u8;
 
-    fn from_key(id: GuildKey) -> Self::Id;
+    fn from_key(id: GuildKey) -> TwilightId<Self::Marker>;
 }
 
 impl GuildResource for Guild {
-    type Id = GuildId;
+    type Marker = GuildMarker;
     type Subkey = ();
     const PREFIX: u8 = 1_u8;
 
-    fn from_key(_: GuildKey) -> Self::Id {
-        panic!("Converting GuildKey to GuildId is not supported");
+    fn from_key(_: GuildKey) -> TwilightId<Self::Marker> {
+        panic!("Converting GuildKey to Id<GuildMarker> is not supported");
     }
 }
 
@@ -556,12 +579,12 @@ impl ToProto for Guild {
 }
 
 impl GuildResource for PartialGuild {
-    type Id = GuildId;
+    type Marker = GuildMarker;
     type Subkey = ();
     const PREFIX: u8 = 1_u8;
 
-    fn from_key(_: GuildKey) -> Self::Id {
-        panic!("Converting GuildKey to GuildId is not supported");
+    fn from_key(_: GuildKey) -> TwilightId<Self::Marker> {
+        panic!("Converting GuildKey to Id<GuildMarker> is not supported");
     }
 }
 
@@ -581,11 +604,11 @@ impl ToProto for PartialGuild {
 }
 
 impl GuildResource for GuildChannel {
-    type Id = ChannelId;
+    type Marker = ChannelMarker;
     type Subkey = u64;
     const PREFIX: u8 = 3_u8;
 
-    fn from_key(key: GuildKey) -> Self::Id {
+    fn from_key(key: GuildKey) -> TwilightId<Self::Marker> {
         if let GuildKey::Channel(id) = key {
             id
         } else {
@@ -605,11 +628,11 @@ impl ToProto for GuildChannel {
 }
 
 impl GuildResource for Role {
-    type Id = RoleId;
+    type Marker = RoleMarker;
     type Subkey = u64;
     const PREFIX: u8 = 2_u8;
 
-    fn from_key(key: GuildKey) -> Self::Id {
+    fn from_key(key: GuildKey) -> TwilightId<Self::Marker> {
         if let GuildKey::Role(id) = key {
             id
         } else {

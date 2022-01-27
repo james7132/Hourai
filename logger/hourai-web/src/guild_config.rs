@@ -1,6 +1,6 @@
 use crate::{prelude::*, AppState};
 use actix_web::{http::StatusCode, web};
-use hourai::{models::id::GuildId, proto::auto_config::*, proto::guild_configs::*};
+use hourai::{models::id::Id, proto::auto_config::*, proto::guild_configs::*};
 use hourai_redis::CachedGuildConfig;
 
 async fn get_config<T>(
@@ -11,18 +11,14 @@ where
     T: protobuf::Message + CachedGuildConfig + serde::Serialize,
 {
     // TODO(james7132): Properly set up authN and authZ for this
-    if let Some(guild_id) = GuildId::new(path.into_inner()) {
-        let proto = data
-            .redis
-            .guild(guild_id)
-            .configs()
-            .fetch()
-            .await
-            .http_error(StatusCode::NOT_FOUND, "Guild not found")?;
-        Ok(proto.map(web::Json))
-    } else {
-        http_error(StatusCode::NOT_FOUND, "Guild not found")
-    }
+    let proto = data
+        .redis
+        .guild(Id::new(path.into_inner()))
+        .configs()
+        .fetch()
+        .await
+        .http_error(StatusCode::NOT_FOUND, "Guild not found")?;
+    Ok(proto.map(web::Json))
 }
 
 fn add_config<T: protobuf::Message + CachedGuildConfig + serde::Serialize>(

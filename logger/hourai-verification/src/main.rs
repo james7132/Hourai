@@ -13,7 +13,10 @@ use futures::stream::StreamExt;
 use hourai::{
     gateway::{cluster::ShardScheme, Event, EventTypeFlags, Intents},
     init,
-    models::{guild::Member, id::GuildId},
+    models::{
+        guild::Member,
+        id::{marker::GuildMarker, Id},
+    },
     proto::guild_configs::VerificationConfig,
 };
 
@@ -109,7 +112,7 @@ impl Client {
         Ok(())
     }
 
-    async fn get_config(&self, guild_id: GuildId) -> Result<VerificationConfig> {
+    async fn get_config(&self, guild_id: Id<GuildMarker>) -> Result<VerificationConfig> {
         Ok(self.storage.redis().guild(guild_id).configs().get().await?)
     }
 

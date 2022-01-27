@@ -6,7 +6,10 @@ use hourai::{
     models::{
         channel::message::Message,
         guild::Permissions,
-        id::{ChannelId, MessageId},
+        id::{
+            marker::{ChannelMarker, MessageMarker},
+            Id,
+        },
         user::User,
     },
     proto::action::{Action, BanMember_Type, StatusType},
@@ -324,7 +327,7 @@ pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<
 }
 
 async fn fetch_messages(
-    channel_id: ChannelId,
+    channel_id: Id<ChannelMarker>,
     http: Arc<hourai::http::Client>,
     tx: mpsc::UnboundedSender<Message>,
 ) -> Result<()> {
@@ -415,7 +418,7 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
         fetch_messages(ctx.channel_id(), ctx.http.clone(), tx),
     ));
 
-    let batches: Vec<Vec<MessageId>> = rx
+    let batches: Vec<Vec<Id<MessageMarker>>> = rx
         .skip(1)
         .take(count)
         .filter(move |msg| future::ready(filters.iter().all(|f| f(msg))))

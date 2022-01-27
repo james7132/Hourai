@@ -2,7 +2,7 @@ use crate::message_logging;
 use anyhow::Result;
 use hourai::proto::guild_configs::*;
 use hourai::{
-    models::{id::ChannelId, message::MessageLike, user::UserLike, Snowflake},
+    models::{id::Id, message::MessageLike, user::UserLike, Snowflake},
     util::mentions,
 };
 
@@ -171,10 +171,10 @@ async fn apply_rule(
             .configs()
             .get()
             .await?;
-        if let Some(modlog_id) = ChannelId::new(config.get_modlog_channel_id()) {
+        if config.has_modlog_channel_id() {
             executor
                 .http()
-                .create_message(modlog_id)
+                .create_message(Id::new(config.get_modlog_channel_id()))
                 .content(&response)?
                 .embeds(&[message_logging::message_to_embed(message)?.build()?])?
                 .exec()

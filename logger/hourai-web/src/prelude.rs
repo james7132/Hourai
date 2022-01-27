@@ -1,6 +1,6 @@
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
-use actix_web::{body::AnyBody, web::Json, HttpResponse};
+use actix_web::{body::BoxBody, web::Json, HttpResponse};
 use std::fmt::Display;
 use thiserror::Error;
 
@@ -84,7 +84,7 @@ impl InternalError {
 }
 
 impl ResponseError for InternalError {
-    fn error_response(&self) -> HttpResponse<AnyBody> {
+    fn error_response(&self) -> HttpResponse<BoxBody> {
         HttpResponse::build(self.status_code()).json(serde_json::json!({
             "status": self.status_code().as_u16(),
             "message": self.message()

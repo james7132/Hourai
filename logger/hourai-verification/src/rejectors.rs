@@ -125,9 +125,9 @@ impl Verifier for BannedUsernameRejector {
             return Ok(());
         }
 
-        let avatar_bans = VerificationBan::fetch_by_name(
+        let avatar_bans = VerificationBan::fetch_by_avatar(
             ctx.member().guild_id,
-            ctx.member().user.avatar.as_ref().unwrap(),
+            ctx.member().user.avatar.clone().unwrap(),
         )
         .fetch_all(&self.0)
         .await?;
