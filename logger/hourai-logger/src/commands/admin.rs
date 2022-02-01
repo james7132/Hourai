@@ -5,6 +5,7 @@ use hourai::{
     http::request::AuditLogReason,
     models::{
         channel::message::Message,
+        datetime::Timestamp,
         guild::Permissions,
         id::{
             marker::{ChannelMarker, MessageMarker},
@@ -108,6 +109,73 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
     }
 
     Ok(Response::direct().content(format!("{} {} users.", action, users.len() - errors.len())))
+}
+
+pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+    const DAY_SECS: i64 = 86400;
+
+    ctx.defer().await?;
+    let guild_id = ctx.guild_id()?;
+    if !ctx.has_user_permission(Permissions::MODERATE_MEMBERS) {
+        anyhow::bail!(InteractionError::MissingPermission("Moderate Members"));
+    }
+
+    let authorizer = ctx.command.member.as_ref().expect("Command without user.");
+    let mut guild = storage.redis().guild(guild_id);
+    let authorizer_roles = guild.role_set(&authorizer.roles).await?;
+    let reason = build_reason(
+        "Timed out",
+        authorizer.user.as_ref().unwrap(),
+        ctx.get_string("reason").ok(),
+    );
+
+    let duration = if let Ok(duration) = ctx.get_string("duration") {
+        parse_duration(duration)?.as_secs() as i64
+    } else {
+        // Default to 1 day
+        DAY_SECS
+    };
+
+    if duration > 28 * DAY_SECS {
+        anyhow::bail!(InteractionError::InvalidArgument(
+            "Max duration for timeout is 28 days.".into()
+        ));
+    }
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let expiration = Timestamp::from_secs(now + duration).unwrap();
+
+    let members: Vec<_> = ctx.all_users("user").collect();
+    let mut errors = Vec::new();
+    for member_id in members.iter() {
+        if let Some(member) = ctx.resolve_member(*member_id) {
+            let roles = guild.role_set(&member.roles).await?;
+            if roles >= authorizer_roles {
+                errors.push(format!(
+                    "{}: Has higher or equal roles, not authorized to time out.",
+                    member_id
+                ));
+                continue;
+            }
+        }
+
+        let request = ctx
+            .http
+            .update_guild_member(guild_id, *member_id)
+            .communication_disabled_until(Some(expiration.clone()))
+            .unwrap()
+            .reason(&reason)
+            .unwrap();
+        if let Err(err) = request.exec().await {
+            tracing::error!("Error while running /timeout on {}: {}", member_id, err);
+            errors.push(format!("{}: {}", member_id, err));
+        }
+    }
+
+    Ok(Response::direct().content(format!("Timed out {} users.", members.len() - errors.len())))
 }
 
 pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {

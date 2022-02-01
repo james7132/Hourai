@@ -45,7 +45,6 @@ local command = {
 
 local commands = [
   command {
-    // #001
     name: "music",
     description: "Music bot related commands",
     options: [subcommand {
@@ -104,7 +103,6 @@ local commands = [
   },
 
   command {
-    // #002
     name: "role",
     description: "Changes the roles of a given user. Requires Manage Roles.",
     options: [subcommand {
@@ -141,7 +139,6 @@ local commands = [
   },
 
   command {
-    // #003
     name: "ban",
     description: "Bans a user from the server. Requires Ban Members.",
     options: [string {
@@ -161,7 +158,6 @@ local commands = [
   },
 
   command {
-    // #004
     name: "kick",
     description: "Kicks a user from the server. Requires Kick Members.",
     options: [string {
@@ -175,7 +171,22 @@ local commands = [
   },
 
   command {
-    // #005
+    name: "timeout",
+    description: "Times out user(s) from the server. Requires Moderate Members.",
+    options: [string {
+      name: "reason",
+      description: "Optional: the reason for the timeout.",
+    }, string {
+      name: "duration",
+      description: "Optional: sets when to undo the change. (i.e. 6d for 6 days, 2h for 2 hours.)",
+    }] + [user {
+      name: "user_" + x,
+      description: "The user to time out.",
+    }
+    for x in std.range(1, 22)]
+  },
+
+  command {
     name: "move",
     description: "Moves all of the users in a voice channel to another. Requires Move Members.",
     options: [channel {
@@ -190,7 +201,6 @@ local commands = [
   },
 
   command {
-    // #006
     name: "prune",
     description: "Bulk deletes messages up to 14 days old. Requires Manage Messages.",
     options: [integer {
@@ -215,7 +225,6 @@ local commands = [
   },
 
   command {
-    // #007
     name: "mute",
     description: "Server mutes a user from the server. Requires Mute Members.",
     options: [string {
@@ -232,7 +241,6 @@ local commands = [
   },
 
   command {
-    // #008
     name: "deafen",
     description: "Server deafens from the server. Requires Deafen Members.",
     options: [string {
@@ -249,7 +257,6 @@ local commands = [
   },
 
   command {
-    // #009
     name: "choose",
     description: "Randomly chooses between several different choices",
     options: [string {
@@ -260,7 +267,6 @@ local commands = [
   },
 
   command {
-    // #010
     name: "remindme",
     description: "Schedules a reminder up to one year in the future. The bot will
     send you a DM with a reminder at the appropriate time.",
@@ -276,7 +282,6 @@ local commands = [
   },
 
   command {
-    // #011
     name: "pingmod",
     description: "Pings one random online moderator to pay attention to the current channel.",
     options: [string {
@@ -286,7 +291,6 @@ local commands = [
   },
 
   command {
-    // #012
     name: "info",
     description: "Provides detailed information about things on Discord.",
     options: [subcommand {
@@ -301,7 +305,6 @@ local commands = [
   },
 
   command {
-    // #013
     name: "verification",
     description: "",
     options: [subcommand {
@@ -334,7 +337,6 @@ local commands = [
   },
 
   command {
-    // #014
     name: "escalate",
     description: "Progressive tracked moderation.",
     options: [subcommand {
@@ -379,7 +381,6 @@ local commands = [
   },
 
   command {
-    // #015
     name: "config",
     description: "Configure the bot.",
     options: [subcommand_group {

@@ -18,6 +18,7 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
         // Admin Commands
         Command::Command("ban") => admin::ban(&ctx, actions).await,
         Command::Command("kick") => admin::kick(&ctx, actions.storage()).await,
+        Command::Command("timeout") => admin::timeout(&ctx, actions.storage()).await,
         Command::Command("mute") => admin::mute(&ctx, actions).await,
         Command::Command("deafen") => admin::deafen(&ctx, actions).await,
         Command::Command("move") => admin::move_cmd(&ctx, actions.storage()).await,
