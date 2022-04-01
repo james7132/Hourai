@@ -8,8 +8,8 @@ pub fn start_logging() {
     tracing_subscriber::fmt()
         .with_level(true)
         .with_thread_ids(true)
-        .with_timer(tracing_subscriber::fmt::time::ChronoUtc::rfc3339())
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_timer(tracing_subscriber::fmt::time::UtcTime::rfc_3339())
+        .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
         .compact()
         .init();
 }
@@ -23,7 +23,7 @@ pub fn init(config: &HouraiConfig) {
     let metrics_port = config.metrics.port.unwrap_or(9090);
     let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), metrics_port);
     PrometheusBuilder::new()
-        .listen_address(socket)
+        .with_http_listener(socket)
         .install()
         .expect("Failed to set up Prometheus metrics exporter");
 

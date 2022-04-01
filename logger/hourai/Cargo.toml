@@ -18,15 +18,15 @@ async-trait = "0.1"
 base64 = "0.13"
 bitflags = { default-features = false, version = "1" }
 chrono = "0.4"
-dashmap = { default-features = false, version = "4.0" }
-metrics-exporter-prometheus = "0.6"
+dashmap = { default-features = false, version = "5.2" }
+metrics-exporter-prometheus = "0.9"
 protobuf = "2.22"
 serde = "1.0"
 lazy_static = "1.4"
 thiserror = "1.0"
 hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
-tracing-subscriber = "0.2.15"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 twilight-embed-builder = "0.10"
 twilight-model = "0.10"
 twilight-util = { version = "0.10", features = ["snowflake"] }

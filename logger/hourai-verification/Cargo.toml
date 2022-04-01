@@ -12,7 +12,7 @@ hourai-sql = { path = "../storage/sql" }
 anyhow = "1.0"
 async-trait = "0.1.42"
 chrono = "0.4"
-dashmap = { default-features = false, version = "4.0" }
+dashmap = { default-features = false, version = "5.2" }
 futures = { default-features = false, version = "0.3.12" }
 humantime = "2.1"
 lazy_static = "1.4"

@@ -10,7 +10,7 @@ hourai-redis = { path = "../storage/redis" }
 anyhow = "1.0"
 async-trait = "0.1.42"
 base64 = "0.13"
-dashmap = { default-features = false, version = "4.0" }
+dashmap = { default-features = false, version = "5.2" }
 futures = { default-features = false, version = "0.3.12" }
 http = { default-features = false, version = "0.2" }
 hyper = { features = ["client", "http2", "runtime"], version = "0.14" }
