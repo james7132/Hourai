@@ -12,7 +12,7 @@ use http::status::StatusCode;
 use models::SubmissionListing;
 use reqwest::Response;
 use tracing::error;
-use twilight_embed_builder::*;
+use twilight_util::builder::embed::*;
 
 const SUBREDDITS_PER_PAGE: u64 = 60;
 
@@ -176,7 +176,7 @@ fn make_embed(source: Submission) -> Result<Embed> {
         builder = builder.description(source.url);
     }
 
-    Ok(builder.build()?)
+    Ok(builder.build())
 }
 
 fn ellipsize(input: &str, max_len: usize) -> String {

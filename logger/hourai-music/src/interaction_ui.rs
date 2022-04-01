@@ -12,7 +12,7 @@ use hourai::{
 };
 use std::time::{Duration, Instant};
 use tokio::sync::oneshot::error::TryRecvError;
-use twilight_embed_builder::*;
+use twilight_util::builder::embed::*;
 
 const PROGRESS_BAR_WIDTH: usize = 12;
 const TRACKS_PER_PAGE: usize = 10;
@@ -163,7 +163,7 @@ fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
         .description(build_progress_bar(&ui))
         .url(track.info.uri.clone())
         .footer(EmbedFooterBuilder::new(format!("Volume: {}", volume)))
-        .build()?)
+        .build())
 }
 
 impl EmbedUIBuilder for QueueUI {
@@ -229,7 +229,7 @@ impl EmbedUIBuilder for QueueUI {
             Ok(EmbedBuilder::new()
                 .description(description)
                 .footer(EmbedFooterBuilder::new(footer))
-                .build()?)
+                .build())
         }
     }
 
@@ -283,7 +283,7 @@ fn not_playing_embed() -> Result<Embed> {
     Ok(EmbedBuilder::new()
         .title("**No music playing**")
         .description(progress)
-        .build()?)
+        .build())
 }
 
 fn progress_bar(ratio: f64) -> String {

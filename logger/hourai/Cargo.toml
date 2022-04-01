@@ -27,9 +27,8 @@ thiserror = "1.0"
 hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
-twilight-embed-builder = "0.10"
 twilight-model = "0.10"
-twilight-util = { version = "0.10", features = ["snowflake"] }
+twilight-util = { version = "0.10", features = ["snowflake", "builder"] }
 regex = "1.5"
 
 [dependencies.twilight-gateway]

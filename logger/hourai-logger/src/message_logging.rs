@@ -10,7 +10,7 @@ use hourai::models::{
 };
 use hourai::proto::guild_configs::*;
 use hourai::proto::util::IdFilter;
-use twilight_embed_builder::*;
+use twilight_util::builder::embed::*;
 
 fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
     let author = message.author();
@@ -89,7 +89,7 @@ pub(super) async fn on_message_update(
             ))?
             .embeds(&vec![message_diff_embed(&before, &after)?
                 .color(0xa84300) // Dark orange
-                .build()?])?
+                .build()])?
             .exec()
             .await?;
     }
@@ -118,7 +118,7 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
                 ))?
                 .embeds(&vec![message_to_embed(&msg)?
                     .color(0x992d22) // Dark red
-                    .build()?])?
+                    .build()])?
                 .exec()
                 .await?;
         }

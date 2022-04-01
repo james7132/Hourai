@@ -19,7 +19,7 @@ serde_json = "1.0"
 thiserror = "1.0"
 humantime = "2.1"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
-twilight-embed-builder = "0.10"
+twilight-util = { version = "0.10", features = ["builder"] }
 
 [dependencies.tokio]
 default-features = false

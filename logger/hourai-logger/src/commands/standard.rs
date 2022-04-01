@@ -64,9 +64,9 @@ pub(super) async fn info_user(ctx: &CommandContext, executor: &ActionExecutor) -
             .model()
             .await?;
         let embed = hourai_sql::whois::member(executor.storage().sql(), &member).await?;
-        return Ok(Response::direct().embed(embed.build()?));
+        return Ok(Response::direct().embed(embed.build()));
     }
     let user = executor.http().user(user_id).exec().await?.model().await?;
     let embed = hourai_sql::whois::user(executor.storage().sql(), &user).await?;
-    Ok(Response::direct().embed(embed.build()?))
+    Ok(Response::direct().embed(embed.build()))
 }

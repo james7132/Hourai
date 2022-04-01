@@ -3,7 +3,7 @@ use crate::models::{
     user::{User, UserLike},
 };
 use anyhow::Result;
-use twilight_embed_builder::{
+use twilight_util::builder::embed::{
     image_source::ImageSource, EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder,
 };
 use twilight_util::snowflake::Snowflake;

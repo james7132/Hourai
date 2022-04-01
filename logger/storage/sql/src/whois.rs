@@ -8,7 +8,7 @@ use hourai::{
     },
     util::whois,
 };
-use twilight_embed_builder::EmbedBuilder;
+use twilight_util::builder::embed::EmbedBuilder;
 
 const USERNAME_LIMIT: u64 = 20;
 
