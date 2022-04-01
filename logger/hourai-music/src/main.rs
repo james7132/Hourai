@@ -20,9 +20,10 @@ use hourai::{
     gateway::{cluster::*, Event, EventTypeFlags, Intents},
     init,
     models::{
-        application::{callback::InteractionResponse, interaction::Interaction},
+        application::interaction::Interaction,
         gateway::payload::outgoing::UpdateVoiceState,
         guild::Guild,
+        http::interaction::*,
         id::{marker::*, Id},
     },
     proto::{guild_configs::MusicConfig, music_bot::MusicStateProto},
@@ -259,7 +260,14 @@ impl Client {
             Interaction::Ping(ping) => {
                 self.http_client
                     .interaction(ping.application_id)
-                    .interaction_callback(ping.id, &ping.token, &InteractionResponse::Pong)
+                    .create_response(
+                        ping.id,
+                        &ping.token,
+                        &InteractionResponse {
+                            kind: InteractionResponseType::Pong,
+                            data: None,
+                        },
+                    )
                     .exec()
                     .await?;
             }

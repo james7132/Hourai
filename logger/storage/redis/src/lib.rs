@@ -14,7 +14,7 @@ use anyhow::Result;
 use hourai::{
     gateway::shard::ResumeSession,
     models::{
-        channel::GuildChannel,
+        channel::Channel,
         guild::{Guild, PartialGuild, Permissions, Role},
         id::{marker::*, Id as TwilightId},
         voice::VoiceState,
@@ -314,7 +314,7 @@ impl GuildCache {
         pipe.add_command(self.save_resource_cmd(guild.id, guild))
             .ignore();
         for channel in guild.channels.iter() {
-            pipe.add_command(self.save_resource_cmd(channel.id(), channel))
+            pipe.add_command(self.save_resource_cmd(channel.id, channel))
                 .ignore();
         }
         for role in guild.roles.iter() {
@@ -603,7 +603,7 @@ impl ToProto for PartialGuild {
     }
 }
 
-impl GuildResource for GuildChannel {
+impl GuildResource for Channel {
     type Marker = ChannelMarker;
     type Subkey = u64;
     const PREFIX: u8 = 3_u8;
@@ -617,12 +617,13 @@ impl GuildResource for GuildChannel {
     }
 }
 
-impl ToProto for GuildChannel {
+impl ToProto for Channel {
     type Proto = CachedGuildChannelProto;
     fn to_proto(&self) -> Self::Proto {
+        assert!(self.guild_id.is_some());
         let mut proto = Self::Proto::new();
-        proto.set_channel_id(self.id().get());
-        proto.set_name(self.name().to_owned());
+        proto.set_channel_id(self.id.get());
+        proto.set_name(self.name.as_ref().unwrap().to_owned());
         proto
     }
 }

@@ -152,7 +152,7 @@ impl ActionExecutor {
             self.http
                 .create_ban(guild_id, user_id)
                 .reason(action.get_reason())?
-                .delete_message_days(info.get_delete_message_days() as u64)?
+                .delete_message_days(info.get_delete_message_days() as u16)?
                 .exec()
                 .await?;
         }

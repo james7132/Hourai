@@ -36,7 +36,7 @@ pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<R
                 mention,
                 ctx.channel_id()
             ))?
-            .allowed_mentions(AllowedMentions::builder().build())
+            .allowed_mentions(Some(&AllowedMentions::builder().build()))
             .exec()
             .await?;
 

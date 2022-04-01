@@ -6,6 +6,7 @@ pub use twilight_model::channel;
 pub use twilight_model::datetime;
 pub use twilight_model::gateway;
 pub use twilight_model::guild;
+pub use twilight_model::http;
 pub use twilight_model::id;
 pub use twilight_model::invite;
 pub use twilight_model::oauth;

@@ -7,12 +7,10 @@ pub use components::*;
 use crate::{
     http,
     models::{
-        application::{
-            callback::{CallbackData, InteractionResponse},
-            component::Component,
-        },
+        application::component::Component,
         channel::{embed::Embed, message::MessageFlags},
         guild::{PartialMember, Permissions},
+        http::interaction::*,
         id::{
             marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker},
             Id,
@@ -45,16 +43,20 @@ pub enum InteractionError {
     UserError(&'static str),
 }
 
-pub struct Response(CallbackData);
+pub struct Response(InteractionResponseData);
 
 impl Response {
     pub fn direct() -> Self {
-        Self(CallbackData {
+        Self(InteractionResponseData {
             allowed_mentions: None,
+            attachments: None,
+            choices: None,
             components: None,
             content: None,
+            custom_id: None,
             embeds: None,
             flags: None,
+            title: None,
             tts: None,
         })
     }
@@ -92,7 +94,7 @@ impl Response {
     }
 }
 
-impl From<Response> for CallbackData {
+impl From<Response> for InteractionResponseData {
     fn from(value: Response) -> Self {
         value.0
     }
@@ -111,38 +113,50 @@ pub trait InteractionContext {
 
     async fn defer(&self) -> anyhow::Result<()> {
         let response = Response::direct();
-        let response = InteractionResponse::DeferredChannelMessageWithSource(response.into());
+        let response = InteractionResponse {
+            kind: InteractionResponseType::DeferredChannelMessageWithSource,
+            data: Some(response.into()),
+        };
         self.reply_raw(response).await?;
         Ok(())
     }
 
     async fn defer_ephemeral(&self) -> anyhow::Result<()> {
         let response = Response::ephemeral();
-        let response = InteractionResponse::DeferredChannelMessageWithSource(response.into());
+        let response = InteractionResponse {
+            kind: InteractionResponseType::DeferredChannelMessageWithSource,
+            data: Some(response.into()),
+        };
         self.reply_raw(response).await?;
         Ok(())
     }
 
     async fn defer_update(&self) -> anyhow::Result<()> {
-        self.reply_raw(InteractionResponse::DeferredUpdateMessage)
-            .await?;
+        self.reply_raw(InteractionResponse {
+            kind: InteractionResponseType::DeferredUpdateMessage,
+            data: None,
+        })
+        .await?;
         Ok(())
     }
 
     async fn reply_raw(&self, response: InteractionResponse) -> anyhow::Result<()> {
         self.http()
             .interaction(self.application_id())
-            .interaction_callback(self.id(), self.token(), &response)
+            .create_response(self.id(), self.token(), &response)
             .exec()
             .await?;
         Ok(())
     }
 
-    async fn reply(&self, data: impl Into<CallbackData> + Send + 'static) -> anyhow::Result<()> {
+    async fn reply(
+        &self,
+        data: impl Into<InteractionResponseData> + Send + 'static,
+    ) -> anyhow::Result<()> {
         let data = data.into();
         self.http()
             .interaction(self.application_id())
-            .update_interaction_original(self.token())
+            .update_response(self.token())
             .content(data.content.as_deref())?
             .embeds(data.embeds.as_deref())?
             .components(data.components.as_deref())?

@@ -1,6 +1,6 @@
 use crate::Client;
 use anyhow::Result;
-use hourai::models::channel::GuildChannel;
+use hourai::models::channel::Channel;
 use hourai::models::gateway::payload::incoming::{BanAdd, MemberRemove};
 use hourai::models::id::{marker::*, Id};
 use hourai::models::user::User;
@@ -54,12 +54,12 @@ pub async fn on_voice_update(
     };
     let mut guild = client.storage().redis().guild(guild_id);
     let before_channel = if let Some(id) = before {
-        guild.fetch_resource::<GuildChannel>(id).await?
+        guild.fetch_resource::<Channel>(id).await?
     } else {
         None
     };
     let after_channel = if let Some(id) = state.channel_id {
-        guild.fetch_resource::<GuildChannel>(id).await?
+        guild.fetch_resource::<Channel>(id).await?
     } else {
         None
     };

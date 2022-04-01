@@ -21,10 +21,11 @@ use hourai::{
     gateway::{cluster::*, Event, EventType, EventTypeFlags, Intents},
     init,
     models::{
-        application::{callback::InteractionResponse, interaction::Interaction},
-        channel::{Channel, GuildChannel, Message},
+        application::interaction::Interaction,
+        channel::{Channel, ChannelType, Message},
         gateway::payload::incoming::*,
         guild::{member::Member, Permissions, Role},
+        http::interaction::*,
         id::{marker::*, Id},
         user::User,
     },
@@ -324,7 +325,7 @@ impl Client {
             Event::GuildUpdate(evt) => self.on_guild_update(*evt).await,
             Event::GuildDelete(evt) => {
                 if !evt.unavailable {
-                    self.on_guild_leave(*evt).await
+                    self.on_guild_leave(evt).await
                 } else {
                     Ok(())
                 }
@@ -341,10 +342,10 @@ impl Client {
             Event::RoleCreate(evt) => self.on_role_create(evt).await,
             Event::RoleUpdate(evt) => self.on_role_update(evt).await,
             Event::RoleDelete(evt) => self.on_role_delete(evt).await,
-            Event::ChannelCreate(evt) => self.on_channel_create(evt).await,
-            Event::ChannelUpdate(evt) => self.on_channel_update(evt).await,
-            Event::ChannelDelete(evt) => self.on_channel_delete(evt).await,
-            Event::ThreadCreate(evt) => self.on_thread_create(evt).await,
+            Event::ChannelCreate(evt) => self.on_channel_create(*evt).await,
+            Event::ChannelUpdate(evt) => self.on_channel_update(*evt).await,
+            Event::ChannelDelete(evt) => self.on_channel_delete(*evt).await,
+            Event::ThreadCreate(evt) => self.on_thread_create(*evt).await,
             Event::ThreadListSync(evt) => self.on_thread_list_sync(evt).await,
             Event::VoiceStateUpdate(evt) => self.on_voice_state_update(*evt).await,
             _ => {
@@ -474,61 +475,55 @@ impl Client {
     }
 
     async fn on_channel_create(&self, evt: ChannelCreate) -> Result<()> {
-        if let Channel::Guild(ref ch) = evt.0 {
-            if let Some(guild_id) = ch.guild_id() {
-                self.storage()
-                    .redis()
-                    .guild(guild_id)
-                    .save_resource(ch.id(), ch)
-                    .await?;
-            }
+        if let Some(guild_id) = evt.0.guild_id {
+            self.storage()
+                .redis()
+                .guild(guild_id)
+                .save_resource(evt.0.id, &evt.0)
+                .await?;
         }
         Ok(())
     }
 
     async fn on_channel_update(&self, evt: ChannelUpdate) -> Result<()> {
-        if let Channel::Guild(ref ch) = evt.0 {
-            if let Some(guild_id) = ch.guild_id() {
-                self.storage()
-                    .redis()
-                    .guild(guild_id)
-                    .save_resource(ch.id(), ch)
-                    .await?;
-            }
+        if let Some(guild_id) = evt.0.guild_id {
+            self.storage()
+                .redis()
+                .guild(guild_id)
+                .save_resource(evt.0.id, &evt.0)
+                .await?;
         }
         Ok(())
     }
 
     async fn on_channel_delete(self, evt: ChannelDelete) -> Result<()> {
-        if let Channel::Guild(ref ch) = evt.0 {
-            if let Some(guild_id) = ch.guild_id() {
-                self.storage()
-                    .redis()
-                    .guild(guild_id)
-                    .delete_resource::<GuildChannel>(ch.id())
-                    .await?;
-            }
+        if let Some(guild_id) = evt.0.guild_id {
+            self.storage()
+                .redis()
+                .guild(guild_id)
+                .delete_resource::<Channel>(evt.0.id)
+                .await?;
         }
         Ok(())
     }
 
     async fn on_thread_create(&mut self, evt: ThreadCreate) -> Result<()> {
-        if let Channel::Guild(GuildChannel::PublicThread(thread)) = evt.0 {
-            self.http().join_thread(thread.id).exec().await?;
-            info!("Joined thread {}", thread.id);
+        if evt.0.kind == ChannelType::GuildPublicThread {
+            self.http().join_thread(evt.0.id).exec().await?;
+            info!("Joined thread {}", evt.0.id);
         }
         Ok(())
     }
 
     async fn on_thread_list_sync(&mut self, evt: ThreadListSync) -> Result<()> {
         for thread in evt.threads {
-            if let Err(err) = self.http().join_thread(thread.id()).exec().await {
+            if let Err(err) = self.http().join_thread(thread.id).exec().await {
                 error!(
                     "Error while joining new thread in guild {}: {} ({:?})",
                     evt.guild_id, err, err
                 );
             } else {
-                info!("Joined thread {}", thread.id());
+                info!("Joined thread {}", thread.id);
             }
         }
         Ok(())
@@ -579,7 +574,14 @@ impl Client {
             Interaction::Ping(ping) => {
                 self.http()
                     .interaction(ping.application_id)
-                    .interaction_callback(ping.id, &ping.token, &InteractionResponse::Pong)
+                    .create_response(
+                        ping.id,
+                        &ping.token,
+                        &InteractionResponse {
+                            kind: InteractionResponseType::Pong,
+                            data: None,
+                        },
+                    )
                     .exec()
                     .await?;
             }

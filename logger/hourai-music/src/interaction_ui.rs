@@ -107,7 +107,7 @@ impl<T: EmbedUIBuilder> Updateable for EmbedUI<T> {
         self.context
             .http()
             .interaction(self.context.application_id())
-            .update_interaction_original(&self.context.command.token)
+            .update_response(&self.context.command.token)
             .content(Some(&self.builder.build_content(self)))?
             .embeds(Some(&[self.builder.build_embed(self)?]))?
             .components(Some(&self.builder.build_components(self)?))?

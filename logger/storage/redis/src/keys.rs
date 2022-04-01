@@ -1,7 +1,7 @@
 use crate::GuildResource;
 use byteorder::{BigEndian, ByteOrder};
 use hourai::models::{
-    channel::GuildChannel,
+    channel::Channel,
     guild::{Guild, Role},
     id::{marker::*, Id as TwilightId},
 };
@@ -78,7 +78,7 @@ impl GuildKey {
         match self {
             Self::Guild => Guild::PREFIX,
             Self::Role(_) => Role::PREFIX,
-            Self::Channel(_) => GuildChannel::PREFIX,
+            Self::Channel(_) => Channel::PREFIX,
         }
     }
 }
@@ -105,7 +105,7 @@ impl FromRedisValue for GuildKey {
                     let id = BigEndian::read_u64(&data[1..9]);
                     Ok(Self::Role(TwilightId::new(id)))
                 }
-                (Some(&GuildChannel::PREFIX), len) if len >= 9 => {
+                (Some(&Channel::PREFIX), len) if len >= 9 => {
                     let id = BigEndian::read_u64(&data[1..9]);
                     Ok(Self::Channel(TwilightId::new(id)))
                 }
