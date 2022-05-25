@@ -8,7 +8,7 @@ use hourai::{
             marker::{ChannelMarker, GuildMarker, RoleMarker},
             Id,
         },
-        UserLike,
+        Snowflake, UserLike,
     },
     proto::{guild_configs::MusicConfig, message_components::MusicButtonOption},
 };
@@ -404,8 +404,8 @@ async fn remove(client: &Client, ctx: &CommandContext) -> Result<Response> {
                 }
                 Some(track) => {
                     format!(
-                        "Only a DJ or {} tracks from the queue.",
-                        track.requestor.display_name()
+                        "Only a DJ or <@{}> can remove that track from the queue.",
+                        track.requestor.id()
                     )
                 }
                 None => format!("There is no track at index {} in the queue.", idx),
