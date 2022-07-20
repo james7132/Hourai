@@ -5,8 +5,8 @@ authors = ["james7132 <contact@jamessliu.com>"]
 edition = "2021"
 
 [features]
-#default = ["with-serde"]
-#with-serde = ["protobuf/with-serde"]
+default = ["with-serde"]
+with-serde = ["protobuf/with-serde"]
 
 [build-dependencies]
 walkdir = "2.3.1"

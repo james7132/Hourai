@@ -30,4 +30,4 @@ awc = { version = "3.0", features = ["rustls"] }
 [dependencies.sqlx]
 default-features = false
 features = ["runtime-tokio-rustls", "postgres", "macros", "chrono"]
-version = "0.5.1"
+version = "0.6"

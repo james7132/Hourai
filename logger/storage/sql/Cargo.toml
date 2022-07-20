@@ -15,4 +15,4 @@ twilight-util = { version = "0.12", features = ["snowflake", "builder"] }
 [dependencies.sqlx]
 default-features = false
 features = ["runtime-tokio-rustls", "postgres", "macros", "chrono"]
-version = "0.5.9"
+version = "0.6"
