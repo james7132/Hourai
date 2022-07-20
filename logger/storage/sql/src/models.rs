@@ -1,12 +1,11 @@
 use crate::types;
 use hourai::{
     models::{
-        datetime::Timestamp,
         gateway::payload::incoming::MemberUpdate,
         guild::Ban as TwilightBan,
         guild::Member as TwilightMember,
         id::{marker::*, Id},
-        util::image_hash::ImageHash,
+        util::{image_hash::ImageHash, Timestamp},
         UserLike,
     },
     proto::action::{Action, ActionSet},

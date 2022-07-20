@@ -2,8 +2,11 @@ use crate::{
     http::Client,
     interactions::{InteractionContext, InteractionError, InteractionResult},
     models::{
-        application::interaction::application_command::{
-            ApplicationCommand, CommandDataOption, CommandOptionValue, InteractionMember,
+        application::interaction::{
+            Interaction, InteractionData,
+            application_command::{
+                CommandData, CommandDataOption, CommandOptionValue, InteractionMember,
+            },
         },
         guild::{PartialMember, Permissions},
         id::{
@@ -17,6 +20,7 @@ use crate::{
     },
 };
 use std::sync::Arc;
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub enum Command<'a> {
@@ -28,13 +32,31 @@ pub enum Command<'a> {
 #[derive(Clone)]
 pub struct CommandContext {
     pub http: Arc<Client>,
-    pub command: Box<ApplicationCommand>,
+    pub command: Interaction,
+    marker_: PhantomData<()>,
 }
 
 impl CommandContext {
+    pub fn new(client: Arc<Client>, interaction: Interaction) -> Self {
+        assert!(matches!(interaction.data, Some(InteractionData::ApplicationCommand(_))));
+        Self {
+            http: client,
+            command: interaction,
+            marker_: PhantomData,
+        }
+    }
+
+    fn data(&self) -> &CommandData {
+        match &self.command.data {
+            Some(InteractionData::ApplicationCommand(data) ) => &data,
+            _ => panic!("Provided interaction data is not an application command"),
+        }
+    }
+
     pub fn command<'a>(&'a self) -> Command<'a> {
-        let base = self.command.data.name.as_ref();
-        if let Some((sub, options)) = Self::get_subcommand(&self.command.data.options) {
+        let data = self.data();
+        let base = data.name.as_ref();
+        if let Some((sub, options)) = Self::get_subcommand(&data.options) {
             if let Some((subsub, _)) = Self::get_subcommand(options) {
                 Command::SubGroupCommand(base, sub, subsub)
             } else {
@@ -58,7 +80,7 @@ impl CommandContext {
 
     /// Gets the first instance of an option containing a specific name substring, if available.
     pub fn options(&self) -> impl Iterator<Item = &CommandDataOption> {
-        Self::flatten_options(&self.command.data.options).into_iter()
+        Self::flatten_options(&self.data().options).into_iter()
     }
 
     pub fn option_named(&self, name: &'static str) -> Option<&CommandDataOption> {
@@ -156,16 +178,14 @@ impl CommandContext {
     }
 
     pub fn resolve_user(&self, id: Id<UserMarker>) -> Option<&User> {
-        self.command
-            .data
+        self.data()
             .resolved
             .as_ref()
             .and_then(|r| r.users.get(&id))
     }
 
     pub fn resolve_member(&self, id: Id<UserMarker>) -> Option<&InteractionMember> {
-        self.command
-            .data
+        self.data()
             .resolved
             .as_ref()
             .and_then(|r| r.members.get(&id))
@@ -221,7 +241,7 @@ impl InteractionContext for CommandContext {
     }
 
     fn channel_id(&self) -> Id<ChannelMarker> {
-        self.command.channel_id
+        self.command.channel_id.unwrap()
     }
 
     fn user(&self) -> &User {

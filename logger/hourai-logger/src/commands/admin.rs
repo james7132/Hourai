@@ -5,7 +5,7 @@ use hourai::{
     http::request::AuditLogReason,
     models::{
         channel::message::Message,
-        datetime::Timestamp,
+        util::Timestamp,
         guild::Permissions,
         id::{
             marker::{ChannelMarker, MessageMarker},
@@ -483,7 +483,7 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
     let (tx, rx) = mpsc::unbounded();
     tokio::spawn(utils::log_error(
         "fetching messages to prune",
-        fetch_messages(ctx.channel_id(), ctx.http.clone(), tx),
+        fetch_messages(ctx.channel_id(), ctx.http().clone(), tx),
     ));
 
     let batches: Vec<Vec<Id<MessageMarker>>> = rx
@@ -501,14 +501,14 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
         match batch.len() {
             0 => break,
             1 => {
-                ctx.http
+                ctx.http()
                     .delete_message(ctx.channel_id(), batch[0])
                     .reason(&reason)?
                     .exec()
                     .await?;
             }
             _ => {
-                ctx.http
+                ctx.http()
                     .delete_messages(ctx.channel_id(), &batch)
                     .reason(&reason)?
                     .exec()

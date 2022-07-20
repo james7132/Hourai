@@ -40,7 +40,6 @@ async fn main() {
         .await;
     let http = Arc::new(init::http_client(&config));
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
-        .shard_scheme(ShardScheme::Auto)
         .http_client(http.clone())
         .event_types(BOT_EVENTS)
         .resume_sessions(sessions)

@@ -21,7 +21,7 @@ use hourai::{
     gateway::{cluster::*, Event, EventType, EventTypeFlags, Intents},
     init,
     models::{
-        application::interaction::Interaction,
+        application::interaction::{Interaction, InteractionType},
         channel::{Channel, ChannelType, Message},
         gateway::payload::incoming::*,
         guild::{member::Member, Permissions, Role},
@@ -41,6 +41,7 @@ const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits()
         | Intents::GUILD_BANS.bits()
         | Intents::GUILD_MESSAGES.bits()
+        | Intents::MESSAGE_CONTENT.bits()
         | Intents::GUILD_MEMBERS.bits()
         | Intents::GUILD_PRESENCES.bits()
         | Intents::GUILD_VOICE_STATES.bits(),
@@ -102,7 +103,6 @@ async fn main() {
         .get_sessions(RESUME_KEY)
         .await;
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
-        .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
         .event_types(BOT_EVENTS)
         .resume_sessions(sessions)
@@ -570,13 +570,13 @@ impl Client {
     }
 
     async fn on_interaction_create(self, evt: Interaction) -> Result<()> {
-        match evt {
-            Interaction::Ping(ping) => {
+        match evt.kind {
+            InteractionType::Ping => {
                 self.http()
-                    .interaction(ping.application_id)
+                    .interaction(evt.application_id)
                     .create_response(
-                        ping.id,
-                        &ping.token,
+                        evt.id,
+                        &evt.token,
                         &InteractionResponse {
                             kind: InteractionResponseType::Pong,
                             data: None,
@@ -585,11 +585,11 @@ impl Client {
                     .exec()
                     .await?;
             }
-            Interaction::ApplicationCommand(cmd) => {
-                let ctx = hourai::interactions::CommandContext {
-                    http: self.http().clone(),
-                    command: cmd,
-                };
+            InteractionType::ApplicationCommand => {
+                let ctx = hourai::interactions::CommandContext::new(
+                    self.http().clone(),
+                    evt,
+                );
                 commands::handle_command(ctx, &self.0.actions).await?;
             }
             interaction => {

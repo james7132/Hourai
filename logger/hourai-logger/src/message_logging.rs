@@ -3,9 +3,9 @@ use anyhow::anyhow;
 use anyhow::Result;
 use chrono::Utc;
 use hourai::models::{
-    datetime::Timestamp,
     gateway::payload::incoming::{MessageDelete, MessageDeleteBulk},
     id::{marker::*, Id},
+    util::Timestamp,
     MessageLike, Snowflake, UserLike,
 };
 use hourai::proto::guild_configs::*;

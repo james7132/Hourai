@@ -24,6 +24,7 @@ use hourai::{
 };
 use redis::{FromRedisValue, ToRedisArgs};
 use std::{
+    borrow::Cow,
     cmp::{Ord, Ordering},
     collections::{HashMap, HashSet},
     ops::Deref,
@@ -382,7 +383,6 @@ impl GuildCache {
         resource_ids: &[TwilightId<T::Marker>],
     ) -> Result<Vec<T::Proto>>
     where
-        T::Marker: Clone,
         GuildKey: From<TwilightId<T::Marker>> + ToRedisArgs,
     {
         Ok(match resource_ids.len() {
@@ -569,7 +569,13 @@ impl ToProto for Guild {
         let mut proto = Self::Proto::new();
         proto.set_id(self.id.get());
         proto.set_name(self.name.clone());
-        proto.features = ::protobuf::RepeatedField::from_vec(self.features.clone());
+        proto.features = ::protobuf::RepeatedField::from_vec(self.features
+            .iter()
+            .map(|feature| {
+                let feature: Cow<'static, str> = feature.clone().into();
+                feature.to_string()
+            })
+            .collect());
         proto.set_owner_id(self.owner_id.get());
         if let Some(ref code) = self.vanity_url_code {
             proto.set_vanity_url_code(code.clone());
@@ -594,7 +600,13 @@ impl ToProto for PartialGuild {
         let mut proto = Self::Proto::new();
         proto.set_id(self.id.get());
         proto.set_name(self.name.clone());
-        proto.features = ::protobuf::RepeatedField::from_vec(self.features.clone());
+        proto.features = ::protobuf::RepeatedField::from_vec(self.features
+            .iter()
+            .map(|feature| {
+                let feature: Cow<'static, str> = feature.clone().into();
+                feature.to_string()
+            })
+            .collect());
         proto.set_owner_id(self.owner_id.get());
         if let Some(ref code) = self.vanity_url_code {
             proto.set_vanity_url_code(code.clone());

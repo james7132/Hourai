@@ -20,7 +20,7 @@ use hourai::{
     gateway::{cluster::*, Event, EventTypeFlags, Intents},
     init,
     models::{
-        application::interaction::Interaction,
+        application::interaction::{Interaction, InteractionType},
         gateway::payload::outgoing::UpdateVoiceState,
         guild::Guild,
         http::interaction::*,
@@ -67,7 +67,6 @@ async fn main() {
     let redis = hourai_redis::init(&config).await;
     let sessions = redis.resume_states().get_sessions(RESUME_KEY).await;
     let (gateway, mut events) = init::cluster(&config, BOT_INTENTS)
-        .shard_scheme(ShardScheme::Auto)
         .http_client(http_client.clone())
         .event_types(BOT_EVENTS)
         .resume_sessions(sessions)
@@ -256,13 +255,13 @@ impl Client {
     }
 
     async fn on_interaction_create(self, evt: Interaction) -> Result<()> {
-        match evt {
-            Interaction::Ping(ping) => {
+        match evt.kind {
+            InteractionType::Ping => {
                 self.http_client
-                    .interaction(ping.application_id)
+                    .interaction(evt.application_id)
                     .create_response(
-                        ping.id,
-                        &ping.token,
+                        evt.id,
+                        &evt.token,
                         &InteractionResponse {
                             kind: InteractionResponseType::Pong,
                             data: None,
@@ -271,18 +270,18 @@ impl Client {
                     .exec()
                     .await?;
             }
-            Interaction::ApplicationCommand(cmd) => {
-                let ctx = hourai::interactions::CommandContext {
-                    http: self.http_client.clone(),
-                    command: cmd,
-                };
+            InteractionType::ApplicationCommand => {
+                let ctx = hourai::interactions::CommandContext::new(
+                    self.http_client.clone(),
+                    evt
+                );
                 interactions::handle_command(self, ctx).await?;
             }
-            Interaction::MessageComponent(component) => {
-                let ctx = hourai::interactions::ComponentContext {
-                    http: self.http_client.clone(),
-                    component,
-                };
+            InteractionType::MessageComponent => {
+                let ctx = hourai::interactions::ComponentContext::new(
+                    self.http_client.clone(),
+                    evt,
+                );
                 interactions::handle_component(self, ctx).await?;
             }
             interaction => {

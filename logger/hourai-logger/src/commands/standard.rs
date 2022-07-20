@@ -28,7 +28,7 @@ pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<R
         .unwrap_or(ping);
 
     if config.has_modlog_channel_id() {
-        ctx.http
+        ctx.http()
             .create_message(Id::new(config.get_modlog_channel_id()))
             .content(&format!(
                 "<@{}> used `/pingmod` to ping {} in <#{}>",
@@ -40,7 +40,7 @@ pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<R
             .exec()
             .await?;
 
-        ctx.http
+        ctx.http()
             .create_message(ctx.channel_id())
             .content(&content)?
             .exec()

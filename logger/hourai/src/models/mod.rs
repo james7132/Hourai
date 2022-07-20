@@ -3,7 +3,7 @@ pub mod user;
 
 pub use twilight_model::application;
 pub use twilight_model::channel;
-pub use twilight_model::datetime;
+//pub use twilight_model::datetime;
 pub use twilight_model::gateway;
 pub use twilight_model::guild;
 pub use twilight_model::http;
@@ -36,11 +36,11 @@ bitflags::bitflags! {
     }
 }
 
-pub trait SnowflakeId: Clone + Copy {
+pub trait SnowflakeId: Clone {
     fn as_u64(&self) -> u64;
 }
 
-impl<T: Copy> SnowflakeId for id::Id<T> {
+impl<T> SnowflakeId for id::Id<T> {
     fn as_u64(&self) -> u64 {
         self.get()
     }
