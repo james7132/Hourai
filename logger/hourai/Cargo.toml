@@ -5,12 +5,12 @@ authors = ["james7132 <contact@jamessliu.com>"]
 edition = "2021"
 
 [features]
-default = ["with-serde"]
-with-serde = ["protobuf/with-serde"]
+#default = ["with-serde"]
+#with-serde = ["protobuf/with-serde"]
 
 [build-dependencies]
 walkdir = "2.3.1"
-protobuf-codegen-pure = "2.22.0"
+protobuf-codegen-pure = "2.27"
 
 [dependencies]
 anyhow = "1.0.38"
@@ -20,7 +20,7 @@ bitflags = { default-features = false, version = "1" }
 chrono = "0.4"
 dashmap = { default-features = false, version = "5.2" }
 metrics-exporter-prometheus = "0.9"
-protobuf = "2.22"
+protobuf = "2.27"
 serde = "1.0"
 lazy_static = "1.4"
 thiserror = "1.0"
