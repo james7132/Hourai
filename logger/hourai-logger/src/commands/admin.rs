@@ -37,12 +37,12 @@ fn parse_duration(duration: &str) -> Result<Duration> {
 fn build_reason(action: &str, authorizer: &User, reason: Option<&String>) -> String {
     if let Some(reason) = reason {
         format!(
-            "{} by {}#{} for: {}",
+            "{} by {}#{:04} for: {}",
             action, authorizer.name, authorizer.discriminator, reason
         )
     } else {
         format!(
-            "{} by {}#{}",
+            "{} by {}#{:04}",
             action, authorizer.name, authorizer.discriminator
         )
     }
