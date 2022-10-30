@@ -19,7 +19,7 @@ base64 = "0.13"
 bitflags = { default-features = false, version = "1" }
 chrono = "0.4"
 dashmap = { default-features = false, version = "5.2" }
-metrics-exporter-prometheus = "0.9"
+metrics-exporter-prometheus = "0.10"
 protobuf = "2.27"
 serde = "1.0"
 lazy_static = "1.4"
@@ -43,7 +43,7 @@ features = ['simd-json', 'rustls-webpki-roots']
 
 [dependencies.simd-json]
 default-features = true
-version = "0.4"
+version = "0.5"
 features = ['allow-non-simd']
 
 [dev-dependencies]

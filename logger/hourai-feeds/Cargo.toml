@@ -26,7 +26,7 @@ features = ["macros", "rt", "signal"]
 
 [dependencies.simd-json]
 default-features = true
-version = "0.4"
+version = "0.5"
 features = ['allow-non-simd']
 
 [dependencies.reqwest]
