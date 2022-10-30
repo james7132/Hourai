@@ -15,11 +15,11 @@ services:
     build:
       context: ..
       dockerfile: logger/hourai-music/Dockerfile
-  validation:
+  verification:
     image: james7132/hourai:latest-music
     build:
       context: ..
-      dockerfile: logger/hourai-validation/Dockerfile
+      dockerfile: logger/hourai-verification/Dockerfile
   music:
     image: james7132/hourai:latest-music
     build:

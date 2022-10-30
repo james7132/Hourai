@@ -1,12 +1,3 @@
-FROM rust:alpine as build
-ENV DOCKER_BUILD=1
-WORKDIR /rust
-RUN apk --update --no-cache add musl-dev
-COPY logger/ .
-COPY proto/ ./proto/
-RUN cargo build --release --bins --verbose
-
-# Copy the statically-linked binary into a scratch container.
 FROM alpine
 RUN apk --update --no-cache add jsonnet && \
     mkdir /etc/hourai && \
@@ -17,5 +8,5 @@ ENV RUST_LOG=info
 ENV HOURAI_CONFIG=/opt/hourai.jsonnet
 ENV HOURAI_ENV=dev
 
-COPY --from=build /rust/target/release/hourai-music .
-CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && /hourai-music
+ADD target/x86_64-unknown-linux-musl/release/hourai-music .
+CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && /hourai-feeds

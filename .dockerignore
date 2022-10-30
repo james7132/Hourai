@@ -10,5 +10,4 @@ web/
 venv/
 config/
 **/Cargo.lock
-**/target/
 node_modules/

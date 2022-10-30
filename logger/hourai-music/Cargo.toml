@@ -17,8 +17,8 @@ hyper = { features = ["client", "http2", "runtime"], version = "0.14" }
 rand = "0.8"
 serde_json = "1.0.62"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
-twilight-util = { version = "0.12",  features = ["snowflake", "builder"] }
-twilight-lavalink = "0.12"
+twilight-util = { version = "0.13",  features = ["snowflake", "builder"] }
+twilight-lavalink = "0.13"
 
 [dependencies.tokio]
 default-features = false

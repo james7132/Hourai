@@ -12,7 +12,8 @@ pub async fn handle_command(ctx: CommandContext, actions: &ActionExecutor) -> Re
     let result = match ctx.command() {
         // Standard Commands
         Command::Command("choose") => standard::choose(&ctx).await,
-        Command::Command("pingmod") => standard::pingmod(&ctx, actions.storage()).await,
+        Command::SubCommand("ping", "mod") => standard::ping_mod(&ctx, actions.storage()).await,
+        Command::SubCommand("ping", "event") => standard::ping_event(&ctx, actions.storage()).await,
         Command::SubCommand("info", "user") => standard::info_user(&ctx, actions).await,
 
         // Admin Commands

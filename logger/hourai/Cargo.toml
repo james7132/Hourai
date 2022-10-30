@@ -27,17 +27,17 @@ thiserror = "1.0"
 hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
-twilight-model = "0.12"
-twilight-util = { version = "0.12", features = ["snowflake", "builder"] }
+twilight-model = "0.13"
+twilight-util = { version = "0.13", features = ["snowflake", "builder"] }
 regex = "1.5"
 
 [dependencies.twilight-gateway]
-version = "0.12"
+version = "0.13"
 default-features = true
 features = ['simd-json', 'rustls-webpki-roots', 'metrics']
 
 [dependencies.twilight-http]
-version = "0.12"
+version = "0.13"
 default-features = true
 features = ['simd-json', 'rustls-webpki-roots']
 

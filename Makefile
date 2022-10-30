@@ -1,4 +1,5 @@
 build:
+	cargo build --release --target=x86_64-unknown-linux-musl
 	docker compose -p hourai -f config/docker-compose.build.yml build
 
 push:

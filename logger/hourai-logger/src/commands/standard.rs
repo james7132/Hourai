@@ -1,6 +1,10 @@
 use super::prelude::*;
 use hourai::{
-    models::{channel::message::allowed_mentions::AllowedMentions, id::Id},
+    models::{
+        channel::message::allowed_mentions::AllowedMentions,
+        id::Id,
+        scheduled_event::Status,
+    },
     proto::guild_configs::LoggingConfig,
 };
 use rand::Rng;
@@ -16,7 +20,7 @@ pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
     }
 }
 
-pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+pub(super) async fn ping_mod(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
     ctx.defer_ephemeral().await?;
     let guild_id = ctx.guild_id()?;
     let config: LoggingConfig = storage.redis().guild(guild_id).configs().get().await?;
@@ -51,6 +55,48 @@ pub(super) async fn pingmod(ctx: &CommandContext, storage: &Storage) -> Result<R
         Ok(Response::direct().content(&content))
     }
 }
+
+pub(super) async fn ping_event(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
+    ctx.defer_ephemeral().await?;
+    let guild_id = ctx.guild_id()?;
+    let events = ctx.http
+        .guild_scheduled_events(guild_id)
+        .exec()
+        .await?
+        .model()
+        .await?;
+
+    let mut content = String::new();
+    for event in events {
+        if event.status != Status::Active || event.creator_id != ctx.command.user.as_ref().map(|user| user.id) {
+            continue;
+        }
+        let subscribers = ctx.http
+            .guild_scheduled_event_users(guild_id, event.id)
+            .exec()
+            .await?
+            .model()
+            .await?;
+        if subscribers.is_empty() {
+            continue;
+        }
+        content.push_str(&event.name);
+        content.push_str(": ");
+        for subscriber in subscribers {
+            content.push_str(&format!("<@{}> ", subscriber.user.id));
+        }
+        content.push_str("\n");
+    }
+
+    if content.is_empty() {
+       Ok(Response::ephemeral().content("No events created by you are currently active."))
+    } else {
+        content.push_str("\n");
+        content.push_str("We're starting!");
+        Ok(Response::direct().content(&content))
+    }
+}
+
 
 pub(super) async fn info_user(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     ctx.defer().await?;

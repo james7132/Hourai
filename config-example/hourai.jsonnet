@@ -282,11 +282,19 @@ local commands = [
   },
 
   command {
-    name: "pingmod",
+    name: "ping",
     description: "Pings one random online moderator to pay attention to the current channel.",
-    options: [string {
-      name: "reason",
-      description: "Optional: a reason for contacting the mod.",
+    options: [subcommand {
+      name: "mod",
+      description: "Pings one random online moderator to pay attention to the current channel.",
+      options: [string {
+        name: "reason",
+        description: "Optional: a reason for contacting the mod.",
+      }]
+    }, subcommand {
+      name: "event",
+      description: "Pings all of the subscribed users to ongoing active scheduled events on the server.",
+      options: []
     }]
   },
 

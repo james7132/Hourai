@@ -47,7 +47,7 @@ impl Post {
 
         if let Err(err) = request.exec().await {
             if let HttpErrorType::Response { status, .. } = err.kind() {
-                if status.raw() == 404 {
+                if status.get() == 404 {
                     client
                         .sql
                         .execute(Feed::delete_feed_channel(channel_id))
