@@ -21,7 +21,7 @@ version = "0.6"
 
 [dependencies.tokio]
 default-features = false
-version = "1.0"
+version = "1.23"
 features = ["macros", "rt", "signal"]
 
 [dependencies.simd-json]

@@ -23,7 +23,7 @@ twilight-util = { version = "0.13", features = ["snowflake", "builder"] }
 
 [dependencies.tokio]
 default-features = false
-version = "1.0"
+version = "1.23"
 features = ["macros", "rt-multi-thread", "time", "signal"]
 
 [dependencies.reqwest]
