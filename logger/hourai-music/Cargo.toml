@@ -22,5 +22,5 @@ twilight-lavalink = "0.13"
 
 [dependencies.tokio]
 default-features = false
-version = "1.0"
+version = "1.24"
 features = ["macros", "rt-multi-thread", "signal"]
