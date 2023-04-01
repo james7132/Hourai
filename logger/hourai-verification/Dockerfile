@@ -9,4 +9,4 @@ ENV HOURAI_CONFIG=/opt/hourai.jsonnet
 ENV HOURAI_ENV=dev
 
 ADD target/x86_64-unknown-linux-musl/release/hourai-verification .
-CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && /hourai-feeds
+CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && /hourai-verification

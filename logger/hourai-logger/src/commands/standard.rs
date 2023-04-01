@@ -3,7 +3,7 @@ use hourai::{
     models::{
         channel::message::allowed_mentions::AllowedMentions,
         id::Id,
-        scheduled_event::Status,
+        guild::scheduled_event::Status,
     },
     proto::guild_configs::LoggingConfig,
 };
@@ -41,13 +41,11 @@ pub(super) async fn ping_mod(ctx: &CommandContext, storage: &Storage) -> Result<
                 ctx.channel_id()
             ))?
             .allowed_mentions(Some(&AllowedMentions::builder().build()))
-            .exec()
             .await?;
 
         ctx.http()
             .create_message(ctx.channel_id())
             .content(&content)?
-            .exec()
             .await?;
 
         Ok(Response::ephemeral().content(format!("Pinged {} to this channel.", mention)))
@@ -56,24 +54,22 @@ pub(super) async fn ping_mod(ctx: &CommandContext, storage: &Storage) -> Result<
     }
 }
 
-pub(super) async fn ping_event(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
-    ctx.defer_ephemeral().await?;
+pub(super) async fn ping_event(ctx: &CommandContext) -> Result<Response> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
     let events = ctx.http
         .guild_scheduled_events(guild_id)
-        .exec()
         .await?
         .model()
         .await?;
 
     let mut content = String::new();
     for event in events {
-        if event.status != Status::Active || event.creator_id != ctx.command.user.as_ref().map(|user| user.id) {
+        if event.status != Status::Active || event.creator_id != Some(ctx.user().id) {
             continue;
         }
         let subscribers = ctx.http
             .guild_scheduled_event_users(guild_id, event.id)
-            .exec()
             .await?
             .model()
             .await?;
@@ -105,14 +101,13 @@ pub(super) async fn info_user(ctx: &CommandContext, executor: &ActionExecutor) -
         let member = executor
             .http()
             .guild_member(guild_id, user_id)
-            .exec()
             .await?
             .model()
             .await?;
         let embed = hourai_sql::whois::member(executor.storage().sql(), &member).await?;
         return Ok(Response::direct().embed(embed.build()));
     }
-    let user = executor.http().user(user_id).exec().await?.model().await?;
+    let user = executor.http().user(user_id).await?.model().await?;
     let embed = hourai_sql::whois::user(executor.storage().sql(), &user).await?;
     Ok(Response::direct().embed(embed.build()))
 }

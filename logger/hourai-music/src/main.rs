@@ -76,7 +76,6 @@ async fn main() {
     let gateway = Arc::new(gateway);
     let current_user = http_client
         .current_user()
-        .exec()
         .await
         .unwrap()
         .model()
@@ -267,7 +266,6 @@ impl Client {
                             data: None,
                         },
                     )
-                    .exec()
                     .await?;
             }
             InteractionType::ApplicationCommand => {

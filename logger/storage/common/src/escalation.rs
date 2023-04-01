@@ -335,7 +335,6 @@ impl EscalationHistory {
         self.http()
             .create_message(modlog_id)
             .content(&msg)?
-            .exec()
             .await?;
 
         Ok(())

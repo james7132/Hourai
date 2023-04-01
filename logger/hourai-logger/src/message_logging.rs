@@ -90,7 +90,6 @@ pub(super) async fn on_message_update(
             .embeds(&vec![message_diff_embed(&before, &after)?
                 .color(0xa84300) // Dark orange
                 .build()])?
-            .exec()
             .await?;
     }
     Ok(())
@@ -119,7 +118,6 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
                 .embeds(&vec![message_to_embed(&msg)?
                     .color(0x992d22) // Dark red
                     .build()])?
-                .exec()
                 .await?;
         }
     }
@@ -141,7 +139,6 @@ pub(super) async fn on_message_bulk_delete(client: Client, evt: MessageDeleteBul
                 evt.ids.len(),
                 evt.channel_id
             ))?
-            .exec()
             .await?;
     }
     Ok(())

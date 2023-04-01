@@ -21,11 +21,7 @@ pub async fn run_push_listings(client: crate::Client, config: HouraiConfig, inte
             let req = post_discord_bots(&http, client.user_id(), &config, count);
             tokio::spawn(handle_response("Discord Bots", req));
         }
-        if config.third_party.discord_boats_token.is_some() {
-            let req = post_discord_boats(&http, client.user_id(), &config, count);
-            tokio::spawn(handle_response("Discord Boats", req));
-        }
-        if config.third_party.discord_boats_token.is_some() {
+        if config.third_party.top_gg_token.is_some() {
             let req = post_top_gg(&http, client.user_id(), &config, count);
             tokio::spawn(handle_response("top.gg", req));
         }
@@ -51,23 +47,6 @@ fn post_discord_bots(
     ))
     .header("Authorization", token)
     .json(&json!({ "guildCount": count }))
-}
-
-fn post_discord_boats(
-    http: &reqwest::Client,
-    user_id: Id<UserMarker>,
-    config: &HouraiConfig,
-    count: i64,
-) -> RequestBuilder {
-    let token = config
-        .third_party
-        .discord_boats_token
-        .as_ref()
-        .unwrap()
-        .as_str();
-    http.post(format!("https://discord.boats/api/bot/{}", user_id))
-        .header("Authorization", token)
-        .json(&json!({ "server_count": count }))
 }
 
 fn post_top_gg(

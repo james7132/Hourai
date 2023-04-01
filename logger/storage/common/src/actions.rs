@@ -13,6 +13,8 @@ use hourai::{
 use hourai_sql::{Member, PendingAction};
 use std::{collections::HashSet, sync::Arc};
 
+const SECONDS_IN_DAY: u32 = 24 * 60 * 60;
+
 #[derive(Clone)]
 pub struct ActionExecutor {
     current_user: User,
@@ -140,7 +142,6 @@ impl ActionExecutor {
         self.http
             .remove_guild_member(guild_id, user_id)
             .reason(action.get_reason())?
-            .exec()
             .await?;
         Ok(())
     }
@@ -152,15 +153,13 @@ impl ActionExecutor {
             self.http
                 .create_ban(guild_id, user_id)
                 .reason(action.get_reason())?
-                .delete_message_days(info.get_delete_message_days() as u16)?
-                .exec()
+                .delete_message_seconds(info.get_delete_message_days() as u32 * SECONDS_IN_DAY)?
                 .await?;
         }
         if info.get_field_type() != BanMember_Type::BAN {
             self.http
                 .delete_ban(guild_id, user_id)
                 .reason(action.get_reason())?
-                .exec()
                 .await?;
         }
         Ok(())
@@ -200,7 +199,6 @@ impl ActionExecutor {
                 !self
                     .http
                     .guild_member(guild_id, user_id)
-                    .exec()
                     .await?
                     .model()
                     .await?
@@ -212,7 +210,6 @@ impl ActionExecutor {
             .update_guild_member(guild_id, user_id)
             .mute(mute)
             .reason(action.get_reason())?
-            .exec()
             .await?;
 
         Ok(())
@@ -228,7 +225,6 @@ impl ActionExecutor {
                 !self
                     .http
                     .guild_member(guild_id, user_id)
-                    .exec()
                     .await?
                     .model()
                     .await?
@@ -240,7 +236,6 @@ impl ActionExecutor {
             .update_guild_member(guild_id, user_id)
             .deaf(deafen)
             .reason(action.get_reason())?
-            .exec()
             .await?;
 
         Ok(())
@@ -283,7 +278,6 @@ impl ActionExecutor {
             .update_guild_member(guild_id, user_id)
             .roles(&roles)
             .reason(action.get_reason())?
-            .exec()
             .await?;
         Ok(())
     }
@@ -293,7 +287,6 @@ impl ActionExecutor {
         let channel = self
             .http
             .create_private_channel(user_id)
-            .exec()
             .await?
             .model()
             .await?;
@@ -301,7 +294,6 @@ impl ActionExecutor {
         self.http
             .create_message(channel.id)
             .content(info.get_content())?
-            .exec()
             .await?;
         Ok(())
     }
@@ -311,7 +303,6 @@ impl ActionExecutor {
         self.http
             .create_message(channel_id)
             .content(info.get_content())?
-            .exec()
             .await?;
         Ok(())
     }
@@ -325,13 +316,11 @@ impl ActionExecutor {
             1 => {
                 self.http
                     .delete_message(channel_id, message_ids[0])
-                    .exec()
                     .await?;
             }
             _ => {
                 self.http
                     .delete_messages(channel_id, &message_ids)
-                    .exec()
                     .await?;
             }
         }

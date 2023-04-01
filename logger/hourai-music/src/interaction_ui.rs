@@ -3,8 +3,7 @@ use anyhow::Result;
 use hourai::{
     interactions::{CommandContext, InteractionContext, Response},
     models::{
-        application::component::{action_row::ActionRow, Component},
-        channel::embed::Embed,
+        channel::message::{embed::Embed, component::*},
         id::{marker::*, Id},
         UserLike,
     },
@@ -111,7 +110,6 @@ impl<T: EmbedUIBuilder> Updateable for EmbedUI<T> {
             .content(Some(&self.builder.build_content(self)))?
             .embeds(Some(&[self.builder.build_embed(self)?]))?
             .components(Some(&self.builder.build_components(self)?))?
-            .exec()
             .await?;
         Ok(())
     }
@@ -205,7 +203,7 @@ impl EmbedUIBuilder for QueueUI {
         };
 
         let current_page = match ui.client.queue_page(ui.guild_id) {
-            Some(current_page) => (current_page % pages as i64),
+            Some(current_page) => current_page % pages as i64,
             None => return not_playing_embed(),
         };
 

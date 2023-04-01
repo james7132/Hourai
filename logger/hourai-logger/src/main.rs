@@ -24,7 +24,7 @@ use hourai::{
         application::interaction::{Interaction, InteractionType},
         channel::{Channel, ChannelType, Message},
         gateway::payload::incoming::*,
-        guild::{member::Member, Permissions, Role},
+        guild::{member::Member, MemberFlags, Permissions, Role},
         http::interaction::*,
         id::{marker::*, Id},
         user::User,
@@ -91,7 +91,6 @@ async fn main() {
     if let Err(err) = http_client
         .interaction(config.discord.application_id)
         .set_global_commands(&config.commands)
-        .exec()
         .await
     {
         warn!("Failed to update global commands: {:?}", err);
@@ -113,7 +112,6 @@ async fn main() {
 
     let user = http_client
         .current_user()
-        .exec()
         .await
         .expect("Current user should not fail to load.")
         .model()
@@ -122,7 +120,6 @@ async fn main() {
 
     let user = http_client
         .user(user.id)
-        .exec()
         .await
         .expect("User should not fail to load")
         .model()
@@ -269,7 +266,6 @@ impl Client {
             let roles = self
                 .http()
                 .guild_member(guild_id, user_id)
-                .exec()
                 .await?
                 .model()
                 .await?
@@ -294,6 +290,8 @@ impl Client {
                         user: evt.user.clone(),
                         joined_at: evt.joined_at.clone(),
                         communication_disabled_until: None,
+
+                        flags: MemberFlags::empty(),
 
                         // Unknown/dummy fields.
                         deaf: false,
@@ -394,7 +392,6 @@ impl Client {
             if let Ok(ban) = self
                 .http()
                 .ban(evt.guild_id, evt.user.id)
-                .exec()
                 .await?
                 .model()
                 .await
@@ -508,8 +505,8 @@ impl Client {
     }
 
     async fn on_thread_create(&mut self, evt: ThreadCreate) -> Result<()> {
-        if evt.0.kind == ChannelType::GuildPublicThread {
-            self.http().join_thread(evt.0.id).exec().await?;
+        if evt.0.kind == ChannelType::PublicThread {
+            self.http().join_thread(evt.0.id).await?;
             info!("Joined thread {}", evt.0.id);
         }
         Ok(())
@@ -517,7 +514,7 @@ impl Client {
 
     async fn on_thread_list_sync(&mut self, evt: ThreadListSync) -> Result<()> {
         for thread in evt.threads {
-            if let Err(err) = self.http().join_thread(thread.id).exec().await {
+            if let Err(err) = self.http().join_thread(thread.id).await {
                 error!(
                     "Error while joining new thread in guild {}: {} ({:?})",
                     evt.guild_id, err, err
@@ -582,7 +579,6 @@ impl Client {
                             data: None,
                         },
                     )
-                    .exec()
                     .await?;
             }
             InteractionType::ApplicationCommand => {
@@ -740,7 +736,7 @@ impl Client {
 
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
-            let fetched_bans = self.http().bans(guild_id).exec().await?.model().await?;
+            let fetched_bans = self.http().bans(guild_id).await?.model().await?;
             let bans: Vec<Ban> = fetched_bans
                 .clone()
                 .into_iter()

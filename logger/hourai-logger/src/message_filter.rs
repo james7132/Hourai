@@ -113,7 +113,7 @@ async fn apply_rule(
         let http = executor.http().clone();
         tokio::spawn(async move {
             // TODO(james7132): DM the user that their message was deleted.
-            let result = http.delete_message(channel_id, message_id).exec().await;
+            let result = http.delete_message(channel_id, message_id).await;
             if let Err(err) = result {
                 tracing::error!(
                     "Error while deleting message {} in channel {} for message filter: {}",
@@ -177,7 +177,6 @@ async fn apply_rule(
                 .create_message(Id::new(config.get_modlog_channel_id()))
                 .content(&response)?
                 .embeds(&[message_logging::message_to_embed(message)?.build()])?
-                .exec()
                 .await?;
         }
     }
