@@ -12,7 +12,7 @@ futures = "0.3"
 http = { default-features = false, version = "0.2" }
 serde = { version = "1.0", features = ["derive"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
-twilight-util = { version = "0.14", features = ["snowflake", "builder"] }
+twilight-util = { version = "0.15", features = ["snowflake", "builder"] }
 
 [dependencies.sqlx]
 default-features = false
