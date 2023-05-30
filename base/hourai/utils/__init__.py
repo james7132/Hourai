@@ -12,7 +12,7 @@ from hourai import config
 from datetime import timedelta
 
 
-MODERATOR_PREFIX = 'mod'
+MODERATOR_PREFIX = ('mod', 'admin')
 DELETED_USER_REGEX = re.compile(r'Deleted User [0-9a-fA-F]{8}')
 
 
