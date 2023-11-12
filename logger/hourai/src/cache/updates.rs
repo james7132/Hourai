@@ -9,13 +9,12 @@ pub trait UpdateCache {
 }
 
 impl UpdateCache for Event {
-    #[allow(clippy::cognitive_complexity)]
     fn update(&self, c: &InMemoryCache) {
         use Event::*;
 
         match self {
             GuildCreate(v) => c.update(v.deref()),
-            GuildDelete(v) => c.update(v.deref()),
+            GuildDelete(v) => c.update(v),
             MemberAdd(v) => c.update(v.deref()),
             MemberRemove(v) => c.update(v),
             MemberUpdate(v) => c.update(v.deref()),

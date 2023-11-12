@@ -45,7 +45,7 @@ impl<T: ToRedisArgs + FromRedisValue> FromRedisValue for Compressed<T> {
         use redis::{ErrorKind, RedisError, Value};
         if let Value::Data(data) = value {
             let inner = if data.is_empty() {
-                T::from_redis_value(&value)?
+                T::from_redis_value(value)?
             } else {
                 let buf = &data[1..];
                 let decompressed: Vec<u8> = match CompressionMode::from_u8(data[0]) {

@@ -38,13 +38,7 @@ pub(crate) fn message_diff_embed(
 }
 
 fn meets_id_filter(filter: &IdFilter, id: u64) -> bool {
-    if filter.denylist.contains(&id) {
-        return false;
-    }
-    if !filter.allowlist.is_empty() && filter.allowlist.contains(&id) {
-        return true;
-    }
-    return true;
+    !filter.denylist.contains(&id)
 }
 
 fn should_log(config: &MessageLoggingConfig, channel_id: Id<ChannelMarker>) -> bool {

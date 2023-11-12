@@ -11,7 +11,7 @@ use hourai::config;
 use anyhow::Result;
 use futures::stream::StreamExt;
 use hourai::{
-    gateway::{cluster::ShardScheme, Event, EventTypeFlags, Intents},
+    gateway::{Event, EventTypeFlags, Intents},
     init,
     models::{
         guild::Member,
@@ -30,7 +30,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::MEMBER_ADD;
 
 #[tokio::main]
 async fn main() {
-    let config = config::load_config(config::get_config_path().as_ref());
+    let config = config::load_config();
     init::init(&config);
     let storage = Storage::init(&config).await;
     let sessions = storage
@@ -102,7 +102,6 @@ impl Client {
     }
 
     async fn on_member_add(&self, evt: Member) -> Result<()> {
-        if !evt.pending {}
         let _config = self.get_config(evt.guild_id).await?;
         Ok(())
     }
@@ -112,7 +111,7 @@ impl Client {
     }
 
     async fn get_config(&self, guild_id: Id<GuildMarker>) -> Result<VerificationConfig> {
-        Ok(self.storage.redis().guild(guild_id).configs().get().await?)
+        self.storage.redis().guild(guild_id).configs().get().await
     }
 
     fn make_verifiers(&self) -> Vec<BoxedVerifier> {

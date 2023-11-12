@@ -7,6 +7,7 @@ use hourai::{
 use std::collections::HashSet;
 use twilight_lavalink::model::*;
 
+#[derive(Default)]
 pub struct PlayerState {
     pub skip_votes: HashSet<Id<UserMarker>>,
     pub queue: MusicQueue<Id<UserMarker>, Track>,
@@ -17,16 +18,6 @@ pub struct PlayerState {
 }
 
 impl PlayerState {
-    pub fn new() -> Self {
-        Self {
-            skip_votes: HashSet::new(),
-            queue: MusicQueue::new(),
-            now_playing_ui: None,
-            queue_ui: None,
-            queue_page: 0,
-        }
-    }
-
     pub fn currently_playing(&self) -> Option<(Id<UserMarker>, Track)> {
         self.queue.peek().map(|item| (item.key, item.value.clone()))
     }
@@ -89,7 +80,7 @@ impl PlayerExt for twilight_lavalink::player::Player {
 
 impl From<MusicQueueProto> for MusicQueue<Id<UserMarker>, Track> {
     fn from(value: MusicQueueProto) -> Self {
-        let mut queue = Self::new();
+        let mut queue = Self::default();
         for user_queue in value.user_queues {
             let user_id = Id::new(user_queue.get_user_id());
             for track in user_queue.tracks {

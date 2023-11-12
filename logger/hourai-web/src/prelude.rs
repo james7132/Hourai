@@ -15,10 +15,6 @@ pub fn http_error<T>(status_code: StatusCode, message: impl Display) -> Result<T
     .into())
 }
 
-pub fn http_internal_error<T>(message: impl Display) -> Result<T> {
-    http_error(StatusCode::INTERNAL_SERVER_ERROR, message)
-}
-
 pub trait IntoHttpError<T> {
     fn http_error(self, status_code: StatusCode, message: impl Display) -> Result<T>;
 
@@ -76,7 +72,7 @@ impl InternalError {
             self.status_code()
                 .canonical_reason()
                 .map(|r| r.to_owned())
-                .unwrap_or_else(String::new)
+                .unwrap_or_default()
         } else {
             self.to_string()
         }

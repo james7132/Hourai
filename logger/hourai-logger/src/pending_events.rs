@@ -36,7 +36,8 @@ fn is_client_error(err: &anyhow::Error) -> bool {
             return status.is_client_error();
         }
     }
-    return false;
+
+    false
 }
 
 async fn run_action(executor: ActionExecutor, pending: PendingAction) -> Result<()> {

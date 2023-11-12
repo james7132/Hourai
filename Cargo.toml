@@ -2,7 +2,7 @@
 members = [
   "logger/hourai",
   "logger/hourai-feeds",
-  #"hourai-frontend",
+  # "logger/hourai-frontend",
   "logger/hourai-logger",
   "logger/hourai-music",
   "logger/hourai-verification",
@@ -11,6 +11,7 @@ members = [
   "logger/storage/sql",
   "logger/storage/redis",
 ]
+resolver = "2"
 
 [profile.release]
 opt-level = 3

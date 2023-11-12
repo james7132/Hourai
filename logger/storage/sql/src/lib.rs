@@ -3,8 +3,7 @@ mod types;
 pub mod whois;
 
 pub use self::models::*;
-pub use sqlx::types as sql_types;
-pub use sqlx::*;
+pub use sqlx::{self, types as sql_types, Error, Executor, Result};
 use tracing::debug;
 
 pub type SqlPool = sqlx::Pool<SqlDatabase>;

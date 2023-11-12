@@ -7,7 +7,7 @@ pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> 
     if !hourai_storage::is_moderator(
         guild_id,
         ctx.command.member.as_ref().unwrap().roles.iter().cloned(),
-        &mut actions.storage().redis().clone(),
+        &actions.storage().redis().clone(),
     )
     .await?
     {
@@ -66,7 +66,7 @@ pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -
     if !hourai_storage::is_moderator(
         guild_id,
         ctx.command.member.as_ref().unwrap().roles.iter().cloned(),
-        &mut actions.storage().redis().clone(),
+        &actions.storage().redis().clone(),
     )
     .await?
     {
@@ -120,8 +120,9 @@ pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -
 }
 
 pub(super) async fn escalate_history(
-    _ctx: &CommandContext,
+    ctx: &CommandContext,
     _actions: &ActionExecutor,
 ) -> Result<Response> {
-    anyhow::bail!("This command is unfortunately not implemented yet.");
+    ctx.defer().await?;
+    anyhow::bail!(InteractionError::NotImplemented);
 }

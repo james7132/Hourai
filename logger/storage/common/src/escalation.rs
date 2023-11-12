@@ -234,7 +234,7 @@ impl EscalationHistory {
             _ => "Deescalate",
         };
 
-        let entry = self.create_entry(&authorizer, actions, display_name, diff);
+        let entry = self.create_entry(authorizer, actions, display_name, diff);
         let mut txn = self.storage().sql().begin().await?;
         let entry_id: i32 = entry.insert().fetch_one(&mut txn).await?.0;
 
@@ -294,7 +294,7 @@ impl EscalationHistory {
             guild_id: self.guild_id().get() as i64,
             subject_id: self.user_id().get() as i64,
             authorizer_id: authorizer.id.get() as i64,
-            authorizer_name: authorizer_name,
+            authorizer_name,
             display_name: display_name.to_owned(),
             timestamp: Utc::now(),
             action: actions.into(),
@@ -332,10 +332,7 @@ impl EscalationHistory {
             escalation.entry.display_name,
             escalation.expiration()
         );
-        self.http()
-            .create_message(modlog_id)
-            .content(&msg)?
-            .await?;
+        self.http().create_message(modlog_id).content(&msg)?.await?;
 
         Ok(())
     }

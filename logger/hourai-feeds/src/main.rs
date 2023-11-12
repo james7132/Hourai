@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
-    let config = config::load_config(config::get_config_path().as_ref());
+    let config = config::load_config();
     init::init(&config);
 
     let (tx, mut rx) = futures::channel::mpsc::unbounded();

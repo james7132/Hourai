@@ -42,7 +42,7 @@ async fn build_description(sql: &SqlPool, user_id: Id<UserMarker>) -> Result<Opt
             usernames
                 .into_iter()
                 .map(|username| {
-                    let date = username.timestamp.date().format("%Y %b %d");
+                    let date = username.timestamp.date_naive().format("%Y %b %d");
                     let name = if let Some(discriminator) = username.discriminator {
                         format!("{}#{:04}", username.name, discriminator)
                     } else {

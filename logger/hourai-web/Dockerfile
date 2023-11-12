@@ -8,5 +8,5 @@ ENV RUST_LOG=info
 ENV HOURAI_CONFIG=/opt/hourai.jsonnet
 ENV HOURAI_ENV=dev
 
-ADD target/x86_64-unknown-linux-musl/release/hourai-web .
+COPY target/x86_64-unknown-linux-musl/release/hourai-web .
 CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && /hourai-web

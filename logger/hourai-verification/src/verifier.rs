@@ -19,9 +19,11 @@ impl Verifier for Vec<BoxedVerifier> {
     }
 }
 
+pub type GenericVerifierPredicate = dyn Fn(&VerificationContext) -> Result<bool> + Sync + 'static;
+
 pub struct GenericVerifier {
     pub reason: VerificationReason,
-    pub pred: Box<dyn Fn(&VerificationContext) -> Result<bool> + Sync + 'static>,
+    pub pred: Box<GenericVerifierPredicate>,
 }
 
 impl GenericVerifier {
@@ -29,17 +31,17 @@ impl GenericVerifier {
         reason: impl Into<String>,
         approver: T,
     ) -> BoxedVerifier {
-        Self::new(VerificationReason::Approval(reason.into()), approver)
+        Self::new_boxed(VerificationReason::Approval(reason.into()), approver)
     }
 
     pub fn new_rejector<T: Fn(&VerificationContext) -> Result<bool> + Sync + 'static>(
         reason: impl Into<String>,
         approver: T,
     ) -> BoxedVerifier {
-        Self::new(VerificationReason::Rejection(reason.into()), approver)
+        Self::new_boxed(VerificationReason::Rejection(reason.into()), approver)
     }
 
-    fn new<T: Fn(&VerificationContext) -> Result<bool> + Sync + 'static>(
+    fn new_boxed<T: Fn(&VerificationContext) -> Result<bool> + Sync + 'static>(
         reason: VerificationReason,
         approver: T,
     ) -> BoxedVerifier {

@@ -3,8 +3,7 @@ use crate::{
     interactions::{InteractionContext, InteractionError, InteractionResult},
     models::{
         application::interaction::{
-            Interaction, InteractionData,
-            message_component::MessageComponentInteractionData,
+            message_component::MessageComponentInteractionData, Interaction, InteractionData,
         },
         guild::PartialMember,
         id::{
@@ -17,8 +16,8 @@ use crate::{
 };
 use anyhow::Result;
 use protobuf::Message;
-use std::sync::Arc;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 pub fn proto_to_custom_id(proto: &impl Message) -> Result<String> {
     Ok(base64::encode(proto.write_to_bytes()?))
@@ -33,7 +32,10 @@ pub struct ComponentContext {
 
 impl ComponentContext {
     pub fn new(client: Arc<http::Client>, interaction: Interaction) -> Self {
-        assert!(matches!(interaction.data, Some(InteractionData::MessageComponent(_))));
+        assert!(matches!(
+            interaction.data,
+            Some(InteractionData::MessageComponent(_))
+        ));
         Self {
             http: client,
             component: interaction,
@@ -43,7 +45,7 @@ impl ComponentContext {
 
     fn data(&self) -> &MessageComponentInteractionData {
         match &self.component.data {
-            Some(InteractionData::MessageComponent(data) ) => &data,
+            Some(InteractionData::MessageComponent(data)) => data,
             _ => panic!("Provided interaction data is not a message component"),
         }
     }

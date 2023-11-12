@@ -24,6 +24,9 @@ pub struct HouraiConfig {
     pub metrics: MetricsConfig,
     pub reddit: RedditConfig,
     pub third_party: ThirdPartyConfig,
+
+    #[serde(skip)]
+    pub is_prod: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -82,18 +85,23 @@ pub struct WebhookConfig {
 }
 
 /// Loads the config for the bot. Panics if the reading the files fails or parsing fails.
-pub fn load_config(path: &Path) -> HouraiConfig {
-    let file = File::open(path);
+pub fn load_config() -> HouraiConfig {
+    let (path, environment) = get_config_path_and_environment();
+
+    let file = File::open(&path);
     assert!(file.is_ok(), "Cannot open JSON config at {:?}", path);
     let reader = BufReader::new(file.unwrap());
-    simd_json::serde::from_reader(reader).unwrap()
+    let mut config: HouraiConfig = simd_json::serde::from_reader(reader).unwrap();
+
+    config.is_prod = environment != DEFAULT_ENV;
+    config
 }
 
-pub fn get_config_path() -> Box<Path> {
+fn get_config_path_and_environment() -> (Box<Path>, String) {
     let mut buffer: PathBuf = ["/etc", "hourai"].iter().collect();
     let execution_env: String = env::var("HOURAI_ENV")
         .unwrap_or_else(|_| String::from(DEFAULT_ENV))
         .to_lowercase();
-    buffer.push(execution_env);
-    buffer.into_boxed_path()
+    buffer.push(&execution_env);
+    (buffer.into_boxed_path(), execution_env)
 }

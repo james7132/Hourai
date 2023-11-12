@@ -5,13 +5,13 @@ use hourai::{
     http::request::AuditLogReason,
     models::{
         channel::message::Message,
-        util::Timestamp,
         guild::Permissions,
         id::{
             marker::{ChannelMarker, MessageMarker},
             Id,
         },
         user::User,
+        util::Timestamp,
     },
     proto::action::{Action, BanMember_Type, StatusType},
 };
@@ -165,7 +165,7 @@ pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<R
         let request = ctx
             .http
             .update_guild_member(guild_id, *member_id)
-            .communication_disabled_until(Some(expiration.clone()))
+            .communication_disabled_until(Some(expiration))
             .unwrap()
             .reason(&reason)
             .unwrap();
@@ -419,7 +419,8 @@ async fn fetch_messages(
                 .or(Some(message.id));
             if message.timestamp.as_secs() < limit as i64 {
                 return Ok(());
-            } else if let Err(_) = tx.unbounded_send(message) {
+            }
+            if tx.unbounded_send(message).is_err() {
                 return Ok(());
             }
         }
@@ -437,7 +438,8 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
         )));
     }
 
-    let mut filters: Vec<Box<dyn Fn(&Message) -> bool + Send + 'static>> = Vec::new();
+    type Filter = Box<dyn Fn(&Message) -> bool + Send + 'static>;
+    let mut filters = Vec::<Filter>::new();
     let mine = ctx.get_flag("mine").unwrap_or(false);
     if mine {
         let user_id = ctx.user().id;
@@ -461,7 +463,7 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
         filters.push(Box::new(move |msg| msg.author.id == user_id));
     }
     if let Ok(rgx) = ctx.get_string("match") {
-        let regex = Regex::new(&rgx).map_err(|_| {
+        let regex = Regex::new(rgx).map_err(|_| {
             InteractionError::InvalidArgument(
                 "`match` must be a valid regex or pattern.".to_owned(),
             )
@@ -492,7 +494,7 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
         .filter(move |msg| future::ready(filters.iter().all(|f| f(msg))))
         .map(|msg| msg.id)
         .chunks(MAX_PRUNED_MESSAGES_PER_BATCH)
-        .map(|batch| Vec::from(batch))
+        .map(Vec::from)
         .collect()
         .await;
 

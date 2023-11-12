@@ -28,7 +28,7 @@ pub enum InteractionError {
     UnknownCommand,
     #[error("Command can only be used in a server.")]
     NotInGuild,
-    #[error("This comamnd has not been implemented yet. Check back later.")]
+    #[error("This command has not been implemented yet. Check back later.")]
     NotImplemented,
     #[error("Missing argument: {}", .0)]
     MissingArgument(&'static str),

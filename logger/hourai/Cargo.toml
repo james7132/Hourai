@@ -30,21 +30,17 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 twilight-model = "0.14"
 twilight-util = { version = "0.14", features = ["snowflake", "builder"] }
 regex = "1.5"
+simd-json = "0.13"
 
 [dependencies.twilight-gateway]
 version = "0.14"
-default-features = true
+default-features = false
 features = ['simd-json', 'rustls-webpki-roots', 'metrics']
 
 [dependencies.twilight-http]
 version = "0.14"
 default-features = true
 features = ['simd-json', 'rustls-webpki-roots']
-
-[dependencies.simd-json]
-default-features = true
-version = "0.5"
-features = ['allow-non-simd']
 
 [dev-dependencies]
 static_assertions = "1.1.0"

@@ -22,7 +22,6 @@ use hourai::{
     },
     proto::{cache::*, music_bot::MusicStateProto},
 };
-use redis::{FromRedisValue, ToRedisArgs};
 use std::{
     borrow::Cow,
     cmp::{Ord, Ordering},
@@ -388,7 +387,7 @@ impl GuildCache {
         Ok(match resource_ids.len() {
             0 => vec![],
             1 => self
-                .fetch_resource::<T>(resource_ids[0].clone())
+                .fetch_resource::<T>(resource_ids[0])
                 .await?
                 .into_iter()
                 .collect(),
@@ -396,7 +395,7 @@ impl GuildCache {
                 let guild_key = CacheKey::Guild(self.guild_id);
                 let resource_keys: Vec<_> = resource_ids
                     .iter()
-                    .map(|id| GuildKey::from(id.clone()))
+                    .map(|id| GuildKey::from(*id))
                     .collect();
                 let protos: Vec<Option<Protobuf<T::Proto>>> = self
                     .redis
@@ -519,7 +518,7 @@ impl RoleSet {
 impl Ord for RoleSet {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self.highest(), other.highest()) {
-            (Some(left), Some(right)) => left.cmp(&right),
+            (Some(left), Some(right)) => left.cmp(right),
             (Some(_), None) => Ordering::Greater,
             (None, Some(_)) => Ordering::Less,
             (None, None) => Ordering::Equal,
@@ -569,13 +568,15 @@ impl ToProto for Guild {
         let mut proto = Self::Proto::new();
         proto.set_id(self.id.get());
         proto.set_name(self.name.clone());
-        proto.features = ::protobuf::RepeatedField::from_vec(self.features
-            .iter()
-            .map(|feature| {
-                let feature: Cow<'static, str> = feature.clone().into();
-                feature.to_string()
-            })
-            .collect());
+        proto.features = ::protobuf::RepeatedField::from_vec(
+            self.features
+                .iter()
+                .map(|feature| {
+                    let feature: Cow<'static, str> = feature.clone().into();
+                    feature.to_string()
+                })
+                .collect(),
+        );
         proto.set_owner_id(self.owner_id.get());
         if let Some(ref code) = self.vanity_url_code {
             proto.set_vanity_url_code(code.clone());
@@ -600,13 +601,15 @@ impl ToProto for PartialGuild {
         let mut proto = Self::Proto::new();
         proto.set_id(self.id.get());
         proto.set_name(self.name.clone());
-        proto.features = ::protobuf::RepeatedField::from_vec(self.features
-            .iter()
-            .map(|feature| {
-                let feature: Cow<'static, str> = feature.clone().into();
-                feature.to_string()
-            })
-            .collect());
+        proto.features = ::protobuf::RepeatedField::from_vec(
+            self.features
+                .iter()
+                .map(|feature| {
+                    let feature: Cow<'static, str> = feature.clone().into();
+                    feature.to_string()
+                })
+                .collect(),
+        );
         proto.set_owner_id(self.owner_id.get());
         if let Some(ref code) = self.vanity_url_code {
             proto.set_vanity_url_code(code.clone());
