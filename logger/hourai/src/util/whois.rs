@@ -20,7 +20,7 @@ pub fn user(user: &User) -> Result<EmbedBuilder> {
         .footer(EmbedFooterBuilder::new(format!("ID: {}", user.id)));
 
     if let Some(color) = user.accent_color {
-        builder = builder.color(color as u32);
+        builder = builder.color(color);
     }
 
     builder = builder.field(EmbedFieldBuilder::new(
@@ -36,13 +36,13 @@ pub fn member(member: &Member) -> Result<EmbedBuilder> {
 
     builder = builder.field(EmbedFieldBuilder::new(
         "Joined at",
-        timestamp_to_str(member.joined_at.as_secs() as i64),
+        timestamp_to_str(member.joined_at.as_secs()),
     ));
 
     if let Some(ts) = member.premium_since {
         builder = builder.field(EmbedFieldBuilder::new(
             "Boosting Since",
-            timestamp_to_str(ts.as_secs() as i64),
+            timestamp_to_str(ts.as_secs()),
         ));
     }
 

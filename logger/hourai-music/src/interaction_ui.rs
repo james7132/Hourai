@@ -158,7 +158,7 @@ fn build_np_embed<T: EmbedUIBuilder>(ui: &EmbedUI<T>) -> Result<Embed> {
                 .icon_url(ImageSource::url(track.requestor.avatar_url())?),
         )
         .title(track.info.title.unwrap_or_else(|| "Unknown".to_owned()))
-        .description(build_progress_bar(&ui))
+        .description(build_progress_bar(ui))
         .url(track.info.uri.clone())
         .footer(EmbedFooterBuilder::new(format!("Volume: {}", volume)))
         .build())
@@ -215,13 +215,13 @@ impl EmbedUIBuilder for QueueUI {
                     // Add one for the currently playing song.
                     .skip(current_page as usize * TRACKS_PER_PAGE + 1)
                     .take(TRACKS_PER_PAGE)
-                    .map(|kv| format_track(kv.0, &kv.1.value))
+                    .map(|kv| format_track(kv.0, kv.1.value))
                     .collect::<Vec<String>>()
                     .join("\n")
             })
             .unwrap();
         if description.is_empty() {
-            build_np_embed(&ui)
+            build_np_embed(ui)
         } else {
             let footer = format!("Page {}/{}", current_page + 1, pages + 1);
             Ok(EmbedBuilder::new()
@@ -286,7 +286,6 @@ fn not_playing_embed() -> Result<Embed> {
 
 fn progress_bar(ratio: f64) -> String {
     (0..PROGRESS_BAR_WIDTH)
-        .into_iter()
         .map(|idx| {
             if idx == (ratio * (PROGRESS_BAR_WIDTH as f64)) as usize {
                 ":radio_button:"

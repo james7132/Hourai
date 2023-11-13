@@ -29,9 +29,9 @@ pub type SqlQueryAs<'a, O> = sqlx::query::QueryAs<
 fn to_datetime(timestamp: &Timestamp) -> DateTime<Utc> {
     let micros = timestamp.as_micros();
     let secs = micros / 1000000;
-    let nsecs = (micros % 1000000) * 1000;
-    DateTime::from_utc(
-        NaiveDateTime::from_timestamp(secs as i64, nsecs as u32),
+    let nsecs = ((micros % 1000000) * 1000) as u32;
+    DateTime::from_naive_utc_and_offset(
+        NaiveDateTime::from_timestamp_opt(secs, nsecs).expect("invalid or out-of-range datetime"),
         Utc,
     )
 }
@@ -261,7 +261,7 @@ pub struct Member {
 
 impl From<&TwilightMember> for Member {
     fn from(member: &TwilightMember) -> Self {
-        let premium = member.premium_since.as_ref().map(|p| to_datetime(p));
+        let premium = member.premium_since.as_ref().map(to_datetime);
         Self {
             guild_id: member.guild_id.get() as i64,
             user_id: member.user.id.get() as i64,
@@ -277,7 +277,7 @@ impl From<&TwilightMember> for Member {
 
 impl From<&MemberUpdate> for Member {
     fn from(member: &MemberUpdate) -> Self {
-        let premium = member.premium_since.as_ref().map(|p| to_datetime(p));
+        let premium = member.premium_since.as_ref().map(to_datetime);
         Self {
             guild_id: member.guild_id.get() as i64,
             user_id: member.user.id.get() as i64,
@@ -303,7 +303,7 @@ impl Member {
     pub fn role_ids(&self) -> impl Iterator<Item = Id<RoleMarker>> + '_ {
         self.role_ids
             .iter()
-            .map(|id| Id::new(id.clone().try_into().unwrap()))
+            .map(|id| Id::new((*id).try_into().unwrap()))
     }
 
     pub fn set_present<'a>(
@@ -591,8 +591,8 @@ impl Oauth {
             .bind(self.slug.clone())
             .bind(self.access_token.clone())
             .bind(self.refresh_token.clone())
-            .bind(self.access_expiration.clone())
-            .bind(self.refresh_expiration.clone())
+            .bind(self.access_expiration)
+            .bind(self.refresh_expiration)
     }
 
     pub fn update<'a>(&self) -> SqlQuery<'a> {
@@ -605,7 +605,7 @@ impl Oauth {
         .bind(self.user_id)
         .bind(self.slug.clone())
         .bind(self.access_token.clone())
-        .bind(self.access_expiration.clone())
+        .bind(self.access_expiration)
     }
 
     pub fn invalidate_user<'a>(user_id: Id<UserMarker>) -> SqlQuery<'a> {

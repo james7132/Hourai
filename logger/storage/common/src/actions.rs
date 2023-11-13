@@ -49,19 +49,19 @@ impl ActionExecutor {
     pub async fn execute_action(&self, action: &Action) -> Result<()> {
         match action.details {
             Some(Action_oneof_details::kick(_)) => self.execute_kick(action).await?,
-            Some(Action_oneof_details::ban(ref info)) => self.execute_ban(action, &info).await?,
+            Some(Action_oneof_details::ban(ref info)) => self.execute_ban(action, info).await?,
             Some(Action_oneof_details::escalate(ref info)) => {
-                self.execute_escalate(action, &info).await?
+                self.execute_escalate(action, info).await?
             }
-            Some(Action_oneof_details::mute(ref info)) => self.execute_mute(action, &info).await?,
+            Some(Action_oneof_details::mute(ref info)) => self.execute_mute(action, info).await?,
             Some(Action_oneof_details::deafen(ref info)) => {
-                self.execute_deafen(action, &info).await?
+                self.execute_deafen(action, info).await?
             }
             Some(Action_oneof_details::change_role(ref info)) => {
-                self.execute_change_role(action, &info).await?
+                self.execute_change_role(action, info).await?
             }
             Some(Action_oneof_details::direct_message(ref info)) => {
-                if let Err(err) = self.execute_direct_message(action, &info).await {
+                if let Err(err) = self.execute_direct_message(action, info).await {
                     tracing::error!(
                         "Error while sending a message to a given channel for an action: {}",
                         err
@@ -69,7 +69,7 @@ impl ActionExecutor {
                 }
             }
             Some(Action_oneof_details::send_message(ref info)) => {
-                if let Err(err) = self.execute_send_message(&info).await {
+                if let Err(err) = self.execute_send_message(info).await {
                     tracing::error!(
                         "Error while sending a message to a given channel for an action: {}",
                         err
@@ -77,7 +77,7 @@ impl ActionExecutor {
                 }
             }
             Some(Action_oneof_details::delete_messages(ref info)) => {
-                if let Err(err) = self.execute_delete_messages(&info).await {
+                if let Err(err) = self.execute_delete_messages(info).await {
                     tracing::error!(
                         "Error while deleteing a message to a given channel for an action: {}",
                         err
@@ -153,7 +153,7 @@ impl ActionExecutor {
             self.http
                 .create_ban(guild_id, user_id)
                 .reason(action.get_reason())?
-                .delete_message_seconds(info.get_delete_message_days() as u32 * SECONDS_IN_DAY)?
+                .delete_message_seconds(info.get_delete_message_days() * SECONDS_IN_DAY)?
                 .await?;
         }
         if info.get_field_type() != BanMember_Type::BAN {
@@ -180,7 +180,7 @@ impl ActionExecutor {
                 .apply_delta(
                     /*authorizer=*/ &self.current_user,
                     /*reason=*/ action.get_reason(),
-                    /*diff=*/ info.get_amount() as i64,
+                    /*diff=*/ info.get_amount(),
                     /*execute=*/ info.get_amount() >= 0,
                 )
                 .await?;
@@ -260,7 +260,7 @@ impl ActionExecutor {
                 roles.extend(role_ids);
             }
             StatusType::UNAPPLY => {
-                roles.retain(|role_id| !role_ids.contains(&role_id));
+                roles.retain(|role_id| !role_ids.contains(role_id));
             }
             StatusType::TOGGLE => {
                 for role_id in role_ids {
@@ -314,14 +314,10 @@ impl ActionExecutor {
         match message_ids.len() {
             0 => return Ok(()),
             1 => {
-                self.http
-                    .delete_message(channel_id, message_ids[0])
-                    .await?;
+                self.http.delete_message(channel_id, message_ids[0]).await?;
             }
             _ => {
-                self.http
-                    .delete_messages(channel_id, &message_ids)
-                    .await?;
+                self.http.delete_messages(channel_id, &message_ids).await?;
             }
         }
         Ok(())

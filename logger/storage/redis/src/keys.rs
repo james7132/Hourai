@@ -99,7 +99,7 @@ impl ToRedisArgs for GuildKey {
 impl FromRedisValue for GuildKey {
     fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
         if let redis::Value::Data(data) = value {
-            match (data.get(0), data.len()) {
+            match (data.first(), data.len()) {
                 (Some(&Guild::PREFIX), _) => Ok(Self::Guild),
                 (Some(&Role::PREFIX), len) if len >= 9 => {
                     let id = BigEndian::read_u64(&data[1..9]);
@@ -151,7 +151,7 @@ impl ToRedisArgs for PrefixedKey<()> {
     where
         W: RedisWrite,
     {
-        let key_enc = [self.0.clone().into(); 1];
+        let key_enc = [self.0; 1];
         out.write_arg(&key_enc[..]);
     }
 }
@@ -161,7 +161,7 @@ impl ToRedisArgs for PrefixedKey<u64> {
     where
         W: RedisWrite,
     {
-        let mut key_enc = [self.0.clone().into(); 9];
+        let mut key_enc = [self.0; 9];
         BigEndian::write_u64(&mut key_enc[1..9], self.1);
         out.write_arg(&key_enc[..]);
     }
@@ -172,7 +172,7 @@ impl ToRedisArgs for PrefixedKey<(u64, u64)> {
     where
         W: RedisWrite,
     {
-        let mut key_enc = [self.0.clone().into(); 17];
+        let mut key_enc = [self.0; 17];
         BigEndian::write_u64(&mut key_enc[1..9], self.1 .0);
         BigEndian::write_u64(&mut key_enc[9..17], self.1 .1);
         out.write_arg(&key_enc[..]);

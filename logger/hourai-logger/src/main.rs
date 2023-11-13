@@ -39,7 +39,7 @@ use tracing::{debug, error, info, warn};
 const RESUME_KEY: &str = "LOGGER";
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits()
-        | Intents::GUILD_BANS.bits()
+        | Intents::GUILD_MODERATION.bits()
         | Intents::GUILD_MESSAGES.bits()
         | Intents::MESSAGE_CONTENT.bits()
         | Intents::GUILD_MEMBERS.bits()
@@ -78,7 +78,7 @@ const CACHED_RESOURCES: ResourceType = ResourceType::from_bits_truncate(
 
 #[tokio::main]
 async fn main() {
-    let config = config::load_config(config::get_config_path().as_ref());
+    let config = config::load_config();
 
     init::init(&config);
     let http_client = Arc::new(init::http_client(&config));
@@ -93,7 +93,7 @@ async fn main() {
         .set_global_commands(&config.commands)
         .await
     {
-        warn!("Failed to update global commands: {:?}", err);
+        warn!("Failed to update global commands: {}", err);
     }
 
     let sessions = storage
@@ -139,11 +139,13 @@ async fn main() {
     gateway.up().await;
     info!("Client started.");
 
-    tokio::spawn(listings::run_push_listings(
-        client.clone(),
-        config.clone(),
-        Duration::from_secs(300),
-    ));
+    if config.is_prod {
+        tokio::spawn(listings::run_push_listings(
+            client.clone(),
+            config.clone(),
+            Duration::from_secs(300),
+        ));
+    }
 
     // Setup background tasks
     tokio::spawn(client.clone().log_bans());
@@ -243,7 +245,7 @@ impl Client {
 
     #[inline(always)]
     pub fn storage(&self) -> &Storage {
-        &self.0.actions.storage()
+        self.0.actions.storage()
     }
 
     #[inline(always)]
@@ -285,10 +287,10 @@ impl Client {
                         nick: evt.nick.clone(),
                         avatar: None,
                         pending: false,
-                        premium_since: evt.premium_since.clone(),
+                        premium_since: evt.premium_since,
                         roles: evt.roles.clone(),
                         user: evt.user.clone(),
-                        joined_at: evt.joined_at.clone(),
+                        joined_at: evt.joined_at,
                         communication_disabled_until: None,
 
                         flags: MemberFlags::empty(),
@@ -423,12 +425,12 @@ impl Client {
 
     async fn on_member_add(&self, member: Member) -> Result<()> {
         if !member.pending {
-            let res = roles::on_member_join(&self, &member).await;
+            let res = roles::on_member_join(self, &member).await;
             let members = vec![member.clone()];
             self.log_members(&members).await?;
             res?;
         }
-        announcements::on_member_join(&self, member.guild_id, member.user).await?;
+        announcements::on_member_join(self, member.guild_id, member.user).await?;
         Ok(())
     }
 
@@ -463,7 +465,7 @@ impl Client {
                 false
             )),
             self.log_users(vec![evt.user.clone()]),
-            announcements::on_member_leave(&self, evt)
+            announcements::on_member_leave(self, evt)
         );
         res1?;
         res2?;
@@ -582,10 +584,7 @@ impl Client {
                     .await?;
             }
             InteractionType::ApplicationCommand => {
-                let ctx = hourai::interactions::CommandContext::new(
-                    self.http().clone(),
-                    evt,
-                );
+                let ctx = hourai::interactions::CommandContext::new(self.http().clone(), evt);
                 commands::handle_command(ctx, &self.0.actions).await?;
             }
             interaction => {
@@ -707,7 +706,7 @@ impl Client {
     }
 
     async fn log_users(&self, users: Vec<User>) -> Result<()> {
-        let usernames = users.iter().map(|u| Username::new(u)).collect();
+        let usernames = users.iter().map(Username::new).collect();
         self.storage()
             .execute(Username::bulk_insert(usernames))
             .await?;

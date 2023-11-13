@@ -1,9 +1,7 @@
 use super::prelude::*;
 use hourai::{
     models::{
-        channel::message::allowed_mentions::AllowedMentions,
-        id::Id,
-        guild::scheduled_event::Status,
+        channel::message::allowed_mentions::AllowedMentions, guild::scheduled_event::Status, id::Id,
     },
     proto::guild_configs::LoggingConfig,
 };
@@ -57,7 +55,8 @@ pub(super) async fn ping_mod(ctx: &CommandContext, storage: &Storage) -> Result<
 pub(super) async fn ping_event(ctx: &CommandContext) -> Result<Response> {
     ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
-    let events = ctx.http
+    let events = ctx
+        .http
         .guild_scheduled_events(guild_id)
         .await?
         .model()
@@ -68,7 +67,8 @@ pub(super) async fn ping_event(ctx: &CommandContext) -> Result<Response> {
         if event.status != Status::Active || event.creator_id != Some(ctx.user().id) {
             continue;
         }
-        let subscribers = ctx.http
+        let subscribers = ctx
+            .http
             .guild_scheduled_event_users(guild_id, event.id)
             .await?
             .model()
@@ -81,18 +81,17 @@ pub(super) async fn ping_event(ctx: &CommandContext) -> Result<Response> {
         for subscriber in subscribers {
             content.push_str(&format!("<@{}> ", subscriber.user.id));
         }
-        content.push_str("\n");
+        content.push('\n');
     }
 
     if content.is_empty() {
-       Ok(Response::ephemeral().content("No events created by you are currently active."))
+        Ok(Response::ephemeral().content("No events created by you are currently active."))
     } else {
-        content.push_str("\n");
+        content.push('\n');
         content.push_str("We're starting!");
         Ok(Response::direct().content(&content))
     }
 }
-
 
 pub(super) async fn info_user(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
     ctx.defer().await?;

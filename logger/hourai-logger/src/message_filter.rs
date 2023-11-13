@@ -53,9 +53,9 @@ pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike
 fn generalize_filters(filters: &[&str]) -> RegexSet {
     let generalized = filters
         .iter()
-        .map(|filter| generalize_filter(*filter))
+        .map(|filter| generalize_filter(filter))
         .collect::<Vec<String>>();
-    RegexSet::new(&generalized).unwrap()
+    RegexSet::new(generalized).unwrap()
 }
 
 fn generalize_filter(filter: &str) -> String {
@@ -121,7 +121,6 @@ async fn apply_rule(
                     channel_id,
                     err
                 );
-                return;
             }
         });
 
@@ -216,15 +215,13 @@ async fn get_filter_reasons(
         for word in message.content().split_whitespace() {
             if SLUR_REGEX.is_match(word) {
                 reasons.push(format!("Message contains recognized racial slur: {}", word));
+                break;
             }
-            break;
         }
     }
 
-    if criteria.get_includes_invite_links() {
-        if DISCORD_INVITE_REGEX.is_match(message.content()) {
-            reasons.push("Message contains Discord invite link.".into());
-        }
+    if criteria.get_includes_invite_links() && DISCORD_INVITE_REGEX.is_match(message.content()) {
+        reasons.push("Message contains Discord invite link.".into());
     }
 
     if let Some(mentions) = criteria.mentions.as_ref() {
@@ -286,25 +283,21 @@ fn check_limits(
     reasons: &mut Vec<String>,
 ) {
     let unique = ids.iter().cloned().collect::<HashSet<_>>();
-    if limits.has_maximum_total() {
-        if ids.len() > limits.get_maximum_total() as usize {
-            reasons.push(format!(
-                "Total {} more than the server limit (seen: {}, limit: {}).",
-                name,
-                ids.len(),
-                limits.get_maximum_total()
-            ));
-        }
+    if limits.has_maximum_total() && ids.len() > limits.get_maximum_total() as usize {
+        reasons.push(format!(
+            "Total {} more than the server limit (seen: {}, limit: {}).",
+            name,
+            ids.len(),
+            limits.get_maximum_total()
+        ));
     }
 
-    if limits.has_maximum_unique() {
-        if unique.len() > limits.get_maximum_unique() as usize {
-            reasons.push(format!(
-                "Unique {} more than the server limit (seen: {}, limit: {}).",
-                name,
-                ids.len(),
-                limits.get_maximum_unique()
-            ));
-        }
+    if limits.has_maximum_unique() && unique.len() > limits.get_maximum_unique() as usize {
+        reasons.push(format!(
+            "Unique {} more than the server limit (seen: {}, limit: {}).",
+            name,
+            ids.len(),
+            limits.get_maximum_unique()
+        ));
     }
 }

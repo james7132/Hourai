@@ -13,7 +13,7 @@ async fn get_config(
     storage: &Storage,
     guild_id: Id<GuildMarker>,
 ) -> Result<Option<AnnouncementConfig>> {
-    Ok(storage.redis().guild(guild_id).configs().fetch().await?)
+    storage.redis().guild(guild_id).configs().fetch().await
 }
 
 pub async fn on_member_join(client: &Client, guild: Id<GuildMarker>, user: User) -> Result<()> {
@@ -86,7 +86,7 @@ pub async fn on_voice_update(
             (None, None) => return Ok(()),
         };
 
-        broadcast(&client, config.get_voice(), msg);
+        broadcast(client, config.get_voice(), msg);
     }
 
     Ok(())

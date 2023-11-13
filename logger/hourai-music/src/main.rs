@@ -60,7 +60,7 @@ const BOT_EVENTS: EventTypeFlags = EventTypeFlags::from_bits_truncate(
 
 #[tokio::main]
 async fn main() {
-    let config = config::load_config(config::get_config_path().as_ref());
+    let config = config::load_config();
     init::init(&config);
 
     let http_client = Arc::new(init::http_client(&config));
@@ -231,7 +231,7 @@ impl Client {
             // channel.
             let channel_id = guild.voice_states().get_channel(self.user_id).await?;
             if let Some(channel_id) = channel_id {
-                self.states.insert(evt.id, PlayerState::new());
+                self.states.insert(evt.id, PlayerState::default());
                 let state = self.load_state(evt.id).await?;
                 self.connect(evt.id, channel_id).await?;
                 if state.has_position() {

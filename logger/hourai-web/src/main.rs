@@ -25,7 +25,7 @@ pub fn api(cfg: &mut web::ServiceConfig) {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let config = config::load_config(config::get_config_path().as_ref());
+    let config = config::load_config();
     init::init(&config);
 
     let port = config.web.port;

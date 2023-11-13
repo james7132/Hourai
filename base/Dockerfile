@@ -25,4 +25,4 @@ ENV HOURAI_ENV=dev
 
 COPY --from=builder /install /usr/local
 COPY --from=builder /app /app
-CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && python launcher.py run
+CMD /usr/bin/jsonnet -m /etc/hourai $HOURAI_CONFIG && python launcher.py run bot

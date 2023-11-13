@@ -77,7 +77,7 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         .await?
         .highest()
         .cloned()
-        .unwrap_or_else(|| CachedRoleProto::default());
+        .unwrap_or_else(CachedRoleProto::default);
 
     let flags = get_role_flags(client.storage(), guild_id).await?;
     let mut restorable: Vec<Id<RoleMarker>> = user_roles

@@ -83,7 +83,7 @@ pub async fn start(client: Client, config: hourai::config::RedditConfig) {
                 }
             };
 
-            if let Err(err) = push_posts(&feed, response, &client).await {
+            if let Err(err) = push_posts(feed, response, &client).await {
                 error!("Error while pushing Reddit posts: {}", err);
             }
         }
@@ -125,8 +125,9 @@ async fn push_posts(feed: &Feed, response: Response, client: &Client) -> Result<
         .map(|thing| thing.data)
         .filter(|sub| {
             let ts = sub.created_utc as i64;
-            let timestamp = NaiveDateTime::from_timestamp(ts, 0);
-            let post_time = DateTime::<Utc>::from_utc(timestamp, Utc);
+            let timestamp =
+                NaiveDateTime::from_timestamp_opt(ts, 0).expect("invalid or out-of-range datetime");
+            let post_time = DateTime::<Utc>::from_naive_utc_and_offset(timestamp, Utc);
             update_time = std::cmp::max(update_time, post_time);
             post_time > min_time
         })
@@ -165,7 +166,7 @@ fn make_embed(source: Submission) -> Result<Embed> {
     }
 
     if source.is_self {
-        builder = builder.description(ellipsize(&source.selftext, 2000));
+        builder = builder.description(ellipsize(source.selftext, 2000));
     } else if let Some(hint) = source.post_hint {
         if hint == "image" {
             builder = builder.image(ImageSource::url(source.url)?);

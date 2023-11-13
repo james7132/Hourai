@@ -87,7 +87,7 @@ impl Verifier for BannedUserRejector {
             let mut reason = format!("Banned from {} servers", reasons.len());
             let list: String = reasons
                 .into_iter()
-                .filter_map(|r| r)
+                .flatten()
                 .collect::<Vec<String>>()
                 .join("\n");
             if !list.is_empty() {
@@ -127,7 +127,7 @@ impl Verifier for BannedUsernameRejector {
 
         let avatar_bans = VerificationBan::fetch_by_avatar(
             ctx.member().guild_id,
-            ctx.member().user.avatar.clone().unwrap(),
+            ctx.member().user.avatar.unwrap(),
         )
         .fetch_all(&self.0)
         .await?;
@@ -157,12 +157,12 @@ pub trait StringMatchRejector: Sync {
 #[async_trait]
 impl<T: StringMatchRejector> Verifier for T {
     async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
-        let criteria = self.criteria(&ctx).await?;
+        let criteria = self.criteria(ctx).await?;
         let regexes = self.regexes();
         for check in criteria {
             for (key, regex) in &regexes {
                 if regex.find(check.as_str()).is_some() {
-                    let reason = self.reason(&key, check.as_str());
+                    let reason = self.reason(key, check.as_str());
                     ctx.add_rejection_reason(reason);
                 }
             }

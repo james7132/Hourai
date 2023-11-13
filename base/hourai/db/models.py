@@ -6,6 +6,7 @@ from sqlalchemy.schema import Table, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.sql import functions as func
 
 Base = declarative_base()
 
@@ -104,7 +105,7 @@ class Username(Base):
     __tablename__ = 'usernames'
 
     user_id = Column(types.BigInteger, primary_key=True, autoincrement=False)
-    timestamp = Column(types.DateTime(timezone=True), primary_key=True)
+    timestamp = Column(types.DateTime(timezone=True), primary_key=True, default=func.now())
     name = Column(types.String(32), nullable=False)
     discriminator = Column(types.Integer)
 

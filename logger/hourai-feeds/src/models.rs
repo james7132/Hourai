@@ -42,7 +42,7 @@ impl Post {
         let request = client
             .http
             .create_message(channel_id)
-            .content(content.as_ref().map(|s| s.as_str()).unwrap_or(""))?
+            .content(content.as_deref().unwrap_or(""))?
             .embeds(&embeds)?;
 
         if let Err(err) = request.await {

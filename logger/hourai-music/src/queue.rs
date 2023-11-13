@@ -18,15 +18,16 @@ pub struct QueueItem<K, V> {
 /// highly suggested.
 #[derive(Clone)]
 pub struct MusicQueue<K, V>(VecDeque<(K, VecDeque<V>)>);
+impl<K, V> Default for MusicQueue<K, V> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
 
 impl<K, V> MusicQueue<K, V>
 where
     K: Copy + Eq,
 {
-    pub fn new() -> Self {
-        Self(VecDeque::new())
-    }
-
     pub fn push(&mut self, key: K, value: V) {
         if let Some(kv) = self.0.iter_mut().find(|kv| kv.0 == key) {
             kv.1.push_back(value);
@@ -118,7 +119,7 @@ where
         let (k, b) = self.index_iter().nth(idx)?;
         let bucket = self.0.get_mut(k).unwrap();
         let retval = bucket.1.remove(b).unwrap();
-        if bucket.1.len() == 0 {
+        if bucket.1.is_empty() {
             self.0.remove(k);
         }
         Some(retval)
@@ -142,10 +143,10 @@ where
     }
 
     pub fn contains_key(&mut self, key: K) -> bool {
-        self.0.iter().find(|kv| kv.0 == key).is_some()
+        self.0.iter().any(|kv| kv.0 == key)
     }
 
-    fn index_iter<'a>(&'a self) -> MusicQueueIndexer<'a, K, V> {
+    fn index_iter(&self) -> MusicQueueIndexer<'_, K, V> {
         MusicQueueIndexer {
             queue: self,
             key_idx: 0,
@@ -154,7 +155,7 @@ where
         }
     }
 
-    pub fn iter<'a>(&'a self) -> MusicQueueIterator<'a, K, V> {
+    pub fn iter(&self) -> MusicQueueIterator<'_, K, V> {
         MusicQueueIterator {
             indexer: self.index_iter(),
         }
@@ -169,7 +170,7 @@ where
             .iter()
             .find(|(k, _)| *k == key)
             .map(|(_, queue)| queue.iter().collect())
-            .unwrap_or_else(|| Vec::new())
+            .unwrap_or_else(Vec::new)
     }
 }
 
@@ -229,7 +230,7 @@ mod test {
 
     #[test]
     fn test_queue_push() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         queue.push(20, 20);
         assert_eq!(queue.len(), 1);
         assert_eq!(queue.count(20), Some(1));
@@ -238,7 +239,7 @@ mod test {
 
     #[test]
     fn test_queue_pop() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         queue.push(20, 20);
         let result = queue.pop();
         assert_eq!(result, Some(QueueItem { key: 20, value: 20 }));
@@ -249,7 +250,7 @@ mod test {
 
     #[test]
     fn test_queue_pop_empty() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         assert_eq!(queue.pop(), None);
         assert_eq!(queue.len(), 0);
         assert_eq!(queue.count(20), None);
@@ -262,7 +263,7 @@ mod test {
 
     #[test]
     fn test_queue_extend() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         queue.extend(20, vec![20, 40, 60]);
         assert_eq!(queue.len(), 3);
         assert_eq!(queue.count(20), Some(3));
@@ -283,7 +284,7 @@ mod test {
 
     #[test]
     fn test_queue_clear() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         queue.extend(20, vec![20, 40, 60]);
         queue.extend(40, vec![20, 40, 60]);
         queue.extend(60, vec![20, 40, 60]);
@@ -300,7 +301,7 @@ mod test {
 
     #[test]
     fn test_queue_get() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         queue.push(20, 20);
         queue.push(10, 10);
         queue.push(5, 30);
@@ -350,7 +351,7 @@ mod test {
 
     #[test]
     fn test_queue_remove() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         queue.push(20, 20);
         queue.push(10, 10);
         queue.push(5, 30);
@@ -366,7 +367,7 @@ mod test {
 
     #[test]
     fn test_queue_round_robin() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         queue.push(20, 20);
         queue.push(10, 10);
         queue.push(5, 30);
@@ -411,7 +412,7 @@ mod test {
 
     #[test]
     fn test_queue_iter() {
-        let mut queue: MusicQueue<u64, u64> = MusicQueue::new();
+        let mut queue: MusicQueue<u64, u64> = MusicQueue::default();
         queue.push(20, 20);
         queue.push(20, 40);
         queue.push(10, 10);

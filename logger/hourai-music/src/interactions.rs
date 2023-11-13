@@ -8,10 +8,11 @@ use hourai::{
             marker::{ChannelMarker, GuildMarker, RoleMarker},
             Id,
         },
-        Snowflake, UserLike,
+        Snowflake,
     },
     proto::{guild_configs::MusicConfig, message_components::MusicButtonOption},
 };
+use std::cmp::Ordering;
 use std::{collections::HashSet, convert::TryFrom};
 use twilight_lavalink::http::LoadType;
 
@@ -185,7 +186,7 @@ async fn require_dj(client: &Client, ctx: &impl InteractionContext) -> Result<()
     let _user_id = ctx.user().id;
     let (guild_id, _) = require_in_voice_channel(client, ctx).await?;
     let config = client.get_config(guild_id).await?;
-    if let Some(ref member) = ctx.member() {
+    if let Some(member) = ctx.member() {
         if is_dj(&config, &member.roles) {
             return Ok(());
         }
@@ -293,12 +294,12 @@ async fn play(client: &Client, ctx: &CommandContext) -> Result<Response> {
         ),
     };
 
-    if queue.len() > 0 {
+    if !queue.is_empty() {
         if let Some(mut state) = client.states.get_mut(&guild_id) {
             state.value_mut().queue.extend(user.id, queue);
         } else {
             client.connect(guild_id, channel_id).await?;
-            let mut state_queue = MusicQueue::new();
+            let mut state_queue = MusicQueue::default();
             state_queue.extend(user.id, queue);
             client.states.insert(
                 guild_id,
@@ -372,7 +373,7 @@ async fn skip(client: &Client, ctx: &impl InteractionContext) -> Result<Response
 
 async fn remove(client: &Client, ctx: &CommandContext) -> Result<Response> {
     if ctx.get_flag("all").unwrap_or(false) {
-        return remove_all(&client, ctx).await;
+        return remove_all(client, ctx).await;
     }
 
     let guild_id = require_playing(client, ctx)?;
@@ -380,18 +381,19 @@ async fn remove(client: &Client, ctx: &CommandContext) -> Result<Response> {
     let user = ctx.user();
     let idx = ctx.get_int("position")?;
 
-    if idx == 0 {
-        // Do not allow removing the currently playing song from the queue.
-        bail!(InteractionError::InvalidArgument(
-            "Cannot remove the currently playing song. Consider using `/skip`.".to_owned()
-        ));
-    } else if idx < 0 {
-        bail!(InteractionError::InvalidArgument(
+    let idx = match idx.cmp(&0) {
+        Ordering::Less => bail!(InteractionError::InvalidArgument(
             "Negative positions are not valid.".to_owned()
-        ));
-    }
+        )),
+        Ordering::Equal => {
+            // Do not allow removing the currently playing song from the queue.
+            bail!(InteractionError::InvalidArgument(
+                "Cannot remove the currently playing song. Consider using `/skip`.".to_owned()
+            ));
+        }
+        Ordering::Greater => idx as usize,
+    };
 
-    let idx = idx as usize;
     let config = client.get_config(guild_id).await?;
     let dj = is_dj(&config, &ctx.command.member.as_ref().unwrap().roles);
 
@@ -466,7 +468,7 @@ async fn volume(client: &Client, ctx: &CommandContext) -> Result<Response> {
     let volume = ctx.get_int("volume");
     let response = if let Ok(vol) = volume {
         require_dj(client, ctx).await?;
-        if vol < 0 || vol > 150 {
+        if !(0..=150).contains(&vol) {
             bail!(InteractionError::InvalidArgument(
                 "Volume must be between 0 and 150.".into()
             ));
@@ -485,7 +487,7 @@ async fn volume(client: &Client, ctx: &CommandContext) -> Result<Response> {
             get_player!(client, &guild_id).volume()
         )
     };
-    Ok(Response::direct().content(&response))
+    Ok(Response::direct().content(response))
 }
 
 async fn delta_volume(
@@ -507,7 +509,7 @@ async fn delta_volume(
     config.set_volume(volume as u32);
     client.set_config(guild_id, config).await?;
 
-    Ok(Response::direct().content(&format!("Set volume to `{}`.", volume)))
+    Ok(Response::direct().content(format!("Set volume to `{}`.", volume)))
 }
 
 async fn shift_queue_page(
