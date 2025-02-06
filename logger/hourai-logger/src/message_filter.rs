@@ -5,11 +5,11 @@ use hourai::{
     models::{id::Id, message::MessageLike, user::UserLike, Snowflake},
     util::mentions,
 };
-
 use hourai_sql::Member;
 use hourai_storage::actions::ActionExecutor;
 use regex::{Regex, RegexSet};
 use std::collections::HashSet;
+use url::Url;
 
 lazy_static! {
     static ref SLUR_REGEX: RegexSet = generalize_filters(SLURS);
@@ -196,8 +196,11 @@ async fn get_filter_reasons(
         .get_excluded_channels()
         .contains(&message.channel_id().get());
     let is_moderator = criteria.get_exclude_moderators() && moderator;
+    let is_in_allowlisted_channel = criteria.allowlisted_channels().len() > 0 criteria.
+        .allowlisted_channels()
+        .contains(&message.channel_id().get());
 
-    if is_bot || is_moderator || is_in_excluded_channel {
+    if is_bot || is_moderator || is_in_excluded_channel || is_in_allowlisted_channel {
         return Ok(reasons);
     }
 
@@ -270,12 +273,22 @@ fn get_embed_reason(
             .filter_map(|embed| embed.url.clone()),
     );
     urls.extend(message.attachments().iter().map(|embed| embed.url.clone()));
+
     if criteria.has_max_embed_count() && urls.len() > criteria.get_max_embed_count() as usize {
         reasons.push(format!(
             "Message has {} embeds or attachments. More than the server maximum of {}.",
             urls.len(),
             criteria.get_max_embed_count()
         ));
+    }
+
+    if criteria.embed_only() && urls.len() == 0 {
+        for word in message.content().split(' ') {
+            if Url::parse(word).is_err() {
+                reasons.push("Message doesn't have any embeds or attachments.".into());
+                break;
+            }
+        }
     }
 }
 

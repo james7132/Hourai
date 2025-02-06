@@ -94,6 +94,10 @@ message MessageFilterRule {
     // Channel IDs where the rule does not apply.
     repeated uint64 excluded_channels = 6;
 
+    // Channel IDs where the rule applies. If specified, this only applies to the
+    // target channel(s).
+    repeated uint64 allowlisted_channels = 9;
+
     // Triggers based on the number of mentions in a given message.
     optional MentionFilterCriteria mentions = 7;
 
@@ -123,6 +127,10 @@ message EmbedFilterCriteria {
   // The maximum number of unique embeds or attachments that can be included for
   // the criteria to be met.
   optional uint32 max_embed_count = 1;
+
+  // If enabled, only allows embeds and attachments to be posted. Normal
+  // conversation is filtered.
+  optional bool embed_only = 2;
 }
 
 // ------------------------------------------------------------------------------

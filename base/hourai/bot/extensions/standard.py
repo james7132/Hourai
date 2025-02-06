@@ -50,7 +50,7 @@ class Standard(cogs.BaseCog):
 
     @commands.command()
     async def echo(self, ctx, *, content: str):
-        await ctx.send(content)
+        await ctx.send("This command is deprecated and will be removed in the future.")
 
     @commands.command()
     async def roll(self, ctx, *dice: die):
