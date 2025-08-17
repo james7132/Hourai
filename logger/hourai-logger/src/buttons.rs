@@ -1,7 +1,7 @@
 use hourai::{
     interactions::proto_to_custom_id,
     models::{
-        channel::message::{ReactionType, Component, component::*},
+        channel::message::{component::*, Component, ReactionType},
         guild::Permissions,
         id::{marker::UserMarker, Id},
     },

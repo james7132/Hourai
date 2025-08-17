@@ -9,6 +9,7 @@ use hourai_sql::Member;
 use hourai_storage::actions::ActionExecutor;
 use regex::{Regex, RegexSet};
 use std::collections::HashSet;
+use chrono::{DateTime, TimeDelta, Utc};
 use url::Url;
 
 lazy_static! {
@@ -16,10 +17,14 @@ lazy_static! {
     static ref DISCORD_INVITE_REGEX: Regex = Regex::new("discord.gg/([a-zA-Z0-9]+)").unwrap();
 }
 
+const OLDEST_MESSAGE_CHECKED: TimeDelta = TimeDelta::weeks(2);
+
 const SLURS: &[&str] = &[
     "nigger", "nigga", "tarskin", "tranny", "trannie", "redskin", "faggot", "chink", "kike",
     "dyke", "gook", "wigger",
 ];
+
+const VALID_EMBED_SCHEMES: &[&str] = &["http", "https"];
 
 pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike) -> Result<bool> {
     let guild_id = if let Some(guild_id) = message.guild_id() {
@@ -196,11 +201,12 @@ async fn get_filter_reasons(
         .get_excluded_channels()
         .contains(&message.channel_id().get());
     let is_moderator = criteria.get_exclude_moderators() && moderator;
-    let is_in_allowlisted_channel = criteria.allowlisted_channels().len() > 0 criteria.
-        .allowlisted_channels()
-        .contains(&message.channel_id().get());
+    let is_not_in_allowlisted_channel = !criteria.get_allowlisted_channels().is_empty()
+        && !criteria
+            .get_allowlisted_channels()
+            .contains(&message.channel_id().get());
 
-    if is_bot || is_moderator || is_in_excluded_channel || is_in_allowlisted_channel {
+    if is_bot || is_moderator || is_in_excluded_channel || is_not_in_allowlisted_channel {
         return Ok(reasons);
     }
 
@@ -265,6 +271,11 @@ fn get_embed_reason(
     criteria: &EmbedFilterCriteria,
     reasons: &mut Vec<String>,
 ) {
+    // Avoid filtering on edited messages older than a certain time period.
+    if Utc::now() - message.created_at() > OLDEST_MESSAGE_CHECKED {
+        return;
+    }
+
     let mut urls = HashSet::new();
     urls.extend(
         message
@@ -274,22 +285,32 @@ fn get_embed_reason(
     );
     urls.extend(message.attachments().iter().map(|embed| embed.url.clone()));
 
-    if criteria.has_max_embed_count() && urls.len() > criteria.get_max_embed_count() as usize {
+    let stickers = message.sticker_items();
+    let url_count = urls.len() + stickers.len();
+
+    if criteria.has_max_embed_count() && url_count > criteria.get_max_embed_count() as usize {
         reasons.push(format!(
             "Message has {} embeds or attachments. More than the server maximum of {}.",
-            urls.len(),
+            url_count,
             criteria.get_max_embed_count()
         ));
     }
 
-    if criteria.embed_only() && urls.len() == 0 {
-        for word in message.content().split(' ') {
-            if Url::parse(word).is_err() {
-                reasons.push("Message doesn't have any embeds or attachments.".into());
-                break;
-            }
+    if criteria.get_embed_only() {
+        if message.content().is_empty()
+            && (message.attachments().iter().next().is_some() || !stickers.is_empty())
+        {
+            return;
+        }
+        if !message.content().split(' ').all(is_valid_url) {
+            reasons.push("Message doesn't have any embeds or attachments.".into());
         }
     }
+}
+
+fn is_valid_url(value: &str) -> bool {
+    let Ok(url) = Url::parse(value) else { return false };
+    VALID_EMBED_SCHEMES.contains(&url.scheme()) && url.has_host() && url.domain().is_some()
 }
 
 fn check_limits(

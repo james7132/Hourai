@@ -7,7 +7,7 @@ pub use components::*;
 use crate::{
     http,
     models::{
-        channel::message::{embed::Embed, MessageFlags, component::Component},
+        channel::message::{component::Component, embed::Embed, MessageFlags},
         guild::{PartialMember, Permissions},
         http::interaction::*,
         id::{

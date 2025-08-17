@@ -269,17 +269,12 @@ impl Client {
                     .await?;
             }
             InteractionType::ApplicationCommand => {
-                let ctx = hourai::interactions::CommandContext::new(
-                    self.http_client.clone(),
-                    evt
-                );
+                let ctx = hourai::interactions::CommandContext::new(self.http_client.clone(), evt);
                 interactions::handle_command(self, ctx).await?;
             }
             InteractionType::MessageComponent => {
-                let ctx = hourai::interactions::ComponentContext::new(
-                    self.http_client.clone(),
-                    evt,
-                );
+                let ctx =
+                    hourai::interactions::ComponentContext::new(self.http_client.clone(), evt);
                 interactions::handle_component(self, ctx).await?;
             }
             interaction => {

@@ -1,8 +1,8 @@
 use super::user::UserLike;
 use super::Snowflake;
 use crate::proto::cache::{CachedMessageProto, CachedUserProto};
+use twilight_model::channel::message::{embed::Embed, sticker::MessageSticker, Message};
 use twilight_model::channel::Attachment;
-use twilight_model::channel::message::{embed::Embed, Message};
 use twilight_model::gateway::payload::incoming::MessageUpdate;
 use twilight_model::id::{marker::*, Id};
 use twilight_model::user::User;
@@ -16,6 +16,7 @@ pub trait MessageLike: Snowflake<Id<MessageMarker>> {
     fn content(&self) -> &str;
     fn embeds(&self) -> &[Embed];
     fn attachments(&self) -> &[Attachment];
+    fn sticker_items(&self) -> Vec<MessageSticker>;
 
     /// Gets the link to the message
     fn message_link(&self) -> String {
@@ -77,6 +78,10 @@ impl MessageLike for Message {
     fn attachments(&self) -> &[Attachment] {
         &self.attachments
     }
+
+    fn sticker_items(&self) -> Vec<MessageSticker> {
+        self.sticker_items.clone()
+    }
 }
 
 impl MessageLike for MessageUpdate {
@@ -104,6 +109,10 @@ impl MessageLike for MessageUpdate {
 
     fn attachments(&self) -> &[Attachment] {
         self.attachments.as_deref().unwrap()
+    }
+
+    fn sticker_items(&self) -> Vec<MessageSticker> {
+        Vec::new()
     }
 }
 
@@ -137,5 +146,9 @@ impl MessageLike for CachedMessageProto {
 
     fn attachments(&self) -> &[Attachment] {
         &[]
+    }
+
+    fn sticker_items(&self) -> Vec<MessageSticker> {
+        Vec::new()
     }
 }

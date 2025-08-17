@@ -544,10 +544,13 @@ impl Client {
     }
 
     async fn on_message_update(self, evt: MessageUpdate) -> Result<()> {
-        // TODO(james7132): Figure this out
-        //if message_filter::check_message(&self.0.actions, &evt).await? {
-        //return Ok(());
-        //}
+        let me = self.clone();
+        let event = evt.clone();
+        tokio::spawn(async move {
+            message_filter::check_message(&me.0.actions, &event)
+                .await
+                .unwrap();
+        });
         let mut messages = self.storage().redis().messages();
         let cached = messages.fetch(evt.channel_id, evt.id).await?;
         if let Some(mut msg) = cached {
@@ -582,10 +585,7 @@ impl Client {
                     .await?;
             }
             InteractionType::ApplicationCommand => {
-                let ctx = hourai::interactions::CommandContext::new(
-                    self.http().clone(),
-                    evt,
-                );
+                let ctx = hourai::interactions::CommandContext::new(self.http().clone(), evt);
                 commands::handle_command(ctx, &self.0.actions).await?;
             }
             interaction => {

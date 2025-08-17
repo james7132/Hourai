@@ -314,14 +314,10 @@ impl ActionExecutor {
         match message_ids.len() {
             0 => return Ok(()),
             1 => {
-                self.http
-                    .delete_message(channel_id, message_ids[0])
-                    .await?;
+                self.http.delete_message(channel_id, message_ids[0]).await?;
             }
             _ => {
-                self.http
-                    .delete_messages(channel_id, &message_ids)
-                    .await?;
+                self.http.delete_messages(channel_id, &message_ids).await?;
             }
         }
         Ok(())

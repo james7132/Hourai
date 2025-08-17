@@ -3,7 +3,7 @@ use anyhow::Result;
 use hourai::{
     interactions::{CommandContext, InteractionContext, Response},
     models::{
-        channel::message::{embed::Embed, component::*},
+        channel::message::{component::*, embed::Embed},
         id::{marker::*, Id},
         UserLike,
     },

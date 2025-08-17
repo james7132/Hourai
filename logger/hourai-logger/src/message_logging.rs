@@ -70,7 +70,7 @@ pub(super) async fn on_message_update(
     before: impl MessageLike,
     after: impl MessageLike,
 ) -> Result<()> {
-    if before.author().bot() {
+    if before.author().bot() || before.content() == after.content() {
         return Ok(());
     }
     let guild_id = before.guild_id().ok_or_else(|| anyhow!("Not in guild."))?;

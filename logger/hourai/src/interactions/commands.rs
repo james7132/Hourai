@@ -3,10 +3,10 @@ use crate::{
     interactions::{InteractionContext, InteractionError, InteractionResult},
     models::{
         application::interaction::{
-            Interaction, InteractionData,
             application_command::{
                 CommandData, CommandDataOption, CommandOptionValue, InteractionMember,
             },
+            Interaction, InteractionData,
         },
         guild::{PartialMember, Permissions},
         id::{
@@ -19,8 +19,8 @@ use crate::{
         user::User,
     },
 };
-use std::sync::Arc;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum Command<'a> {
@@ -38,7 +38,10 @@ pub struct CommandContext {
 
 impl CommandContext {
     pub fn new(client: Arc<Client>, interaction: Interaction) -> Self {
-        assert!(matches!(interaction.data, Some(InteractionData::ApplicationCommand(_))));
+        assert!(matches!(
+            interaction.data,
+            Some(InteractionData::ApplicationCommand(_))
+        ));
         Self {
             http: client,
             command: interaction,
@@ -48,7 +51,7 @@ impl CommandContext {
 
     fn data(&self) -> &CommandData {
         match &self.command.data {
-            Some(InteractionData::ApplicationCommand(data) ) => &data,
+            Some(InteractionData::ApplicationCommand(data)) => &data,
             _ => panic!("Provided interaction data is not an application command"),
         }
     }
@@ -178,10 +181,7 @@ impl CommandContext {
     }
 
     pub fn resolve_user(&self, id: Id<UserMarker>) -> Option<&User> {
-        self.data()
-            .resolved
-            .as_ref()
-            .and_then(|r| r.users.get(&id))
+        self.data().resolved.as_ref().and_then(|r| r.users.get(&id))
     }
 
     pub fn resolve_member(&self, id: Id<UserMarker>) -> Option<&InteractionMember> {

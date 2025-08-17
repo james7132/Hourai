@@ -5,13 +5,13 @@ use hourai::{
     http::request::AuditLogReason,
     models::{
         channel::message::Message,
-        util::Timestamp,
         guild::Permissions,
         id::{
             marker::{ChannelMarker, MessageMarker},
             Id,
         },
         user::User,
+        util::Timestamp,
     },
     proto::action::{Action, BanMember_Type, StatusType},
 };

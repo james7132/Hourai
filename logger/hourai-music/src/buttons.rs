@@ -1,8 +1,6 @@
 use hourai::{
     interactions::proto_to_custom_id,
-    models::{
-        channel::message::{component::*, *},
-    },
+    models::channel::message::{component::*, *},
     proto::message_components::*,
 };
 

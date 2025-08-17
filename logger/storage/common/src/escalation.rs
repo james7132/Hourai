@@ -332,10 +332,7 @@ impl EscalationHistory {
             escalation.entry.display_name,
             escalation.expiration()
         );
-        self.http()
-            .create_message(modlog_id)
-            .content(&msg)?
-            .await?;
+        self.http().create_message(modlog_id).content(&msg)?.await?;
 
         Ok(())
     }

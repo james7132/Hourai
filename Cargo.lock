@@ -912,10 +912,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4567c8db10ae91089c99af84c68c38da3ec2f087c3f82960bcdbf3656b6f4d7"
 dependencies = [
  "cfg-if",
- "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -962,16 +960,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e2a3c70a9c00cc1ee87b54e89f9505f73bb17d63f1b25c9a462ba8ef885444f"
 dependencies = [
  "hashbrown 0.13.2",
- "serde",
-]
-
-[[package]]
-name = "halfbrown"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8588661a8607108a5ca69cab034063441a0413a0b041c13618a7dd348021ef6f"
-dependencies = [
- "hashbrown 0.14.5",
  "serde",
 ]
 
@@ -1080,7 +1068,7 @@ dependencies = [
  "protobuf-codegen-pure",
  "regex",
  "serde",
- "simd-json 0.5.1",
+ "simd-json",
  "static_assertions",
  "thiserror 1.0.69",
  "tracing",
@@ -1103,7 +1091,7 @@ dependencies = [
  "http 0.2.12",
  "reqwest",
  "serde",
- "simd-json 0.5.1",
+ "simd-json",
  "sqlx",
  "tokio",
  "tracing",
@@ -1612,70 +1600,6 @@ name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
-
-[[package]]
-name = "lexical-core"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cde5de06e8d4c2faabc400238f9ae1c74d5412d03a7bd067645ccbc47070e46"
-dependencies = [
- "lexical-parse-float",
- "lexical-parse-integer",
- "lexical-util",
- "lexical-write-float",
- "lexical-write-integer",
-]
-
-[[package]]
-name = "lexical-parse-float"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "683b3a5ebd0130b8fb52ba0bdc718cc56815b6a097e28ae5a6997d0ad17dc05f"
-dependencies = [
- "lexical-parse-integer",
- "lexical-util",
- "static_assertions",
-]
-
-[[package]]
-name = "lexical-parse-integer"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d0994485ed0c312f6d965766754ea177d07f9c00c9b82a5ee62ed5b47945ee9"
-dependencies = [
- "lexical-util",
- "static_assertions",
-]
-
-[[package]]
-name = "lexical-util"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5255b9ff16ff898710eb9eb63cb39248ea8a5bb036bea8085b1a767ff6c4e3fc"
-dependencies = [
- "static_assertions",
-]
-
-[[package]]
-name = "lexical-write-float"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "accabaa1c4581f05a3923d1b4cfd124c329352288b7b9da09e766b0668116862"
-dependencies = [
- "lexical-util",
- "lexical-write-integer",
- "static_assertions",
-]
-
-[[package]]
-name = "lexical-write-integer"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1b6f3d1f4422866b68192d62f77bc5c700bee84f3069f2469d7bc8c77852446"
-dependencies = [
- "lexical-util",
- "static_assertions",
-]
 
 [[package]]
 name = "leaky-bucket-lite"
@@ -2670,26 +2594,11 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d67c573ee0994adb422b5f9ea7c55693ee943c39f4eb20aa76475a5b7039bb87"
 dependencies = [
- "halfbrown 0.1.18",
+ "halfbrown",
  "serde",
  "serde_json",
  "simdutf8",
- "value-trait 0.2.12",
-]
-
-[[package]]
-name = "simd-json"
-version = "0.10.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80ea1dfc2c400965867fc4ddd6f502572be2de2074b39f90984ed15fbdbdd8eb"
-dependencies = [
- "getrandom 0.2.15",
- "halfbrown 0.2.5",
- "lexical-core",
- "serde",
- "serde_json",
- "simdutf8",
- "value-trait 0.6.1",
+ "value-trait",
 ]
 
 [[package]]
@@ -3252,9 +3161,9 @@ dependencies = [
  "httparse",
  "log",
  "rand",
- "rustls",
+ "rustls 0.20.9",
  "sha-1",
- "thiserror",
+ "thiserror 1.0.69",
  "url",
  "utf-8",
  "webpki",
@@ -3269,26 +3178,28 @@ dependencies = [
  "bitflags 1.3.2",
  "flate2",
  "futures-util",
- "rand",
+ "leaky-bucket-lite",
+ "metrics",
  "rustls 0.20.9",
  "rustls-native-certs",
  "serde",
  "serde_json",
- "simd-json 0.10.7",
+ "simd-json",
  "tokio",
  "tokio-tungstenite",
  "tracing",
  "twilight-gateway-queue",
  "twilight-http",
  "twilight-model",
+ "url",
  "webpki-roots 0.22.6",
 ]
 
 [[package]]
 name = "twilight-gateway-queue"
-version = "0.15.4"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3073747da8e1d09bc5383eed750451c9534021c8206a20092405b9855b3cb35a"
+checksum = "140ae587135d22927b001afbac23c4d312cbdd533051cee95fbf8495eda30b4c"
 dependencies = [
  "tokio",
  "tracing",
@@ -3296,9 +3207,9 @@ dependencies = [
 
 [[package]]
 name = "twilight-http"
-version = "0.15.4"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c78b55d912a58814dbfc4dc3cfb9496c7e83eb6ec738b1cc4c359ba0d2ff2dd8"
+checksum = "5fc3b976b9b759eb27a2ed3a7cc1464ce70085a4482f9d0e73b7aa5c2bf07479"
 dependencies = [
  "brotli 3.5.0",
  "hyper",
@@ -3307,7 +3218,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
- "simd-json 0.10.7",
+ "simd-json",
  "tokio",
  "tracing",
  "twilight-http-ratelimiting",
@@ -3317,9 +3228,9 @@ dependencies = [
 
 [[package]]
 name = "twilight-http-ratelimiting"
-version = "0.15.3"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa4a03343ff60a8d5b5b722ce4b0b7e266ace6cc3e9143544a840d3cc127f02b"
+checksum = "11aa98cc9392b252b32345d89dfac410b013059fe295a6fd2bbac72e0d6b9f38"
 dependencies = [
  "futures-util",
  "http 0.2.12",
@@ -3329,9 +3240,9 @@ dependencies = [
 
 [[package]]
 name = "twilight-lavalink"
-version = "0.15.3"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7092346a09be7f023029d5ccebb4860f9cc4b13aeac2ad6a2289380c04d2282"
+checksum = "fe1b375b17f51f19ecb5e6b60032dc29e1dae6d386825ef99e68b0ae6097658b"
 dependencies = [
  "dashmap",
  "futures-util",
@@ -3347,22 +3258,23 @@ dependencies = [
 
 [[package]]
 name = "twilight-model"
-version = "0.15.4"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "276bd50f4817b3b421395afac89f5d7b61fdfd0f00a28b2a7db983e4878b4a1a"
+checksum = "4e19f4534f7655b8a308ac30e6e4b7a9ae521681c4702e1ee1d2c1d165124ca2"
 dependencies = [
  "bitflags 1.3.2",
  "serde",
  "serde-value",
  "serde_repr",
  "time",
+ "tracing",
 ]
 
 [[package]]
 name = "twilight-util"
-version = "0.15.4"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe3149347d8222e042a55deba80cd32f93f14770bbb845b8e4cfbd70a5062c56"
+checksum = "3eb1bb1bf2b92e01a66575bd715daf4431da48136d711deb0350d4dd60b9775d"
 dependencies = [
  "twilight-model",
  "twilight-validate",
@@ -3370,9 +3282,9 @@ dependencies = [
 
 [[package]]
 name = "twilight-validate"
-version = "0.15.3"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3595d5ad595d8d3a97096a01899b53d3a8117ab16deda27526b315a1db815da4"
+checksum = "d2e7889d81cb059ca6fdfba45876d7ea3707ea604e23533a0592f7909faffcd2"
 dependencies = [
  "twilight-model",
 ]
@@ -3485,20 +3397,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fe40a74a6f052b10668ef021c8c3ae56ab38269f9c0f401daa6ed36f96662fd"
 dependencies = [
  "float-cmp",
- "halfbrown 0.1.18",
+ "halfbrown",
  "itoa 0.4.8",
- "ryu",
-]
-
-[[package]]
-name = "value-trait"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09a5b6c8ceb01263b969cac48d4a6705134d490ded13d889e52c0cfc80c6945e"
-dependencies = [
- "float-cmp",
- "halfbrown 0.2.5",
- "itoa 1.0.14",
  "ryu",
 ]
 
