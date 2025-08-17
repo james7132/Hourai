@@ -1,8 +1,11 @@
 use super::prelude::*;
-use hourai::models::id::{Id, marker::UserMarker};
-use hourai_sql::{EscalationEntry, sql_types::chrono::{DateTime, Utc}};
+use hourai::models::id::{marker::UserMarker, Id};
+use hourai_sql::{
+    sql_types::chrono::{DateTime, Utc},
+    EscalationEntry,
+};
 use hourai_storage::escalation::EscalationManager;
-use tabled::{Table, Tabled, settings::Style};
+use tabled::{settings::Style, Table, Tabled};
 
 pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
     ctx.defer().await?;
@@ -126,10 +129,7 @@ pub(super) async fn escalate_history(
     ctx: &CommandContext,
     actions: &ActionExecutor,
 ) -> Result<Response> {
-    async fn username_from_api(
-        user_id: Id<UserMarker>,
-        ctx: &CommandContext,
-    ) -> Result<String> {
+    async fn username_from_api(user_id: Id<UserMarker>, ctx: &CommandContext) -> Result<String> {
         let authorizer = ctx
             .http()
             .guild_member(ctx.guild_id()?, user_id)
@@ -143,6 +143,8 @@ pub(super) async fn escalate_history(
         ))
     }
 
+    ctx.defer().await?;
+
     let manager = EscalationManager::new(actions.clone());
     let guild = manager.guild(ctx.guild_id()?).await?;
     let user = ctx.get_user("user")?;
@@ -155,7 +157,7 @@ pub(super) async fn escalate_history(
     } else {
         #[derive(Debug, Tabled)]
         pub struct Row {
-            date: DateTime<Utc>,
+            date: String,
             action: String,
             authorizer: String,
             level: i32,
@@ -178,7 +180,7 @@ pub(super) async fn escalate_history(
             let reason = reason.join("; ");
 
             data.push(Row {
-                date: entry.timestamp,
+                date: entry.timestamp.format("%b %d %Y %H:%M").to_string(),
                 action: entry.display_name.clone(),
                 authorizer: authorizer_name,
                 level,
@@ -191,7 +193,12 @@ pub(super) async fn escalate_history(
         format!("```\n{}\n```", table)
     };
 
-    let username = username_from_api(user, ctx).await.unwrap_or_else(|_| user.to_string());
-    let response = format!("**Escalation History for {}**\n{}", username, history_response);
+    let username = username_from_api(user, ctx)
+        .await
+        .unwrap_or_else(|_| user.to_string());
+    let response = format!(
+        "**Escalation History for {}**\n{}",
+        username, history_response
+    );
     Ok(Response::direct().content(response))
 }
