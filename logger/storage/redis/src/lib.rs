@@ -95,7 +95,7 @@ impl OnlineStatus {
             .sadd(key.clone(), ids)
             .ignore()
             .expire(key.clone(), 3600)
-            .query_async(self.0.connection_mut())
+            .query_async::<_, ()>(self.0.connection_mut())
             .await?;
         Ok(())
     }
@@ -147,7 +147,7 @@ impl GuildConfig {
         self.0
             .redis
             .connection_mut()
-            .hset(key, vec![T::SUBKEY], Compressed(Protobuf(value)))
+            .hset::<_, _, _, ()>(key, vec![T::SUBKEY], Compressed(Protobuf(value)))
             .await?;
         Ok(())
     }
@@ -177,7 +177,7 @@ impl MessageCache {
         // Keep 1 day's worth of messages cached.
         self.0
             .connection_mut()
-            .set_ex(key, Protobuf(msg), 86400)
+            .set_ex::<_, _, ()>(key, Protobuf(msg), 86400)
             .await?;
 
         Ok(())
@@ -215,7 +215,7 @@ impl MessageCache {
             .into_iter()
             .map(|id| CacheKey::Messages(channel_id, id))
             .collect();
-        self.0.connection_mut().del(keys).await?;
+        self.0.connection_mut().del::<_, ()>(keys).await?;
         Ok(())
     }
 }
@@ -230,7 +230,8 @@ impl VoiceStateCache {
         for state in guild.voice_states.iter() {
             pipe.add_command(self.save_cmd(state)).ignore();
         }
-        pipe.query_async(self.0.redis.connection_mut()).await?;
+        pipe.query_async::<_, ()>(self.0.redis.connection_mut())
+            .await?;
         Ok(())
     }
 
@@ -264,7 +265,7 @@ impl VoiceStateCache {
 
     pub async fn save(&mut self, state: &VoiceState) -> Result<()> {
         self.save_cmd(state)
-            .query_async(self.0.redis.connection_mut())
+            .query_async::<_, ()>(self.0.redis.connection_mut())
             .await?;
         Ok(())
     }
@@ -273,7 +274,7 @@ impl VoiceStateCache {
         self.0
             .redis
             .connection_mut()
-            .del(CacheKey::VoiceState(self.0.guild_id))
+            .del::<_, ()>(CacheKey::VoiceState(self.0.guild_id))
             .await?;
         Ok(())
     }
@@ -322,7 +323,8 @@ impl GuildCache {
             pipe.add_command(self.save_resource_cmd(role.id, role))
                 .ignore();
         }
-        pipe.query_async(self.redis.connection_mut()).await?;
+        pipe.query_async::<_, ()>(self.redis.connection_mut())
+            .await?;
         Ok(())
     }
 
@@ -330,7 +332,7 @@ impl GuildCache {
     pub async fn delete(&mut self) -> Result<()> {
         self.redis
             .connection_mut()
-            .del(CacheKey::Guild(self.guild_id))
+            .del::<_, ()>(CacheKey::Guild(self.guild_id))
             .await?;
         Ok(())
     }
@@ -425,7 +427,7 @@ impl GuildCache {
         let proto = Protobuf(data.to_proto());
         self.redis
             .connection_mut()
-            .hset(guild_key, resource_key, proto)
+            .hset::<_, _, _, ()>(guild_key, resource_key, proto)
             .await?;
         Ok(())
     }
@@ -456,7 +458,7 @@ impl GuildCache {
         let resource_key = GuildKey::from(resource_id);
         self.redis
             .connection_mut()
-            .hdel(guild_key, resource_key)
+            .hdel::<_, _, ()>(guild_key, resource_key)
             .await?;
         Ok(())
     }
@@ -684,7 +686,7 @@ impl ResumeStates {
             .collect();
         self.0
             .connection_mut()
-            .hset_multiple(CacheKey::ResumeState(key.into()), &sessions)
+            .hset_multiple::<_, _, _, ()>(CacheKey::ResumeState(key.into()), &sessions)
             .await?;
         Ok(())
     }
@@ -713,7 +715,7 @@ impl MusicQueues {
         self.0
             .redis
             .connection_mut()
-            .set(CacheKey::MusicQueue(self.0.guild_id), Protobuf(state))
+            .set::<_, _, ()>(CacheKey::MusicQueue(self.0.guild_id), Protobuf(state))
             .await?;
         Ok(())
     }
@@ -742,7 +744,7 @@ impl MusicQueues {
         self.0
             .redis
             .connection_mut()
-            .del(CacheKey::MusicQueue(self.0.guild_id))
+            .del::<_, ()>(CacheKey::MusicQueue(self.0.guild_id))
             .await?;
         Ok(())
     }

@@ -1,3 +1,4 @@
+use protobuf::Message;
 use sqlx::{
     database::{HasArguments, HasValueRef},
     encode::IsNull,
@@ -5,19 +6,20 @@ use sqlx::{
     Database, Decode, Encode,
 };
 use std::error::Error;
+use std::ops::{Deref, DerefMut};
 
 /// Wrapper for writing and storing Protocol Buffers to a SQL table column.
 #[derive(Clone, Debug)]
-pub struct Protobuf<T: protobuf::Message>(pub T);
+pub struct Protobuf<T: Message>(pub T);
 
-impl<T: protobuf::Message> Type<crate::SqlDatabase> for Protobuf<T> {
+impl<T: Message> Type<crate::SqlDatabase> for Protobuf<T> {
     fn type_info() -> <crate::SqlDatabase as Database>::TypeInfo {
         <[u8] as Type<crate::SqlDatabase>>::type_info()
     }
 }
 
 // Allow Protobuf to be used in query arguments.
-impl<'q, T: protobuf::Message> Encode<'q, crate::SqlDatabase> for Protobuf<T> {
+impl<'q, T: Message> Encode<'q, crate::SqlDatabase> for Protobuf<T> {
     fn encode_by_ref(
         &self,
         buf: &mut <crate::SqlDatabase as HasArguments<'q>>::ArgumentBuffer,
@@ -30,7 +32,7 @@ impl<'q, T: protobuf::Message> Encode<'q, crate::SqlDatabase> for Protobuf<T> {
 }
 
 // Allow Protobuf to be used in FromRow definitions.
-impl<'r, T: protobuf::Message> Decode<'r, crate::SqlDatabase> for Protobuf<T>
+impl<'r, T: Message> Decode<'r, crate::SqlDatabase> for Protobuf<T>
 where
     &'r str: Decode<'r, crate::SqlDatabase>,
 {
@@ -43,8 +45,22 @@ where
     }
 }
 
-impl<T: protobuf::Message> From<T> for Protobuf<T> {
+impl<T: Message> From<T> for Protobuf<T> {
     fn from(value: T) -> Self {
         Self(value)
+    }
+}
+
+impl<T: Message> Deref for Protobuf<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T: Message> DerefMut for Protobuf<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }

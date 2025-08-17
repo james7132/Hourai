@@ -1,5 +1,8 @@
 use super::prelude::*;
+use hourai::models::id::{Id, marker::UserMarker};
+use hourai_sql::{EscalationEntry, sql_types::chrono::{DateTime, Utc}};
 use hourai_storage::escalation::EscalationManager;
+use tabled::{Table, Tabled, settings::Style};
 
 pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
     ctx.defer().await?;
@@ -120,8 +123,75 @@ pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -
 }
 
 pub(super) async fn escalate_history(
-    _ctx: &CommandContext,
-    _actions: &ActionExecutor,
+    ctx: &CommandContext,
+    actions: &ActionExecutor,
 ) -> Result<Response> {
-    anyhow::bail!("This command is unfortunately not implemented yet.");
+    async fn username_from_api(
+        user_id: Id<UserMarker>,
+        ctx: &CommandContext,
+    ) -> Result<String> {
+        let authorizer = ctx
+            .http()
+            .guild_member(ctx.guild_id()?, user_id)
+            .exec()
+            .await?
+            .model()
+            .await?;
+        Ok(format!(
+            "{}#{}",
+            authorizer.user.name, authorizer.user.discriminator
+        ))
+    }
+
+    let manager = EscalationManager::new(actions.clone());
+    let guild = manager.guild(ctx.guild_id()?).await?;
+    let user = ctx.get_user("user")?;
+    let history = guild.fetch_history(user).await?;
+
+    let mut level = 0;
+
+    let history_response = if history.entries().is_empty() {
+        "```\nNo history of escalation events.\n```".to_string()
+    } else {
+        #[derive(Debug, Tabled)]
+        pub struct Row {
+            date: DateTime<Utc>,
+            action: String,
+            authorizer: String,
+            level: i32,
+            reason: String,
+        }
+
+        let mut data = Vec::with_capacity(history.entries().len());
+        for entry in history.entries() {
+            level = (level + entry.level_delta).max(-1);
+            let mut authorizer_name = username_from_api(Id::new(entry.authorizer_id as u64), ctx)
+                .await
+                .unwrap_or_else(|_| entry.authorizer_name.clone());
+
+            let reason = entry
+                .action
+                .action
+                .iter()
+                .map(|action| action.get_reason().to_string())
+                .collect::<Vec<_>>();
+            let reason = reason.join("; ");
+
+            data.push(Row {
+                date: entry.timestamp,
+                action: entry.display_name.clone(),
+                authorizer: authorizer_name,
+                level,
+                reason,
+            });
+        }
+
+        let mut table = Table::new(data);
+        table.with(Style::markdown());
+        format!("```\n{}\n```", table)
+    };
+
+    let username = username_from_api(user, ctx).await.unwrap_or_else(|_| user.to_string());
+    let response = format!("**Escalation History for {}**\n{}", username, history_response);
+    Ok(Response::direct().content(response))
 }

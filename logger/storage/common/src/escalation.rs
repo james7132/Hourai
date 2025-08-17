@@ -181,8 +181,8 @@ impl EscalationHistory {
 
     /// Iterates through all of the current entries for the user
     #[inline(always)]
-    pub fn entries(&self) -> impl Iterator<Item = &EscalationEntry> {
-        self.entries.iter()
+    pub fn entries(&self) -> &[EscalationEntry] {
+        self.entries.as_ref()
     }
 
     #[inline(always)]

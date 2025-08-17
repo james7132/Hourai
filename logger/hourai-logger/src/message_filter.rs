@@ -1,5 +1,6 @@
 use crate::message_logging;
 use anyhow::Result;
+use chrono::{DateTime, TimeDelta, Utc};
 use hourai::proto::guild_configs::*;
 use hourai::{
     models::{id::Id, message::MessageLike, user::UserLike, Snowflake},
@@ -9,7 +10,6 @@ use hourai_sql::Member;
 use hourai_storage::actions::ActionExecutor;
 use regex::{Regex, RegexSet};
 use std::collections::HashSet;
-use chrono::{DateTime, TimeDelta, Utc};
 use url::Url;
 
 lazy_static! {
@@ -309,7 +309,9 @@ fn get_embed_reason(
 }
 
 fn is_valid_url(value: &str) -> bool {
-    let Ok(url) = Url::parse(value) else { return false };
+    let Ok(url) = Url::parse(value) else {
+        return false;
+    };
     VALID_EMBED_SCHEMES.contains(&url.scheme()) && url.has_host() && url.domain().is_some()
 }
 

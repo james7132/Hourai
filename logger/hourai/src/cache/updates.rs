@@ -15,7 +15,7 @@ impl UpdateCache for Event {
 
         match self {
             GuildCreate(v) => c.update(v.deref()),
-            GuildDelete(v) => c.update(v.deref()),
+            GuildDelete(v) => c.update(v),
             MemberAdd(v) => c.update(v.deref()),
             MemberRemove(v) => c.update(v),
             MemberUpdate(v) => c.update(v.deref()),
