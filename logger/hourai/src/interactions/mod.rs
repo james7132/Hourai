@@ -7,8 +7,7 @@ pub use components::*;
 use crate::{
     http,
     models::{
-        application::component::Component,
-        channel::{embed::Embed, message::MessageFlags},
+        channel::message::{embed::Embed, MessageFlags, component::Component},
         guild::{PartialMember, Permissions},
         http::interaction::*,
         id::{
@@ -144,7 +143,6 @@ pub trait InteractionContext {
         self.http()
             .interaction(self.application_id())
             .create_response(self.id(), self.token(), &response)
-            .exec()
             .await?;
         Ok(())
     }
@@ -160,7 +158,6 @@ pub trait InteractionContext {
             .content(data.content.as_deref())?
             .embeds(data.embeds.as_deref())?
             .components(data.components.as_deref())?
-            .exec()
             .await?;
         Ok(())
     }

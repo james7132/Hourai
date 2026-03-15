@@ -6,7 +6,7 @@ use self::models::*;
 use crate::{models::*, Client};
 use anyhow::Result;
 use futures::lock::Mutex;
-use hourai::models::channel::embed::Embed;
+use hourai::models::channel::message::embed::Embed;
 use hourai_sql::sql_types::chrono::{DateTime, NaiveDateTime, Utc};
 use http::status::StatusCode;
 use models::SubmissionListing;

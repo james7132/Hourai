@@ -98,7 +98,7 @@ pub fn broadcast(client: &Client, config: &AnnouncementTypeConfig, message: Stri
         channel: Id<ChannelMarker>,
         msg: String,
     ) -> Result<()> {
-        http.create_message(channel).content(&msg)?.exec().await?;
+        http.create_message(channel).content(&msg)?.await?;
         Ok(())
     }
 

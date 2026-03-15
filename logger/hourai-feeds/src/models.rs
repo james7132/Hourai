@@ -1,7 +1,7 @@
 use anyhow::Result;
 use hourai::http::error::ErrorType as HttpErrorType;
 use hourai::models::{
-    channel::embed::Embed,
+    channel::message::embed::Embed,
     id::{marker::ChannelMarker, Id},
 };
 use hourai_sql::{
@@ -45,7 +45,7 @@ impl Post {
             .content(content.as_ref().map(|s| s.as_str()).unwrap_or(""))?
             .embeds(&embeds)?;
 
-        if let Err(err) = request.exec().await {
+        if let Err(err) = request.await {
             if let HttpErrorType::Response { status, .. } = err.kind() {
                 if status.get() == 404 {
                     client

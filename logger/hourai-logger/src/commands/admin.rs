@@ -169,7 +169,7 @@ pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<R
             .unwrap()
             .reason(&reason)
             .unwrap();
-        if let Err(err) = request.exec().await {
+        if let Err(err) = request.await {
             tracing::error!("Error while running /timeout on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
         }
@@ -213,7 +213,7 @@ pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Resp
             .remove_guild_member(guild_id, *member_id)
             .reason(&reason)
             .unwrap();
-        if let Err(err) = request.exec().await {
+        if let Err(err) = request.await {
             tracing::error!("Error while running /kick on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
         }
@@ -383,7 +383,7 @@ pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<
             .channel_id(Some(dst))
             .reason(&reason)
             .unwrap();
-        if let Err(err) = request.exec().await {
+        if let Err(err) = request.await {
             tracing::error!("Error while running /move on {}: {}", user_id, err);
             errors.push(format!("{}: {}", user_id, err));
         } else {
@@ -408,11 +408,11 @@ async fn fetch_messages(
     let mut oldest = None;
     loop {
         let fut = if let Some(oldest) = oldest {
-            http.channel_messages(channel_id).before(oldest).exec()
+            http.channel_messages(channel_id).before(oldest).await?
         } else {
-            http.channel_messages(channel_id).exec()
+            http.channel_messages(channel_id).await?
         };
-        let messages = fut.await?.model().await?;
+        let messages = fut.model().await?;
         for message in messages {
             oldest = oldest
                 .map(|oldest| oldest.min(message.id))
@@ -504,14 +504,12 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
                 ctx.http()
                     .delete_message(ctx.channel_id(), batch[0])
                     .reason(&reason)?
-                    .exec()
                     .await?;
             }
             _ => {
                 ctx.http()
                     .delete_messages(ctx.channel_id(), &batch)
                     .reason(&reason)?
-                    .exec()
                     .await?;
             }
         }

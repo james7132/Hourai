@@ -1,8 +1,7 @@
 use hourai::{
     interactions::proto_to_custom_id,
     models::{
-        application::component::{button::ButtonStyle, *},
-        channel::ReactionType,
+        channel::message::{component::*, *},
     },
     proto::message_components::*,
 };

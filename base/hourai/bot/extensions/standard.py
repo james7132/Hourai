@@ -241,16 +241,6 @@ class Standard(cogs.BaseCog):
             format.code_list(tag for tag, in db_tags) or
             "No tags have been set! Use `~tag set` to make some.")
 
-    # @commands.command()
-    # async def convert(self, ctx, src_unit, dst_unit):
-        # """ Converts units. (i.e. 2.54cm in -> 1 inch) """
-        # try:
-        # quantity = self.units.Quantity(src_unit).to(dst_unit).to_compact()
-        # await ctx.send(format.code(str(quantity)))
-        # except:
-        # src, dst = format.code(src_unit), format.code(dst_unit)
-        # await ctx.send(f'Failed to convert from {src} to {dst}')
-
     @commands.command()
     async def avatar(self, ctx, *users: discord.User):
         if len(users) <= 0:
@@ -265,21 +255,10 @@ class Standard(cogs.BaseCog):
         await ctx.send(f'Use this link to add me to your server: {link}')
 
     @commands.command()
-    @commands.guild_only()
-    async def pingmod(self, ctx):
-        """
-        Pings a moderator on the server. Mod roles begin with "mod" or
-        "admin" or have the administrator permission.
-        """
-        _, mention = await utils.mention_random_online_mod(ctx.bot, ctx.guild)
-        await ctx.send(mention)
-
-    @commands.command()
     async def whois(self, ctx,
                     user: typing.Union[discord.Member, discord.User]):
         """ Provides detailed information about a user. """
         await ctx.send(embed=embed.make_whois_embed(ctx, user))
-
 
     @commands.group(name="reddit")
     async def reddit(self, ctx):
@@ -374,53 +353,6 @@ class Standard(cogs.BaseCog):
         conf.dj_role_id[:] = [role.id]
         await ctx.guild.flush_config()
         await ctx.send(f"Set **{role}** as the DJ for this server.")
-
-    @commands.command()
-    async def play(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music play")
-
-    @commands.command()
-    async def pause(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music pause")
-
-    @commands.command()
-    async def stop(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music stop")
-
-    @commands.command()
-    async def skip(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music skip")
-
-    @commands.command()
-    async def forceskip(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music skip")
-
-    @commands.command()
-    async def remove(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music remove")
-
-    @commands.command()
-    async def removeall(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music remove")
-
-    @commands.command()
-    async def volume(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music volume")
-
-    @commands.command()
-    @commands.guild_only()
-    async def nowplaying(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music nowplaying")
-
-    @commands.command()
-    @commands.guild_only()
-    async def np(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music nowplaying")
-
-    @commands.command()
-    @commands.guild_only()
-    async def queue(self, ctx, *, remainder: str):
-        await deprecation_notice(ctx, "music queue")
 
 def setup(bot):
     standard = Standard()

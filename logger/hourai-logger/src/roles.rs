@@ -105,7 +105,6 @@ pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
         .http()
         .update_guild_member(guild_id, member.user.id)
         .roles(&restorable)
-        .exec()
         .await?;
 
     Ok(())

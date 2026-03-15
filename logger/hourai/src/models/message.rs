@@ -1,7 +1,8 @@
 use super::user::UserLike;
 use super::Snowflake;
 use crate::proto::cache::{CachedMessageProto, CachedUserProto};
-use twilight_model::channel::{embed::Embed, Attachment, Message};
+use twilight_model::channel::Attachment;
+use twilight_model::channel::message::{embed::Embed, Message};
 use twilight_model::gateway::payload::incoming::MessageUpdate;
 use twilight_model::id::{marker::*, Id};
 use twilight_model::user::User;
