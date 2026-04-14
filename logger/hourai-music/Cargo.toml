@@ -14,7 +14,7 @@ dashmap = { default-features = false, version = "5.2" }
 futures = { default-features = false, version = "0.3.12" }
 http = { default-features = false, version = "0.2" }
 hyper = { features = ["client", "http2", "runtime"], version = "0.14" }
-rand = "0.8"
+rand = "0.9"
 serde_json = "1.0.62"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 twilight-util = { version = "0.14",  features = ["snowflake", "builder"] }
