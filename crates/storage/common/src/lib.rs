@@ -13,8 +13,8 @@ use hourai::{
     models::{
         guild::{Guild, Permissions, Role},
         id::{
-            marker::{GuildMarker, RoleMarker},
             Id,
+            marker::{GuildMarker, RoleMarker},
         },
     },
     proto::cache::CachedRoleProto,

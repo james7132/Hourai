@@ -3,12 +3,12 @@ use crate::{
     interactions::{InteractionContext, InteractionError, InteractionResult},
     models::{
         application::interaction::{
-            message_component::MessageComponentInteractionData, Interaction, InteractionData,
+            Interaction, InteractionData, message_component::MessageComponentInteractionData,
         },
         guild::PartialMember,
         id::{
-            marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker},
             Id,
+            marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker},
         },
         user::User,
     },
@@ -78,7 +78,11 @@ impl InteractionContext for ComponentContext {
     }
 
     fn channel_id(&self) -> Id<ChannelMarker> {
-        self.component.channel_id.unwrap()
+        self.component
+            .channel
+            .as_ref()
+            .map(|c| c.id)
+            .expect("Component interaction is missing channel")
     }
 
     fn member(&self) -> Option<&PartialMember> {

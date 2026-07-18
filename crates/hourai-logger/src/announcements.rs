@@ -2,7 +2,7 @@ use crate::Client;
 use anyhow::Result;
 use hourai::models::channel::Channel;
 use hourai::models::gateway::payload::incoming::{BanAdd, MemberRemove};
-use hourai::models::id::{marker::*, Id};
+use hourai::models::id::{Id, marker::*};
 use hourai::models::user::User;
 use hourai::models::voice::VoiceState;
 use hourai::proto::guild_configs::*;

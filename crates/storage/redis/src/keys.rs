@@ -3,7 +3,7 @@ use byteorder::{BigEndian, ByteOrder};
 use hourai::models::{
     channel::Channel,
     guild::{Guild, Role},
-    id::{marker::*, Id as TwilightId},
+    id::{Id as TwilightId, marker::*},
 };
 use redis::{ErrorKind, FromRedisValue, RedisError, RedisWrite, ToRedisArgs};
 
@@ -39,10 +39,7 @@ impl CacheKey {
 }
 
 impl ToRedisArgs for CacheKey {
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
-    where
-        W: RedisWrite,
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         match self {
             Self::GuildConfigs(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
             Self::OnlineStatus(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
@@ -80,10 +77,7 @@ impl GuildKey {
 }
 
 impl ToRedisArgs for GuildKey {
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
-    where
-        W: RedisWrite,
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         match self {
             Self::Guild => PrefixedKey(self.prefix(), ()).write_redis_args(out),
             Self::Role(id) => PrefixedKey(self.prefix(), id.get()).write_redis_args(out),
@@ -143,20 +137,14 @@ impl From<TwilightId<ChannelMarker>> for GuildKey {
 pub struct PrefixedKey<T>(u8, T);
 
 impl ToRedisArgs for PrefixedKey<()> {
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
-    where
-        W: RedisWrite,
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         let key_enc = [self.0; 1];
         out.write_arg(&key_enc[..]);
     }
 }
 
 impl ToRedisArgs for PrefixedKey<u64> {
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
-    where
-        W: RedisWrite,
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         let mut key_enc = [self.0; 9];
         BigEndian::write_u64(&mut key_enc[1..9], self.1);
         out.write_arg(&key_enc[..]);
@@ -164,22 +152,16 @@ impl ToRedisArgs for PrefixedKey<u64> {
 }
 
 impl ToRedisArgs for PrefixedKey<(u64, u64)> {
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
-    where
-        W: RedisWrite,
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         let mut key_enc = [self.0; 17];
-        BigEndian::write_u64(&mut key_enc[1..9], self.1 .0);
-        BigEndian::write_u64(&mut key_enc[9..17], self.1 .1);
+        BigEndian::write_u64(&mut key_enc[1..9], self.1.0);
+        BigEndian::write_u64(&mut key_enc[9..17], self.1.1);
         out.write_arg(&key_enc[..]);
     }
 }
 
 impl ToRedisArgs for PrefixedKey<&str> {
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
-    where
-        W: RedisWrite,
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         self.0.write_redis_args(out);
         self.1.write_redis_args(out);
     }
@@ -189,10 +171,7 @@ impl ToRedisArgs for PrefixedKey<&str> {
 pub(super) struct Id<T>(pub T);
 
 impl ToRedisArgs for Id<u64> {
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
-    where
-        W: RedisWrite,
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         let mut key_enc = [0; 8];
         BigEndian::write_u64(&mut key_enc[0..8], self.0);
         out.write_arg(&key_enc[..]);

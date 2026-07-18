@@ -1,6 +1,6 @@
 use hourai::models::{
     guild::Member,
-    id::{marker::GuildMarker, Id},
+    id::{Id, marker::GuildMarker},
 };
 
 #[derive(Debug, Clone)]
@@ -12,10 +12,6 @@ pub enum VerificationReason {
 impl VerificationReason {
     pub fn is_approval(&self) -> bool {
         self.approval_reason().is_some()
-    }
-
-    pub fn is_rejection(&self) -> bool {
-        self.rejection_reason().is_some()
     }
 
     pub fn approval_reason(&self) -> Option<&str> {
@@ -66,16 +62,8 @@ impl VerificationContext {
             .push(VerificationReason::Rejection(reason.into()));
     }
 
-    pub fn add_reason(&mut self, reason: VerificationReason) {
-        self.reasons.push(reason);
-    }
-
     pub fn is_approved(&self) -> bool {
         self.reasons.last().map(|r| r.is_approval()).unwrap_or(true)
-    }
-
-    pub fn approval_reasons(&self) -> impl Iterator<Item = &str> {
-        self.reasons.iter().filter_map(|r| r.approval_reason())
     }
 
     pub fn rejection_reasons(&self) -> impl Iterator<Item = &str> {

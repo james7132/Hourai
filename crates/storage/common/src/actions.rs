@@ -1,11 +1,11 @@
-use crate::{escalation::EscalationManager, Storage};
+use crate::{Storage, escalation::EscalationManager};
 use anyhow::Result;
 use chrono::{Duration, Utc};
 use futures::future::{BoxFuture, FutureExt};
 use hourai::{
     http::{self, request::AuditLogReason},
     models::{
-        id::{marker::*, Id},
+        id::{Id, marker::*},
         user::User,
     },
     proto::action::*,
@@ -102,23 +102,23 @@ impl ActionExecutor {
 
     fn invert_action(action: &mut Action) {
         match &mut action.details {
-            Some(Action_oneof_details::ban(ref mut info)) => {
+            Some(Action_oneof_details::ban(info)) => {
                 info.set_field_type(match info.get_field_type() {
                     BanMember_Type::BAN => BanMember_Type::UNBAN,
                     BanMember_Type::UNBAN => BanMember_Type::BAN,
                     BanMember_Type::SOFTBAN => panic!("Cannot invert a softban"),
                 });
             }
-            Some(Action_oneof_details::escalate(ref mut info)) => {
+            Some(Action_oneof_details::escalate(info)) => {
                 info.set_amount(-info.get_amount());
             }
-            Some(Action_oneof_details::mute(ref mut info)) => {
+            Some(Action_oneof_details::mute(info)) => {
                 info.set_field_type(Self::invert_status(info.get_field_type()));
             }
-            Some(Action_oneof_details::deafen(ref mut info)) => {
+            Some(Action_oneof_details::deafen(info)) => {
                 info.set_field_type(Self::invert_status(info.get_field_type()));
             }
-            Some(Action_oneof_details::change_role(ref mut info)) => {
+            Some(Action_oneof_details::change_role(info)) => {
                 info.set_field_type(Self::invert_status(info.get_field_type()));
             }
             Some(_) => {

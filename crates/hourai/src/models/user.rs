@@ -1,6 +1,6 @@
-use super::guild::Member;
-use super::id::{marker::UserMarker, Id};
 use super::Snowflake;
+use super::guild::Member;
+use super::id::{Id, marker::UserMarker};
 use crate::proto::cache::CachedUserProto;
 pub use twilight_model::{user::*, util::image_hash::ImageHash};
 

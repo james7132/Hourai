@@ -1,15 +1,13 @@
-use super::{config::ResourceType, InMemoryCache};
+use super::{InMemoryCache, config::ResourceType};
 use std::ops::Deref;
 use twilight_model::gateway::{event::Event, payload::incoming::*, presence::UserOrId};
 
 pub trait UpdateCache {
     // Allow this for presentation purposes in documentation.
-    #[allow(unused_variables)]
-    fn update(&self, cache: &InMemoryCache) {}
+    fn update(&self, _cache: &InMemoryCache) {}
 }
 
 impl UpdateCache for Event {
-    #[allow(clippy::cognitive_complexity)]
     fn update(&self, c: &InMemoryCache) {
         use Event::*;
 

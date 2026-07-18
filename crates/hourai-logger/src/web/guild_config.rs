@@ -1,9 +1,9 @@
-use super::{prelude::*, AppState};
+use super::{AppState, prelude::*};
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::get,
-    Json, Router,
 };
 use hourai::{models::id::Id, proto::auto_config::*, proto::guild_configs::*};
 use hourai_redis::CachedGuildConfig;

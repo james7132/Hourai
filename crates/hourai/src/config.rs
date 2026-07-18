@@ -7,7 +7,7 @@ use std::{
 };
 use twilight_model::{
     application::command::Command,
-    id::{marker::ApplicationMarker, Id},
+    id::{Id, marker::ApplicationMarker},
 };
 
 const DEFAULT_ENV: &str = "dev";

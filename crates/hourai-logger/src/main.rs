@@ -3,7 +3,6 @@ extern crate lazy_static;
 
 mod announcements;
 mod auto;
-mod buttons;
 mod commands;
 mod member_chunker;
 mod message_filter;
@@ -22,24 +21,23 @@ use hourai::{
     gateway::{Event, EventType, EventTypeFlags, Intents, MessageSender, StreamExt as _},
     init,
     models::{
+        MessageLike,
         application::interaction::{Interaction, InteractionType},
         channel::{Channel, ChannelType, Message},
         gateway::payload::incoming::*,
         guild::{Member, MemberFlags, Permissions, Role},
         http::interaction::*,
-        id::{marker::*, Id},
+        id::{Id, marker::*},
         user::User,
-        MessageLike,
     },
 };
 use hourai_redis::*;
 use hourai_sql::{Ban, Executor, Username};
-use hourai_storage::{actions::ActionExecutor, Storage};
+use hourai_storage::{Storage, actions::ActionExecutor};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use twilight_util::builder::embed::*;
 
-const RESUME_KEY: &str = "LOGGER";
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits()
         | Intents::GUILD_MODERATION.bits()
@@ -241,7 +239,7 @@ impl Client {
     async fn pre_cache_event(&self, event: &Event) {
         let kind = event.kind();
         let result = match event {
-            Event::MemberUpdate(ref evt) => {
+            Event::MemberUpdate(evt) => {
                 if self.0.cache.is_pending(evt.guild_id, evt.user.id) && !evt.pending {
                     let member = Member {
                         avatar: None,
@@ -357,12 +355,27 @@ impl Client {
             avatar: evt.user.avatar.map(|hash| hash.to_string()),
         }
         .insert();
-        let (res1, res2) = futures::join!(
+        let (res1, res2, res3) = futures::join!(
             self.storage().execute(ban),
             self.log_users(vec![evt.user.clone()]),
+            announcements::on_member_ban(&self, evt.clone()),
         );
         res1?;
         res2?;
+        res3?;
+
+        if let Ok(config) = self
+            .storage()
+            .redis()
+            .guild(evt.guild_id)
+            .configs()
+            .get::<hourai::proto::auto_config::AutoConfig>()
+            .await
+        {
+            let _ =
+                auto::AutoEngine::on_member_ban(&self.0.actions, &config, evt.guild_id, &evt.user)
+                    .await;
+        }
 
         let redis = self.storage().redis();
         let config: hourai::proto::guild_configs::LoggingConfig =
@@ -533,17 +546,16 @@ impl Client {
     }
 
     async fn on_message_create(self, evt: Message) -> Result<()> {
-        if let Some(guild_id) = evt.guild_id {
-            if let Ok(config) = self
+        if let Some(guild_id) = evt.guild_id
+            && let Ok(config) = self
                 .storage()
                 .redis()
                 .guild(guild_id)
                 .configs()
                 .get::<hourai::proto::auto_config::AutoConfig>()
                 .await
-            {
-                let _ = auto::AutoEngine::on_message(&self.0.actions, &config, &evt, false).await;
-            }
+        {
+            let _ = auto::AutoEngine::on_message(&self.0.actions, &config, &evt, false).await;
         }
         match message_filter::check_message(&self.0.actions, &evt).await {
             Ok(deleted) => {
@@ -571,18 +583,16 @@ impl Client {
         if let Some(mut msg) = cached {
             let before = msg.clone();
             msg.set_content(evt.content.clone());
-            if let Some(guild_id) = msg.guild_id() {
-                if let Ok(config) = self
+            if let Some(guild_id) = msg.guild_id()
+                && let Ok(config) = self
                     .storage()
                     .redis()
                     .guild(guild_id)
                     .configs()
                     .get::<hourai::proto::auto_config::AutoConfig>()
                     .await
-                {
-                    let _ =
-                        auto::AutoEngine::on_message(&self.0.actions, &config, &msg, true).await;
-                }
+            {
+                let _ = auto::AutoEngine::on_message(&self.0.actions, &config, &msg, true).await;
             }
             tokio::spawn(message_logging::on_message_update(
                 self.clone(),

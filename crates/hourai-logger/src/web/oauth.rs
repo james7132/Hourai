@@ -1,13 +1,13 @@
-use super::{prelude::*, AppState};
+use super::{AppState, prelude::*};
 use axum::{
+    Json, Router,
     extract::State,
     http::{HeaderMap, StatusCode},
     routing::{get, post},
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tower_cookies::{cookie::SameSite, Cookie, Cookies};
+use tower_cookies::{Cookie, Cookies, cookie::SameSite};
 
 const TOKEN_URL: &str = "https://discord.com/api/oauth2/token";
 const COOKIE_KEY: &str = "discord_refresh_token";

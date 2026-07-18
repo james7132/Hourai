@@ -1,10 +1,10 @@
 use anyhow::Result;
 use hourai::{
     models::{
-        guild::Member,
-        id::{marker::*, Id},
-        user::User,
         MessageLike, Snowflake, UserLike,
+        guild::Member,
+        id::{Id, marker::*},
+        user::User,
     },
     proto::{
         auto_config::{AutoConfig, MessageEvent_Type},

@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use std::fmt::Display;
 
@@ -28,11 +28,6 @@ pub fn http_error<T>(status: StatusCode, message: impl Display) -> Result<T> {
         status,
         message: message.to_string(),
     })
-}
-
-#[allow(dead_code)]
-pub fn http_internal_error<T>(message: impl Display) -> Result<T> {
-    http_error(StatusCode::INTERNAL_SERVER_ERROR, message)
 }
 
 pub trait IntoHttpError<T> {

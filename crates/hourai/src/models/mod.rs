@@ -11,8 +11,8 @@ pub use twilight_model::oauth;
 pub use twilight_model::util;
 pub use twilight_model::voice;
 
-use chrono::prelude::DateTime;
 use chrono::Utc;
+use chrono::prelude::DateTime;
 use std::time::{Duration, UNIX_EPOCH};
 
 pub use self::{message::MessageLike, user::UserLike};

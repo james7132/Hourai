@@ -4,7 +4,7 @@ pub mod prelude;
 mod status;
 
 use anyhow::Result;
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 use hourai::config::HouraiConfig;
 use hourai_redis::RedisClient;
 use hourai_sql::SqlPool;

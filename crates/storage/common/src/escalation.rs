@@ -1,11 +1,11 @@
-use crate::{actions::ActionExecutor, Storage};
+use crate::{Storage, actions::ActionExecutor};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use hourai::{
     http,
     models::id::{
-        marker::{GuildMarker, UserMarker},
         Id,
+        marker::{GuildMarker, UserMarker},
     },
     proto::{
         escalation::EscalationLadderRung,

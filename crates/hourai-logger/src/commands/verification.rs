@@ -4,7 +4,7 @@ use chrono::{Duration, Utc};
 use hourai::http::request::AuditLogReason;
 use hourai::models::{
     guild::Permissions,
-    id::{marker::*, Id},
+    id::{Id, marker::*},
 };
 use hourai::proto::guild_configs::VerificationConfig;
 use twilight_util::builder::embed::*;
@@ -128,20 +128,18 @@ pub async fn purge(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Res
             continue;
         }
         let user_id = Id::<UserMarker>::new(mem.user_id as u64);
-        if let Ok(m) = actions.http().guild_member(guild_id, user_id).await {
-            if let Ok(guild_member) = m.model().await {
-                if let Some(joined_at) = guild_member.joined_at {
-                    if joined_at.as_secs() < cutoff.timestamp() {
-                        let reason = "Unverified user purged.";
-                        let request = actions
-                            .http()
-                            .remove_guild_member(guild_id, user_id)
-                            .reason(reason);
-                        if request.await.is_ok() {
-                            purged += 1;
-                        }
-                    }
-                }
+        if let Ok(m) = actions.http().guild_member(guild_id, user_id).await
+            && let Ok(guild_member) = m.model().await
+            && let Some(joined_at) = guild_member.joined_at
+            && joined_at.as_secs() < cutoff.timestamp()
+        {
+            let reason = "Unverified user purged.";
+            let request = actions
+                .http()
+                .remove_guild_member(guild_id, user_id)
+                .reason(reason);
+            if request.await.is_ok() {
+                purged += 1;
             }
         }
     }

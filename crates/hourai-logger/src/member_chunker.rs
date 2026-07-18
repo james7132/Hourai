@@ -4,7 +4,7 @@ use hourai::models::{
     gateway::payload::{
         incoming::MemberChunk, outgoing::request_guild_members::RequestGuildMembers,
     },
-    id::{marker::GuildMarker, Id},
+    id::{Id, marker::GuildMarker},
 };
 use std::{collections::VecDeque, sync::Arc};
 use twilight_gateway::MessageSender;
@@ -83,8 +83,8 @@ impl MemberChunker {
                 continue;
             }
 
-            if let Some(ref guild) = chunk {
-                Self::chunk_guild(&senders, *guild).await.unwrap();
+            if let Some(guild) = chunk {
+                Self::chunk_guild(&senders, guild).await.unwrap();
             }
 
             current = chunk;

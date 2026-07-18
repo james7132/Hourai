@@ -1,8 +1,8 @@
 use crate::RedisClient;
 use anyhow::Result;
 use hourai::{
-    http::{request::channel::message::create_message::CreateMessage, Client},
-    models::id::{marker::*, Id},
+    http::{Client, request::channel::message::create_message::CreateMessage},
+    models::id::{Id, marker::*},
     proto::guild_configs::LoggingConfig,
 };
 use std::sync::Arc;

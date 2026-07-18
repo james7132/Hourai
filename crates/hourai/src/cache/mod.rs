@@ -12,10 +12,10 @@ use dashmap::{DashMap, DashSet};
 use std::{collections::HashSet, sync::Arc};
 use twilight_model::{
     gateway::presence::{Presence, Status, UserOrId},
-    guild::{Guild, Member},
+    guild::Member,
     id::{
-        marker::{GuildMarker, UserMarker},
         Id,
+        marker::{GuildMarker, UserMarker},
     },
 };
 
@@ -172,22 +172,6 @@ impl InMemoryCache {
                 self.unavailable_guild(g.id);
             }
         }
-    }
-
-    fn cache_guild(&self, guild: Guild) {
-        // The map and set creation needs to occur first, so caching states and
-        // objects always has a place to put them.
-        if self.wants(ResourceType::MEMBER) {
-            self.cache_members(guild.id, guild.members);
-        }
-
-        if self.wants(ResourceType::PRESENCE) {
-            self.0.guild_presences.insert(guild.id, HashSet::new());
-            self.cache_presences(guild.id, guild.presences);
-        }
-
-        self.0.guilds.insert(guild.id);
-        self.0.unavailable_guilds.remove(&guild.id);
     }
 
     fn cache_member(&self, guild_id: Id<GuildMarker>, member: &Member) {

@@ -1,12 +1,12 @@
-use crate::types;
+use crate::Protobuf;
 use hourai::{
     models::{
+        UserLike,
         gateway::payload::incoming::MemberUpdate,
         guild::Ban as TwilightBan,
         guild::Member as TwilightMember,
-        id::{marker::*, Id},
-        util::{image_hash::ImageHash, Timestamp},
-        UserLike,
+        id::{Id, marker::*},
+        util::{Timestamp, image_hash::ImageHash},
     },
     proto::action::{Action, ActionSet},
 };
@@ -30,7 +30,10 @@ fn to_datetime(timestamp: &Timestamp) -> DateTime<Utc> {
     let micros = timestamp.as_micros();
     let secs = micros / 1000000;
     let nsecs = (micros % 1000000) * 1000;
-    DateTime::from_utc(NaiveDateTime::from_timestamp(secs, nsecs as u32), Utc)
+    DateTime::from_utc(
+        NaiveDateTime::from_timestamp_opt(secs, nsecs as u32).unwrap_or_default(),
+        Utc,
+    )
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -439,7 +442,7 @@ pub struct EscalationEntry {
     pub authorizer_name: String,
     pub display_name: String,
     pub timestamp: DateTime<Utc>,
-    pub action: types::Protobuf<ActionSet>,
+    pub action: Protobuf<ActionSet>,
     pub level_delta: i32,
 }
 
@@ -550,7 +553,7 @@ impl PendingDeescalation {
 #[derive(Debug, sqlx::FromRow)]
 pub struct PendingAction {
     id: i32,
-    data: types::Protobuf<Action>,
+    data: Protobuf<Action>,
 }
 
 impl PendingAction {
@@ -565,7 +568,7 @@ impl PendingAction {
     pub fn schedule<'a>(action: Action, timestamp: impl Into<DateTime<Utc>>) -> SqlQuery<'a> {
         sqlx::query("INSERT INTO pending_actions (timestamp, data) VALUES ($1, $2)")
             .bind(timestamp.into())
-            .bind(types::Protobuf(action))
+            .bind(Protobuf(action))
     }
 
     pub fn delete<'a>(&self) -> SqlQuery<'a> {

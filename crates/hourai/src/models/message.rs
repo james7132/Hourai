@@ -1,10 +1,10 @@
-use super::user::UserLike;
 use super::Snowflake;
+use super::user::UserLike;
 use crate::proto::cache::{CachedMessageProto, CachedUserProto};
-use twilight_model::channel::message::{embed::Embed, Message};
 use twilight_model::channel::Attachment;
+use twilight_model::channel::message::{Message, embed::Embed};
 use twilight_model::gateway::payload::incoming::MessageUpdate;
-use twilight_model::id::{marker::*, Id};
+use twilight_model::id::{Id, marker::*};
 use twilight_model::user::User;
 
 pub trait MessageLike: Snowflake<Id<MessageMarker>> {

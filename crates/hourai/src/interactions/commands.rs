@@ -3,16 +3,16 @@ use crate::{
     interactions::{InteractionContext, InteractionError, InteractionResult},
     models::{
         application::interaction::{
-            application_command::{CommandData, CommandDataOption, CommandOptionValue},
             Interaction, InteractionData, InteractionMember,
+            application_command::{CommandData, CommandDataOption, CommandOptionValue},
         },
         guild::{PartialMember, Permissions},
         id::{
+            Id,
             marker::{
                 ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker, RoleMarker,
                 UserMarker,
             },
-            Id,
         },
         user::User,
     },
@@ -189,7 +189,7 @@ impl CommandContext {
             .and_then(|r| r.members.get(&id))
     }
 
-    fn flatten_options(options: &Vec<CommandDataOption>) -> Vec<&CommandDataOption> {
+    fn flatten_options(options: &[CommandDataOption]) -> Vec<&CommandDataOption> {
         let mut all_options: Vec<&CommandDataOption> = Vec::new();
         for option in options.iter() {
             if let CommandOptionValue::SubCommand(ref options) = option.value {
@@ -201,7 +201,7 @@ impl CommandContext {
         all_options
     }
 
-    fn get_subcommand(options: &Vec<CommandDataOption>) -> Option<(&str, &Vec<CommandDataOption>)> {
+    fn get_subcommand(options: &[CommandDataOption]) -> Option<(&str, &[CommandDataOption])> {
         for option in options.iter() {
             if let CommandOptionValue::SubCommand(ref options) = option.value {
                 return Some((option.name.as_ref(), options));
@@ -237,7 +237,11 @@ impl InteractionContext for CommandContext {
     }
 
     fn channel_id(&self) -> Id<ChannelMarker> {
-        self.command.channel_id.unwrap()
+        self.command
+            .channel
+            .as_ref()
+            .map(|c| c.id)
+            .expect("Interaction is missing channel")
     }
 
     fn user(&self) -> &User {

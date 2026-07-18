@@ -2,9 +2,9 @@ use crate::Client;
 use anyhow::Result;
 use hourai::{
     models::{
-        guild::{Member, Permissions},
-        id::{marker::*, Id},
         RoleFlags,
+        guild::{Member, Permissions},
+        id::{Id, marker::*},
     },
     proto::{cache::CachedRoleProto, guild_configs::*},
 };

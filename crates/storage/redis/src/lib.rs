@@ -14,15 +14,14 @@ use anyhow::Result;
 use hourai::{
     gateway::Session,
     models::{
+        MessageLike, Snowflake, UserLike,
         channel::Channel,
         guild::{Guild, PartialGuild, Permissions, Role},
-        id::{marker::*, Id as TwilightId},
+        id::{Id as TwilightId, marker::*},
         voice::VoiceState,
-        MessageLike, Snowflake, UserLike,
     },
     proto::cache::*,
 };
-use redis::{FromRedisValue, ToRedisArgs};
 use std::{
     borrow::Cow,
     cmp::{Ord, Ordering},
@@ -132,7 +131,7 @@ impl GuildConfig {
             .connection_mut()
             .hget(key, vec![T::SUBKEY])
             .await?;
-        Ok(response.map(|c| c.0 .0))
+        Ok(response.map(|c| c.0.0))
     }
 
     pub async fn get<T: ::protobuf::Message + CachedGuildConfig>(&mut self) -> Result<T> {

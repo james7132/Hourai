@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
   "crates/hourai",
   "crates/hourai-logger",
@@ -6,6 +7,10 @@ members = [
   "crates/storage/sql",
   "crates/storage/redis",
 ]
+
+[workspace.lints.rust]
+elided_lifetimes_in_paths = "allow"
+non_local_definitions = "allow"
 
 [profile.release]
 opt-level = 3
