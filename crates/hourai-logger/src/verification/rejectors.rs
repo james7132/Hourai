@@ -143,6 +143,45 @@ impl Verifier for BannedUsernameRejector {
     }
 }
 
+pub struct UsernameMatchRejector {
+    sql: SqlPool,
+    matches: Vec<(String, Regex)>,
+    prefix: String,
+}
+
+impl UsernameMatchRejector {
+    pub fn new(
+        sql: SqlPool,
+        prefix: impl Into<String>,
+        matches: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Result<Self> {
+        let mut regexes = Vec::new();
+        for input in matches {
+            let input_str = input.into();
+            let regex = Regex::new(&Self::generalize_filter(&input_str))?;
+            regexes.push((input_str, regex));
+        }
+        Ok(Self {
+            sql,
+            matches: regexes,
+            prefix: prefix.into(),
+        })
+    }
+
+    fn generalize_filter(base: &str) -> String {
+        let mut res = String::from("(?i)");
+        for ch in base.chars() {
+            if ch.is_alphanumeric() {
+                res.push(ch);
+                res.push('+');
+            } else {
+                res.push(ch);
+            }
+        }
+        res
+    }
+}
+
 #[async_trait]
 pub trait StringMatchRejector: Send + Sync {
     type Key;
@@ -152,13 +191,35 @@ pub trait StringMatchRejector: Send + Sync {
 }
 
 #[async_trait]
+impl StringMatchRejector for UsernameMatchRejector {
+    type Key = String;
+
+    fn regexes(&self) -> Vec<(Self::Key, Regex)> {
+        self.matches.clone()
+    }
+
+    async fn criteria(&self, ctx: &context::VerificationContext) -> Result<Vec<String>> {
+        Ok(Username::fetch(ctx.member().user.id, Some(20))
+            .fetch_all(&self.sql)
+            .await?
+            .into_iter()
+            .map(|un| un.name)
+            .collect())
+    }
+
+    fn reason(&self, key: &Self::Key, matched: &str) -> String {
+        format!("{}(Matches: {}): {}", self.prefix, key, matched)
+    }
+}
+
+#[async_trait]
 impl<T: StringMatchRejector + Send + Sync> Verifier for T {
     async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         let criteria = self.criteria(ctx).await?;
         let regexes = self.regexes();
         for check in criteria {
             for (key, regex) in &regexes {
-                if regex.find(check.as_str()).is_some() {
+                if regex.is_match(check.as_str()) {
                     let reason = self.reason(key, check.as_str());
                     ctx.add_rejection_reason(reason);
                 }
@@ -186,6 +247,10 @@ pub fn new_account(lookback: Duration) -> BoxedVerifier {
     Box::new(NewAccountRejector(lookback))
 }
 
+pub fn no_avatar() -> BoxedVerifier {
+    Box::new(NoAvatarRejector)
+}
+
 pub struct NoAvatarRejector;
 
 #[async_trait]
@@ -196,10 +261,6 @@ impl Verifier for NoAvatarRejector {
         }
         Ok(())
     }
-}
-
-pub fn no_avatar() -> BoxedVerifier {
-    Box::new(NoAvatarRejector)
 }
 
 pub fn banned_user(sql: SqlPool, min_guild_size: u64) -> BoxedVerifier {
@@ -215,4 +276,12 @@ pub fn banned_username(sql: SqlPool) -> BoxedVerifier {
 
 pub fn deleted_user(sql: SqlPool) -> BoxedVerifier {
     Box::new(DeletedUserRejector(sql))
+}
+
+pub fn username_match(
+    sql: SqlPool,
+    prefix: impl Into<String>,
+    filters: impl IntoIterator<Item = impl Into<String>>,
+) -> BoxedVerifier {
+    Box::new(UsernameMatchRejector::new(sql, prefix, filters).expect("valid regex patterns"))
 }

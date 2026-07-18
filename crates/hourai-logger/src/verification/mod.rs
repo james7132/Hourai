@@ -21,7 +21,20 @@ pub fn make_verifiers(cache: InMemoryCache, sql: SqlPool) -> Vec<BoxedVerifier> 
         rejectors::deleted_user(sql.clone()),
         approvers::nitro(),
         rejectors::banned_user(sql.clone(), /* min_guild_size */ 150),
-        rejectors::banned_username(sql),
+        rejectors::banned_username(sql.clone()),
+        rejectors::username_match(
+            sql.clone(),
+            "Offensive username. ",
+            vec!["nigger", "nigga", "faggot", "cuck", "retard"],
+        ),
+        rejectors::username_match(
+            sql,
+            "Sexually inappropriate username. ",
+            vec![
+                "anal", "cock", "vore", "scat", "fuck", "pussy", "urethra", "rape", "penis",
+                "piss", "shit", "cum",
+            ],
+        ),
         approvers::distinguished_user(cache),
         approvers::bot(),
         approvers::bot_owners(vec![]),
