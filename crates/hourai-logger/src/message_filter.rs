@@ -174,8 +174,8 @@ async fn apply_rule(
             executor
                 .http()
                 .create_message(Id::new(config.get_modlog_channel_id()))
-                .content(&response)?
-                .embeds(&[message_logging::message_to_embed(message)?.build()])?
+                .content(&response)
+                .embeds(&[message_logging::message_to_embed(message)?.build()])
                 .await?;
         }
     }

@@ -1,8 +1,6 @@
 use super::prelude::*;
 use hourai::{
-    models::{
-        channel::message::allowed_mentions::AllowedMentions, guild::scheduled_event::Status, id::Id,
-    },
+    models::{channel::message::AllowedMentions, guild::scheduled_event::Status, id::Id},
     proto::guild_configs::LoggingConfig,
 };
 use hourai_sql::Tag;
@@ -93,13 +91,13 @@ pub(super) async fn ping_mod(ctx: &CommandContext, storage: &Storage) -> Result<
                 ctx.user().id,
                 mention,
                 ctx.channel_id()
-            ))?
-            .allowed_mentions(Some(&AllowedMentions::builder().build()))
+            ))
+            .allowed_mentions(Some(&AllowedMentions::default()))
             .await?;
 
         ctx.http()
             .create_message(ctx.channel_id())
-            .content(&content)?
+            .content(&content)
             .await?;
 
         Ok(Response::ephemeral().content(format!("Pinged {} to this channel.", mention)))

@@ -91,19 +91,19 @@ impl MessageLike for MessageUpdate {
     }
 
     fn author(&self) -> &User {
-        self.author.as_ref().unwrap()
+        &self.author
     }
 
     fn content(&self) -> &str {
-        self.content.as_deref().unwrap()
+        self.content.as_str()
     }
 
     fn embeds(&self) -> &[Embed] {
-        self.embeds.as_deref().unwrap()
+        &self.embeds
     }
 
     fn attachments(&self) -> &[Attachment] {
-        self.attachments.as_deref().unwrap()
+        &self.attachments
     }
 }
 

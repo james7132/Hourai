@@ -166,9 +166,7 @@ pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<R
             .http
             .update_guild_member(guild_id, *member_id)
             .communication_disabled_until(Some(expiration))
-            .unwrap()
-            .reason(&reason)
-            .unwrap();
+            .reason(&reason);
         if let Err(err) = request.await {
             tracing::error!("Error while running /timeout on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
@@ -211,8 +209,7 @@ pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Resp
         let request = ctx
             .http
             .remove_guild_member(guild_id, *member_id)
-            .reason(&reason)
-            .unwrap();
+            .reason(&reason);
         if let Err(err) = request.await {
             tracing::error!("Error while running /kick on {}: {}", member_id, err);
             errors.push(format!("{}: {}", member_id, err));
@@ -381,8 +378,7 @@ pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<
             .http
             .update_guild_member(guild_id, user_id)
             .channel_id(Some(dst))
-            .reason(&reason)
-            .unwrap();
+            .reason(&reason);
         if let Err(err) = request.await {
             tracing::error!("Error while running /move on {}: {}", user_id, err);
             errors.push(format!("{}: {}", user_id, err));
@@ -435,7 +431,8 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
         )));
     }
 
-    let mut filters: Vec<Box<dyn Fn(&Message) -> bool + Send + 'static>> = Vec::new();
+    type MessageFilter = Box<dyn Fn(&Message) -> bool + Send + 'static>;
+    let mut filters: Vec<MessageFilter> = Vec::new();
     let mine = ctx.get_flag("mine").unwrap_or(false);
     if mine {
         let user_id = ctx.user().id;
@@ -501,13 +498,13 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
             1 => {
                 ctx.http()
                     .delete_message(ctx.channel_id(), batch[0])
-                    .reason(&reason)?
+                    .reason(&reason)
                     .await?;
             }
             _ => {
                 ctx.http()
                     .delete_messages(ctx.channel_id(), &batch)
-                    .reason(&reason)?
+                    .reason(&reason)
                     .await?;
             }
         }
@@ -577,7 +574,7 @@ pub(super) async fn role_get(ctx: &CommandContext, storage: &Storage) -> Result<
     let reason = "Self-serve role requested by user.";
     ctx.http()
         .add_guild_member_role(guild_id, ctx.user().id, role_id)
-        .reason(reason)?
+        .reason(reason)
         .await?;
     Ok(Response::direct().content(format!("Added <@&{}> to your roles.", role_id)))
 }
@@ -595,7 +592,7 @@ pub(super) async fn role_drop(ctx: &CommandContext, storage: &Storage) -> Result
     let reason = "Self-serve role removed by user.";
     ctx.http()
         .remove_guild_member_role(guild_id, ctx.user().id, role_id)
-        .reason(reason)?
+        .reason(reason)
         .await?;
     Ok(Response::direct().content(format!("Removed <@&{}> from your roles.", role_id)))
 }

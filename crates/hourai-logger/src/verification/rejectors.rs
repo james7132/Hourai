@@ -107,7 +107,7 @@ struct BannedUsernameRejector(SqlPool);
 impl Verifier for BannedUsernameRejector {
     async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         let name_bans =
-            VerificationBan::fetch_by_name(ctx.member().guild_id, ctx.member().user.name.as_str())
+            VerificationBan::fetch_by_name(ctx.guild_id(), ctx.member().user.name.as_str())
                 .fetch_all(&self.0)
                 .await?;
         for ban in name_bans {
@@ -125,12 +125,10 @@ impl Verifier for BannedUsernameRejector {
             return Ok(());
         }
 
-        let avatar_bans = VerificationBan::fetch_by_avatar(
-            ctx.member().guild_id,
-            ctx.member().user.avatar.unwrap(),
-        )
-        .fetch_all(&self.0)
-        .await?;
+        let avatar_bans =
+            VerificationBan::fetch_by_avatar(ctx.guild_id(), ctx.member().user.avatar.unwrap())
+                .fetch_all(&self.0)
+                .await?;
         for ban in avatar_bans {
             let mut reason = format!(
                 "Exact avatar match with banned user: {}#{}",

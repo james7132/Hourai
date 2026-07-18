@@ -34,7 +34,7 @@ impl UpdateCache for GuildCreate {
             return;
         }
 
-        cache.cache_guild(self.0.clone());
+        cache.cache_guild_create(self);
     }
 }
 
@@ -62,7 +62,7 @@ impl UpdateCache for MemberAdd {
             return;
         }
 
-        cache.cache_member(self.guild_id, &self.0);
+        cache.cache_member(self.guild_id, &self.member);
     }
 }
 

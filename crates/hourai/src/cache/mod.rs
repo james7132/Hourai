@@ -152,6 +152,28 @@ impl InMemoryCache {
         self.0.pending_members.clear();
     }
 
+    pub fn cache_guild_create(
+        &self,
+        guild: &twilight_model::gateway::payload::incoming::GuildCreate,
+    ) {
+        match guild {
+            twilight_model::gateway::payload::incoming::GuildCreate::Available(g) => {
+                if self.wants(ResourceType::MEMBER) {
+                    self.cache_members(g.id, g.members.clone());
+                }
+                if self.wants(ResourceType::PRESENCE) {
+                    self.0.guild_presences.insert(g.id, HashSet::new());
+                    self.cache_presences(g.id, g.presences.clone());
+                }
+                self.0.guilds.insert(g.id);
+                self.0.unavailable_guilds.remove(&g.id);
+            }
+            twilight_model::gateway::payload::incoming::GuildCreate::Unavailable(g) => {
+                self.unavailable_guild(g.id);
+            }
+        }
+    }
+
     fn cache_guild(&self, guild: Guild) {
         // The map and set creation needs to occur first, so caching states and
         // objects always has a place to put them.

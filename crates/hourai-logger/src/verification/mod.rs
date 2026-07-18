@@ -9,7 +9,7 @@ pub use verifier::*;
 use anyhow::Result;
 use hourai::cache::InMemoryCache;
 use hourai::models::guild::Member;
-use hourai::models::id::Id;
+use hourai::models::id::{marker::GuildMarker, Id};
 use hourai::proto::guild_configs::{LoggingConfig, VerificationConfig};
 use hourai_sql::SqlPool;
 use twilight_util::builder::embed::*;
@@ -29,18 +29,22 @@ pub fn make_verifiers(cache: InMemoryCache, sql: SqlPool) -> Vec<BoxedVerifier> 
 }
 
 pub async fn verify_member(
+    guild_id: Id<GuildMarker>,
     member: &Member,
     verifiers: &[BoxedVerifier],
 ) -> Result<VerificationContext> {
-    let mut ctx = VerificationContext::new(member.clone());
+    let mut ctx = VerificationContext::new(guild_id, member.clone());
     for v in verifiers {
         v.verify(&mut ctx).await?;
     }
     Ok(ctx)
 }
 
-pub async fn on_member_join(client: &crate::Client, member: &Member) -> Result<()> {
-    let guild_id = member.guild_id;
+pub async fn on_member_join(
+    client: &crate::Client,
+    guild_id: Id<GuildMarker>,
+    member: &Member,
+) -> Result<()> {
     let config: VerificationConfig = client
         .storage()
         .redis()
@@ -53,7 +57,7 @@ pub async fn on_member_join(client: &crate::Client, member: &Member) -> Result<(
     }
 
     let verifiers = make_verifiers(client.0.cache.clone(), client.storage().sql().clone());
-    let ctx = verify_member(member, &verifiers).await?;
+    let ctx = verify_member(guild_id, member, &verifiers).await?;
 
     if ctx.is_approved() {
         if config.has_role_id() {
@@ -92,7 +96,7 @@ pub async fn on_member_join(client: &crate::Client, member: &Member) -> Result<(
             let _ = client
                 .http()
                 .create_message(channel_id)
-                .embeds(&[embed])?
+                .embeds(&[embed])
                 .await;
         }
     }

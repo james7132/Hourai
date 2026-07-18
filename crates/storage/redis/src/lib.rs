@@ -12,7 +12,7 @@ use self::keys::{CacheKey, GuildKey, Id};
 use self::protobuf::Protobuf;
 use anyhow::Result;
 use hourai::{
-    gateway::shard::ResumeSession,
+    gateway::Session,
     models::{
         channel::Channel,
         guild::{Guild, PartialGuild, Permissions, Role},
@@ -675,7 +675,7 @@ impl ResumeStates {
     pub async fn save_sessions(
         &mut self,
         key: &str,
-        sessions: HashMap<u64, ResumeSession>,
+        sessions: HashMap<u64, Session>,
     ) -> Result<()> {
         let sessions: Vec<(u64, String)> = sessions
             .into_iter()
@@ -689,7 +689,7 @@ impl ResumeStates {
         Ok(())
     }
 
-    pub async fn get_sessions(&mut self, key: &str) -> HashMap<u64, ResumeSession> {
+    pub async fn get_sessions(&mut self, key: &str) -> HashMap<u64, Session> {
         let sessions = redis::Cmd::hgetall(CacheKey::ResumeState(key.into()))
             .query_async::<RedisPool, HashMap<u64, String>>(self.0.connection_mut())
             .await;

@@ -3,10 +3,8 @@ use crate::{
     interactions::{InteractionContext, InteractionError, InteractionResult},
     models::{
         application::interaction::{
-            application_command::{
-                CommandData, CommandDataOption, CommandOptionValue, InteractionMember,
-            },
-            Interaction, InteractionData,
+            application_command::{CommandData, CommandDataOption, CommandOptionValue},
+            Interaction, InteractionData, InteractionMember,
         },
         guild::{PartialMember, Permissions},
         id::{

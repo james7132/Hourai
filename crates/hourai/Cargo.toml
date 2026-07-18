@@ -24,20 +24,21 @@ protobuf = "2.27"
 serde = "1.0"
 lazy_static = "1.4"
 thiserror = "1.0"
-hyper = { version = "0.14", features = ["client"] }
+tokio = { version = "1.0", features = ["sync", "rt", "macros"] }
+futures-util = "0.3"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
-twilight-model = "0.14"
-twilight-util = { version = "0.14", features = ["snowflake", "builder"] }
+twilight-model = "0.16"
+twilight-util = { version = "0.16", features = ["snowflake", "builder"] }
 regex = "1.5"
 
 [dependencies.twilight-gateway]
-version = "0.14"
+version = "0.16"
 default-features = true
-features = ['simd-json', 'rustls-webpki-roots', 'metrics']
+features = ['simd-json', 'rustls-webpki-roots']
 
 [dependencies.twilight-http]
-version = "0.14"
+version = "0.16"
 default-features = true
 features = ['simd-json', 'rustls-webpki-roots']
 

@@ -22,7 +22,10 @@ serde_json = "1.0"
 thiserror = "1.0"
 humantime = "2.1"
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
-twilight-util = { version = "0.14", features = ["snowflake", "builder"] }
+twilight-model = "0.16"
+twilight-gateway = { version = "0.16", default-features = true, features = ["simd-json", "rustls-webpki-roots"] }
+twilight-http = { version = "0.16", default-features = true, features = ["simd-json", "rustls-webpki-roots"] }
+twilight-util = { version = "0.16", features = ["snowflake", "builder"] }
 
 actix-web = { version = "4.0", features = ["cookies"] }
 actix-http = "3.0"

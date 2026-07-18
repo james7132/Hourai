@@ -155,9 +155,9 @@ pub trait InteractionContext {
         self.http()
             .interaction(self.application_id())
             .update_response(self.token())
-            .content(data.content.as_deref())?
-            .embeds(data.embeds.as_deref())?
-            .components(data.components.as_deref())?
+            .content(data.content.as_deref())
+            .embeds(data.embeds.as_deref())
+            .components(data.components.as_deref())
             .await?;
         Ok(())
     }
