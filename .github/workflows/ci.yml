@@ -23,6 +23,32 @@ jobs:
           toolchain: stable
       - run: cargo build --all-features --manifest-path Cargo.toml
 
+  migration-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:12-alpine
+        env:
+          POSTGRES_DB: hourai
+          POSTGRES_USER: hourai
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Run SQL migration tests
+        env:
+          DATABASE_URL: postgres://hourai:password@localhost:5432/hourai
+        run: cargo test -p hourai-sql --test migrations
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:
