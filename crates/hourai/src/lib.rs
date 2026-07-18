@@ -1,4 +1,4 @@
-#![allow(elided_lifetimes_in_paths)]
+#![expect(elided_lifetimes_in_paths)]
 
 #[macro_use]
 extern crate lazy_static;

@@ -82,11 +82,7 @@ impl InteractionContext for ComponentContext {
             .channel
             .as_ref()
             .map(|c| c.id)
-            .or(
-                #[allow(deprecated)]
-                self.component.channel_id,
-            )
-            .unwrap()
+            .expect("Component interaction is missing channel")
     }
 
     fn member(&self) -> Option<&PartialMember> {

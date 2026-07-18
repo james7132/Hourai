@@ -3,7 +3,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use chrono::Duration;
 use chrono::offset::Utc;
-use dashmap::DashMap;
 use hourai::models::{Snowflake, user::User};
 use hourai_sql::{Ban, SqlPool, Username, VerificationBan};
 use regex::Regex;
@@ -167,71 +166,6 @@ impl<T: StringMatchRejector + Send + Sync> Verifier for T {
         }
 
         Ok(())
-    }
-}
-
-pub struct UsernameMatchRejector {
-    #[allow(dead_code)]
-    sql: SqlPool,
-    matches: DashMap<String, Regex>,
-    prefix: String,
-}
-
-impl UsernameMatchRejector {
-    pub fn new(sql: SqlPool, prefix: impl Into<String>, matches: Vec<String>) -> Result<Self> {
-        Ok(Self {
-            sql,
-            matches: Self::compile(matches)?,
-            prefix: prefix.into(),
-        })
-    }
-
-    fn compile(base: Vec<String>) -> Result<DashMap<String, Regex>> {
-        let matches: DashMap<String, Regex> = DashMap::new();
-        for input in base {
-            matches.insert(
-                input.clone(),
-                Regex::new(Self::generalize_filter(input).as_str())?,
-            );
-        }
-        Ok(matches)
-    }
-
-    fn generalize_filter(base: String) -> String {
-        base.chars()
-            .flat_map(|ch| {
-                if ch.is_alphanumeric() {
-                    vec![ch, '+']
-                } else {
-                    vec![ch]
-                }
-            })
-            .collect()
-    }
-}
-
-#[async_trait]
-impl StringMatchRejector for UsernameMatchRejector {
-    type Key = String;
-
-    fn regexes(&self) -> Vec<(Self::Key, Regex)> {
-        self.matches
-            .iter()
-            .map(|kv| (kv.key().clone(), kv.value().clone()))
-            .collect()
-    }
-
-    async fn criteria(&self, ctx: &context::VerificationContext) -> Result<Vec<String>> {
-        Ok(Username::fetch(ctx.member().user.id, Some(20))
-            .fetch_all(&self.sql)
-            .await?
-            .into_iter()
-            .map(|un| un.name)
-            .collect())
-    }
-
-    fn reason(&self, key: &Self::Key, matched: &str) -> String {
-        format!("{} (Matches: {}): {}", self.prefix, key, matched)
     }
 }
 

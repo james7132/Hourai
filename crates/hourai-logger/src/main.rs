@@ -3,7 +3,6 @@ extern crate lazy_static;
 
 mod announcements;
 mod auto;
-mod buttons;
 mod commands;
 mod member_chunker;
 mod message_filter;
@@ -39,7 +38,6 @@ use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use twilight_util::builder::embed::*;
 
-const RESUME_KEY: &str = "LOGGER";
 const BOT_INTENTS: Intents = Intents::from_bits_truncate(
     Intents::GUILDS.bits()
         | Intents::GUILD_MODERATION.bits()
@@ -357,12 +355,27 @@ impl Client {
             avatar: evt.user.avatar.map(|hash| hash.to_string()),
         }
         .insert();
-        let (res1, res2) = futures::join!(
+        let (res1, res2, res3) = futures::join!(
             self.storage().execute(ban),
             self.log_users(vec![evt.user.clone()]),
+            announcements::on_member_ban(&self, evt.clone()),
         );
         res1?;
         res2?;
+        res3?;
+
+        if let Ok(config) = self
+            .storage()
+            .redis()
+            .guild(evt.guild_id)
+            .configs()
+            .get::<hourai::proto::auto_config::AutoConfig>()
+            .await
+        {
+            let _ =
+                auto::AutoEngine::on_member_ban(&self.0.actions, &config, evt.guild_id, &evt.user)
+                    .await;
+        }
 
         let redis = self.storage().redis();
         let config: hourai::proto::guild_configs::LoggingConfig =

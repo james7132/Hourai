@@ -6,7 +6,7 @@ use hourai::models::id::{Id, marker::UserMarker};
 use hourai::models::user::{PremiumType, User, UserFlags};
 use std::collections::HashSet;
 
-pub struct DistinguishedUserVerifier(#[allow(dead_code)] InMemoryCache);
+pub struct DistinguishedUserVerifier;
 
 #[async_trait]
 impl Verifier for DistinguishedUserVerifier {
@@ -95,6 +95,6 @@ pub fn bot() -> BoxedVerifier {
     Box::new(BotApprover)
 }
 
-pub fn distinguished_user(cache: InMemoryCache) -> BoxedVerifier {
-    Box::new(DistinguishedUserVerifier(cache))
+pub fn distinguished_user(_cache: InMemoryCache) -> BoxedVerifier {
+    Box::new(DistinguishedUserVerifier)
 }

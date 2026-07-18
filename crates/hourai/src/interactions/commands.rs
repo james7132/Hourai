@@ -241,11 +241,7 @@ impl InteractionContext for CommandContext {
             .channel
             .as_ref()
             .map(|c| c.id)
-            .or(
-                #[allow(deprecated)]
-                self.command.channel_id,
-            )
-            .unwrap()
+            .expect("Interaction is missing channel")
     }
 
     fn user(&self) -> &User {

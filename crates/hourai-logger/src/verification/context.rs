@@ -14,10 +14,6 @@ impl VerificationReason {
         self.approval_reason().is_some()
     }
 
-    pub fn is_rejection(&self) -> bool {
-        self.rejection_reason().is_some()
-    }
-
     pub fn approval_reason(&self) -> Option<&str> {
         match self {
             VerificationReason::Approval(reason) => Some(reason.as_str()),
@@ -66,16 +62,8 @@ impl VerificationContext {
             .push(VerificationReason::Rejection(reason.into()));
     }
 
-    pub fn add_reason(&mut self, reason: VerificationReason) {
-        self.reasons.push(reason);
-    }
-
     pub fn is_approved(&self) -> bool {
         self.reasons.last().map(|r| r.is_approval()).unwrap_or(true)
-    }
-
-    pub fn approval_reasons(&self) -> impl Iterator<Item = &str> {
-        self.reasons.iter().filter_map(|r| r.approval_reason())
     }
 
     pub fn rejection_reasons(&self) -> impl Iterator<Item = &str> {

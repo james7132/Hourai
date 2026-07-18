@@ -4,12 +4,10 @@ use twilight_model::gateway::{event::Event, payload::incoming::*, presence::User
 
 pub trait UpdateCache {
     // Allow this for presentation purposes in documentation.
-    #[allow(unused_variables)]
-    fn update(&self, cache: &InMemoryCache) {}
+    fn update(&self, _cache: &InMemoryCache) {}
 }
 
 impl UpdateCache for Event {
-    #[allow(clippy::cognitive_complexity)]
     fn update(&self, c: &InMemoryCache) {
         use Event::*;
 
