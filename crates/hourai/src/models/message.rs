@@ -130,6 +130,7 @@ impl MessageLike for CachedMessageProto {
         self.get_content()
     }
 
+    // TODO(james7132): Implement this fix this
     fn embeds(&self) -> &[Embed] {
         &[]
     }

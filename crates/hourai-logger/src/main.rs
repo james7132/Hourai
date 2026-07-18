@@ -111,6 +111,7 @@ async fn async_main(config: HouraiConfig) -> Result<()> {
         member_chunker: member_chunker::MemberChunker::new(senders.clone()),
     }));
 
+    // Setup background tasks
     let server = web::run_server(
         config.clone(),
         storage.sql().clone(),
@@ -197,36 +198,29 @@ impl Client {
         }
     }
 
-    async fn refresh_bans(&self, guild_id: Id<GuildMarker>) -> Result<()> {
-        let perms = self
-            .fetch_guild_permissions(guild_id, self.user_id())
-            .await?;
+    #[inline(always)]
+    pub fn total_shards(&self) -> u64 {
+        self.0.gateway.len() as u64
+    }
 
-        if perms.contains(Permissions::BAN_MEMBERS) {
-            debug!("Fetching bans from guild {}", guild_id);
-            let fetched_bans = self.http().bans(guild_id).await?.model().await?;
-            let bans: Vec<Ban> = fetched_bans
-                .iter()
-                .map(|b| Ban {
-                    guild_id: guild_id.get() as i64,
-                    user_id: b.user.id.get() as i64,
-                    reason: b.reason.clone(),
-                    avatar: b.user.avatar.map(|hash| hash.to_string()),
-                })
-                .collect();
-            debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
-            let mut txn = self.storage().sql().begin().await?;
-            txn.execute(Ban::clear_guild(guild_id)).await?;
-            txn.execute(Ban::bulk_insert(bans)).await?;
-            txn.commit().await?;
+    /// Gets the shard ID for a guild.
+    #[inline(always)]
+    pub fn shard_id(&self, guild_id: Id<GuildMarker>) -> u64 {
+        (guild_id.get() >> 22) % self.total_shards()
+    }
 
-            // Log user data from bans
-            let users: Vec<User> = fetched_bans.into_iter().map(|ban| ban.user).collect();
-            self.log_users(users).await?;
-        } else {
-            debug!("Cleared bans from guild {}", guild_id);
-        }
-        Ok(())
+    pub fn user_id(&self) -> Id<UserMarker> {
+        self.0.actions.current_user().id
+    }
+
+    #[inline(always)]
+    pub fn storage(&self) -> &Storage {
+        self.0.actions.storage()
+    }
+
+    #[inline(always)]
+    pub fn http(&self) -> &Arc<hourai::http::Client> {
+        self.0.actions.http()
     }
 
     pub async fn fetch_guild_permissions(
@@ -245,46 +239,6 @@ impl Client {
         }
     }
 
-    pub fn storage(&self) -> &Storage {
-        self.0.actions.storage()
-    }
-
-    pub fn http(&self) -> &Arc<hourai::http::Client> {
-        self.0.actions.http()
-    }
-
-    pub fn user_id(&self) -> Id<UserMarker> {
-        self.0.actions.current_user().id
-    }
-
-    pub fn total_shards(&self) -> u64 {
-        self.0.gateway.len() as u64
-    }
-
-    pub fn shard_id(&self, guild_id: Id<GuildMarker>) -> u64 {
-        (guild_id.get() >> 22) % self.total_shards()
-    }
-
-    pub async fn log_users(&self, users: Vec<User>) -> Result<()> {
-        let mut txn = self.storage().sql().begin().await?;
-        for user in users {
-            txn.execute(Username::new(&user).insert()).await?;
-        }
-        txn.commit().await?;
-        Ok(())
-    }
-
-    pub async fn log_members(&self, members: &[Member]) -> Result<()> {
-        let mut txn = self.storage().sql().begin().await?;
-        for member in members {
-            txn.execute(Username::new(&member.user).insert()).await?;
-            txn.execute(hourai_sql::Member::from(member).insert())
-                .await?;
-        }
-        txn.commit().await?;
-        Ok(())
-    }
-
     /// Handle events before the cache is updated.
     async fn pre_cache_event(&self, event: &Event) {
         let kind = event.kind();
@@ -297,6 +251,7 @@ impl Client {
                         deaf: false,
                         flags: MemberFlags::empty(),
                         joined_at: evt.joined_at,
+                        // Unknown/dummy fields.
                         mute: false,
                         nick: evt.nick.clone(),
                         pending: false,
@@ -756,6 +711,58 @@ impl Client {
         if let Some(guild_id) = evt.0.guild_id {
             let redis = self.storage().redis().guild(guild_id);
             redis.voice_states().save(&evt.0).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn log_users(&self, users: Vec<User>) -> Result<()> {
+        let mut txn = self.storage().sql().begin().await?;
+        for user in users {
+            txn.execute(Username::new(&user).insert()).await?;
+        }
+        txn.commit().await?;
+        Ok(())
+    }
+
+    pub async fn log_members(&self, members: &[Member]) -> Result<()> {
+        let mut txn = self.storage().sql().begin().await?;
+        for member in members {
+            txn.execute(Username::new(&member.user).insert()).await?;
+            txn.execute(hourai_sql::Member::from(member).insert())
+                .await?;
+        }
+        txn.commit().await?;
+        Ok(())
+    }
+
+    async fn refresh_bans(&self, guild_id: Id<GuildMarker>) -> Result<()> {
+        let perms = self
+            .fetch_guild_permissions(guild_id, self.user_id())
+            .await?;
+
+        if perms.contains(Permissions::BAN_MEMBERS) {
+            debug!("Fetching bans from guild {}", guild_id);
+            let fetched_bans = self.http().bans(guild_id).await?.model().await?;
+            let bans: Vec<Ban> = fetched_bans
+                .iter()
+                .map(|b| Ban {
+                    guild_id: guild_id.get() as i64,
+                    user_id: b.user.id.get() as i64,
+                    reason: b.reason.clone(),
+                    avatar: b.user.avatar.map(|hash| hash.to_string()),
+                })
+                .collect();
+            debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
+            let mut txn = self.storage().sql().begin().await?;
+            txn.execute(Ban::clear_guild(guild_id)).await?;
+            txn.execute(Ban::bulk_insert(bans)).await?;
+            txn.commit().await?;
+
+            // Log user data from bans
+            let users: Vec<User> = fetched_bans.into_iter().map(|ban| ban.user).collect();
+            self.log_users(users).await?;
+        } else {
+            debug!("Cleared bans from guild {}", guild_id);
         }
         Ok(())
     }
