@@ -1,12 +1,14 @@
 version: "3.8"
 services:
   logger:
-    image: james7132/hourai:logger
+    image: ghcr.io/james7132/hourai:latest
     container_name: logger
     restart: unless-stopped
     expose:
       - 8080
       - 9090
+    ports:
+      - 8080:8080
     environment:
       - HOURAI_CONFIG=/opt/hourai.jsonnet
       - HOURAI_ENV=prod
@@ -16,19 +18,6 @@ services:
     depends_on:
       - postgres
       - redis
-  nginx:
-    image: james7132/hourai:latest-frontend
-    container_name: nginx
-    restart: unless-stopped
-    ports:
-      - 80:80
-      - 443:443
-    volumes:
-      - ./nginx.prod.conf:/etc/nginx/nginx.conf
-      - ./nginx:/etc/nginx/common
-      - /etc/letsencrypt:/etc/letsencrypt
-    depends_on:
-      - logger
   postgres:
     image: postgres:12-alpine
     container_name: postgres
