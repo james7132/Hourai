@@ -1024,65 +1024,39 @@ dependencies = [
 ]
 
 [[package]]
-name = "hourai-feeds"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "hourai",
- "hourai-sql",
- "http",
- "reqwest",
- "serde",
- "simd-json 0.5.1",
- "sqlx",
- "tokio",
- "tracing",
- "twilight-util",
-]
-
-[[package]]
 name = "hourai-logger"
 version = "0.1.0"
 dependencies = [
+ "actix-http",
+ "actix-tls",
+ "actix-web",
  "anyhow",
+ "async-trait",
+ "awc",
  "chrono",
+ "cookie",
+ "dashmap",
  "futures",
  "hourai",
  "hourai-redis",
  "hourai-sql",
  "hourai-storage",
  "humantime",
+ "jsonwebtoken",
  "lazy_static",
+ "protobuf",
  "rand",
  "regex",
  "reqwest",
+ "serde",
  "serde_json",
+ "serde_urlencoded",
  "thiserror",
  "tokio",
  "tracing",
+ "tracing-actix-web",
  "twilight-util",
-]
-
-[[package]]
-name = "hourai-music"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64 0.13.1",
- "dashmap",
- "futures",
- "hourai",
- "hourai-redis",
- "http",
- "hyper",
- "rand",
- "serde_json",
- "tokio",
- "tracing",
- "twilight-lavalink",
- "twilight-util",
+ "uuid",
 ]
 
 [[package]]
@@ -1130,53 +1104,6 @@ dependencies = [
  "sqlx-core",
  "thiserror",
  "tracing",
-]
-
-[[package]]
-name = "hourai-verification"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "dashmap",
- "futures",
- "hourai",
- "hourai-redis",
- "hourai-sql",
- "hourai-storage",
- "humantime",
- "lazy_static",
- "regex",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "hourai-web"
-version = "0.1.0"
-dependencies = [
- "actix-http",
- "actix-tls",
- "actix-web",
- "awc",
- "cookie",
- "futures",
- "hourai",
- "hourai-redis",
- "hourai-sql",
- "jsonwebtoken",
- "protobuf",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "sqlx",
- "thiserror",
- "time 0.3.47",
- "tracing",
- "tracing-actix-web",
- "tracing-futures",
- "uuid",
 ]
 
 [[package]]
@@ -2749,16 +2676,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-futures"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d095ae15e245a057c8e8451bab9b3ee1e1f68e9ba2b4fbc18d0ac5237835f2"
-dependencies = [
- "pin-project",
- "tracing",
-]
-
-[[package]]
 name = "tracing-log"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2882,24 +2799,6 @@ dependencies = [
  "http",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "twilight-lavalink"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe1b375b17f51f19ecb5e6b60032dc29e1dae6d386825ef99e68b0ae6097658b"
-dependencies = [
- "dashmap",
- "futures-util",
- "http",
- "percent-encoding",
- "serde",
- "serde_json",
- "tokio",
- "tokio-tungstenite",
- "tracing",
- "twilight-model",
 ]
 
 [[package]]
