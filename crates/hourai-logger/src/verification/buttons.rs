@@ -117,10 +117,11 @@ pub async fn handle_component_interaction(
 
             if config.has_role_id() {
                 let role_id = Id::new(config.get_role_id());
+                let reason = format!("Manually verified by {}.", ctx.user().name);
                 let _ = client
                     .http()
                     .add_guild_member_role(guild_id, target_user_id, role_id)
-                    .reason("Manually verified via verification modlog button.")
+                    .reason(&reason)
                     .await;
             }
 
@@ -140,10 +141,11 @@ pub async fn handle_component_interaction(
                 return Ok(());
             }
 
+            let reason = format!("Failed verification. Kicked by {}.", ctx.user().name);
             let _ = client
                 .http()
                 .remove_guild_member(guild_id, target_user_id)
-                .reason("Kicked via verification modlog button.")
+                .reason(&reason)
                 .await;
 
             ctx.reply(Response::direct().content(format!(
@@ -162,10 +164,11 @@ pub async fn handle_component_interaction(
                 return Ok(());
             }
 
+            let reason = format!("Failed verification. Banned by {}.", ctx.user().name);
             let _ = client
                 .http()
                 .create_ban(guild_id, target_user_id)
-                .reason("Banned via verification modlog button.")
+                .reason(&reason)
                 .await;
 
             ctx.reply(Response::direct().content(format!(
