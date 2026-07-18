@@ -1,100 +1,21 @@
 version: "3.8"
 services:
-  hourai:
-    image: james7132/hourai:latest
-    container_name: hourai
-    command: python launcher.py run bot
-    restart: unless-stopped
-    environment:
-      - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=prod
-    volumes:
-      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
-      - ./lists/:/opt/lists:ro
-    expose:
-      - 8080
-    depends_on:
-      - postgres
-      - redis
-      - lavalink
   logger:
     image: james7132/hourai:logger
     container_name: logger
     restart: unless-stopped
     expose:
-      - 9090
-    environment:
-      - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=prod
-    volumes:
-      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
-      - ./lists/:/opt/lists:ro
-    depends_on:
-      - postgres
-      - redis
-      - http-proxy
-      - gateway-queue
-  music:
-    image: james7132/hourai:latest-music
-    container_name: music
-    environment:
-      - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=dev
-      - RUST_BACKTRACE=1
-      - RUST_LOG=debug
-    volumes:
-      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
-      - ./lists/:/opt/lists:ro
-    depends_on:
-      - redis
-      - http-proxy
-      - lavalink
-      - gateway-queue
-  feeds:
-    image: james7132/hourai:latest-feeds
-    container_name: feeds
-    restart: unless-stopped
-    environment:
-      - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=prod
-      - RUST_BACKTRACE=1
-      - RUST_LOG=info,sqlx=warn
-    volumes:
-      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
-      - ./lists/:/opt/lists:ro
-    expose:
-      - 9090
-    depends_on:
-      - postgres
-      - http-proxy
-  web:
-    image: james7132/hourai:latest-web
-    container_name: web
-    restart: unless-stopped
-    environment:
-      - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=prod
-      - RUST_BACKTRACE=1
-      - RUST_LOG=debug,sqlx=warn
-    volumes:
-      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
-      - ./lists/:/opt/lists:ro
-    expose:
       - 8080
       - 9090
+    environment:
+      - HOURAI_CONFIG=/opt/hourai.jsonnet
+      - HOURAI_ENV=prod
+    volumes:
+      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
+      - ./lists/:/opt/lists:ro
     depends_on:
       - postgres
       - redis
-  http-proxy:
-    image: twilightrs/http-proxy
-    container_name: http-proxy
-    restart: unless-stopped
-    environment:
-      - RUST_BACKTRACE=1
-      - RUST_LOG=warn
-      - HOST=0.0.0.0
-      - PORT=80
-      - DISCORD_TOKEN=""
   nginx:
     image: james7132/hourai:latest-frontend
     container_name: nginx
@@ -107,7 +28,7 @@ services:
       - ./nginx:/etc/nginx/common
       - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
-      - hourai
+      - logger
   postgres:
     image: postgres:12-alpine
     container_name: postgres
@@ -129,14 +50,6 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
-  lavalink:
-    image: fredboat/lavalink:master
-    restart: unless-stopped
-    container_name: lavalink
-    volumes:
-      - ./lavalink.yml:/opt/Lavalink/application.yml
-    expose:
-      - 2333
   grafana:
     image: grafana/grafana:master
     restart: unless-stopped

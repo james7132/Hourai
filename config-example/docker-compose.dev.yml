@@ -1,33 +1,14 @@
 version: "3.8"
 services:
-  hourai:
-    build:
-      context: ../
-      dockerfile: ../base
-    container_name: hourai
-    command: python launcher.py run bot
-    restart: unless-stopped
-    environment:
-      - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=dev
-    volumes:
-      - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
-      - ./lists/:/opt/lists:ro
-    expose:
-      - 8080
-    depends_on:
-      - postgres
-      - redis
-      - lavalink
   logger:
     build:
       context: ../
-      dockerfile: ../logger/Dockerfile
+      dockerfile: ../crates/hourai-logger/Dockerfile
     container_name: logger
     restart: unless-stopped
     environment:
       - HOURAI_CONFIG=/opt/hourai.jsonnet
-      - HOURAI_ENV=prod
+      - HOURAI_ENV=dev
     volumes:
       - ./hourai.jsonnet:/opt/hourai.jsonnet:ro
       - ./lists/:/opt/lists:ro
@@ -54,7 +35,7 @@ services:
       - ./nginx.dev.conf:/etc/nginx/nginx.conf
       - ./nginx:/etc/nginx/common
     depends_on:
-      - hourai
+      - logger
   postgres:
     image: postgres:12-alpine
     container_name: postgres
@@ -76,14 +57,6 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
-  lavalink:
-    image: fredboat/lavalink:master
-    restart: unless-stopped
-    container_name: lavalink
-    volumes:
-      - ./lavalink.yml:/opt/Lavalink/application.yml
-    expose:
-      - 2333
 volumes:
   db-data:
     name: "db-data"

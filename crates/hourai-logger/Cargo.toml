@@ -1,0 +1,46 @@
+[package]
+name = "hourai-logger"
+version = "0.1.0"
+authors = ["james7132 <contact@jamessliu.com>"]
+edition = "2021"
+
+[dependencies]
+hourai = { path = "../hourai" }
+hourai-storage = { path = "../storage/common" }
+hourai-sql = { path = "../storage/sql" }
+hourai-redis = { path = "../storage/redis" }
+anyhow = "1.0"
+async-trait = "0.1"
+chrono = "0.4"
+dashmap = { default-features = false, version = "5.2" }
+futures = { default-features = false, version = "0.3" }
+lazy_static = "1.4"
+rand = "0.8"
+regex = "1.5"
+serde = "1.0"
+serde_json = "1.0"
+thiserror = "1.0"
+humantime = "2.1"
+tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
+twilight-util = { version = "0.14", features = ["snowflake", "builder"] }
+
+actix-web = { version = "4.0", features = ["cookies"] }
+actix-http = "3.0"
+actix-tls = "3.0"
+awc = { version = "3.0", features = ["rustls"] }
+cookie = "0.16"
+jsonwebtoken = "8.0"
+protobuf = "2.27"
+serde_urlencoded = "0.7"
+tracing-actix-web = "0.6"
+uuid = { version = "1.1", features = ["v4"] }
+
+[dependencies.tokio]
+default-features = false
+version = "1.0"
+features = ["macros", "rt-multi-thread", "time", "signal"]
+
+[dependencies.reqwest]
+default-features = false
+version = "0.11"
+features = ["json", "rustls-tls-webpki-roots"]

@@ -17,7 +17,7 @@
 </p>
 
 Hourai is a Discord Bot focused on safety, security, administration, and
-automation. Written in Python 3.7+. Hourai is a bot built to help ease
+automation. Written in Rust. Hourai is a bot built to help ease
 moderation of communities of any size, offering features that work with servers
 of 10 users to those with well over 100,000.
 

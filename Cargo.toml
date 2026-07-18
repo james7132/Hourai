@@ -1,15 +1,10 @@
 [workspace]
 members = [
-  "logger/hourai",
-  "logger/hourai-feeds",
-  #"hourai-frontend",
-  "logger/hourai-logger",
-  "logger/hourai-music",
-  "logger/hourai-verification",
-  "logger/hourai-web",
-  "logger/storage/common",
-  "logger/storage/sql",
-  "logger/storage/redis",
+  "crates/hourai",
+  "crates/hourai-logger",
+  "crates/storage/common",
+  "crates/storage/sql",
+  "crates/storage/redis",
 ]
 
 [profile.release]
