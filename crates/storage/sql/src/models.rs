@@ -73,8 +73,8 @@ impl Username {
 
     pub fn insert(&self) -> SqlQuery<'_> {
         sqlx::query(
-            "INSERT INTO usernames (user_id, name, discriminator) \
-             VALUES ($1, $2, $3) \
+            "INSERT INTO usernames (user_id, timestamp, name, discriminator) \
+             VALUES ($1, NOW(), $2, $3) \
              ON CONFLICT ON CONSTRAINT idx_unique_username \
              DO NOTHING",
         )
@@ -88,8 +88,8 @@ impl Username {
         let names: Vec<String> = usernames.iter().map(|u| u.name.clone()).collect();
         let discriminator: Vec<Option<i32>> = usernames.iter().map(|u| u.discriminator).collect();
         sqlx::query(
-            "INSERT INTO usernames (user_id, name, discriminator) \
-             SELECT * FROM UNNEST ($1, $2, $3) \
+            "INSERT INTO usernames (user_id, timestamp, name, discriminator) \
+             SELECT user_id, NOW(), name, discriminator FROM UNNEST ($1, $2, $3) \
              AS t(user_id, name, discriminator) \
              ON CONFLICT ON CONSTRAINT idx_unique_username \
              DO NOTHING",
@@ -318,8 +318,8 @@ impl Member {
         present: bool,
     ) -> SqlQuery<'a> {
         sqlx::query(
-            "UPDATE members SET present = $1, last_seen = now() \
-                     WHERE guild_id = $2 AND user_id = $3",
+            "UPDATE members SET present = $1, last_seen = NOW() \
+             WHERE guild_id = $2 AND user_id = $3",
         )
         .bind(present)
         .bind(guild_id.get() as i64)
@@ -334,11 +334,12 @@ impl Member {
                 role_ids,
                 nickname,
                 present,
+                last_seen,
                 bot,
                 premium_since,
                 avatar
             ) \
-            VALUES ($1, $2, $3, $4, true, $5, $6, $7) \
+            VALUES ($1, $2, $3, $4, true, NOW(), $5, $6, $7) \
             ON CONFLICT ON CONSTRAINT members_pkey \
             DO UPDATE SET \
                 role_ids = excluded.role_ids, \
@@ -346,7 +347,7 @@ impl Member {
                 premium_since = excluded.premium_since, \
                 avatar = excluded.avatar, \
                 bot = excluded.bot, \
-                last_seen = now(), \
+                last_seen = NOW(), \
                 present = true",
         )
         .bind(self.guild_id)
@@ -469,7 +470,7 @@ impl EscalationEntry {
         .bind(user_id.get() as i64)
     }
 
-    pub fn insert<'a>(&self) -> SqlQueryAs<'a, (i32,)> {
+    pub fn insert<'a>(&self) -> SqlQueryAs<'a, (i32, DateTime<Utc>)> {
         sqlx::query_as(
             "INSERT INTO escalation_histories ( \
                 guild_id, \
@@ -481,8 +482,8 @@ impl EscalationEntry {
                 level_delta, \
                 timestamp \
             ) \
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
-            RETURNING id",
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) \
+            RETURNING id, timestamp",
         )
         .bind(self.guild_id)
         .bind(self.subject_id)
@@ -491,7 +492,6 @@ impl EscalationEntry {
         .bind(self.display_name.clone())
         .bind(self.action.clone())
         .bind(self.level_delta)
-        .bind(self.timestamp)
     }
 }
 
@@ -515,8 +515,8 @@ impl PendingDeescalation {
         Id::new(self.user_id as u64)
     }
 
-    pub fn insert(&self) -> SqlQuery<'_> {
-        sqlx::query(
+    pub fn insert<'a>(&self, duration_seconds: i64) -> SqlQueryAs<'a, (DateTime<Utc>,)> {
+        sqlx::query_as(
             "INSERT INTO pending_deescalations ( \
                 guild_id, \
                 user_id, \
@@ -524,17 +524,17 @@ impl PendingDeescalation {
                 amount, \
                 entry_id \
             ) \
-            VALUES ($1, $2, $3, $4, $5) \
+            VALUES ($1, $2, NOW() + ($3 * INTERVAL '1 second'), $4, $5) \
             ON CONFLICT ON CONSTRAINT pending_deescalations_pkey \
             DO UPDATE SET \
                 amount = excluded.amount, \
                 expiration = excluded.expiration, \
                 entry_id = excluded.entry_id \
-            ",
+            RETURNING expiration",
         )
         .bind(self.guild_id)
         .bind(self.user_id)
-        .bind(self.expiration)
+        .bind(duration_seconds as f64)
         .bind(self.amount)
         .bind(self.entry_id)
     }
@@ -546,7 +546,7 @@ impl PendingDeescalation {
     }
 
     pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
-        sqlx::query_as("SELECT * FROM pending_deescalations WHERE expiration < now()")
+        sqlx::query_as("SELECT * FROM pending_deescalations WHERE expiration < NOW()")
     }
 }
 
@@ -562,13 +562,16 @@ impl PendingAction {
     }
 
     pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
-        sqlx::query_as("SELECT id, data FROM pending_actions WHERE timestamp < now()")
+        sqlx::query_as("SELECT id, data FROM pending_actions WHERE timestamp < NOW()")
     }
 
-    pub fn schedule<'a>(action: Action, timestamp: impl Into<DateTime<Utc>>) -> SqlQuery<'a> {
-        sqlx::query("INSERT INTO pending_actions (timestamp, data) VALUES ($1, $2)")
-            .bind(timestamp.into())
-            .bind(Protobuf(action))
+    pub fn schedule<'a>(action: Action, duration_seconds: i64) -> SqlQuery<'a> {
+        sqlx::query(
+            "INSERT INTO pending_actions (timestamp, data) \
+             VALUES (NOW() + ($1 * INTERVAL '1 second'), $2)",
+        )
+        .bind(duration_seconds as f64)
+        .bind(Protobuf(action))
     }
 
     pub fn delete<'a>(&self) -> SqlQuery<'a> {
@@ -588,7 +591,7 @@ pub struct Oauth {
 
 impl Oauth {
     pub fn fetch_expired<'a>() -> SqlQueryAs<'a, Self> {
-        sqlx::query_as("SELECT * FROM oauth WHERE refresh_expiration < now()")
+        sqlx::query_as("SELECT * FROM oauth WHERE refresh_expiration < NOW()")
     }
 
     pub fn insert<'a>(&self) -> SqlQuery<'a> {

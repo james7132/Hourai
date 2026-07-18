@@ -1,6 +1,6 @@
 use crate::{Storage, actions::ActionExecutor};
 use anyhow::Result;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use hourai::{
     http,
     models::id::{
@@ -234,24 +234,27 @@ impl EscalationHistory {
             _ => "Deescalate",
         };
 
-        let entry = self.create_entry(authorizer, actions, display_name, diff);
+        let mut entry = self.create_entry(authorizer, actions, display_name, diff);
         let mut txn = self.storage().sql().begin().await?;
-        let entry_id: i32 = entry.insert().fetch_one(&mut txn).await?.0;
+        let (entry_id, timestamp): (i32, DateTime<Utc>) =
+            entry.insert().fetch_one(&mut txn).await?;
+        entry.timestamp = timestamp;
 
         // Schedule the pending deescalation
         let mut expiration = None;
         if let Some(rung) = current_rung {
             if rung.has_deescalation_period() {
-                expiration =
-                    Some(Utc::now() + Duration::seconds(rung.get_deescalation_period() as i64));
+                let duration_seconds = rung.get_deescalation_period() as i64;
                 let pending = PendingDeescalation {
                     guild_id: self.guild_id().get() as i64,
                     user_id: self.user_id().get() as i64,
-                    expiration: expiration.unwrap(),
+                    expiration: DateTime::default(),
                     amount: -1,
                     entry_id,
                 };
-                txn.execute(pending.insert()).await?;
+                let exp: (DateTime<Utc>,) =
+                    pending.insert(duration_seconds).fetch_one(&mut txn).await?;
+                expiration = Some(exp.0);
             }
         } else {
             txn.execute(PendingDeescalation::delete(self.guild_id(), self.user_id()))
@@ -296,7 +299,7 @@ impl EscalationHistory {
             authorizer_id: authorizer.id.get() as i64,
             authorizer_name,
             display_name: display_name.to_owned(),
-            timestamp: Utc::now(),
+            timestamp: DateTime::default(),
             action: actions.into(),
             level_delta: diff as i32,
         }

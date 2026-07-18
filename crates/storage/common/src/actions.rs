@@ -1,6 +1,5 @@
 use crate::{Storage, escalation::EscalationManager};
 use anyhow::Result;
-use chrono::{Duration, Utc};
 use futures::future::{BoxFuture, FutureExt};
 use hourai::{
     http::{self, request::AuditLogReason},
@@ -89,11 +88,11 @@ impl ActionExecutor {
 
         // Schedule undo if a duration is set
         if action.has_duration() {
-            let timestamp = Utc::now() + Duration::seconds(action.get_duration() as i64);
+            let duration_seconds = action.get_duration() as i64;
             let mut undo = action.clone();
             Self::invert_action(&mut undo);
             undo.clear_duration();
-            PendingAction::schedule(undo, timestamp)
+            PendingAction::schedule(undo, duration_seconds)
                 .execute(self.storage().sql())
                 .await?;
         }

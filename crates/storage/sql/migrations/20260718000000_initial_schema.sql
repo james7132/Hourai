@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS escalation_histories (
     authorizer_id BIGINT NOT NULL,
     authorizer_name VARCHAR(255) NOT NULL,
     display_name VARCHAR(2000) NOT NULL,
-    "timestamp" TIMESTAMPTZ NOT NULL,
+    "timestamp" TIMESTAMPTZ DEFAULT now() NOT NULL,
     action BYTEA NOT NULL,
     level_delta INTEGER NOT NULL
 );
