@@ -1146,7 +1146,6 @@ dependencies = [
  "chrono",
  "dashmap",
  "futures-util",
- "hyper 0.14.25",
  "lazy_static",
  "metrics-exporter-prometheus",
  "protobuf",

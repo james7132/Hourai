@@ -26,7 +26,6 @@ lazy_static = "1.4"
 thiserror = "1.0"
 tokio = { version = "1.0", features = ["sync", "rt", "macros"] }
 futures-util = "0.3"
-hyper = { version = "0.14", features = ["client"] }
 tracing = { default-features = false, features = ["std", "attributes"], version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 twilight-model = "0.16"
