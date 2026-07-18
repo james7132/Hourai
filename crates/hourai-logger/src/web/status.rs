@@ -1,21 +1,21 @@
 use super::{prelude::*, AppState};
-use actix_web::{get, web};
+use axum::{extract::State, Json};
 use serde::Serialize;
+use std::sync::Arc;
 
 #[derive(Serialize)]
-struct BotStatus {
-    shards: Vec<ShardStatus>,
+pub struct BotStatus {
+    pub shards: Vec<ShardStatus>,
 }
 
 #[derive(Serialize)]
-struct ShardStatus {
-    shard_id: u16,
-    guilds: i64,
-    members: i64,
+pub struct ShardStatus {
+    pub shard_id: u16,
+    pub guilds: i64,
+    pub members: i64,
 }
 
-#[get("/status")]
-async fn bot_status(data: web::Data<AppState>) -> JsonResult<BotStatus> {
+pub async fn bot_status(State(data): State<Arc<AppState>>) -> Result<Json<BotStatus>> {
     let guilds = hourai_sql::Member::count_guilds()
         .fetch_one(&data.sql)
         .await
@@ -26,15 +26,11 @@ async fn bot_status(data: web::Data<AppState>) -> JsonResult<BotStatus> {
         .await
         .http_internal_error("Failed to fetch member count")?
         .0;
-    Ok(web::Json(BotStatus {
+    Ok(Json(BotStatus {
         shards: vec![ShardStatus {
             shard_id: 0,
             guilds,
             members,
         }],
     }))
-}
-
-pub fn scoped_config(cfg: &mut web::ServiceConfig) {
-    cfg.service(bot_status);
 }

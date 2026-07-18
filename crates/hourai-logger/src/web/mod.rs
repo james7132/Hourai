@@ -3,46 +3,53 @@ mod oauth;
 pub mod prelude;
 mod status;
 
-use actix_web::{dev::Server, web, App, HttpServer};
 use anyhow::Result;
+use axum::{routing::get, Router};
 use hourai::config::HouraiConfig;
 use hourai_redis::RedisClient;
 use hourai_sql::SqlPool;
+use std::sync::Arc;
+use tower_cookies::CookieManagerLayer;
+use tower_http::trace::TraceLayer;
 
 pub(crate) struct AppState {
     pub config: HouraiConfig,
-    pub http: awc::Client,
+    pub http: reqwest::Client,
     pub sql: SqlPool,
     pub redis: RedisClient,
 }
 
-pub fn api(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/v1")
-            .service(web::scope("/bot").configure(status::scoped_config))
-            .service(web::scope("/guilds").configure(guild_config::scoped_config)),
-    );
-    // OAuth is not versioned
-    cfg.service(web::scope("/oauth").configure(oauth::scoped_config));
+pub fn app(state: Arc<AppState>) -> Router {
+    let api = Router::new()
+        .nest(
+            "/v1",
+            Router::new()
+                .route("/bot/status", get(status::bot_status))
+                .nest("/guilds", guild_config::router()),
+        )
+        .nest("/oauth", oauth::router())
+        .with_state(state);
+
+    Router::new()
+        .nest("/api", api)
+        .layer(CookieManagerLayer::new())
+        .layer(TraceLayer::new_for_http())
 }
 
-pub fn run_server(config: HouraiConfig, sql: SqlPool, redis: RedisClient) -> Result<Server> {
+pub async fn run_server(config: HouraiConfig, sql: SqlPool, redis: RedisClient) -> Result<()> {
     let port = config.web.port;
-    tracing::info!("Starting Actix-web server on port {}", port);
+    tracing::info!("Starting Axum web server on port {}", port);
 
-    let server = HttpServer::new(move || {
-        App::new()
-            .wrap(tracing_actix_web::TracingLogger::default())
-            .app_data(web::Data::new(AppState {
-                config: config.clone(),
-                http: awc::Client::new(),
-                sql: sql.clone(),
-                redis: redis.clone(),
-            }))
-            .service(web::scope("/api").configure(api))
-    })
-    .bind(format!("0.0.0.0:{}", port))?
-    .run();
+    let state = Arc::new(AppState {
+        config,
+        http: reqwest::Client::new(),
+        sql,
+        redis,
+    });
 
-    Ok(server)
+    let router = app(state);
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
+    axum::serve(listener, router).await?;
+
+    Ok(())
 }

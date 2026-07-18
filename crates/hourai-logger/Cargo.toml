@@ -27,15 +27,14 @@ twilight-gateway = { version = "0.16", default-features = true, features = ["sim
 twilight-http = { version = "0.16", default-features = true, features = ["simd-json", "rustls-webpki-roots"] }
 twilight-util = { version = "0.16", features = ["snowflake", "builder"] }
 
-actix-web = { version = "4.0", features = ["cookies"] }
-actix-http = "3.0"
-actix-tls = "3.0"
-awc = { version = "3.0", features = ["rustls"] }
-cookie = "0.16"
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+tower-cookies = "0.10"
+cookie = "0.18"
 jsonwebtoken = "8.0"
 protobuf = "2.27"
 serde_urlencoded = "0.7"
-tracing-actix-web = "0.6"
 uuid = { version = "1.1", features = ["v4"] }
 
 [dependencies.tokio]

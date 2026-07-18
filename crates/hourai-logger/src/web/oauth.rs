@@ -1,20 +1,21 @@
 use super::{prelude::*, AppState};
-use actix_web::{
-    body::BoxBody,
-    cookie::{time::Duration, Cookie, SameSite},
-    get,
-    http::StatusCode,
-    post, web, HttpRequest, HttpResponse,
+use axum::{
+    extract::State,
+    http::{HeaderMap, StatusCode},
+    routing::{get, post},
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tower_cookies::{cookie::SameSite, Cookie, Cookies};
 
 const TOKEN_URL: &str = "https://discord.com/api/oauth2/token";
 const COOKIE_KEY: &str = "discord_refresh_token";
 const SCOPES: &str = "guilds";
 
 #[derive(Deserialize)]
-struct TokenRequest {
-    code: String,
+pub struct TokenRequest {
+    pub code: String,
 }
 
 #[derive(Serialize)]
@@ -37,122 +38,120 @@ struct DiscordRefreshRequest<'a> {
 }
 
 #[derive(Serialize, Deserialize)]
-struct TokenResponse {
-    access_token: String,
+pub struct TokenResponse {
+    pub access_token: String,
     // Do not forward the refresh token plainly to the client.
     #[serde(skip_serializing)]
-    refresh_token: String,
+    pub refresh_token: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    scope: Option<String>,
+    pub scope: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    expires_in: Option<i64>,
+    pub expires_in: Option<i64>,
 }
 
-#[post("/token")]
 async fn token(
-    state: web::Data<AppState>,
-    request: HttpRequest,
-    token_request: web::Json<TokenRequest>,
-) -> Result<HttpResponse> {
-    let body = serde_urlencoded::to_string(DiscordTokenRequest {
+    State(state): State<Arc<AppState>>,
+    cookies: Cookies,
+    headers: HeaderMap,
+    Json(token_request): Json<TokenRequest>,
+) -> Result<Json<TokenResponse>> {
+    let form = DiscordTokenRequest {
         client_id: state.config.discord.client_id.as_str(),
         client_secret: state.config.discord.client_secret.as_str(),
         redirect_uri: state.config.discord.redirect_uri.as_str(),
         code: token_request.code.as_str(),
         grant_type: "authorization_code",
-    })
-    .unwrap();
+    };
 
-    let mut response = state
+    let response = state
         .http
         .post(TOKEN_URL)
-        .insert_header(("Accept", "application/json"))
-        .insert_header(("Content-Type", "application/x-www-form-urlencoded"))
-        .send_body(body)
+        .header("Accept", "application/json")
+        .form(&form)
+        .send()
         .await
         .http_internal_error("Failed to make a POST to Discord OAuth.")?;
 
-    let data: TokenResponse = if response.status().is_success() {
-        response
-            .json()
-            .await
-            .http_internal_error("Failed to make a POST to Discord OAuth.")?
-    } else {
-        let body = BoxBody::new(response.body().await?);
-        return Ok(HttpResponse::build(response.status()).body(body));
-    };
+    let status = response.status();
+    if !status.is_success() {
+        let code = StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+        return http_error(code, "Discord OAuth token request failed.");
+    }
 
-    let host = request
-        .headers()
+    let data: TokenResponse = response
+        .json()
+        .await
+        .http_internal_error("Failed to parse Discord OAuth token response.")?;
+
+    let host = headers
         .get("Host")
         .and_then(|value| value.to_str().ok())
         .unwrap_or("hourai.gg");
 
-    let refresh_cookie = Cookie::build(COOKIE_KEY, data.refresh_token.as_str())
-        .domain(host)
-        .path("/api/oauth/refresh")
-        .max_age(Duration::days(7))
-        .same_site(SameSite::Strict)
-        .http_only(true)
-        .secure(true)
-        .finish();
+    let mut cookie = Cookie::new(COOKIE_KEY, data.refresh_token.clone());
+    cookie.set_domain(host.to_string());
+    cookie.set_path("/api/oauth/refresh");
+    cookie.set_same_site(SameSite::Strict);
+    cookie.set_http_only(true);
+    cookie.set_secure(true);
+    cookies.add(cookie);
 
-    Ok(HttpResponse::Ok().cookie(refresh_cookie).json(data))
+    Ok(Json(data))
 }
 
-#[get("/refresh")]
-async fn refresh(state: web::Data<AppState>, request: HttpRequest) -> Result<HttpResponse> {
-    let refresh_token = request
-        .cookie(COOKIE_KEY)
+async fn refresh(
+    State(state): State<Arc<AppState>>,
+    cookies: Cookies,
+) -> Result<Json<TokenResponse>> {
+    let refresh_token = cookies
+        .get(COOKIE_KEY)
         .map(|cookie| cookie.value().to_owned())
         .http_error(StatusCode::UNAUTHORIZED, "Missing refresh token.")?;
 
-    let data = serde_urlencoded::to_string(DiscordRefreshRequest {
+    let form = DiscordRefreshRequest {
         client_id: state.config.discord.client_id.as_str(),
         client_secret: state.config.discord.client_secret.as_str(),
         redirect_uri: state.config.discord.redirect_uri.as_str(),
         refresh_token: refresh_token.as_str(),
         grant_type: "refresh_token",
         scope: SCOPES,
-    })
-    .unwrap();
+    };
 
-    let mut response = state
+    let response = state
         .http
         .post(TOKEN_URL)
-        .insert_header(("Accept", "application/json"))
-        .insert_header(("Content-Type", "application/x-www-form-urlencoded"))
-        .send_body(data)
+        .header("Accept", "application/json")
+        .form(&form)
+        .send()
         .await
         .http_internal_error("Failed to refresh access token")?;
 
-    let data: TokenResponse = if response.status().is_success() {
-        response
-            .json()
-            .await
-            .http_internal_error("Failed to refresh access_token.")?
-    } else {
-        let body = BoxBody::new(response.body().await?);
-        return Ok(HttpResponse::build(response.status()).body(body));
-    };
+    let status = response.status();
+    if !status.is_success() {
+        let code = StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+        return http_error(code, "Discord OAuth refresh request failed.");
+    }
 
-    Ok(HttpResponse::Ok().json(data))
+    let data: TokenResponse = response
+        .json()
+        .await
+        .http_internal_error("Failed to parse Discord OAuth refresh response.")?;
+
+    Ok(Json(data))
 }
 
-#[post("/logout")]
-async fn logout(request: HttpRequest) -> Result<HttpResponse> {
-    if let Some(mut refresh_token) = request.cookie(COOKIE_KEY) {
-        refresh_token.make_removal();
-        Ok(HttpResponse::NoContent()
-            .cookie(refresh_token.clone())
-            .finish())
+async fn logout(cookies: Cookies) -> Result<StatusCode> {
+    if cookies.get(COOKIE_KEY).is_some() {
+        cookies.remove(Cookie::new(COOKIE_KEY, ""));
+        Ok(StatusCode::NO_CONTENT)
     } else {
         http_error(StatusCode::UNAUTHORIZED, "Missing login credentials.")
     }
 }
 
-pub fn scoped_config(cfg: &mut web::ServiceConfig) {
-    cfg.service(token);
-    cfg.service(refresh);
-    cfg.service(logout);
+pub fn router() -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/token", post(token))
+        .route("/refresh", get(refresh))
+        .route("/logout", post(logout))
 }

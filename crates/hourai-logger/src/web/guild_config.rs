@@ -1,41 +1,41 @@
 use super::{prelude::*, AppState};
-use actix_web::{http::StatusCode, web};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    routing::get,
+    Json, Router,
+};
 use hourai::{models::id::Id, proto::auto_config::*, proto::guild_configs::*};
 use hourai_redis::CachedGuildConfig;
+use std::sync::Arc;
 
 async fn get_config<T>(
-    data: web::Data<AppState>,
-    path: web::Path<u64>,
-) -> Result<Option<web::Json<T>>>
+    State(data): State<Arc<AppState>>,
+    Path(guild_id): Path<u64>,
+) -> Result<Json<Option<T>>>
 where
     T: protobuf::Message + CachedGuildConfig + serde::Serialize,
 {
     let proto = data
         .redis
-        .guild(Id::new(path.into_inner()))
+        .guild(Id::new(guild_id))
         .configs()
         .fetch()
         .await
         .http_error(StatusCode::NOT_FOUND, "Guild not found")?;
-    Ok(proto.map(web::Json))
+    Ok(Json(proto))
 }
 
-fn add_config<T: protobuf::Message + CachedGuildConfig + serde::Serialize>(
-    cfg: &mut web::ServiceConfig,
-    endpoint: &str,
-) {
-    cfg.service(
-        web::resource(format!("/{{guild_id}}/{}", endpoint).as_str())
-            .route(web::get().to(get_config::<T>)),
-    );
-}
-
-pub fn scoped_config(cfg: &mut web::ServiceConfig) {
-    add_config::<AnnouncementConfig>(cfg, "announce");
-    add_config::<AutoConfig>(cfg, "auto");
-    add_config::<ModerationConfig>(cfg, "moderation");
-    add_config::<MusicConfig>(cfg, "music");
-    add_config::<LoggingConfig>(cfg, "logging");
-    add_config::<RoleConfig>(cfg, "roles");
-    add_config::<VerificationConfig>(cfg, "validation");
+pub fn router() -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/:guild_id/announce", get(get_config::<AnnouncementConfig>))
+        .route("/:guild_id/auto", get(get_config::<AutoConfig>))
+        .route("/:guild_id/moderation", get(get_config::<ModerationConfig>))
+        .route("/:guild_id/music", get(get_config::<MusicConfig>))
+        .route("/:guild_id/logging", get(get_config::<LoggingConfig>))
+        .route("/:guild_id/roles", get(get_config::<RoleConfig>))
+        .route(
+            "/:guild_id/validation",
+            get(get_config::<VerificationConfig>),
+        )
 }
