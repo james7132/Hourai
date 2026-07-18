@@ -1,8 +1,10 @@
 pub mod approvers;
+pub mod buttons;
 pub mod context;
 pub mod rejectors;
 pub mod verifier;
 
+pub use buttons::handle_component_interaction;
 pub use context::*;
 pub use verifier::*;
 
@@ -106,11 +108,14 @@ pub async fn on_member_join(
                 .footer(EmbedFooterBuilder::new(format!("{:x}", user.id.get())))
                 .build();
 
-            let _ = client
-                .http()
-                .create_message(channel_id)
-                .embeds(&[embed])
-                .await;
+            let embeds = [embed];
+            let components = buttons::verification_buttons(user.id).ok().map(|b| vec![b]);
+            let mut req = client.http().create_message(channel_id);
+            req = req.embeds(&embeds);
+            if let Some(ref comps) = components {
+                req = req.components(comps);
+            }
+            let _ = req.await;
         }
     }
 
