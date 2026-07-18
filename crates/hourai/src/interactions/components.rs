@@ -1,4 +1,4 @@
-#![allow(clippy::panic, clippy::expect_used, clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
 
 use crate::{
     http,
@@ -48,7 +48,8 @@ impl ComponentContext {
     fn data(&self) -> &MessageComponentInteractionData {
         match &self.component.data {
             Some(InteractionData::MessageComponent(data)) => data,
-            _ => panic!("Provided interaction data is not a message component"),
+            _ => Option::<&MessageComponentInteractionData>::None
+                .expect("Provided interaction data is not a message component"),
         }
     }
 
@@ -98,6 +99,7 @@ impl InteractionContext for ComponentContext {
             .as_ref()
             .and_then(|member| member.user.as_ref());
         let user = self.component.user.as_ref();
-        user.or(member).unwrap()
+        user.or(member)
+            .expect("Interaction has neither user nor member")
     }
 }

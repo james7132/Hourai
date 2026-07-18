@@ -82,12 +82,11 @@ pub struct WebhookConfig {
 }
 
 /// Loads the config for the bot. Panics if the reading the files fails or parsing fails.
-#[allow(clippy::unwrap_used)]
+#[allow(clippy::expect_used)]
 pub fn load_config(path: &Path) -> HouraiConfig {
-    let file = File::open(path);
-    assert!(file.is_ok(), "Cannot open JSON config at {:?}", path);
-    let reader = BufReader::new(file.unwrap());
-    simd_json::serde::from_reader(reader).unwrap()
+    let file = File::open(path).expect("Cannot open JSON config");
+    let reader = BufReader::new(file);
+    simd_json::serde::from_reader(reader).expect("Failed to deserialize JSON config")
 }
 
 pub fn get_config_path() -> Box<Path> {

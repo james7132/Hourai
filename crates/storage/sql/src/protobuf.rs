@@ -18,11 +18,14 @@ impl<T: protobuf::Message> Type<crate::SqlDatabase> for Protobuf<T> {
 
 // Allow Protobuf to be used in query arguments.
 impl<'q, T: protobuf::Message> Encode<'q, crate::SqlDatabase> for Protobuf<T> {
+    #[allow(clippy::expect_used)]
     fn encode_by_ref(
         &self,
         buf: &mut <crate::SqlDatabase as HasArguments<'q>>::ArgumentBuffer,
     ) -> IsNull {
-        let _ = self.0.write_to_vec(buf);
+        self.0
+            .write_to_vec(buf)
+            .expect("Failed to serialize protobuf");
         IsNull::No
     }
 }

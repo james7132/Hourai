@@ -558,9 +558,10 @@ impl GuildResource for Guild {
     type Subkey = ();
     const PREFIX: u8 = 1_u8;
 
-    #[allow(clippy::panic)]
+    #[allow(clippy::expect_used)]
     fn from_key(_: GuildKey) -> TwilightId<Self::Marker> {
-        panic!("Converting GuildKey to Id<GuildMarker> is not supported");
+        Option::<TwilightId<Self::Marker>>::None
+            .expect("Converting GuildKey to Id<GuildMarker> is not supported")
     }
 }
 
@@ -592,9 +593,10 @@ impl GuildResource for PartialGuild {
     type Subkey = ();
     const PREFIX: u8 = 1_u8;
 
-    #[allow(clippy::panic)]
+    #[allow(clippy::expect_used)]
     fn from_key(_: GuildKey) -> TwilightId<Self::Marker> {
-        panic!("Converting GuildKey to Id<GuildMarker> is not supported");
+        Option::<TwilightId<Self::Marker>>::None
+            .expect("Converting GuildKey to Id<GuildMarker> is not supported")
     }
 }
 
@@ -626,12 +628,12 @@ impl GuildResource for Channel {
     type Subkey = u64;
     const PREFIX: u8 = 3_u8;
 
-    #[allow(clippy::panic)]
+    #[allow(clippy::expect_used)]
     fn from_key(key: GuildKey) -> TwilightId<Self::Marker> {
         if let GuildKey::Channel(id) = key {
             id
         } else {
-            panic!("Invalid GuildKey for channel: {:?}", key);
+            Option::<TwilightId<Self::Marker>>::None.expect("Invalid GuildKey for channel")
         }
     }
 }
@@ -654,12 +656,12 @@ impl GuildResource for Role {
     type Subkey = u64;
     const PREFIX: u8 = 2_u8;
 
-    #[allow(clippy::panic)]
+    #[allow(clippy::expect_used)]
     fn from_key(key: GuildKey) -> TwilightId<Self::Marker> {
         if let GuildKey::Role(id) = key {
             id
         } else {
-            panic!("Invalid GuildKey for channel: {:?}", key);
+            Option::<TwilightId<Self::Marker>>::None.expect("Invalid GuildKey for role")
         }
     }
 }

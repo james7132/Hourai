@@ -46,22 +46,22 @@ impl ActionExecutor {
         &self.storage
     }
 
-    #[allow(clippy::panic)]
+    #[allow(clippy::expect_used)]
     pub async fn execute_action(&self, action: &Action) -> Result<()> {
-        match action.details {
-            Some(Action_oneof_details::kick(_)) => self.execute_kick(action).await?,
-            Some(Action_oneof_details::ban(ref info)) => self.execute_ban(action, info).await?,
-            Some(Action_oneof_details::escalate(ref info)) => {
-                self.execute_escalate(action, info).await?
-            }
-            Some(Action_oneof_details::mute(ref info)) => self.execute_mute(action, info).await?,
-            Some(Action_oneof_details::deafen(ref info)) => {
-                self.execute_deafen(action, info).await?
-            }
-            Some(Action_oneof_details::change_role(ref info)) => {
+        let details = action
+            .details
+            .as_ref()
+            .expect("Cannot run action without a specified type");
+        match details {
+            Action_oneof_details::kick(_) => self.execute_kick(action).await?,
+            Action_oneof_details::ban(info) => self.execute_ban(action, info).await?,
+            Action_oneof_details::escalate(info) => self.execute_escalate(action, info).await?,
+            Action_oneof_details::mute(info) => self.execute_mute(action, info).await?,
+            Action_oneof_details::deafen(info) => self.execute_deafen(action, info).await?,
+            Action_oneof_details::change_role(info) => {
                 self.execute_change_role(action, info).await?
             }
-            Some(Action_oneof_details::direct_message(ref info)) => {
+            Action_oneof_details::direct_message(info) => {
                 if let Err(err) = self.execute_direct_message(action, info).await {
                     tracing::error!(
                         "Error while sending a message to a given channel for an action: {}",
@@ -69,7 +69,7 @@ impl ActionExecutor {
                     );
                 }
             }
-            Some(Action_oneof_details::send_message(ref info)) => {
+            Action_oneof_details::send_message(info) => {
                 if let Err(err) = self.execute_send_message(info).await {
                     tracing::error!(
                         "Error while sending a message to a given channel for an action: {}",
@@ -77,7 +77,7 @@ impl ActionExecutor {
                     );
                 }
             }
-            Some(Action_oneof_details::delete_messages(ref info)) => {
+            Action_oneof_details::delete_messages(info) => {
                 if let Err(err) = self.execute_delete_messages(info).await {
                     tracing::error!(
                         "Error while deleteing a message to a given channel for an action: {}",
@@ -85,7 +85,6 @@ impl ActionExecutor {
                     );
                 }
             }
-            None => panic!("Cannot run action without a specified type"),
         };
 
         // Schedule undo if a duration is set
@@ -101,32 +100,37 @@ impl ActionExecutor {
         Ok(())
     }
 
-    #[allow(clippy::panic)]
+    #[allow(clippy::expect_used)]
     fn invert_action(action: &mut Action) {
-        match &mut action.details {
-            Some(Action_oneof_details::ban(info)) => {
+        let details = action
+            .details
+            .as_mut()
+            .expect("Cannot invert action without a specified type");
+        match details {
+            Action_oneof_details::ban(info) => {
                 info.set_field_type(match info.get_field_type() {
                     BanMember_Type::BAN => BanMember_Type::UNBAN,
                     BanMember_Type::UNBAN => BanMember_Type::BAN,
-                    BanMember_Type::SOFTBAN => panic!("Cannot invert a softban"),
+                    BanMember_Type::SOFTBAN => {
+                        Option::<BanMember_Type>::None.expect("Cannot invert a softban")
+                    }
                 });
             }
-            Some(Action_oneof_details::escalate(info)) => {
+            Action_oneof_details::escalate(info) => {
                 info.set_amount(-info.get_amount());
             }
-            Some(Action_oneof_details::mute(info)) => {
+            Action_oneof_details::mute(info) => {
                 info.set_field_type(Self::invert_status(info.get_field_type()));
             }
-            Some(Action_oneof_details::deafen(info)) => {
+            Action_oneof_details::deafen(info) => {
                 info.set_field_type(Self::invert_status(info.get_field_type()));
             }
-            Some(Action_oneof_details::change_role(info)) => {
+            Action_oneof_details::change_role(info) => {
                 info.set_field_type(Self::invert_status(info.get_field_type()));
             }
-            Some(_) => {
-                panic!("Cannot invert action: {:?}", action);
+            _ => {
+                Option::<()>::None.expect("Cannot invert action");
             }
-            None => panic!("Cannot invert action without a specified type"),
         }
     }
 
