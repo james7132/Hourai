@@ -2,7 +2,7 @@ use super::{context, verifier::*};
 use anyhow::Result;
 use async_trait::async_trait;
 use hourai::cache::InMemoryCache;
-use hourai::models::id::{marker::UserMarker, Id};
+use hourai::models::id::{Id, marker::UserMarker};
 use hourai::models::user::{PremiumType, User, UserFlags};
 use std::collections::HashSet;
 

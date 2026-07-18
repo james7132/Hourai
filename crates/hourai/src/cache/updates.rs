@@ -1,4 +1,4 @@
-use super::{config::ResourceType, InMemoryCache};
+use super::{InMemoryCache, config::ResourceType};
 use std::ops::Deref;
 use twilight_model::gateway::{event::Event, payload::incoming::*, presence::UserOrId};
 

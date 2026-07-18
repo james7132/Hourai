@@ -4,7 +4,7 @@ use crate::models::{
 };
 use anyhow::Result;
 use twilight_util::builder::embed::{
-    image_source::ImageSource, EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder,
+    EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder, image_source::ImageSource,
 };
 use twilight_util::snowflake::Snowflake;
 

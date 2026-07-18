@@ -1,4 +1,4 @@
-use crate::models::id::{marker::*, Id};
+use crate::models::id::{Id, marker::*};
 use regex::Regex;
 use std::str::FromStr;
 

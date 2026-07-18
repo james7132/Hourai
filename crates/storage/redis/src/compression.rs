@@ -1,4 +1,4 @@
-use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
+use flate2::{Compression, read::ZlibDecoder, write::ZlibEncoder};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use redis::{self, FromRedisValue, RedisWrite, ToRedisArgs};
@@ -17,10 +17,7 @@ enum CompressionMode {
 pub struct Compressed<T: ToRedisArgs + FromRedisValue>(pub T);
 
 impl<T: ToRedisArgs + FromRedisValue> ToRedisArgs for Compressed<T> {
-    fn write_redis_args<W: ?Sized>(&self, out: &mut W)
-    where
-        W: RedisWrite,
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         let mut payload: Vec<Vec<u8>> = Vec::new();
         self.0.write_redis_args(&mut payload);
         for arg in payload {

@@ -32,7 +32,7 @@ pub(super) async fn roll(ctx: &CommandContext) -> Result<Response> {
         None => {
             return Ok(
                 Response::ephemeral().content("Invalid dice format. Use `3d6`, `1d20+5`, etc.")
-            )
+            );
         }
     };
 

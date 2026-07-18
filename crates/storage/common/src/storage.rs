@@ -3,7 +3,7 @@ use futures::{future::Future, stream::Stream};
 use hourai::config::HouraiConfig;
 use hourai_redis::RedisClient;
 use hourai_sql::{
-    database::HasStatement, Database, Error as SqlxError, Execute, Executor, SqlDatabase, SqlPool,
+    Database, Error as SqlxError, Execute, Executor, SqlDatabase, SqlPool, database::HasStatement,
 };
 use sqlx_core::describe::Describe;
 use std::{

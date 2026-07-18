@@ -34,6 +34,23 @@ fn protobuf_codegen(src_dir: &str, out_dir: &str) {
         .include(src_dir)
         .run()
         .expect("Failed to run Rust Protobuf codegen.");
+
+    if let Ok(entries) = std::fs::read_dir(&proto_out_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension() == Some(OsStr::new("rs"))
+                && let Ok(content) = std::fs::read_to_string(&path)
+            {
+                let new_content = if path.file_name() == Some(OsStr::new("mod.rs")) {
+                    format!("#[allow(warnings)]\n{}", content)
+                } else {
+                    format!("#![allow(warnings)]\n{}", content)
+                };
+                let _ = std::fs::write(&path, new_content);
+            }
+        }
+    }
+
     println!("Protobuf codegen complete.");
 }
 

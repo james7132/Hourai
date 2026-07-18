@@ -14,8 +14,8 @@ use twilight_model::{
     gateway::presence::{Presence, Status, UserOrId},
     guild::{Guild, Member},
     id::{
-        marker::{GuildMarker, UserMarker},
         Id,
+        marker::{GuildMarker, UserMarker},
     },
 };
 
@@ -174,6 +174,7 @@ impl InMemoryCache {
         }
     }
 
+    #[allow(dead_code)]
     fn cache_guild(&self, guild: Guild) {
         // The map and set creation needs to occur first, so caching states and
         // objects always has a place to put them.

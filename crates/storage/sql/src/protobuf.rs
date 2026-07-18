@@ -1,8 +1,8 @@
 use sqlx::{
+    Database, Decode, Encode,
     database::{HasArguments, HasValueRef},
     encode::IsNull,
     types::Type,
-    Database, Decode, Encode,
 };
 use std::error::Error;
 

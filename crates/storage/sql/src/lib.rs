@@ -1,9 +1,9 @@
 mod models;
-mod types;
+pub mod protobuf;
 pub mod whois;
 
 pub use self::models::*;
-pub use sqlx::types as sql_types;
+pub use self::protobuf::*;
 pub use sqlx::*;
 use tracing::debug;
 

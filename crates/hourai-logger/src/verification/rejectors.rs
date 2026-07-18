@@ -1,10 +1,10 @@
 use super::{context, verifier::*};
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::offset::Utc;
 use chrono::Duration;
+use chrono::offset::Utc;
 use dashmap::DashMap;
-use hourai::models::{user::User, Snowflake};
+use hourai::models::{Snowflake, user::User};
 use hourai_sql::{Ban, SqlPool, Username, VerificationBan};
 use regex::Regex;
 

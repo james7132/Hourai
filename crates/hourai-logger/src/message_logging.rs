@@ -1,12 +1,12 @@
 use crate::Client;
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
 use chrono::Utc;
 use hourai::models::{
-    gateway::payload::incoming::{MessageDelete, MessageDeleteBulk},
-    id::{marker::*, Id},
-    util::Timestamp,
     MessageLike, Snowflake, UserLike,
+    gateway::payload::incoming::{MessageDelete, MessageDeleteBulk},
+    id::{Id, marker::*},
+    util::Timestamp,
 };
 use hourai::proto::guild_configs::*;
 use hourai::proto::util::IdFilter;
@@ -78,21 +78,21 @@ pub(super) async fn on_message_update(
     let config: LoggingConfig = redis.guild(guild_id).configs().get().await?;
     let type_config = config.get_edited_messages();
     let output_channel = get_output_channel(&config, type_config);
-    if let Some(channel) = output_channel {
-        if should_log(type_config, before.channel_id()) {
-            client
-                .http()
-                .create_message(channel)
-                .content(&format!(
-                    "Message by <@{}> edited from <#{}>",
-                    before.author().id(),
-                    before.channel_id()
-                ))
-                .embeds(&[message_diff_embed(&before, &after)?
-                    .color(0xa84300) // Dark orange
-                    .build()])
-                .await?;
-        }
+    if let Some(channel) = output_channel
+        && should_log(type_config, before.channel_id())
+    {
+        client
+            .http()
+            .create_message(channel)
+            .content(&format!(
+                "Message by <@{}> edited from <#{}>",
+                before.author().id(),
+                before.channel_id()
+            ))
+            .embeds(&[message_diff_embed(&before, &after)?
+                .color(0xa84300) // Dark orange
+                .build()])
+            .await?;
     }
     Ok(())
 }
@@ -103,26 +103,26 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
     let config: LoggingConfig = redis.guild(guild_id).configs().get().await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
-    if let Some(channel) = output_channel {
-        if should_log(type_config, evt.channel_id) {
-            let cached = redis.messages().fetch(evt.channel_id, evt.id).await?;
-            if let Some(msg) = cached {
-                if msg.author().bot() {
-                    return Ok(());
-                }
-                client
-                    .http()
-                    .create_message(channel)
-                    .content(&format!(
-                        "Message by <@{}> deleted from <#{}>",
-                        msg.author().get_id(),
-                        msg.get_channel_id()
-                    ))
-                    .embeds(&[message_to_embed(&msg)?
-                        .color(0x992d22) // Dark red
-                        .build()])
-                    .await?;
+    if let Some(channel) = output_channel
+        && should_log(type_config, evt.channel_id)
+    {
+        let cached = redis.messages().fetch(evt.channel_id, evt.id).await?;
+        if let Some(msg) = cached {
+            if msg.author().bot() {
+                return Ok(());
             }
+            client
+                .http()
+                .create_message(channel)
+                .content(&format!(
+                    "Message by <@{}> deleted from <#{}>",
+                    msg.author().get_id(),
+                    msg.get_channel_id()
+                ))
+                .embeds(&[message_to_embed(&msg)?
+                    .color(0x992d22) // Dark red
+                    .build()])
+                .await?;
         }
     }
     Ok(())
@@ -134,18 +134,18 @@ pub(super) async fn on_message_bulk_delete(client: Client, evt: MessageDeleteBul
     let config: LoggingConfig = redis.guild(guild_id).configs().get().await?;
     let type_config = config.get_deleted_messages();
     let output_channel = get_output_channel(&config, type_config);
-    if let Some(channel) = output_channel {
-        if should_log(type_config, evt.channel_id) {
-            client
-                .http()
-                .create_message(channel)
-                .content(&format!(
-                    "{} messages bulk deleted from <#{}>",
-                    evt.ids.len(),
-                    evt.channel_id
-                ))
-                .await?;
-        }
+    if let Some(channel) = output_channel
+        && should_log(type_config, evt.channel_id)
+    {
+        client
+            .http()
+            .create_message(channel)
+            .content(&format!(
+                "{} messages bulk deleted from <#{}>",
+                evt.ids.len(),
+                evt.channel_id
+            ))
+            .await?;
     }
     Ok(())
 }

@@ -2,7 +2,7 @@ use crate::message_logging;
 use anyhow::Result;
 use hourai::proto::guild_configs::*;
 use hourai::{
-    models::{id::Id, message::MessageLike, user::UserLike, Snowflake},
+    models::{Snowflake, id::Id, message::MessageLike, user::UserLike},
     util::mentions,
 };
 

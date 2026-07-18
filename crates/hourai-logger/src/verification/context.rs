@@ -1,6 +1,6 @@
 use hourai::models::{
     guild::Member,
-    id::{marker::GuildMarker, Id},
+    id::{Id, marker::GuildMarker},
 };
 
 #[derive(Debug, Clone)]

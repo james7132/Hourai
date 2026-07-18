@@ -7,12 +7,12 @@ pub use components::*;
 use crate::{
     http,
     models::{
-        channel::message::{component::Component, embed::Embed, MessageFlags},
+        channel::message::{MessageFlags, component::Component, embed::Embed},
         guild::{PartialMember, Permissions},
         http::interaction::*,
         id::{
-            marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker},
             Id,
+            marker::{ApplicationMarker, ChannelMarker, GuildMarker, InteractionMarker},
         },
         user::User,
     },

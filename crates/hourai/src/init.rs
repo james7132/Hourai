@@ -2,7 +2,7 @@ use crate::config::HouraiConfig;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tracing::debug;
-use twilight_gateway::{create_recommended, ConfigBuilder, Intents, Shard};
+use twilight_gateway::{ConfigBuilder, Intents, Shard, create_recommended};
 
 pub fn start_logging() {
     tracing_subscriber::fmt()

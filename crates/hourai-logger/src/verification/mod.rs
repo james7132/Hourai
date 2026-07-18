@@ -9,7 +9,7 @@ pub use verifier::*;
 use anyhow::Result;
 use hourai::cache::InMemoryCache;
 use hourai::models::guild::Member;
-use hourai::models::id::{marker::GuildMarker, Id};
+use hourai::models::id::{Id, marker::GuildMarker};
 use hourai::proto::guild_configs::{LoggingConfig, VerificationConfig};
 use hourai_sql::SqlPool;
 use twilight_util::builder::embed::*;

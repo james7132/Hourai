@@ -7,8 +7,8 @@ use hourai::{
         channel::message::Message,
         guild::Permissions,
         id::{
-            marker::{ChannelMarker, MessageMarker},
             Id,
+            marker::{ChannelMarker, MessageMarker},
         },
         user::User,
         util::Timestamp,
