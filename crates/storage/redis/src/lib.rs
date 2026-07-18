@@ -1,3 +1,4 @@
+#[allow(non_local_definitions)]
 mod compression;
 mod guild_config;
 mod keys;
@@ -32,6 +33,7 @@ use tracing::debug;
 
 type RedisPool = redis::aio::ConnectionManager;
 
+#[allow(clippy::expect_used)]
 pub async fn init(config: &hourai::config::HouraiConfig) -> RedisClient {
     debug!("Creating Redis client");
     let client = redis::Client::open(config.redis.as_ref()).expect("Failed to create Redis client");
@@ -556,6 +558,7 @@ impl GuildResource for Guild {
     type Subkey = ();
     const PREFIX: u8 = 1_u8;
 
+    #[allow(clippy::panic)]
     fn from_key(_: GuildKey) -> TwilightId<Self::Marker> {
         panic!("Converting GuildKey to Id<GuildMarker> is not supported");
     }
@@ -589,6 +592,7 @@ impl GuildResource for PartialGuild {
     type Subkey = ();
     const PREFIX: u8 = 1_u8;
 
+    #[allow(clippy::panic)]
     fn from_key(_: GuildKey) -> TwilightId<Self::Marker> {
         panic!("Converting GuildKey to Id<GuildMarker> is not supported");
     }
@@ -622,6 +626,7 @@ impl GuildResource for Channel {
     type Subkey = u64;
     const PREFIX: u8 = 3_u8;
 
+    #[allow(clippy::panic)]
     fn from_key(key: GuildKey) -> TwilightId<Self::Marker> {
         if let GuildKey::Channel(id) = key {
             id
@@ -637,7 +642,9 @@ impl ToProto for Channel {
         assert!(self.guild_id.is_some());
         let mut proto = Self::Proto::new();
         proto.set_channel_id(self.id.get());
-        proto.set_name(self.name.as_ref().unwrap().to_owned());
+        if let Some(ref name) = self.name {
+            proto.set_name(name.clone());
+        }
         proto
     }
 }
@@ -647,6 +654,7 @@ impl GuildResource for Role {
     type Subkey = u64;
     const PREFIX: u8 = 2_u8;
 
+    #[allow(clippy::panic)]
     fn from_key(key: GuildKey) -> TwilightId<Self::Marker> {
         if let GuildKey::Role(id) = key {
             id

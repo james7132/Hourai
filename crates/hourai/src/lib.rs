@@ -1,4 +1,4 @@
-#![expect(elided_lifetimes_in_paths)]
+#![allow(unused_parens, elided_lifetimes_in_paths, renamed_and_removed_lints)]
 
 #[macro_use]
 extern crate lazy_static;

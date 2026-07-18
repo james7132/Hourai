@@ -56,7 +56,11 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
     }
     let soft = ctx.get_flag("soft").unwrap_or(false);
     let action = if soft { "Softbanned" } else { "Banned" };
-    let authorizer = ctx.command.member.as_ref().expect("Command without user.");
+    let authorizer = ctx
+        .command
+        .member
+        .as_ref()
+        .ok_or(InteractionError::NotInGuild)?;
     let storage = executor.storage();
     let authorizer_roles = storage
         .redis()
@@ -76,7 +80,7 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
     });
     base.set_reason(build_reason(
         action,
-        authorizer.user.as_ref().unwrap(),
+        authorizer.user.as_ref().unwrap_or_else(|| ctx.user()),
         ctx.get_string("reason").ok(),
     ));
     if let Ok(duration) = ctx.get_string("duration") {
@@ -120,12 +124,16 @@ pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<R
         anyhow::bail!(InteractionError::MissingPermission("Moderate Members"));
     }
 
-    let authorizer = ctx.command.member.as_ref().expect("Command without user.");
+    let authorizer = ctx
+        .command
+        .member
+        .as_ref()
+        .ok_or(InteractionError::NotInGuild)?;
     let mut guild = storage.redis().guild(guild_id);
     let authorizer_roles = guild.role_set(&authorizer.roles).await?;
     let reason = build_reason(
         "Timed out",
-        authorizer.user.as_ref().unwrap(),
+        authorizer.user.as_ref().unwrap_or_else(|| ctx.user()),
         ctx.get_string("reason").ok(),
     );
 
@@ -144,9 +152,10 @@ pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<R
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs() as i64;
-    let expiration = Timestamp::from_secs(now + duration).unwrap();
+    let expiration = Timestamp::from_secs(now + duration)
+        .map_err(|e| anyhow::anyhow!("Invalid timestamp: {}", e))?;
 
     let members: Vec<_> = ctx.all_users("user").collect();
     let mut errors = Vec::new();
@@ -183,12 +192,16 @@ pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Resp
         anyhow::bail!(InteractionError::MissingPermission("Kick Members"));
     }
 
-    let authorizer = ctx.command.member.as_ref().expect("Command without user.");
+    let authorizer = ctx
+        .command
+        .member
+        .as_ref()
+        .ok_or(InteractionError::NotInGuild)?;
     let mut guild = storage.redis().guild(guild_id);
     let authorizer_roles = guild.role_set(&authorizer.roles).await?;
     let reason = build_reason(
         "Kicked",
-        authorizer.user.as_ref().unwrap(),
+        authorizer.user.as_ref().unwrap_or_else(|| ctx.user()),
         ctx.get_string("reason").ok(),
     );
 
@@ -230,7 +243,7 @@ pub(super) async fn change_role(
         anyhow::bail!(InteractionError::MissingPermission("Manage Roles"));
     }
 
-    let authorizer = ctx.member().expect("Command without user.");
+    let authorizer = ctx.member().ok_or(InteractionError::NotInGuild)?;
     let members: Vec<_> = ctx.all_users("user").collect();
     let mut base = Action::new();
     base.set_guild_id(guild_id.get());
@@ -244,7 +257,7 @@ pub(super) async fn change_role(
         } else {
             "Removed role"
         },
-        authorizer.user.as_ref().unwrap(),
+        authorizer.user.as_ref().unwrap_or_else(|| ctx.user()),
         ctx.get_string("reason").ok(),
     ));
     if let Ok(duration) = ctx.get_string("duration") {
@@ -283,14 +296,14 @@ pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> R
         anyhow::bail!(InteractionError::MissingPermission("Deafen Members"));
     }
 
-    let authorizer = ctx.member().expect("Command without user.");
+    let authorizer = ctx.member().ok_or(InteractionError::NotInGuild)?;
     let members: Vec<_> = ctx.all_users("user").collect();
     let mut base = Action::new();
     base.set_guild_id(guild_id.get());
     base.mut_deafen().set_field_type(StatusType::APPLY);
     base.set_reason(build_reason(
         "Deafened",
-        authorizer.user.as_ref().unwrap(),
+        authorizer.user.as_ref().unwrap_or_else(|| ctx.user()),
         ctx.get_string("reason").ok(),
     ));
     if let Ok(duration) = ctx.get_string("duration") {
@@ -317,14 +330,14 @@ pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Res
         anyhow::bail!(InteractionError::MissingPermission("Mute Members"));
     }
 
-    let authorizer = ctx.member().expect("Command without user.");
+    let authorizer = ctx.member().ok_or(InteractionError::NotInGuild)?;
     let members: Vec<_> = ctx.all_users("user").collect();
     let mut base = Action::new();
     base.set_guild_id(guild_id.get());
     base.mut_mute().set_field_type(StatusType::APPLY);
     base.set_reason(build_reason(
         "Muted",
-        authorizer.user.as_ref().unwrap(),
+        authorizer.user.as_ref().unwrap_or_else(|| ctx.user()),
         ctx.get_string("reason").ok(),
     ));
     if let Ok(duration) = ctx.get_string("duration") {
@@ -351,10 +364,10 @@ pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<
         anyhow::bail!(InteractionError::MissingPermission("Move Members"));
     }
 
-    let authorizer = ctx.member().expect("Command without user.");
+    let authorizer = ctx.member().ok_or(InteractionError::NotInGuild)?;
     let reason = build_reason(
         "Moved",
-        authorizer.user.as_ref().unwrap(),
+        authorizer.user.as_ref().unwrap_or_else(|| ctx.user()),
         ctx.get_string("reason").ok(),
     );
 
@@ -398,9 +411,9 @@ async fn fetch_messages(
     const TWO_WEEKS_SECS: u64 = 14 * 24 * 60 * 60;
     let limit = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs()
-        - TWO_WEEKS_SECS;
+        .saturating_sub(TWO_WEEKS_SECS);
     let mut oldest = None;
     loop {
         let fut = if let Some(oldest) = oldest {
@@ -468,10 +481,10 @@ pub(super) async fn prune(ctx: &CommandContext) -> Result<Response> {
         anyhow::bail!(InteractionError::MissingPermission("Manage Messages"));
     }
 
-    let authorizer = ctx.member().expect("Command without user.");
+    let authorizer = ctx.member().ok_or(InteractionError::NotInGuild)?;
     let reason = build_reason(
         "Pruned",
-        authorizer.user.as_ref().unwrap(),
+        authorizer.user.as_ref().unwrap_or_else(|| ctx.user()),
         ctx.get_string("reason").ok(),
     );
 

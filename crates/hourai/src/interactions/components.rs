@@ -1,3 +1,5 @@
+#![allow(clippy::panic, clippy::expect_used, clippy::unwrap_used)]
+
 use crate::{
     http,
     interactions::{InteractionContext, InteractionError, InteractionResult},

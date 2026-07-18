@@ -22,9 +22,7 @@ impl<'q, T: protobuf::Message> Encode<'q, crate::SqlDatabase> for Protobuf<T> {
         &self,
         buf: &mut <crate::SqlDatabase as HasArguments<'q>>::ArgumentBuffer,
     ) -> IsNull {
-        self.0
-            .write_to_vec(buf)
-            .expect("Should not be producing invalid Protobufs");
+        let _ = self.0.write_to_vec(buf);
         IsNull::No
     }
 }

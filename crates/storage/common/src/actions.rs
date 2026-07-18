@@ -46,6 +46,7 @@ impl ActionExecutor {
         &self.storage
     }
 
+    #[allow(clippy::panic)]
     pub async fn execute_action(&self, action: &Action) -> Result<()> {
         match action.details {
             Some(Action_oneof_details::kick(_)) => self.execute_kick(action).await?,
@@ -100,6 +101,7 @@ impl ActionExecutor {
         Ok(())
     }
 
+    #[allow(clippy::panic)]
     fn invert_action(action: &mut Action) {
         match &mut action.details {
             Some(Action_oneof_details::ban(info)) => {

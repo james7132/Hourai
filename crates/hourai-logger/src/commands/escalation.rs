@@ -4,9 +4,15 @@ use hourai_storage::escalation::EscalationManager;
 pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
     ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
+    let member_roles: Vec<_> = ctx
+        .command
+        .member
+        .as_ref()
+        .map(|m| m.roles.clone())
+        .unwrap_or_default();
     if !hourai_storage::is_moderator(
         guild_id,
-        ctx.command.member.as_ref().unwrap().roles.iter().cloned(),
+        member_roles.into_iter(),
         &actions.storage().redis().clone(),
     )
     .await?
@@ -63,9 +69,15 @@ pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> 
 pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
     ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
+    let member_roles: Vec<_> = ctx
+        .command
+        .member
+        .as_ref()
+        .map(|m| m.roles.clone())
+        .unwrap_or_default();
     if !hourai_storage::is_moderator(
         guild_id,
-        ctx.command.member.as_ref().unwrap().roles.iter().cloned(),
+        member_roles.into_iter(),
         &actions.storage().redis().clone(),
     )
     .await?

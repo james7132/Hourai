@@ -82,6 +82,7 @@ pub struct WebhookConfig {
 }
 
 /// Loads the config for the bot. Panics if the reading the files fails or parsing fails.
+#[allow(clippy::unwrap_used)]
 pub fn load_config(path: &Path) -> HouraiConfig {
     let file = File::open(path);
     assert!(file.is_ok(), "Cannot open JSON config at {:?}", path);

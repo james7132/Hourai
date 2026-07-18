@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+
 use crate::message_logging;
 use anyhow::Result;
 use hourai::proto::guild_configs::*;
@@ -12,8 +14,10 @@ use regex::{Regex, RegexSet};
 use std::collections::HashSet;
 
 lazy_static! {
-    static ref SLUR_REGEX: RegexSet = generalize_filters(SLURS);
-    static ref DISCORD_INVITE_REGEX: Regex = Regex::new("discord.gg/([a-zA-Z0-9]+)").unwrap();
+    static ref SLUR_REGEX: RegexSet =
+        generalize_filters(SLURS).expect("Valid generalized slur regex set");
+    static ref DISCORD_INVITE_REGEX: Regex =
+        Regex::new("discord.gg/([a-zA-Z0-9]+)").expect("Valid discord invite regex");
 }
 
 const SLURS: &[&str] = &[
@@ -50,12 +54,12 @@ pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike
     Ok(false)
 }
 
-fn generalize_filters(filters: &[&str]) -> RegexSet {
+fn generalize_filters(filters: &[&str]) -> Result<RegexSet, regex::Error> {
     let generalized = filters
         .iter()
         .map(|filter| generalize_filter(filter))
         .collect::<Vec<String>>();
-    RegexSet::new(&generalized).unwrap()
+    RegexSet::new(&generalized)
 }
 
 fn generalize_filter(filter: &str) -> String {
@@ -78,7 +82,9 @@ async fn apply_rule(
     executor: &ActionExecutor,
 ) -> Result<()> {
     let mut action_taken = None;
-    let guild_id = message.guild_id().unwrap();
+    let guild_id = message
+        .guild_id()
+        .ok_or_else(|| anyhow::anyhow!("Message missing guild"))?;
     let author_id = message.author().id();
     let channel_id = message.channel_id();
     let message_id = message.id();

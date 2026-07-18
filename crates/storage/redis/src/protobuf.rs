@@ -32,12 +32,9 @@ impl<T: protobuf::Message> From<T> for Protobuf<T> {
 
 impl<T: protobuf::Message> ToRedisArgs for Protobuf<T> {
     fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
-        out.write_arg(
-            self.0
-                .write_to_bytes()
-                .expect("Should not be generating malformed Protobufs.")
-                .as_slice(),
-        );
+        if let Ok(bytes) = self.0.write_to_bytes() {
+            out.write_arg(bytes.as_slice());
+        }
     }
 }
 

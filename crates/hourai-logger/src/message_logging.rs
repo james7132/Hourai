@@ -14,6 +14,8 @@ use twilight_util::builder::embed::*;
 
 fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
     let author = message.author();
+    let ts = Timestamp::from_secs(Utc::now().timestamp())
+        .map_err(|e| anyhow!("Invalid timestamp: {}", e))?;
     Ok(EmbedBuilder::new()
         .footer(
             EmbedFooterBuilder::new(format!("{} ({})", author.display_name(), author.id()))
@@ -21,7 +23,7 @@ fn message_base_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
         )
         .title(format!("ID: {}", message.id()))
         .url(message.message_link())
-        .timestamp(Timestamp::from_secs(Utc::now().timestamp()).unwrap()))
+        .timestamp(ts))
 }
 
 pub(crate) fn message_to_embed(message: &impl MessageLike) -> Result<EmbedBuilder> {
