@@ -1,14 +1,20 @@
-#![allow(clippy::unwrap_used)]
-
 use crate::models::id::{Id, marker::*};
 use regex::Regex;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref USER_MENTION_REGEX: Regex = Regex::new(r"<@!?(\d+)>").unwrap();
-    static ref ROLE_MENTION_REGEX: Regex = Regex::new(r"<@&(\d+)>").unwrap();
-    static ref CHANNEL_MENTION_REGEX: Regex = Regex::new(r"<@#(\d+)>").unwrap();
-}
+static USER_MENTION_REGEX: LazyLock<Regex> = LazyLock::new(|| match Regex::new(r"<@!?(\d+)>") {
+    Ok(re) => re,
+    Err(_) => unreachable!(),
+});
+static ROLE_MENTION_REGEX: LazyLock<Regex> = LazyLock::new(|| match Regex::new(r"<@&(\d+)>") {
+    Ok(re) => re,
+    Err(_) => unreachable!(),
+});
+static CHANNEL_MENTION_REGEX: LazyLock<Regex> = LazyLock::new(|| match Regex::new(r"<@#(\d+)>") {
+    Ok(re) => re,
+    Err(_) => unreachable!(),
+});
 
 pub fn get_user_mention_ids(text: &str) -> impl Iterator<Item = Id<UserMarker>> + '_ {
     USER_MENTION_REGEX

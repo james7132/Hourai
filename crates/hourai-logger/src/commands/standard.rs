@@ -8,11 +8,13 @@ use hourai::{
 use hourai_sql::Tag;
 use rand::Rng;
 use regex::Regex;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref DICE_REGEX: Regex =
-        Regex::new(r"(\d+)d(\d+)([\+\-\*\/]?)(\d*)").expect("Valid dice regex");
-}
+static DICE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| match Regex::new(r"(\d+)d(\d+)([\+\-\*\/]?)(\d*)") {
+        Ok(re) => re,
+        Err(_) => unreachable!(),
+    });
 
 pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
     ctx.defer().await?;

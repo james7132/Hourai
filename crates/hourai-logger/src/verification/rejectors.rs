@@ -8,13 +8,18 @@ use chrono::offset::Utc;
 use hourai::models::{Snowflake, user::User};
 use hourai_sql::{Ban, SqlPool, Username, VerificationBan};
 use regex::Regex;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref DELETED_USERNAME_MATCH: Regex =
-        Regex::new("Deleted User [0-9a-fA-F]{8}").expect("Valid deleted user regex");
-    static ref LOOSE_DELETED_USERNAME_MATCH: Regex =
-        Regex::new("(?i).*Deleted.*User.*").expect("Valid deleted user regex");
-}
+static DELETED_USERNAME_MATCH: LazyLock<Regex> =
+    LazyLock::new(|| match Regex::new("Deleted User [0-9a-fA-F]{8}") {
+        Ok(re) => re,
+        Err(_) => unreachable!(),
+    });
+static LOOSE_DELETED_USERNAME_MATCH: LazyLock<Regex> =
+    LazyLock::new(|| match Regex::new("(?i).*Deleted.*User.*") {
+        Ok(re) => re,
+        Err(_) => unreachable!(),
+    });
 
 fn is_user_deleted(user: &User) -> bool {
     user.avatar.is_none() && DELETED_USERNAME_MATCH.is_match(user.name.as_str())

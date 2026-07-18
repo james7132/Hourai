@@ -13,12 +13,17 @@ use hourai_storage::actions::ActionExecutor;
 use regex::{Regex, RegexSet};
 use std::collections::HashSet;
 
-lazy_static! {
-    static ref SLUR_REGEX: RegexSet =
-        generalize_filters(SLURS).expect("Valid generalized slur regex set");
-    static ref DISCORD_INVITE_REGEX: Regex =
-        Regex::new("discord.gg/([a-zA-Z0-9]+)").expect("Valid discord invite regex");
-}
+use std::sync::LazyLock;
+
+static SLUR_REGEX: LazyLock<RegexSet> = LazyLock::new(|| match generalize_filters(SLURS) {
+    Ok(re) => re,
+    Err(_) => unreachable!(),
+});
+static DISCORD_INVITE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| match Regex::new("discord.gg/([a-zA-Z0-9]+)") {
+        Ok(re) => re,
+        Err(_) => unreachable!(),
+    });
 
 const SLURS: &[&str] = &[
     "nigger", "nigga", "tarskin", "tranny", "trannie", "redskin", "faggot", "chink", "kike",
