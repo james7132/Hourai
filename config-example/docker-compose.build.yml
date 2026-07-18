@@ -1,12 +1,7 @@
 version: "3.8"
 services:
   logger:
-    image: james7132/hourai:latest-logger
+    image: ghcr.io/james7132/hourai:latest
     build:
       context: ..
       dockerfile: crates/hourai-logger/Dockerfile
-  nginx:
-    image: james7132/hourai:latest-frontend
-    build:
-      context: ..
-      dockerfile: frontend/Dockerfile

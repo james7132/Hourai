@@ -3,9 +3,11 @@ services:
   logger:
     build:
       context: ../
-      dockerfile: ../crates/hourai-logger/Dockerfile
+      dockerfile: crates/hourai-logger/Dockerfile
     container_name: logger
     restart: unless-stopped
+    ports:
+      - 8080:8080
     environment:
       - HOURAI_CONFIG=/opt/hourai.jsonnet
       - HOURAI_ENV=dev
@@ -15,27 +17,6 @@ services:
     depends_on:
       - postgres
       - redis
-  frontend-dev:
-    image: node:14.3.0
-    container_name: frontend-dev
-    working_dir: /app
-    command: npm run serve
-    restart: unless-stopped
-    expose:
-      - 8080
-    volumes:
-      - ../frontend:/app
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
-    restart: unless-stopped
-    ports:
-      - 8080:80
-    volumes:
-      - ./nginx.dev.conf:/etc/nginx/nginx.conf
-      - ./nginx:/etc/nginx/common
-    depends_on:
-      - logger
   postgres:
     image: postgres:12-alpine
     container_name: postgres

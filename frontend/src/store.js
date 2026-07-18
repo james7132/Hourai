@@ -3,7 +3,7 @@ import Vuex from "vuex"
 import Api from "@/api.js"
 import consts from '@/consts.js'
 
-const API = new Api(window.location.host, 1)
+const API = new Api(process.env.VUE_APP_API_HOST || window.location.host, 1)
 
 let auth = {
     state: {
