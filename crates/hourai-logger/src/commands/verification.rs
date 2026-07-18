@@ -69,7 +69,7 @@ pub async fn verify(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Re
         hourai::cache::InMemoryCache::new(),
         actions.storage().sql().clone(),
     );
-    let verify_ctx = crate::verification::verify_member(&member, &verifiers).await?;
+    let verify_ctx = crate::verification::verify_member(guild_id, &member, &verifiers).await?;
 
     let mut desc = format!("**User:** <@{}>\n", user_id);
     if verify_ctx.is_approved() {
@@ -130,15 +130,14 @@ pub async fn purge(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Res
         let user_id = Id::<UserMarker>::new(mem.user_id as u64);
         if let Ok(m) = actions.http().guild_member(guild_id, user_id).await {
             if let Ok(guild_member) = m.model().await {
-                let joined_secs = guild_member.joined_at.as_secs();
-                if joined_secs < cutoff.timestamp() {
-                    let reason = "Unverified user purged.";
-                    if let Ok(del) = actions
-                        .http()
-                        .remove_guild_member(guild_id, user_id)
-                        .reason(reason)
-                    {
-                        if del.await.is_ok() {
+                if let Some(joined_at) = guild_member.joined_at {
+                    if joined_at.as_secs() < cutoff.timestamp() {
+                        let reason = "Unverified user purged.";
+                        let request = actions
+                            .http()
+                            .remove_guild_member(guild_id, user_id)
+                            .reason(reason);
+                        if request.await.is_ok() {
                             purged += 1;
                         }
                     }
@@ -220,14 +219,12 @@ pub async fn propagate(ctx: &CommandContext, actions: &ActionExecutor) -> Result
             continue;
         }
         let user_id = Id::<UserMarker>::new(mem.user_id as u64);
-        if let Ok(add) = actions
+        let request = actions
             .http()
             .add_guild_member_role(guild_id, user_id, role_id)
-            .reason("Propagating verification role.")
-        {
-            if add.await.is_ok() {
-                added += 1;
-            }
+            .reason("Propagating verification role.");
+        if request.await.is_ok() {
+            added += 1;
         }
     }
 

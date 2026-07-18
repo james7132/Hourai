@@ -47,8 +47,11 @@ async fn get_verification_role(
     }
 }
 
-pub async fn on_member_join(client: &Client, member: &Member) -> Result<()> {
-    let guild_id = member.guild_id;
+pub async fn on_member_join(
+    client: &Client,
+    guild_id: Id<GuildMarker>,
+    member: &Member,
+) -> Result<()> {
     let user_id = member.user.id;
 
     let bot_roles = match get_roles(client.storage(), guild_id, client.user_id()).await {

@@ -141,7 +141,7 @@ impl ActionExecutor {
         let user_id = Id::new(action.get_user_id());
         self.http
             .remove_guild_member(guild_id, user_id)
-            .reason(action.get_reason())?
+            .reason(action.get_reason())
             .await?;
         Ok(())
     }
@@ -152,14 +152,14 @@ impl ActionExecutor {
         if info.get_field_type() != BanMember_Type::UNBAN {
             self.http
                 .create_ban(guild_id, user_id)
-                .reason(action.get_reason())?
-                .delete_message_seconds(info.get_delete_message_days() * SECONDS_IN_DAY)?
+                .reason(action.get_reason())
+                .delete_message_seconds(info.get_delete_message_days() * SECONDS_IN_DAY)
                 .await?;
         }
         if info.get_field_type() != BanMember_Type::BAN {
             self.http
                 .delete_ban(guild_id, user_id)
-                .reason(action.get_reason())?
+                .reason(action.get_reason())
                 .await?;
         }
         Ok(())
@@ -209,7 +209,7 @@ impl ActionExecutor {
         self.http
             .update_guild_member(guild_id, user_id)
             .mute(mute)
-            .reason(action.get_reason())?
+            .reason(action.get_reason())
             .await?;
 
         Ok(())
@@ -235,7 +235,7 @@ impl ActionExecutor {
         self.http
             .update_guild_member(guild_id, user_id)
             .deaf(deafen)
-            .reason(action.get_reason())?
+            .reason(action.get_reason())
             .await?;
 
         Ok(())
@@ -277,7 +277,7 @@ impl ActionExecutor {
         self.http
             .update_guild_member(guild_id, user_id)
             .roles(&roles)
-            .reason(action.get_reason())?
+            .reason(action.get_reason())
             .await?;
         Ok(())
     }
@@ -293,7 +293,7 @@ impl ActionExecutor {
 
         self.http
             .create_message(channel.id)
-            .content(info.get_content())?
+            .content(info.get_content())
             .await?;
         Ok(())
     }
@@ -302,7 +302,7 @@ impl ActionExecutor {
         let channel_id = Id::new(info.get_channel_id());
         self.http
             .create_message(channel_id)
-            .content(info.get_content())?
+            .content(info.get_content())
             .await?;
         Ok(())
     }

@@ -87,10 +87,10 @@ pub(super) async fn on_message_update(
                     "Message by <@{}> edited from <#{}>",
                     before.author().id(),
                     before.channel_id()
-                ))?
+                ))
                 .embeds(&[message_diff_embed(&before, &after)?
                     .color(0xa84300) // Dark orange
-                    .build()])?
+                    .build()])
                 .await?;
         }
     }
@@ -117,10 +117,10 @@ pub(super) async fn on_message_delete(client: &mut Client, evt: &MessageDelete) 
                         "Message by <@{}> deleted from <#{}>",
                         msg.author().get_id(),
                         msg.get_channel_id()
-                    ))?
+                    ))
                     .embeds(&[message_to_embed(&msg)?
                         .color(0x992d22) // Dark red
-                        .build()])?
+                        .build()])
                     .await?;
             }
         }
@@ -143,7 +143,7 @@ pub(super) async fn on_message_bulk_delete(client: Client, evt: MessageDeleteBul
                     "{} messages bulk deleted from <#{}>",
                     evt.ids.len(),
                     evt.channel_id
-                ))?
+                ))
                 .await?;
         }
     }

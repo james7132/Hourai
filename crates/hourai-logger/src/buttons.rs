@@ -1,17 +1,19 @@
 use hourai::{
     interactions::proto_to_custom_id,
     models::{
-        channel::message::{component::*, Component, ReactionType},
+        channel::message::{
+            component::{Button, ButtonStyle},
+            Component,
+        },
         guild::Permissions,
         id::{marker::UserMarker, Id},
     },
     proto::{action::*, message_components::*},
 };
+use twilight_model::channel::message::EmojiReactionType;
 
-const VERIFY_EMOJI: &str = "✅";
 const BAN_EMOJI: &str = "☠️";
 const KICK_EMOJI: &str = "❌";
-const DELETE_EMOJI: &str = "🗑️";
 
 pub fn ban_button(user_id: Id<UserMarker>, reason: Option<&str>) -> Component {
     let mut action = Action::new();
@@ -51,10 +53,11 @@ pub fn create_action_button(
     Component::Button(Button {
         custom_id: Some(proto_to_custom_id(&proto).unwrap()),
         disabled: false,
-        emoji: Some(ReactionType::Unicode {
+        emoji: Some(EmojiReactionType::Unicode {
             name: emoji.to_owned(),
         }),
         label: label.map(|s| s.to_owned()),
+        sku_id: None,
         style: ButtonStyle::Secondary,
         url: None,
     })

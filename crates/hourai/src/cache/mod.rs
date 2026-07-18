@@ -30,48 +30,9 @@ struct InMemoryCacheRef {
     pending_members: DashSet<(Id<GuildMarker>, Id<UserMarker>)>,
 }
 
-/// A thread-safe, in-memory-process cache of Discord data. It can be cloned and
-/// sent to other threads.
-///
-/// This is an implementation of a cache designed to be used by only the
-/// current process.
-///
-/// Events will only be processed if they are properly expressed with
-/// [`Intents`]; refer to function-level documentation for more details.
-///
-/// # Cloning
-///
-/// The cache internally wraps its data within an Arc. This means that the cache
-/// can be cloned and passed around tasks and threads cheaply.
-///
-/// # Design and Performance
-///
-/// The defining characteristic of this cache is that returned types (such as a
-/// guild or user) do not use locking for access. The internals of the cache use
-/// a concurrent map for mutability and the returned types themselves are Arcs.
-/// If a user is retrieved from the cache, an `Arc<User>` is returned. If a
-/// reference to that user is held but the cache updates the user, the reference
-/// held by you will be outdated, but still exist.
-///
-/// The intended use is that data is held outside the cache for only as long
-/// as necessary, where the state of the value at that point time doesn't need
-/// to be up-to-date. If you need to ensure you always have the most up-to-date
-/// "version" of a cached resource, then you can re-retrieve it whenever you use
-/// it: retrieval operations are extremely cheap.
-///
-/// For example, say you're deleting some of the guilds of a channel. You'll
-/// probably need the guild to do that, so you retrieve it from the cache. You
-/// can then use the guild to update all of the channels, because for most use
-/// cases you don't need the guild to be up-to-date in real time, you only need
-/// its state at that *point in time* or maybe across the lifetime of an
-/// operation. If you need the guild to always be up-to-date between operations,
-/// then the intent is that you keep getting it from the cache.
-///
-/// [`Intents`]: ::twilight_model::gateway::Intents
 #[derive(Clone, Debug, Default)]
 pub struct InMemoryCache(Arc<InMemoryCacheRef>);
 
-/// Implemented methods and types for the cache.
 impl InMemoryCache {
     pub fn new() -> Self {
         Self::default()
@@ -84,44 +45,26 @@ impl InMemoryCache {
         }))
     }
 
-    /// Create a new builder to configure and construct an in-memory cache.
     pub fn builder() -> InMemoryCacheBuilder {
         InMemoryCacheBuilder::new()
     }
 
-    /// Returns a copy of the config cache.
     pub fn config(&self) -> Config {
         (*self.0.config).clone()
     }
 
-    /// Update the cache with an event from the gateway.
     pub fn update(&self, value: &impl UpdateCache) {
         value.update(self);
     }
 
-    /// Checks if a member is pending in a speciifc guild.
-    /// This runs O(1) time.
     pub fn is_pending(&self, guild_id: Id<GuildMarker>, user_id: Id<UserMarker>) -> bool {
         self.0.pending_members.contains(&(guild_id, user_id))
     }
 
-    /// Gets all of the IDs of the guilds in the cache.
-    ///
-    /// This is an O(n) operation. This requires the [`GUILDS`] intent.
-    ///
-    /// [`GUILDS`]: ::twilight_model::gateway::Intents::GUILDS
     pub fn guilds(&self) -> Vec<Id<GuildMarker>> {
         self.0.guilds.iter().map(|r| *r.key()).collect()
     }
 
-    /// Gets the set of presences in a guild.
-    ///
-    /// This list may be incomplete if not all members have been cached.
-    ///
-    /// This is a O(m) operation, where m is the amount of members in the guild.
-    /// This requires the [`GUILD_PRESENCES`] intent.
-    ///
-    /// [`GUILD_PRESENCES`]: ::twilight_model::gateway::Intents::GUILD_PRESENCES
     pub fn guild_online(&self, guild_id: Id<GuildMarker>) -> Option<HashSet<Id<UserMarker>>> {
         self.0
             .guild_presences
@@ -129,11 +72,6 @@ impl InMemoryCache {
             .map(|r| r.value().clone())
     }
 
-    /// Gets a presence by, optionally, guild ID, and user ID.
-    ///
-    /// This is an O(1) operation. This requires the [`GUILD_PRESENCES`] intent.
-    ///
-    /// [`GUILD_PRESENCES`]: ::twilight_model::gateway::Intents::GUILD_PRESENCES
     pub fn presence(&self, guild_id: Id<GuildMarker>, user_id: Id<UserMarker>) -> bool {
         self.0
             .guild_presences
@@ -142,9 +80,6 @@ impl InMemoryCache {
             .unwrap_or(false)
     }
 
-    /// Clear the state of the Cache.
-    ///
-    /// This is equal to creating a new empty cache.
     pub fn clear(&self) {
         self.0.guilds.clear();
         self.0.guild_presences.clear();
@@ -152,20 +87,26 @@ impl InMemoryCache {
         self.0.pending_members.clear();
     }
 
-    fn cache_guild(&self, guild: Guild) {
-        // The map and set creation needs to occur first, so caching states and
-        // objects always has a place to put them.
-        if self.wants(ResourceType::MEMBER) {
-            self.cache_members(guild.id, guild.members);
+    pub fn cache_guild_create(
+        &self,
+        guild: &twilight_model::gateway::payload::incoming::GuildCreate,
+    ) {
+        match guild {
+            twilight_model::gateway::payload::incoming::GuildCreate::Available(g) => {
+                if self.wants(ResourceType::MEMBER) {
+                    self.cache_members(g.id, g.members.clone());
+                }
+                if self.wants(ResourceType::PRESENCE) {
+                    self.0.guild_presences.insert(g.id, HashSet::new());
+                    self.cache_presences(g.id, g.presences.clone());
+                }
+                self.0.guilds.insert(g.id);
+                self.0.unavailable_guilds.remove(&g.id);
+            }
+            twilight_model::gateway::payload::incoming::GuildCreate::Unavailable(g) => {
+                self.unavailable_guild(g.id);
+            }
         }
-
-        if self.wants(ResourceType::PRESENCE) {
-            self.0.guild_presences.insert(guild.id, HashSet::new());
-            self.cache_presences(guild.id, guild.presences);
-        }
-
-        self.0.guilds.insert(guild.id);
-        self.0.unavailable_guilds.remove(&guild.id);
     }
 
     fn cache_member(&self, guild_id: Id<GuildMarker>, member: &Member) {
@@ -178,8 +119,10 @@ impl InMemoryCache {
     }
 
     fn cache_members(&self, guild_id: Id<GuildMarker>, members: impl IntoIterator<Item = Member>) {
-        for member in members {
-            self.cache_member(guild_id, &member);
+        if self.wants(ResourceType::MEMBER) {
+            for member in members {
+                self.cache_member(guild_id, &member);
+            }
         }
     }
 
@@ -188,50 +131,33 @@ impl InMemoryCache {
         guild_id: Id<GuildMarker>,
         presences: impl IntoIterator<Item = Presence>,
     ) {
-        if let Some(mut kv) = self.0.guild_presences.get_mut(&guild_id) {
+        if self.wants(ResourceType::PRESENCE) {
             for presence in presences {
-                let user_id = presence_user_id(&presence);
-                if presence.status == Status::Online {
-                    kv.value_mut().insert(user_id);
-                } else {
-                    kv.value_mut().remove(&user_id);
-                }
+                let user_id = match presence.user {
+                    UserOrId::User(ref u) => u.id,
+                    UserOrId::UserId { id } => id,
+                };
+                self.cache_presence(guild_id, user_id, presence.status);
             }
         }
     }
 
-    fn cache_presence(
-        &self,
-        guild_id: Id<GuildMarker>,
-        user_id: Id<UserMarker>,
-        status: Status,
-    ) -> bool {
-        let online = status == Status::Online;
-        if let Some(mut kv) = self.0.guild_presences.get_mut(&guild_id) {
-            if online {
-                kv.value_mut().insert(user_id);
-            } else {
-                kv.value_mut().remove(&user_id);
+    fn cache_presence(&self, guild_id: Id<GuildMarker>, user_id: Id<UserMarker>, status: Status) {
+        if self.wants(ResourceType::PRESENCE) && status != Status::Offline {
+            if let Some(mut set) = self.0.guild_presences.get_mut(&guild_id) {
+                set.insert(user_id);
             }
         }
-        online
     }
 
     fn unavailable_guild(&self, guild_id: Id<GuildMarker>) {
-        self.0.unavailable_guilds.insert(guild_id);
-        self.0.guilds.remove(&guild_id);
+        if self.wants(ResourceType::GUILD) {
+            self.0.guilds.remove(&guild_id);
+            self.0.unavailable_guilds.insert(guild_id);
+        }
     }
 
-    /// Determine whether the configured cache wants a specific resource to be
-    /// processed.
     fn wants(&self, resource_type: ResourceType) -> bool {
         self.0.config.resource_types().contains(resource_type)
-    }
-}
-
-pub fn presence_user_id(presence: &Presence) -> Id<UserMarker> {
-    match presence.user {
-        UserOrId::User(ref u) => u.id,
-        UserOrId::UserId { id } => id,
     }
 }

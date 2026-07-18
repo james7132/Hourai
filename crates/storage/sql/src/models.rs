@@ -260,7 +260,7 @@ impl From<&TwilightMember> for Member {
     fn from(member: &TwilightMember) -> Self {
         let premium = member.premium_since.as_ref().map(to_datetime);
         Self {
-            guild_id: member.guild_id.get() as i64,
+            guild_id: 0,
             user_id: member.user.id.get() as i64,
             role_ids: member.roles.iter().map(|id| id.get() as i64).collect(),
             nickname: member.nick.clone(),

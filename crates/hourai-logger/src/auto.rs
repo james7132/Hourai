@@ -1,7 +1,7 @@
 use anyhow::Result;
 use hourai::{
     models::{
-        guild::member::Member,
+        guild::Member,
         id::{marker::*, Id},
         user::User,
         MessageLike, Snowflake, UserLike,
@@ -106,6 +106,7 @@ impl AutoEngine {
     pub async fn on_member_join(
         actions: &ActionExecutor,
         config: &AutoConfig,
+        guild_id: Id<GuildMarker>,
         member: &Member,
     ) -> Result<()> {
         if member.user.bot {
@@ -119,7 +120,7 @@ impl AutoEngine {
                 }
                 for action in evt.get_action() {
                     let mut act = action.clone();
-                    act.set_guild_id(member.guild_id.get());
+                    act.set_guild_id(guild_id.get());
                     act.set_user_id(member.user.id.get());
                     to_execute.push(act);
                 }

@@ -1,8 +1,13 @@
 use crate::config::HouraiConfig;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::{convert::TryFrom, future::Future, pin::Pin, sync::Arc};
+use std::{convert::TryFrom, sync::Arc};
 use tracing::debug;
+use twilight_gateway::{
+    create_recommended,
+    queue::{InMemoryQueue, Queue},
+    ConfigBuilder, Intents, Shard,
+};
 
 pub fn start_logging() {
     tracing_subscriber::fmt()
@@ -18,8 +23,6 @@ pub fn init(config: &HouraiConfig) {
     start_logging();
     debug!("Loaded Config: {:?}", config);
 
-    debug!("Loaded Config: {:?}", config);
-
     let metrics_port = config.metrics.port.unwrap_or(9090);
     let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), metrics_port);
     PrometheusBuilder::new()
@@ -33,17 +36,24 @@ pub fn init(config: &HouraiConfig) {
     );
 }
 
-pub fn cluster(
+pub type GatewayShard = Shard<GatewayQueue>;
+
+pub async fn create_shards(
     config: &HouraiConfig,
-    intents: twilight_gateway::Intents,
-) -> twilight_gateway::cluster::ClusterBuilder {
-    let cluster = twilight_gateway::Cluster::builder(config.discord.bot_token.clone(), intents);
-    if let Some(ref uri) = config.discord.gateway_queue {
-        let queue = GatewayQueue(hyper::Uri::try_from(uri.clone()).unwrap());
-        cluster.queue(Arc::new(queue))
+    http: &twilight_http::Client,
+    intents: Intents,
+) -> anyhow::Result<Vec<GatewayShard>> {
+    let token = config.discord.bot_token.clone();
+    let queue = if let Some(ref uri) = config.discord.gateway_queue {
+        GatewayQueue::Remote(hyper::Uri::try_from(uri.clone()).unwrap())
     } else {
-        cluster
-    }
+        GatewayQueue::Local(InMemoryQueue::default())
+    };
+    let gateway_config = ConfigBuilder::new(token, intents).queue(queue).build();
+    let shards: Vec<_> = create_recommended(http, gateway_config, |_, builder| builder.build())
+        .await?
+        .collect();
+    Ok(shards)
 }
 
 pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
@@ -63,17 +73,31 @@ pub fn http_client(config: &HouraiConfig) -> twilight_http::Client {
 }
 
 #[derive(Debug, Clone)]
-pub struct GatewayQueue(hyper::Uri);
+pub enum GatewayQueue {
+    Remote(hyper::Uri),
+    Local(InMemoryQueue),
+}
 
-impl twilight_gateway::queue::Queue for GatewayQueue {
-    fn request<'a>(&'a self, _: [u64; 2]) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
-        tracing::debug!("Queueing to IDENTIFY with the gateway...");
-        Box::pin(async move {
-            if let Err(err) = hyper::Client::new().get(self.0.clone()).await {
-                tracing::error!("Error while querying the shared gateway queue: {}", err);
-            } else {
-                tracing::debug!("Finished waiting to re-IDENTIFY with the Discord gateway.");
+impl Queue for GatewayQueue {
+    fn enqueue(&self, id: u32) -> tokio::sync::oneshot::Receiver<()> {
+        match self {
+            Self::Local(q) => q.enqueue(id),
+            Self::Remote(uri) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                let uri = uri.clone();
+                tokio::spawn(async move {
+                    tracing::debug!("Queueing to IDENTIFY with the gateway...");
+                    if let Err(err) = hyper::Client::new().get(uri).await {
+                        tracing::error!("Error while querying the shared gateway queue: {}", err);
+                    } else {
+                        tracing::debug!(
+                            "Finished waiting to re-IDENTIFY with the Discord gateway."
+                        );
+                    }
+                    let _ = tx.send(());
+                });
+                rx
             }
-        })
+        }
     }
 }
