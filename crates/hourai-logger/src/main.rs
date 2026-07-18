@@ -403,7 +403,7 @@ impl Client {
         if !member.pending {
             let res = roles::on_member_join(self, guild_id, &member).await;
             let members = vec![member.clone()];
-            self.log_members(&members).await?;
+            self.log_members(guild_id, &members).await?;
             res?;
         }
         if let Ok(config) = self
@@ -424,7 +424,7 @@ impl Client {
 
     async fn on_member_chunk(&self, evt: MemberChunk) -> Result<()> {
         self.0.member_chunker.push_chunk(&evt);
-        while let Err(err) = self.log_members(&evt.members).await {
+        while let Err(err) = self.log_members(evt.guild_id, &evt.members).await {
             error!(
                 "Error while chunking members, retrying: {} ({:?})",
                 err, err
@@ -724,11 +724,11 @@ impl Client {
         Ok(())
     }
 
-    pub async fn log_members(&self, members: &[Member]) -> Result<()> {
+    pub async fn log_members(&self, guild_id: Id<GuildMarker>, members: &[Member]) -> Result<()> {
         let mut txn = self.storage().sql().begin().await?;
         for member in members {
             txn.execute(Username::new(&member.user).insert()).await?;
-            txn.execute(hourai_sql::Member::from(member).insert())
+            txn.execute(hourai_sql::Member::from((guild_id, member)).insert())
                 .await?;
         }
         txn.commit().await?;

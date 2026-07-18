@@ -256,11 +256,11 @@ pub struct Member {
     pub avatar: Option<String>,
 }
 
-impl From<&TwilightMember> for Member {
-    fn from(member: &TwilightMember) -> Self {
+impl From<(Id<GuildMarker>, &TwilightMember)> for Member {
+    fn from((guild_id, member): (Id<GuildMarker>, &TwilightMember)) -> Self {
         let premium = member.premium_since.as_ref().map(to_datetime);
         Self {
-            guild_id: 0,
+            guild_id: guild_id.get() as i64,
             user_id: member.user.id.get() as i64,
             role_ids: member.roles.iter().map(|id| id.get() as i64).collect(),
             nickname: member.nick.clone(),
@@ -269,6 +269,12 @@ impl From<&TwilightMember> for Member {
             premium_since: premium,
             avatar: member.avatar.map(|hash| hash.to_string()),
         }
+    }
+}
+
+impl From<(Id<GuildMarker>, TwilightMember)> for Member {
+    fn from((guild_id, member): (Id<GuildMarker>, TwilightMember)) -> Self {
+        Self::from((guild_id, &member))
     }
 }
 
