@@ -624,6 +624,10 @@ impl Client {
                 let ctx = hourai::interactions::CommandContext::new(self.http().clone(), evt);
                 commands::handle_command(ctx, &self.0.actions).await?;
             }
+            InteractionType::MessageComponent => {
+                let ctx = hourai::interactions::ComponentContext::new(self.http().clone(), evt);
+                verification::handle_component_interaction(ctx, &self).await?;
+            }
             interaction => {
                 warn!("Unknown incoming interaction: {:?}", interaction);
                 return Ok(());
