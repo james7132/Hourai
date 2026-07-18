@@ -1,5 +1,3 @@
-#![allow(clippy::expect_used)]
-
 use super::prelude::*;
 use hourai::{
     models::{channel::message::AllowedMentions, guild::scheduled_event::Status, id::Id},
@@ -10,11 +8,9 @@ use rand::Rng;
 use regex::Regex;
 use std::sync::LazyLock;
 
+#[expect(clippy::expect_used)]
 static DICE_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| match Regex::new(r"(\d+)d(\d+)([\+\-\*\/]?)(\d*)") {
-        Ok(re) => re,
-        Err(_) => unreachable!(),
-    });
+    LazyLock::new(|| Regex::new(r"(\d+)d(\d+)([\+\-\*\/]?)(\d*)").expect("Valid dice regex"));
 
 pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
     ctx.defer().await?;

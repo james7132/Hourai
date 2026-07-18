@@ -1,14 +1,17 @@
-#![allow(clippy::expect_used)]
-
 use crate::models::id::{Id, marker::*};
 use regex::Regex;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
+#[expect(clippy::expect_used)]
 static USER_MENTION_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"<@!?(\d+)>").expect("Valid user mention regex"));
+
+#[expect(clippy::expect_used)]
 static ROLE_MENTION_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"<@&(\d+)>").expect("Valid role mention regex"));
+
+#[expect(clippy::expect_used)]
 static CHANNEL_MENTION_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"<@#(\d+)>").expect("Valid channel mention regex"));
 

@@ -31,7 +31,7 @@ impl<T: protobuf::Message> From<T> for Protobuf<T> {
 }
 
 impl<T: protobuf::Message> ToRedisArgs for Protobuf<T> {
-    #[allow(clippy::expect_used)]
+    #[expect(clippy::expect_used)]
     fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         let bytes = self
             .0

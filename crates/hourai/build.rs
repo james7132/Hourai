@@ -1,8 +1,7 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
-
 use std::{env, path::PathBuf};
 use walkdir::WalkDir;
 
+#[expect(clippy::unwrap_used, clippy::expect_used)]
 fn main() {
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be specified");
     let proto_out_path = PathBuf::from(out_dir).join("proto");

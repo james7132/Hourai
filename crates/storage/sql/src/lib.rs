@@ -13,7 +13,7 @@ pub async fn migrate(pool: &sqlx::PgPool) -> std::result::Result<(), sqlx::migra
     sqlx::migrate!("./migrations").run(pool).await
 }
 
-#[allow(clippy::expect_used)]
+#[expect(clippy::expect_used)]
 pub async fn init(config: &hourai::config::HouraiConfig) -> sqlx::PgPool {
     debug!("Creating Postgres client");
     let pool = sqlx::postgres::PgPoolOptions::new()

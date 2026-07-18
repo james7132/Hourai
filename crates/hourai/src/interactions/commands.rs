@@ -1,5 +1,3 @@
-#![allow(clippy::expect_used)]
-
 use crate::{
     http::Client,
     interactions::{InteractionContext, InteractionError, InteractionResult},
@@ -49,6 +47,7 @@ impl CommandContext {
         }
     }
 
+    #[expect(clippy::expect_used)]
     fn data(&self) -> &CommandData {
         match &self.command.data {
             Some(InteractionData::ApplicationCommand(data)) => data,
@@ -239,6 +238,7 @@ impl InteractionContext for CommandContext {
         self.command.guild_id.ok_or(InteractionError::NotInGuild)
     }
 
+    #[expect(clippy::expect_used)]
     fn channel_id(&self) -> Id<ChannelMarker> {
         self.command
             .channel
@@ -247,6 +247,7 @@ impl InteractionContext for CommandContext {
             .expect("Interaction is missing channel")
     }
 
+    #[expect(clippy::expect_used)]
     fn user(&self) -> &User {
         let member = self
             .command

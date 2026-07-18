@@ -1,5 +1,3 @@
-#![allow(clippy::expect_used)]
-
 use crate::message_logging;
 use anyhow::Result;
 use hourai::proto::guild_configs::*;
@@ -15,15 +13,13 @@ use std::collections::HashSet;
 
 use std::sync::LazyLock;
 
-static SLUR_REGEX: LazyLock<RegexSet> = LazyLock::new(|| match generalize_filters(SLURS) {
-    Ok(re) => re,
-    Err(_) => unreachable!(),
-});
+#[expect(clippy::expect_used)]
+static SLUR_REGEX: LazyLock<RegexSet> =
+    LazyLock::new(|| generalize_filters(SLURS).expect("Valid generalized slur regex set"));
+
+#[expect(clippy::expect_used)]
 static DISCORD_INVITE_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| match Regex::new("discord.gg/([a-zA-Z0-9]+)") {
-        Ok(re) => re,
-        Err(_) => unreachable!(),
-    });
+    LazyLock::new(|| Regex::new("discord.gg/([a-zA-Z0-9]+)").expect("Valid discord invite regex"));
 
 const SLURS: &[&str] = &[
     "nigger", "nigga", "tarskin", "tranny", "trannie", "redskin", "faggot", "chink", "kike",

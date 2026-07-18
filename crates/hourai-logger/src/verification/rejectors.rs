@@ -1,5 +1,3 @@
-#![allow(clippy::expect_used)]
-
 use super::{context, verifier::*};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -10,16 +8,13 @@ use hourai_sql::{Ban, SqlPool, Username, VerificationBan};
 use regex::Regex;
 use std::sync::LazyLock;
 
+#[expect(clippy::expect_used)]
 static DELETED_USERNAME_MATCH: LazyLock<Regex> =
-    LazyLock::new(|| match Regex::new("Deleted User [0-9a-fA-F]{8}") {
-        Ok(re) => re,
-        Err(_) => unreachable!(),
-    });
+    LazyLock::new(|| Regex::new("Deleted User [0-9a-fA-F]{8}").expect("Valid deleted user regex"));
+
+#[expect(clippy::expect_used)]
 static LOOSE_DELETED_USERNAME_MATCH: LazyLock<Regex> =
-    LazyLock::new(|| match Regex::new("(?i).*Deleted.*User.*") {
-        Ok(re) => re,
-        Err(_) => unreachable!(),
-    });
+    LazyLock::new(|| Regex::new("(?i).*Deleted.*User.*").expect("Valid deleted user regex"));
 
 fn is_user_deleted(user: &User) -> bool {
     user.avatar.is_none() && DELETED_USERNAME_MATCH.is_match(user.name.as_str())
@@ -284,7 +279,7 @@ pub fn deleted_user(sql: SqlPool) -> BoxedVerifier {
     Box::new(DeletedUserRejector(sql))
 }
 
-#[allow(clippy::expect_used)]
+#[expect(clippy::expect_used)]
 pub fn username_match(
     sql: SqlPool,
     prefix: impl Into<String>,

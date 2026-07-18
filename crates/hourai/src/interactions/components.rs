@@ -1,5 +1,3 @@
-#![allow(clippy::expect_used)]
-
 use crate::{
     http,
     interactions::{InteractionContext, InteractionError, InteractionResult},
@@ -45,6 +43,7 @@ impl ComponentContext {
         }
     }
 
+    #[expect(clippy::expect_used)]
     fn data(&self) -> &MessageComponentInteractionData {
         match &self.component.data {
             Some(InteractionData::MessageComponent(data)) => data,
@@ -80,6 +79,7 @@ impl InteractionContext for ComponentContext {
         self.component.guild_id.ok_or(InteractionError::NotInGuild)
     }
 
+    #[expect(clippy::expect_used)]
     fn channel_id(&self) -> Id<ChannelMarker> {
         self.component
             .channel
@@ -92,6 +92,7 @@ impl InteractionContext for ComponentContext {
         self.component.member.as_ref()
     }
 
+    #[expect(clippy::expect_used)]
     fn user(&self) -> &User {
         let member = self
             .component

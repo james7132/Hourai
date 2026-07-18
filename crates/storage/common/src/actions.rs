@@ -46,7 +46,7 @@ impl ActionExecutor {
         &self.storage
     }
 
-    #[allow(clippy::expect_used)]
+    #[expect(clippy::expect_used)]
     pub async fn execute_action(&self, action: &Action) -> Result<()> {
         let details = action
             .details
@@ -100,7 +100,7 @@ impl ActionExecutor {
         Ok(())
     }
 
-    #[allow(clippy::expect_used)]
+    #[expect(clippy::expect_used)]
     fn invert_action(action: &mut Action) {
         let details = action
             .details
