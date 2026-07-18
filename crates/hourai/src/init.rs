@@ -14,6 +14,7 @@ pub fn start_logging() {
         .init();
 }
 
+#[expect(clippy::expect_used)]
 pub fn init(config: &HouraiConfig) {
     start_logging();
     debug!("Loaded Config: {:?}", config);

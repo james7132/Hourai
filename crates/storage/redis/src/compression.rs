@@ -23,12 +23,12 @@ impl<T: ToRedisArgs + FromRedisValue> ToRedisArgs for Compressed<T> {
         for arg in payload {
             // The encoding shouldn't fail here due to writing to a in-memory buffer.
             let mut encoder = ZlibEncoder::new(Vec::new(), Compression::new(6));
-            encoder.write_all(&arg).unwrap();
-            let mut output = encoder.finish().unwrap();
+            let _ = encoder.write_all(&arg);
+            let mut output = encoder.finish().unwrap_or_else(|_| arg.clone());
             let compression_mode = if output.len() < arg.len() {
                 CompressionMode::Zlib
             } else {
-                output = arg.to_vec();
+                output = arg;
                 CompressionMode::Uncompressed
             };
             output.insert(0, compression_mode as u8);

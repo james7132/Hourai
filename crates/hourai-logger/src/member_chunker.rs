@@ -84,7 +84,7 @@ impl MemberChunker {
             }
 
             if let Some(guild) = chunk {
-                Self::chunk_guild(&senders, guild).await.unwrap();
+                let _ = Self::chunk_guild(&senders, guild).await;
             }
 
             current = chunk;

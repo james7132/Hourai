@@ -58,10 +58,12 @@ impl ComponentContext {
         }
     }
 
+    #[expect(clippy::expect_used)]
     fn data(&self) -> &MessageComponentInteractionData {
         match &self.component.data {
             Some(InteractionData::MessageComponent(data)) => data,
-            _ => panic!("Provided interaction data is not a message component"),
+            _ => Option::<&MessageComponentInteractionData>::None
+                .expect("Provided interaction data is not a message component"),
         }
     }
 
@@ -91,6 +93,7 @@ impl InteractionContext for ComponentContext {
         self.component.guild_id.ok_or(InteractionError::NotInGuild)
     }
 
+    #[expect(clippy::expect_used)]
     fn channel_id(&self) -> Id<ChannelMarker> {
         self.component
             .channel
@@ -103,6 +106,7 @@ impl InteractionContext for ComponentContext {
         self.component.member.as_ref()
     }
 
+    #[expect(clippy::expect_used)]
     fn user(&self) -> &User {
         let member = self
             .component
@@ -110,7 +114,8 @@ impl InteractionContext for ComponentContext {
             .as_ref()
             .and_then(|member| member.user.as_ref());
         let user = self.component.user.as_ref();
-        user.or(member).unwrap()
+        user.or(member)
+            .expect("Interaction has neither user nor member")
     }
 }
 

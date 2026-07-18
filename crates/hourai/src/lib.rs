@@ -1,8 +1,3 @@
-#![expect(elided_lifetimes_in_paths)]
-
-#[macro_use]
-extern crate lazy_static;
-
 pub mod cache;
 pub mod config;
 pub mod init;
@@ -12,6 +7,7 @@ pub mod prelude;
 pub mod util;
 
 // Include the auto-generated protos as a module
+#[allow(unused_parens, elided_lifetimes_in_paths, renamed_and_removed_lints)]
 pub mod proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
     use self::cache::{CachedRoleProto, CachedUserProto};

@@ -1,5 +1,5 @@
 use hourai::config::HouraiConfig;
-use hourai::models::id::{marker::UserMarker, Id};
+use hourai::models::id::{Id, marker::UserMarker};
 use reqwest::RequestBuilder;
 use serde_json::json;
 use std::time::Duration;
@@ -38,9 +38,8 @@ fn post_discord_bots(
     let token = config
         .third_party
         .discord_bots_token
-        .as_ref()
-        .unwrap()
-        .as_str();
+        .as_deref()
+        .unwrap_or("");
     http.post(format!(
         "https://discord.bots.gg/api/v1/bots/{}/stats",
         user_id
@@ -55,7 +54,11 @@ fn post_top_gg(
     config: &HouraiConfig,
     count: i64,
 ) -> RequestBuilder {
-    let token = config.third_party.top_gg_token.as_ref().unwrap().as_str();
+    let token = config
+        .third_party
+        .top_gg_token
+        .as_deref()
+        .unwrap_or("");
     http.post(format!("https://top.gg/api/bots/{}/stats", user_id))
         .header("Authorization", token)
         .json(&json!({ "server_count": count }))
@@ -68,13 +71,18 @@ async fn handle_response(target: &str, request: RequestBuilder) {
                 tracing::debug!("Successfully bot info to {} ({})", target, code)
             }
             code if code.is_server_error() => {
-                tracing::warn!("Failed to post bot info to {} ({})", target, code)
+                tracing::warn!(
+                    "Failed to post to {}, server error: {}",
+                    target,
+                    response.text().await.unwrap_or_default()
+                )
             }
-            code if code.is_client_error() => {
-                tracing::error!("Failed to post bot info to {} ({})", target, code)
-            }
-            _ => {}
+            code => tracing::error!(
+                "Failed to post to {}, returned error: {}",
+                target,
+                response.text().await.unwrap_or_default()
+            ),
         },
-        Err(err) => tracing::error!("Error while posting bot info to {}: {}", target, err),
+        Err(err) => tracing::error!("Failed to post to {}: {}", target, err),
     }
 }

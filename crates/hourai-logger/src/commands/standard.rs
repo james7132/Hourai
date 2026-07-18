@@ -6,6 +6,11 @@ use hourai::{
 use hourai_sql::Tag;
 use rand::Rng;
 use regex::Regex;
+use std::sync::LazyLock;
+
+#[expect(clippy::expect_used)]
+static DICE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d+)d(\d+)([\+\-\*\/]?)(\d*)").expect("Valid dice regex"));
 
 pub(super) async fn choose(ctx: &CommandContext) -> Result<Response> {
     ctx.defer().await?;
@@ -26,8 +31,7 @@ pub(super) async fn roll(ctx: &CommandContext) -> Result<Response> {
         .cloned()
         .unwrap_or_else(|| "1d6".to_string());
 
-    let re = Regex::new(r"(\d+)d(\d+)([\+\-\*\/]?)(\d*)").unwrap();
-    let caps = match re.captures(&input) {
+    let caps = match DICE_REGEX.captures(&input) {
         Some(c) => c,
         None => {
             return Ok(

@@ -1,12 +1,19 @@
 use crate::models::id::{Id, marker::*};
 use regex::Regex;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref USER_MENTION_REGEX: Regex = Regex::new(r"<@!?(\d+)>").unwrap();
-    static ref ROLE_MENTION_REGEX: Regex = Regex::new(r"<@&(\d+)>").unwrap();
-    static ref CHANNEL_MENTION_REGEX: Regex = Regex::new(r"<@#(\d+)>").unwrap();
-}
+#[expect(clippy::expect_used)]
+static USER_MENTION_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<@!?(\d+)>").expect("Valid user mention regex"));
+
+#[expect(clippy::expect_used)]
+static ROLE_MENTION_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<@&(\d+)>").expect("Valid role mention regex"));
+
+#[expect(clippy::expect_used)]
+static CHANNEL_MENTION_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<@#(\d+)>").expect("Valid channel mention regex"));
 
 pub fn get_user_mention_ids(text: &str) -> impl Iterator<Item = Id<UserMarker>> + '_ {
     USER_MENTION_REGEX

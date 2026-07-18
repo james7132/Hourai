@@ -11,7 +11,6 @@ use hourai::{
     proto::action::{Action, ActionSet},
 };
 use sqlx::types::chrono::{DateTime, NaiveDateTime, Utc};
-use std::convert::TryInto;
 
 pub type SqlDatabase = sqlx::Postgres;
 pub type SqlQuery<'a> = sqlx::query::Query<
@@ -309,7 +308,7 @@ impl Member {
     pub fn role_ids(&self) -> impl Iterator<Item = Id<RoleMarker>> + '_ {
         self.role_ids
             .iter()
-            .map(|id| Id::new((*id).try_into().unwrap()))
+            .map(|id| Id::new(u64::try_from(*id).unwrap_or(0)))
     }
 
     pub fn set_present<'a>(

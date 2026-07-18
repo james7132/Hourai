@@ -6,11 +6,15 @@ use chrono::offset::Utc;
 use hourai::models::{Snowflake, user::User};
 use hourai_sql::{Ban, SqlPool, Username, VerificationBan};
 use regex::Regex;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref DELETED_USERNAME_MATCH: Regex = Regex::new("Deleted User [0-9a-fA-F]{8}").unwrap();
-    static ref LOOSE_DELETED_USERNAME_MATCH: Regex = Regex::new("(?i).*Deleted.*User.*").unwrap();
-}
+#[expect(clippy::expect_used)]
+static DELETED_USERNAME_MATCH: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("Deleted User [0-9a-fA-F]{8}").expect("Valid deleted user regex"));
+
+#[expect(clippy::expect_used)]
+static LOOSE_DELETED_USERNAME_MATCH: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("(?i).*Deleted.*User.*").expect("Valid deleted user regex"));
 
 fn is_user_deleted(user: &User) -> bool {
     user.avatar.is_none() && DELETED_USERNAME_MATCH.is_match(user.name.as_str())
@@ -43,12 +47,12 @@ impl Verifier for DeletedUserRejector {
                     name
                 ));
             } else if is_deleted && username.discriminator.map(|d| d < 100).unwrap_or(false) {
+                let disc = username.discriminator.unwrap_or(0);
                 ctx.add_rejection_reason(format!(
                     "\"{}#{:04}\" has an unusual discriminator for a deleted user. These \
                              are randomly generated. User may have attempted to fake account \
                              deletion.",
-                    name,
-                    username.discriminator.unwrap()
+                    name, disc
                 ));
             }
         }
@@ -120,23 +124,20 @@ impl Verifier for BannedUsernameRejector {
             ctx.add_rejection_reason(reason);
         }
 
-        if ctx.member().user.avatar.is_none() {
-            return Ok(());
-        }
-
-        let avatar_bans =
-            VerificationBan::fetch_by_avatar(ctx.guild_id(), ctx.member().user.avatar.unwrap())
+        if let Some(ref avatar) = ctx.member().user.avatar {
+            let avatar_bans = VerificationBan::fetch_by_avatar(ctx.guild_id(), *avatar)
                 .fetch_all(&self.0)
                 .await?;
-        for ban in avatar_bans {
-            let mut reason = format!(
-                "Exact avatar match with banned user: {}#{}",
-                ban.name, ban.discriminator
-            );
-            if let Some(ban_reason) = ban.reason {
-                reason.push_str(format!(" (Ban Reason: {})", ban_reason).as_str());
+            for ban in avatar_bans {
+                let mut reason = format!(
+                    "Exact avatar match with banned user: {}#{}",
+                    ban.name, ban.discriminator
+                );
+                if let Some(ban_reason) = ban.reason {
+                    reason.push_str(format!(" (Ban Reason: {})", ban_reason).as_str());
+                }
+                ctx.add_rejection_reason(reason);
             }
-            ctx.add_rejection_reason(reason);
         }
 
         Ok(())
@@ -236,7 +237,7 @@ pub struct NewAccountRejector(Duration);
 impl Verifier for NewAccountRejector {
     async fn verify(&self, ctx: &mut context::VerificationContext) -> Result<()> {
         if ctx.member().created_at() - Utc::now() < self.0 {
-            let human_lookback = humantime::format_duration(self.0.to_std().unwrap());
+            let human_lookback = humantime::format_duration(self.0.to_std().unwrap_or_default());
             ctx.add_rejection_reason(format!("Account created less than {} ago.", human_lookback));
         }
         Ok(())
@@ -278,6 +279,7 @@ pub fn deleted_user(sql: SqlPool) -> BoxedVerifier {
     Box::new(DeletedUserRejector(sql))
 }
 
+#[expect(clippy::expect_used)]
 pub fn username_match(
     sql: SqlPool,
     prefix: impl Into<String>,

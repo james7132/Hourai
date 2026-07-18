@@ -17,7 +17,6 @@ async-trait = "0.1"
 chrono = "0.4"
 dashmap = { default-features = false, version = "5.2" }
 futures = { default-features = false, version = "0.3" }
-lazy_static = "1.4"
 rand = "0.8"
 regex = "1.5"
 serde = "1.0"

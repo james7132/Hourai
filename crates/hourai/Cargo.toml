@@ -25,7 +25,6 @@ dashmap = { default-features = false, version = "5.2" }
 metrics-exporter-prometheus = "0.10"
 protobuf = "2.27"
 serde = "1.0"
-lazy_static = "1.4"
 thiserror = "1.0"
 tokio = { version = "1.0", features = ["sync", "rt", "macros"] }
 futures-util = "0.3"

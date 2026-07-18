@@ -12,6 +12,11 @@ members = [
 elided_lifetimes_in_paths = "allow"
 non_local_definitions = "allow"
 
+[workspace.lints.clippy]
+panic = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+
 [profile.release]
 opt-level = 3
 lto = "thin"

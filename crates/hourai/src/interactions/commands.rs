@@ -47,10 +47,12 @@ impl CommandContext {
         }
     }
 
+    #[expect(clippy::expect_used)]
     fn data(&self) -> &CommandData {
         match &self.command.data {
             Some(InteractionData::ApplicationCommand(data)) => data,
-            _ => panic!("Provided interaction data is not an application command"),
+            _ => Option::<&CommandData>::None
+                .expect("Provided interaction data is not an application command"),
         }
     }
 
@@ -236,6 +238,7 @@ impl InteractionContext for CommandContext {
         self.command.guild_id.ok_or(InteractionError::NotInGuild)
     }
 
+    #[expect(clippy::expect_used)]
     fn channel_id(&self) -> Id<ChannelMarker> {
         self.command
             .channel
@@ -244,6 +247,7 @@ impl InteractionContext for CommandContext {
             .expect("Interaction is missing channel")
     }
 
+    #[expect(clippy::expect_used)]
     fn user(&self) -> &User {
         let member = self
             .command
@@ -251,6 +255,7 @@ impl InteractionContext for CommandContext {
             .as_ref()
             .and_then(|member| member.user.as_ref());
         let user = self.command.user.as_ref();
-        user.or(member).unwrap()
+        user.or(member)
+            .expect("Interaction has neither user nor member")
     }
 }

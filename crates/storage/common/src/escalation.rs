@@ -212,13 +212,15 @@ impl EscalationHistory {
         let current_rung = self.get_rung(current_level);
         let mut actions = ActionSet::new();
         if execute {
-            for rung_action in current_rung.as_ref().unwrap().get_action() {
-                let mut action = rung_action.clone();
-                action.set_user_id(self.user_id().get());
-                action.set_guild_id(self.guild_id().get());
-                action.set_reason(reason.to_string());
-                self.executor().execute_action(&action).await?;
-                actions.mut_action().push(action);
+            if let Some(rung) = current_rung {
+                for rung_action in rung.get_action() {
+                    let mut action = rung_action.clone();
+                    action.set_user_id(self.user_id().get());
+                    action.set_guild_id(self.guild_id().get());
+                    action.set_reason(reason.to_string());
+                    self.executor().execute_action(&action).await?;
+                    actions.mut_action().push(action);
+                }
             }
         } else {
             let mut action = Action::new();
@@ -242,12 +244,12 @@ impl EscalationHistory {
         let mut expiration = None;
         if let Some(rung) = current_rung {
             if rung.has_deescalation_period() {
-                expiration =
-                    Some(Utc::now() + Duration::seconds(rung.get_deescalation_period() as i64));
+                let exp = Utc::now() + Duration::seconds(rung.get_deescalation_period() as i64);
+                expiration = Some(exp);
                 let pending = PendingDeescalation {
                     guild_id: self.guild_id().get() as i64,
                     user_id: self.user_id().get() as i64,
-                    expiration: expiration.unwrap(),
+                    expiration: exp,
                     amount: -1,
                     entry_id,
                 };
