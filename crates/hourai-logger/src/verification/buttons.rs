@@ -180,3 +180,51 @@ pub async fn handle_component_interaction(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hourai::interactions::{DISCORD_CUSTOM_ID_MAX_LEN, parse_custom_id};
+
+    #[test]
+    fn test_verification_buttons_limit_and_decoding() {
+        let user_id = Id::new(987654321098765432);
+        let row = verification_buttons(user_id).expect("Should create verification buttons");
+
+        let components = match row {
+            Component::ActionRow(ar) => ar.components,
+            _ => panic!("Expected ActionRow"),
+        };
+
+        assert_eq!(components.len(), 3);
+
+        let expected_options = [
+            VerificationButtonOption::VERIFICATION_BUTTON_VERIFY,
+            VerificationButtonOption::VERIFICATION_BUTTON_KICK,
+            VerificationButtonOption::VERIFICATION_BUTTON_BAN,
+        ];
+
+        for (comp, expected_opt) in components.iter().zip(expected_options.iter()) {
+            let btn = match comp {
+                Component::Button(b) => b,
+                _ => panic!("Expected Button"),
+            };
+
+            let custom_id = btn.custom_id.as_ref().expect("Button must have custom_id");
+            assert!(
+                custom_id.len() <= DISCORD_CUSTOM_ID_MAX_LEN,
+                "custom_id length {} exceeded {}",
+                custom_id.len(),
+                DISCORD_CUSTOM_ID_MAX_LEN
+            );
+
+            let proto: MessageComponentProto =
+                parse_custom_id(custom_id).expect("Protobuf parse failed");
+
+            assert!(proto.has_verification_button());
+            let vbtn = proto.get_verification_button();
+            assert_eq!(vbtn.get_user_id(), 987654321098765432);
+            assert_eq!(vbtn.get_button_option(), *expected_opt);
+        }
+    }
+}
