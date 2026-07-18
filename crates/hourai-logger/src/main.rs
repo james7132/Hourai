@@ -112,13 +112,11 @@ async fn async_main(config: HouraiConfig) -> Result<()> {
     }));
 
     // Setup background tasks
-    let server = web::run_server(
+    tokio::spawn(web::run_server(
         config.clone(),
         storage.sql().clone(),
         storage.redis().clone(),
-    )?;
-    tokio::spawn(server);
-
+    ));
     tokio::spawn(client.clone().log_bans());
     tokio::spawn(flush_online(cache.clone(), storage.redis().clone()));
     tokio::spawn(pending_events::run_pending_actions(actions.clone()));
