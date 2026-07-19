@@ -8,6 +8,7 @@ use hourai::{
     },
     util::whois,
 };
+use std::fmt::Write;
 use twilight_util::builder::embed::EmbedBuilder;
 
 const USERNAME_LIMIT: u64 = 20;
@@ -37,21 +38,23 @@ async fn build_description(sql: &SqlPool, user_id: Id<UserMarker>) -> Result<Opt
     if usernames.len() <= 1 {
         Ok(None)
     } else {
-        Ok(Some(format!(
-            "```\n{}\n```",
-            usernames
-                .into_iter()
-                .map(|username| {
-                    let date = username.timestamp.date_naive().format("%Y %b %d");
-                    let name = if let Some(discriminator) = username.discriminator {
-                        format!("{}#{:04}", username.name, discriminator)
-                    } else {
-                        username.name
-                    };
-                    format!("{}  {}", date, name)
-                })
-                .collect::<Vec<String>>()
-                .join("\n")
-        )))
+        let mut description = String::from("```\n");
+        for (i, username) in usernames.iter().enumerate() {
+            if i > 0 {
+                description.push('\n');
+            }
+            let date = username.timestamp.date_naive().format("%Y %b %d");
+            if let Some(discriminator) = username.discriminator {
+                write!(
+                    description,
+                    "{}  {}#{:04}",
+                    date, username.name, discriminator
+                )?;
+            } else {
+                write!(description, "{}  {}", date, username.name)?;
+            }
+        }
+        description.push_str("\n```");
+        Ok(Some(description))
     }
 }

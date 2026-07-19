@@ -10,7 +10,10 @@ use hourai::{
     },
     proto::action::{Action, ActionSet},
 };
-use sqlx::types::chrono::{DateTime, NaiveDateTime, Utc};
+use sqlx::{
+    QueryBuilder,
+    types::chrono::{DateTime, NaiveDateTime, Utc},
+};
 
 pub type SqlDatabase = sqlx::Postgres;
 pub type SqlQuery<'a> = sqlx::query::Query<
@@ -24,6 +27,14 @@ pub type SqlQueryAs<'a, O> = sqlx::query::QueryAs<
     O,
     <SqlDatabase as sqlx::database::HasArguments<'a>>::Arguments,
 >;
+
+pub struct BulkQuery<'a>(pub QueryBuilder<'a, SqlDatabase>);
+
+impl<'a> BulkQuery<'a> {
+    pub fn build<'b>(&'b mut self) -> SqlQuery<'b> {
+        self.0.build().persistent(false)
+    }
+}
 
 fn to_datetime(timestamp: &Timestamp) -> DateTime<Utc> {
     let micros = timestamp.as_micros();
@@ -70,7 +81,7 @@ impl Username {
         }
     }
 
-    pub fn insert(&self) -> SqlQuery<'_> {
+    pub fn insert<'a>(&'a self) -> SqlQuery<'a> {
         sqlx::query(
             "INSERT INTO usernames (user_id, name, discriminator) \
              VALUES ($1, $2, $3) \
@@ -78,24 +89,28 @@ impl Username {
              DO NOTHING",
         )
         .bind(self.user_id)
-        .bind(self.name.clone())
+        .bind(&self.name)
         .bind(self.discriminator)
     }
 
-    pub fn bulk_insert<'a>(usernames: Vec<Self>) -> SqlQuery<'a> {
-        let user_ids: Vec<i64> = usernames.iter().map(|u| u.user_id).collect();
-        let names: Vec<String> = usernames.iter().map(|u| u.name.clone()).collect();
-        let discriminator: Vec<Option<i32>> = usernames.iter().map(|u| u.discriminator).collect();
-        sqlx::query(
-            "INSERT INTO usernames (user_id, name, discriminator) \
-             SELECT * FROM UNNEST ($1, $2, $3) \
-             AS t(user_id, name, discriminator) \
-             ON CONFLICT ON CONSTRAINT idx_unique_username \
+    pub fn bulk_insert<'a>(usernames: impl IntoIterator<Item = &'a Self>) -> Option<BulkQuery<'a>> {
+        let mut builder: QueryBuilder<'a, SqlDatabase> =
+            QueryBuilder::new("INSERT INTO usernames (user_id, name, discriminator) ");
+        let mut count = 0;
+        builder.push_values(usernames, |mut b, u| {
+            count += 1;
+            b.push_bind(u.user_id)
+                .push_bind(&u.name)
+                .push_bind(u.discriminator);
+        });
+        if count == 0 {
+            return None;
+        }
+        builder.push(
+            " ON CONFLICT ON CONSTRAINT idx_unique_username \
              DO NOTHING",
-        )
-        .bind(user_ids)
-        .bind(names)
-        .bind(discriminator)
+        );
+        Some(BulkQuery(builder))
     }
 }
 
@@ -186,22 +201,50 @@ impl Ban {
     }
 
     /// Constructs a query to bulk add multiple bans.
-    pub fn bulk_insert<'a>(bans: Vec<Self>) -> SqlQuery<'a> {
-        let guild_ids: Vec<i64> = bans.iter().map(|b| b.guild_id).collect();
-        let user_ids: Vec<i64> = bans.iter().map(|b| b.user_id).collect();
-        let reasons: Vec<Option<String>> = bans.iter().map(|b| b.reason.clone()).collect();
-        let avatars: Vec<Option<String>> = bans.iter().map(|b| b.avatar.clone()).collect();
-        sqlx::query(
-            "INSERT INTO bans (guild_id, user_id, reason, avatar) \
-                     SELECT * FROM UNNEST ($1, $2, $3, $4) \
-                     AS t(guild_id, user_id, reason, avatar) \
-                     ON CONFLICT ON CONSTRAINT bans_pkey \
-                     DO UPDATE SET reason = excluded.reason, avatar = excluded.avatar",
-        )
-        .bind(guild_ids)
-        .bind(user_ids)
-        .bind(reasons)
-        .bind(avatars)
+    pub fn bulk_insert<'a>(bans: impl IntoIterator<Item = &'a Self>) -> Option<BulkQuery<'a>> {
+        let mut builder: QueryBuilder<'a, SqlDatabase> =
+            QueryBuilder::new("INSERT INTO bans (guild_id, user_id, reason, avatar) ");
+        let mut count = 0;
+        builder.push_values(bans, |mut b, ban| {
+            count += 1;
+            b.push_bind(ban.guild_id)
+                .push_bind(ban.user_id)
+                .push_bind(ban.reason.as_deref())
+                .push_bind(ban.avatar.as_deref());
+        });
+        if count == 0 {
+            return None;
+        }
+        builder.push(
+            " ON CONFLICT ON CONSTRAINT bans_pkey \
+             DO UPDATE SET reason = excluded.reason, avatar = excluded.avatar",
+        );
+        Some(BulkQuery(builder))
+    }
+
+    /// Constructs a query to bulk add multiple bans directly from Twilight ban models.
+    pub fn bulk_insert_twilight<'a>(
+        guild_id: Id<GuildMarker>,
+        bans: impl IntoIterator<Item = &'a TwilightBan>,
+    ) -> Option<BulkQuery<'a>> {
+        let mut builder: QueryBuilder<'a, SqlDatabase> =
+            QueryBuilder::new("INSERT INTO bans (guild_id, user_id, reason, avatar) ");
+        let mut count = 0;
+        builder.push_values(bans, |mut b, ban| {
+            count += 1;
+            b.push_bind(guild_id.get() as i64)
+                .push_bind(ban.user.id.get() as i64)
+                .push_bind(ban.reason.as_deref())
+                .push_bind(ban.user.avatar.map(|hash| hash.to_string()));
+        });
+        if count == 0 {
+            return None;
+        }
+        builder.push(
+            " ON CONFLICT ON CONSTRAINT bans_pkey \
+             DO UPDATE SET reason = excluded.reason, avatar = excluded.avatar",
+        );
+        Some(BulkQuery(builder))
     }
 
     /// Constructs a query to clear a single user's ban from a given guild.
@@ -276,7 +319,17 @@ impl From<(Id<GuildMarker>, &TwilightMember)> for Member {
 
 impl From<(Id<GuildMarker>, TwilightMember)> for Member {
     fn from((guild_id, member): (Id<GuildMarker>, TwilightMember)) -> Self {
-        Self::from((guild_id, &member))
+        let premium = member.premium_since.as_ref().map(to_datetime);
+        Self {
+            guild_id: guild_id.get() as i64,
+            user_id: member.user.id.get() as i64,
+            role_ids: member.roles.into_iter().map(|id| id.get() as i64).collect(),
+            nickname: member.nick,
+            bot: member.user.bot,
+            present: true,
+            premium_since: premium,
+            avatar: member.avatar.map(|hash| hash.to_string()),
+        }
     }
 }
 
@@ -468,7 +521,7 @@ impl EscalationEntry {
         .bind(user_id.get() as i64)
     }
 
-    pub fn insert<'a>(&self) -> SqlQueryAs<'a, (i32,)> {
+    pub fn insert<'a>(&'a self) -> SqlQueryAs<'a, (i32,)> {
         sqlx::query_as(
             "INSERT INTO escalation_histories ( \
                 guild_id, \
@@ -486,9 +539,9 @@ impl EscalationEntry {
         .bind(self.guild_id)
         .bind(self.subject_id)
         .bind(self.authorizer_id)
-        .bind(self.authorizer_name.clone())
-        .bind(self.display_name.clone())
-        .bind(self.action.clone())
+        .bind(&self.authorizer_name)
+        .bind(&self.display_name)
+        .bind(&self.action)
         .bind(self.level_delta)
         .bind(self.timestamp)
     }
@@ -590,17 +643,17 @@ impl Oauth {
         sqlx::query_as("SELECT * FROM oauth WHERE refresh_expiration < now()")
     }
 
-    pub fn insert<'a>(&self) -> SqlQuery<'a> {
+    pub fn insert<'a>(&'a self) -> SqlQuery<'a> {
         sqlx::query("INSERT INTO oauth VALUES ($1, $2, $3, $4, $5, $6)")
             .bind(self.user_id)
-            .bind(self.slug.clone())
-            .bind(self.access_token.clone())
-            .bind(self.refresh_token.clone())
+            .bind(&self.slug)
+            .bind(&self.access_token)
+            .bind(&self.refresh_token)
             .bind(self.access_expiration)
             .bind(self.refresh_expiration)
     }
 
-    pub fn update<'a>(&self) -> SqlQuery<'a> {
+    pub fn update<'a>(&'a self) -> SqlQuery<'a> {
         sqlx::query(
             "UPDATE oauth SET
                         access_token = $3,
@@ -608,8 +661,8 @@ impl Oauth {
                      WHERE user_id = $1 AND slug = $2",
         )
         .bind(self.user_id)
-        .bind(self.slug.clone())
-        .bind(self.access_token.clone())
+        .bind(&self.slug)
+        .bind(&self.access_token)
         .bind(self.access_expiration)
     }
 
@@ -617,10 +670,10 @@ impl Oauth {
         sqlx::query("DELETE FROM oauth WHERE user_id = $1").bind(user_id.get() as i64)
     }
 
-    pub fn delete<'a>(&self) -> SqlQuery<'a> {
+    pub fn delete<'a>(&'a self) -> SqlQuery<'a> {
         sqlx::query("DELETE FROM oauth WHERE user_id = $1 AND slug = $2")
             .bind(self.user_id)
-            .bind(self.slug.clone())
+            .bind(&self.slug)
     }
 }
 

@@ -354,7 +354,7 @@ impl Client {
         .insert();
         let (res1, res2, res3) = futures::join!(
             self.storage().execute(ban),
-            self.log_users(vec![evt.user.clone()]),
+            self.log_user(&evt.user),
             announcements::on_member_ban(&self, evt.clone()),
         );
         res1?;
@@ -400,7 +400,7 @@ impl Client {
         let (res1, res2) = futures::join!(
             self.storage()
                 .execute(Ban::clear_ban(evt.guild_id, evt.user.id)),
-            self.log_users(vec![evt.user.clone()])
+            self.log_user(&evt.user)
         );
         res1?;
         res2?;
@@ -410,8 +410,7 @@ impl Client {
     async fn on_member_add(&self, guild_id: Id<GuildMarker>, member: Member) -> Result<()> {
         if !member.pending {
             let res = roles::on_member_join(self, guild_id, &member).await;
-            let members = vec![member.clone()];
-            self.log_members(guild_id, &members).await?;
+            self.log_member(guild_id, &member).await?;
             res?;
         }
         if let Ok(config) = self
@@ -460,7 +459,7 @@ impl Client {
                 evt.user.id,
                 false
             )),
-            self.log_users(vec![evt.user.clone()]),
+            self.log_user(&evt.user),
             announcements::on_member_leave(self, evt.clone())
         );
 
@@ -724,6 +723,22 @@ impl Client {
         Ok(())
     }
 
+    pub async fn log_user(&self, user: &User) -> Result<()> {
+        let mut txn = self.storage().sql().begin().await?;
+        txn.execute(Username::new(user).insert()).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    pub async fn log_member(&self, guild_id: Id<GuildMarker>, member: &Member) -> Result<()> {
+        let mut txn = self.storage().sql().begin().await?;
+        txn.execute(Username::new(&member.user).insert()).await?;
+        txn.execute(hourai_sql::Member::from((guild_id, member)).insert())
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
     pub async fn log_users(&self, users: Vec<User>) -> Result<()> {
         let mut txn = self.storage().sql().begin().await?;
         for user in users {
@@ -752,24 +767,20 @@ impl Client {
         if perms.contains(Permissions::BAN_MEMBERS) {
             debug!("Fetching bans from guild {}", guild_id);
             let fetched_bans = self.http().bans(guild_id).await?.model().await?;
-            let bans: Vec<Ban> = fetched_bans
-                .iter()
-                .map(|b| Ban {
-                    guild_id: guild_id.get() as i64,
-                    user_id: b.user.id.get() as i64,
-                    reason: b.reason.clone(),
-                    avatar: b.user.avatar.map(|hash| hash.to_string()),
-                })
-                .collect();
-            debug!("Fetched {} bans from guild {}", bans.len(), guild_id);
+            debug!(
+                "Fetched {} bans from guild {}",
+                fetched_bans.len(),
+                guild_id
+            );
             let mut txn = self.storage().sql().begin().await?;
             txn.execute(Ban::clear_guild(guild_id)).await?;
-            txn.execute(Ban::bulk_insert(bans)).await?;
+            if let Some(mut query) = Ban::bulk_insert_twilight(guild_id, &fetched_bans) {
+                txn.execute(query.build()).await?;
+            }
+            for ban in &fetched_bans {
+                txn.execute(Username::new(&ban.user).insert()).await?;
+            }
             txn.commit().await?;
-
-            // Log user data from bans
-            let users: Vec<User> = fetched_bans.into_iter().map(|ban| ban.user).collect();
-            self.log_users(users).await?;
         } else {
             debug!("Cleared bans from guild {}", guild_id);
         }

@@ -21,6 +21,9 @@ static SLUR_REGEX: LazyLock<RegexSet> =
 static DISCORD_INVITE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("discord.gg/([a-zA-Z0-9]+)").expect("Valid discord invite regex"));
 
+static COMPILED_REGEX_SETS: LazyLock<dashmap::DashMap<Vec<String>, Option<RegexSet>>> =
+    LazyLock::new(dashmap::DashMap::new);
+
 const SLURS: &[&str] = &[
     "nigger", "nigga", "tarskin", "tranny", "trannie", "redskin", "faggot", "chink", "kike",
     "dyke", "gook", "wigger",
@@ -47,7 +50,7 @@ pub async fn check_message(executor: &ActionExecutor, message: &impl MessageLike
     for rule in config.get_message_filter().get_rules() {
         let reasons = get_filter_reasons(moderator, message, rule.get_criteria()).await?;
         if !reasons.is_empty() {
-            apply_rule(message, rule.clone(), reasons, executor).await?;
+            apply_rule(message, rule, reasons, executor).await?;
             return Ok(rule.get_delete_message());
         }
     }
@@ -78,7 +81,7 @@ fn generalize_filter(filter: &str) -> String {
 
 async fn apply_rule(
     message: &impl MessageLike,
-    rule: MessageFilterRule,
+    rule: &MessageFilterRule,
     reasons: Vec<String>,
     executor: &ActionExecutor,
 ) -> Result<()> {
@@ -207,14 +210,30 @@ async fn get_filter_reasons(
         return Ok(reasons);
     }
 
-    match RegexSet::new(&criteria.matches) {
-        Ok(regex) => {
-            if regex.is_match(message.content()) {
-                reasons.push(String::from("Message contains banned word or phrase."));
+    if !criteria.matches.is_empty() {
+        let matches = criteria.matches.as_slice();
+        let is_match = if let Some(cached) = COMPILED_REGEX_SETS.get(matches) {
+            cached
+                .as_ref()
+                .map(|re| re.is_match(message.content()))
+                .unwrap_or(false)
+        } else {
+            match RegexSet::new(matches) {
+                Ok(regex) => {
+                    let matched = regex.is_match(message.content());
+                    COMPILED_REGEX_SETS.insert(matches.to_vec(), Some(regex));
+                    matched
+                }
+                Err(err) => {
+                    tracing::warn!("Error while building regex for message filter: {}", err);
+                    COMPILED_REGEX_SETS.insert(matches.to_vec(), None);
+                    false
+                }
             }
-        }
-        Err(err) => {
-            tracing::warn!("Error while building regex for message filter: {}", err);
+        };
+
+        if is_match {
+            reasons.push(String::from("Message contains banned word or phrase."));
         }
     }
 
@@ -246,19 +265,27 @@ fn get_mention_reason(
     criteria: &MentionFilterCriteria,
     reasons: &mut Vec<String>,
 ) {
-    let users = mentions::get_user_mention_ids(message.content())
-        .map(|id| id.get())
-        .collect::<Vec<_>>();
-    let roles = mentions::get_role_mention_ids(message.content())
-        .map(|id| id.get())
-        .collect::<Vec<_>>();
-    let mut all = Vec::new();
-    all.extend(users.iter().cloned());
-    all.extend(roles.iter().cloned());
-
-    check_limits("user mentions", users, criteria.get_user_mention(), reasons);
-    check_limits("role mentions", roles, criteria.get_role_mention(), reasons);
-    check_limits("mentions", all, criteria.get_any_mention(), reasons);
+    let content = message.content();
+    check_limits(
+        "user mentions",
+        mentions::get_user_mention_ids(content).map(|id| id.get()),
+        criteria.get_user_mention(),
+        reasons,
+    );
+    check_limits(
+        "role mentions",
+        mentions::get_role_mention_ids(content).map(|id| id.get()),
+        criteria.get_role_mention(),
+        reasons,
+    );
+    check_limits(
+        "mentions",
+        mentions::get_user_mention_ids(content)
+            .map(|id| id.get())
+            .chain(mentions::get_role_mention_ids(content).map(|id| id.get())),
+        criteria.get_any_mention(),
+        reasons,
+    );
 }
 
 fn get_embed_reason(
@@ -266,15 +293,18 @@ fn get_embed_reason(
     criteria: &EmbedFilterCriteria,
     reasons: &mut Vec<String>,
 ) {
+    if !criteria.has_max_embed_count() {
+        return;
+    }
     let mut urls = HashSet::new();
     urls.extend(
         message
             .embeds()
             .iter()
-            .filter_map(|embed| embed.url.clone()),
+            .filter_map(|embed| embed.url.as_deref()),
     );
-    urls.extend(message.attachments().iter().map(|embed| embed.url.clone()));
-    if criteria.has_max_embed_count() && urls.len() > criteria.get_max_embed_count() as usize {
+    urls.extend(message.attachments().iter().map(|embed| embed.url.as_str()));
+    if urls.len() > criteria.get_max_embed_count() as usize {
         reasons.push(format!(
             "Message has {} embeds or attachments. More than the server maximum of {}.",
             urls.len(),
@@ -285,26 +315,51 @@ fn get_embed_reason(
 
 fn check_limits(
     name: &str,
-    ids: Vec<u64>,
+    ids: impl IntoIterator<Item = u64>,
     limits: &MentionFilterCriteria_MentionLimits,
     reasons: &mut Vec<String>,
 ) {
-    let unique = ids.iter().cloned().collect::<HashSet<_>>();
-    if limits.has_maximum_total() && ids.len() > limits.get_maximum_total() as usize {
-        reasons.push(format!(
-            "Total {} more than the server limit (seen: {}, limit: {}).",
-            name,
-            ids.len(),
-            limits.get_maximum_total()
-        ));
+    let has_max_total = limits.has_maximum_total();
+    let has_max_unique = limits.has_maximum_unique();
+
+    if !has_max_total && !has_max_unique {
+        return;
     }
 
-    if limits.has_maximum_unique() && unique.len() > limits.get_maximum_unique() as usize {
-        reasons.push(format!(
-            "Unique {} more than the server limit (seen: {}, limit: {}).",
-            name,
-            ids.len(),
-            limits.get_maximum_unique()
-        ));
+    if has_max_unique {
+        let mut total = 0;
+        let mut unique = HashSet::new();
+        for id in ids {
+            total += 1;
+            unique.insert(id);
+        }
+
+        if has_max_total && total > limits.get_maximum_total() as usize {
+            reasons.push(format!(
+                "Total {} more than the server limit (seen: {}, limit: {}).",
+                name,
+                total,
+                limits.get_maximum_total()
+            ));
+        }
+
+        if unique.len() > limits.get_maximum_unique() as usize {
+            reasons.push(format!(
+                "Unique {} more than the server limit (seen: {}, limit: {}).",
+                name,
+                unique.len(),
+                limits.get_maximum_unique()
+            ));
+        }
+    } else if has_max_total {
+        let total = ids.into_iter().count();
+        if total > limits.get_maximum_total() as usize {
+            reasons.push(format!(
+                "Total {} more than the server limit (seen: {}, limit: {}).",
+                name,
+                total,
+                limits.get_maximum_total()
+            ));
+        }
     }
 }

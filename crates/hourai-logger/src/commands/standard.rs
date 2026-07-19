@@ -6,7 +6,7 @@ use hourai::{
 use hourai_sql::Tag;
 use rand::Rng;
 use regex::Regex;
-use std::sync::LazyLock;
+use std::{fmt::Write, sync::LazyLock};
 
 #[expect(clippy::expect_used)]
 static DICE_REGEX: LazyLock<Regex> =
@@ -64,15 +64,14 @@ pub(super) async fn roll(ctx: &CommandContext) -> Result<Response> {
     }
 
     rolls.sort();
-    let roll_str = rolls
-        .iter()
-        .map(|r| r.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let resp = format!(
-        "Rolled a total of `{}` from {} rolls:\n```\n{}\n```",
-        sum, count, roll_str
-    );
+    let mut resp = format!("Rolled a total of `{}` from {} rolls:\n```\n", sum, count);
+    for (i, r) in rolls.iter().enumerate() {
+        if i > 0 {
+            resp.push_str(", ");
+        }
+        write!(resp, "{}", r)?;
+    }
+    resp.push_str("\n```");
     Ok(Response::direct().content(resp))
 }
 
@@ -206,11 +205,13 @@ pub(super) async fn tag_list(ctx: &CommandContext, storage: &Storage) -> Result<
     if tags.is_empty() {
         Ok(Response::ephemeral().content("No tags have been set!"))
     } else {
-        let list = tags
-            .into_iter()
-            .map(|(t,)| format!("`{}`", t))
-            .collect::<Vec<_>>()
-            .join(", ");
-        Ok(Response::direct().content(format!("Available tags: {}", list)))
+        let mut resp = String::from("Available tags: ");
+        for (i, (t,)) in tags.into_iter().enumerate() {
+            if i > 0 {
+                resp.push_str(", ");
+            }
+            write!(resp, "`{}`", t)?;
+        }
+        Ok(Response::direct().content(resp))
     }
 }

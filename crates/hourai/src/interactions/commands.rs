@@ -82,8 +82,8 @@ impl CommandContext {
     }
 
     /// Gets the first instance of an option containing a specific name substring, if available.
-    pub fn options(&self) -> impl Iterator<Item = &CommandDataOption> {
-        Self::flatten_options(&self.data().options).into_iter()
+    pub fn options(&self) -> FlattenedOptions<'_> {
+        FlattenedOptions::new(&self.data().options)
     }
 
     pub fn option_named(&self, name: &'static str) -> Option<&CommandDataOption> {
@@ -191,18 +191,6 @@ impl CommandContext {
             .and_then(|r| r.members.get(&id))
     }
 
-    fn flatten_options(options: &[CommandDataOption]) -> Vec<&CommandDataOption> {
-        let mut all_options: Vec<&CommandDataOption> = Vec::new();
-        for option in options.iter() {
-            if let CommandOptionValue::SubCommand(ref options) = option.value {
-                all_options.extend(Self::flatten_options(options));
-            } else {
-                all_options.push(option);
-            }
-        }
-        all_options
-    }
-
     fn get_subcommand(options: &[CommandDataOption]) -> Option<(&str, &[CommandDataOption])> {
         for option in options.iter() {
             if let CommandOptionValue::SubCommand(ref options) = option.value {
@@ -210,6 +198,63 @@ impl CommandContext {
             }
         }
         None
+    }
+}
+
+/// Iterator that flattens nested Discord command options without heap allocations.
+///
+/// Discord application commands enforce a maximum nesting depth of 3 levels:
+/// (Command -> Subcommand Group -> Subcommand -> Option). A fixed-size array stack of 3
+/// elements allows traversing all valid command options entirely on the stack.
+pub struct FlattenedOptions<'a> {
+    stack: [Option<&'a [CommandDataOption]>; 3],
+    indices: [usize; 3],
+    depth: usize,
+}
+
+impl<'a> FlattenedOptions<'a> {
+    fn new(options: &'a [CommandDataOption]) -> Self {
+        Self {
+            stack: [Some(options), None, None],
+            indices: [0, 0, 0],
+            depth: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for FlattenedOptions<'a> {
+    type Item = &'a CommandDataOption;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let slice = self.stack[self.depth]?;
+            if self.indices[self.depth] >= slice.len() {
+                if self.depth == 0 {
+                    return None;
+                }
+                self.stack[self.depth] = None;
+                self.indices[self.depth] = 0;
+                self.depth -= 1;
+                self.indices[self.depth] += 1;
+                continue;
+            }
+
+            let opt = &slice[self.indices[self.depth]];
+            match &opt.value {
+                CommandOptionValue::SubCommand(sub) | CommandOptionValue::SubCommandGroup(sub) => {
+                    if self.depth + 1 < self.stack.len() {
+                        self.depth += 1;
+                        self.stack[self.depth] = Some(sub.as_slice());
+                        self.indices[self.depth] = 0;
+                        continue;
+                    }
+                }
+                _ => {}
+            }
+
+            self.indices[self.depth] += 1;
+            return Some(opt);
+        }
     }
 }
 

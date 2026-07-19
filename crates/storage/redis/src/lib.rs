@@ -90,11 +90,11 @@ impl OnlineStatus {
         let ids: Vec<Id<u64>> = online.into_iter().map(|id| Id(id.get())).collect();
         let _: () = redis::pipe()
             .atomic()
-            .del(key.clone())
+            .del(&key)
             .ignore()
-            .sadd(key.clone(), ids)
+            .sadd(&key, ids)
             .ignore()
-            .expire(key.clone(), 3600)
+            .expire(&key, 3600)
             .query_async(self.0.connection_mut())
             .await?;
         Ok(())
@@ -109,7 +109,7 @@ impl OnlineStatus {
         let user_ids: Vec<TwilightId<UserMarker>> = users.into_iter().collect();
         let mut pipe = redis::pipe();
         user_ids.iter().map(|id| Id(id.get())).for_each(|id| {
-            pipe.sismember(key.clone(), id);
+            pipe.sismember(&key, id);
         });
         let results: Vec<bool> = pipe.query_async(self.0.connection_mut()).await?;
         Ok(user_ids
