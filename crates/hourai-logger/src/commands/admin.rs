@@ -69,7 +69,7 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
         .await?;
 
     // TODO(james7132): Properly display the errors.
-    let users: Vec<_> = ctx.all_users("user").collect();
+    let mut total = 0;
     let mut errors = Vec::new();
     let mut base = Action::new();
     base.set_guild_id(guild_id.get());
@@ -87,8 +87,9 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
         base.set_duration(parse_duration(duration)?.as_secs());
     }
 
-    for user_id in users.iter() {
-        if let Some(member) = ctx.resolve_member(*user_id) {
+    for user_id in ctx.all_users("user") {
+        total += 1;
+        if let Some(member) = ctx.resolve_member(user_id) {
             let roles = storage
                 .redis()
                 .guild(guild_id)
@@ -112,7 +113,7 @@ pub(super) async fn ban(ctx: &CommandContext, executor: &ActionExecutor) -> Resu
         }
     }
 
-    Ok(Response::direct().content(format!("{} {} users.", action, users.len() - errors.len())))
+    Ok(Response::direct().content(format!("{} {} users.", action, total - errors.len())))
 }
 
 pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
@@ -157,10 +158,11 @@ pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<R
     let expiration = Timestamp::from_secs(now + duration)
         .map_err(|e| anyhow::anyhow!("Invalid timestamp: {}", e))?;
 
-    let members: Vec<_> = ctx.all_users("user").collect();
+    let mut total = 0;
     let mut errors = Vec::new();
-    for member_id in members.iter() {
-        if let Some(member) = ctx.resolve_member(*member_id) {
+    for member_id in ctx.all_users("user") {
+        total += 1;
+        if let Some(member) = ctx.resolve_member(member_id) {
             let roles = guild.role_set(&member.roles).await?;
             if roles >= authorizer_roles {
                 errors.push(format!(
@@ -173,7 +175,7 @@ pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<R
 
         let request = ctx
             .http
-            .update_guild_member(guild_id, *member_id)
+            .update_guild_member(guild_id, member_id)
             .communication_disabled_until(Some(expiration))
             .reason(&reason);
         if let Err(err) = request.await {
@@ -182,7 +184,7 @@ pub(super) async fn timeout(ctx: &CommandContext, storage: &Storage) -> Result<R
         }
     }
 
-    Ok(Response::direct().content(format!("Timed out {} users.", members.len() - errors.len())))
+    Ok(Response::direct().content(format!("Timed out {} users.", total - errors.len())))
 }
 
 pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Response> {
@@ -205,10 +207,11 @@ pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Resp
         ctx.get_string("reason").ok(),
     );
 
-    let members: Vec<_> = ctx.all_users("user").collect();
+    let mut total = 0;
     let mut errors = Vec::new();
-    for member_id in members.iter() {
-        if let Some(member) = ctx.resolve_member(*member_id) {
+    for member_id in ctx.all_users("user") {
+        total += 1;
+        if let Some(member) = ctx.resolve_member(member_id) {
             let roles = guild.role_set(&member.roles).await?;
             if roles >= authorizer_roles {
                 errors.push(format!(
@@ -221,7 +224,7 @@ pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Resp
 
         let request = ctx
             .http
-            .remove_guild_member(guild_id, *member_id)
+            .remove_guild_member(guild_id, member_id)
             .reason(&reason);
         if let Err(err) = request.await {
             tracing::error!("Error while running /kick on {}: {}", member_id, err);
@@ -229,7 +232,7 @@ pub(super) async fn kick(ctx: &CommandContext, storage: &Storage) -> Result<Resp
         }
     }
 
-    Ok(Response::direct().content(format!("Kicked {} users.", members.len() - errors.len())))
+    Ok(Response::direct().content(format!("Kicked {} users.", total - errors.len())))
 }
 
 pub(super) async fn change_role(
@@ -244,7 +247,6 @@ pub(super) async fn change_role(
     }
 
     let authorizer = ctx.member().ok_or(InteractionError::NotInGuild)?;
-    let members: Vec<_> = ctx.all_users("user").collect();
     let mut base = Action::new();
     base.set_guild_id(guild_id.get());
     base.mut_change_role()
@@ -264,8 +266,10 @@ pub(super) async fn change_role(
         base.set_duration(parse_duration(duration)?.as_secs());
     }
 
+    let mut total = 0;
     let mut errors = Vec::new();
-    for member_id in members.iter() {
+    for member_id in ctx.all_users("user") {
+        total += 1;
         let mut action = base.clone();
         action.set_user_id(member_id.get());
         if let Err(err) = executor.execute_action(&action).await {
@@ -285,7 +289,7 @@ pub(super) async fn change_role(
         } else {
             "Removed role from"
         },
-        members.len() - errors.len()
+        total - errors.len()
     )))
 }
 
@@ -297,7 +301,6 @@ pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> R
     }
 
     let authorizer = ctx.member().ok_or(InteractionError::NotInGuild)?;
-    let members: Vec<_> = ctx.all_users("user").collect();
     let mut base = Action::new();
     base.set_guild_id(guild_id.get());
     base.mut_deafen().set_field_type(StatusType::APPLY);
@@ -310,8 +313,10 @@ pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> R
         base.set_duration(parse_duration(duration)?.as_secs());
     }
 
+    let mut total = 0;
     let mut errors = Vec::new();
-    for member_id in members.iter() {
+    for member_id in ctx.all_users("user") {
+        total += 1;
         let mut action = base.clone();
         action.set_user_id(member_id.get());
         if let Err(err) = executor.execute_action(&action).await {
@@ -320,7 +325,7 @@ pub(super) async fn deafen(ctx: &CommandContext, executor: &ActionExecutor) -> R
         }
     }
 
-    Ok(Response::direct().content(format!("Deafened {} users.", members.len() - errors.len())))
+    Ok(Response::direct().content(format!("Deafened {} users.", total - errors.len())))
 }
 
 pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Result<Response> {
@@ -331,7 +336,6 @@ pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Res
     }
 
     let authorizer = ctx.member().ok_or(InteractionError::NotInGuild)?;
-    let members: Vec<_> = ctx.all_users("user").collect();
     let mut base = Action::new();
     base.set_guild_id(guild_id.get());
     base.mut_mute().set_field_type(StatusType::APPLY);
@@ -344,8 +348,10 @@ pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Res
         base.set_duration(parse_duration(duration)?.as_secs());
     }
 
+    let mut total = 0;
     let mut errors = Vec::new();
-    for member_id in members.iter() {
+    for member_id in ctx.all_users("user") {
+        total += 1;
         let mut action = base.clone();
         action.set_user_id(member_id.get());
         if let Err(err) = executor.execute_action(&action).await {
@@ -354,7 +360,7 @@ pub(super) async fn mute(ctx: &CommandContext, executor: &ActionExecutor) -> Res
         }
     }
 
-    Ok(Response::direct().content(format!("Muted {} users.", members.len() - errors.len())))
+    Ok(Response::direct().content(format!("Muted {} users.", total - errors.len())))
 }
 
 pub(super) async fn move_cmd(ctx: &CommandContext, storage: &Storage) -> Result<Response> {

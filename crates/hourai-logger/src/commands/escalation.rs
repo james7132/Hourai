@@ -4,16 +4,16 @@ use hourai_storage::escalation::EscalationManager;
 pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
     ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
-    let member_roles: Vec<_> = ctx
+    let member_roles = ctx
         .command
         .member
         .as_ref()
-        .map(|m| m.roles.clone())
+        .map(|m| m.roles.as_slice())
         .unwrap_or_default();
     if !hourai_storage::is_moderator(
         guild_id,
-        member_roles.into_iter(),
-        &actions.storage().redis().clone(),
+        member_roles.iter().copied(),
+        actions.storage().redis(),
     )
     .await?
     {
@@ -69,16 +69,16 @@ pub(super) async fn escalate(ctx: &CommandContext, actions: &ActionExecutor) -> 
 pub(super) async fn deescalate(ctx: &CommandContext, actions: &ActionExecutor) -> Result<Response> {
     ctx.defer().await?;
     let guild_id = ctx.guild_id()?;
-    let member_roles: Vec<_> = ctx
+    let member_roles = ctx
         .command
         .member
         .as_ref()
-        .map(|m| m.roles.clone())
+        .map(|m| m.roles.as_slice())
         .unwrap_or_default();
     if !hourai_storage::is_moderator(
         guild_id,
-        member_roles.into_iter(),
-        &actions.storage().redis().clone(),
+        member_roles.iter().copied(),
+        actions.storage().redis(),
     )
     .await?
     {

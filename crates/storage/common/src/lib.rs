@@ -22,7 +22,6 @@ use hourai::{
 use hourai_redis::RedisClient;
 use hourai_sql::{Member, SqlPool};
 use rand::Rng;
-use std::collections::HashSet;
 
 pub fn is_moderator_role(role: &CachedRoleProto) -> bool {
     let name = role.get_name().to_lowercase();
@@ -110,10 +109,10 @@ pub async fn is_moderator(
     mut roles: impl Iterator<Item = Id<RoleMarker>>,
     redis: &RedisClient,
 ) -> Result<bool> {
-    let moderator_roles: HashSet<Id<RoleMarker>> = find_moderator_roles(guild_id, redis)
-        .await?
-        .iter()
-        .map(|role| Id::new(role.get_role_id()))
-        .collect();
-    Ok(roles.any(move |role_id| moderator_roles.contains(&role_id)))
+    let moderator_roles = find_moderator_roles(guild_id, redis).await?;
+    Ok(roles.any(|role_id| {
+        moderator_roles
+            .iter()
+            .any(|role| role.get_role_id() == role_id.get())
+    }))
 }

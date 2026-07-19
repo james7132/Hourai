@@ -122,11 +122,18 @@ impl InMemoryCache {
     /// This requires the [`GUILD_PRESENCES`] intent.
     ///
     /// [`GUILD_PRESENCES`]: ::twilight_model::gateway::Intents::GUILD_PRESENCES
-    pub fn guild_online(&self, guild_id: Id<GuildMarker>) -> Option<HashSet<Id<UserMarker>>> {
+    pub fn guild_online(&self, guild_id: Id<GuildMarker>) -> Option<Vec<Id<UserMarker>>> {
         self.0
             .guild_presences
             .get(&guild_id)
-            .map(|r| r.value().clone())
+            .map(|r| r.value().iter().copied().collect())
+    }
+
+    pub fn with_guild_online<F, R>(&self, guild_id: Id<GuildMarker>, f: F) -> Option<R>
+    where
+        F: FnOnce(&HashSet<Id<UserMarker>>) -> R,
+    {
+        self.0.guild_presences.get(&guild_id).map(|r| f(r.value()))
     }
 
     /// Gets a presence by, optionally, guild ID, and user ID.
@@ -159,11 +166,11 @@ impl InMemoryCache {
         match guild {
             twilight_model::gateway::payload::incoming::GuildCreate::Available(g) => {
                 if self.wants(ResourceType::MEMBER) {
-                    self.cache_members(g.id, g.members.clone());
+                    self.cache_members(g.id, &g.members);
                 }
                 if self.wants(ResourceType::PRESENCE) {
                     self.0.guild_presences.insert(g.id, HashSet::new());
-                    self.cache_presences(g.id, g.presences.clone());
+                    self.cache_presences(g.id, &g.presences);
                 }
                 self.0.guilds.insert(g.id);
                 self.0.unavailable_guilds.remove(&g.id);
@@ -183,20 +190,24 @@ impl InMemoryCache {
         }
     }
 
-    fn cache_members(&self, guild_id: Id<GuildMarker>, members: impl IntoIterator<Item = Member>) {
+    pub(crate) fn cache_members<'a>(
+        &self,
+        guild_id: Id<GuildMarker>,
+        members: impl IntoIterator<Item = &'a Member>,
+    ) {
         for member in members {
-            self.cache_member(guild_id, &member);
+            self.cache_member(guild_id, member);
         }
     }
 
-    fn cache_presences(
+    fn cache_presences<'a>(
         &self,
         guild_id: Id<GuildMarker>,
-        presences: impl IntoIterator<Item = Presence>,
+        presences: impl IntoIterator<Item = &'a Presence>,
     ) {
         if let Some(mut kv) = self.0.guild_presences.get_mut(&guild_id) {
             for presence in presences {
-                let user_id = presence_user_id(&presence);
+                let user_id = presence_user_id(presence);
                 if presence.status == Status::Online {
                     kv.value_mut().insert(user_id);
                 } else {

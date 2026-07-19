@@ -1,7 +1,7 @@
 use flate2::{Compression, read::ZlibDecoder, write::ZlibEncoder};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use redis::{self, FromRedisValue, RedisWrite, ToRedisArgs};
+use redis::{ErrorKind, FromRedisValue, RedisError, RedisWrite, ToRedisArgs, Value};
 use std::io::prelude::*;
 
 /// The single byte compression mode header for values stored in Redis.
@@ -21,25 +21,29 @@ impl<T: ToRedisArgs + FromRedisValue> ToRedisArgs for Compressed<T> {
         let mut payload: Vec<Vec<u8>> = Vec::new();
         self.0.write_redis_args(&mut payload);
         for arg in payload {
-            // The encoding shouldn't fail here due to writing to a in-memory buffer.
-            let mut encoder = ZlibEncoder::new(Vec::new(), Compression::new(6));
+            // Pre-allocate header byte at index 0 to avoid O(N) memory shift on insert.
+            let header = vec![0u8];
+            let mut encoder = ZlibEncoder::new(header, Compression::new(6));
             let _ = encoder.write_all(&arg);
-            let mut output = encoder.finish().unwrap_or_else(|_| arg.clone());
-            let compression_mode = if output.len() < arg.len() {
-                CompressionMode::Zlib
-            } else {
-                output = arg;
-                CompressionMode::Uncompressed
+            let final_output = match encoder.finish() {
+                Ok(mut output) if output.len() - 1 < arg.len() => {
+                    output[0] = CompressionMode::Zlib as u8;
+                    output
+                }
+                _ => {
+                    let mut uncompressed = Vec::with_capacity(1 + arg.len());
+                    uncompressed.push(CompressionMode::Uncompressed as u8);
+                    uncompressed.extend(arg);
+                    uncompressed
+                }
             };
-            output.insert(0, compression_mode as u8);
-            out.write_arg(&output[..]);
+            out.write_arg(&final_output[..]);
         }
     }
 }
 
 impl<T: ToRedisArgs + FromRedisValue> FromRedisValue for Compressed<T> {
     fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
-        use redis::{ErrorKind, RedisError, Value};
         if let Value::Data(data) = value {
             let inner = if data.is_empty() {
                 T::from_redis_value(value)?

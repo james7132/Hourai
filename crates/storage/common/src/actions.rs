@@ -315,17 +315,19 @@ impl ActionExecutor {
 
     async fn execute_delete_messages(&self, info: &DeleteMessages) -> Result<()> {
         let channel_id = Id::new(info.get_channel_id());
-        let message_ids: Vec<Id<MessageMarker>> =
-            info.message_ids.iter().cloned().map(Id::new).collect();
-        match message_ids.len() {
-            0 => return Ok(()),
+        match info.message_ids.len() {
+            0 => Ok(()),
             1 => {
-                self.http.delete_message(channel_id, message_ids[0]).await?;
+                let id = Id::new(info.message_ids[0]);
+                self.http.delete_message(channel_id, id).await?;
+                Ok(())
             }
             _ => {
+                let message_ids: Vec<Id<MessageMarker>> =
+                    info.message_ids.iter().copied().map(Id::new).collect();
                 self.http.delete_messages(channel_id, &message_ids).await?;
+                Ok(())
             }
         }
-        Ok(())
     }
 }

@@ -9,18 +9,16 @@ pub trait UpdateCache {
 
 impl UpdateCache for Event {
     fn update(&self, c: &InMemoryCache) {
-        use Event::*;
-
         match self {
-            GuildCreate(v) => c.update(v.deref()),
-            GuildDelete(v) => c.update(v),
-            MemberAdd(v) => c.update(v.deref()),
-            MemberRemove(v) => c.update(v),
-            MemberUpdate(v) => c.update(v.deref()),
-            MemberChunk(v) => c.update(v),
-            PresenceUpdate(v) => c.update(v.deref()),
-            Ready(v) => c.update(v.deref()),
-            UnavailableGuild(v) => c.update(v),
+            Self::GuildCreate(v) => c.update(v.deref()),
+            Self::GuildDelete(v) => c.update(v),
+            Self::MemberAdd(v) => c.update(v.deref()),
+            Self::MemberRemove(v) => c.update(v),
+            Self::MemberUpdate(v) => c.update(v.deref()),
+            Self::MemberChunk(v) => c.update(v),
+            Self::PresenceUpdate(v) => c.update(v.deref()),
+            Self::Ready(v) => c.update(v.deref()),
+            Self::UnavailableGuild(v) => c.update(v),
             _ => {}
         }
     }
@@ -74,7 +72,7 @@ impl UpdateCache for MemberChunk {
             return;
         }
 
-        cache.cache_members(self.guild_id, self.members.clone());
+        cache.cache_members(self.guild_id, &self.members);
     }
 }
 

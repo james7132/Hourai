@@ -88,11 +88,13 @@ impl Verifier for BannedUserRejector {
 
         if !reasons.is_empty() {
             let mut reason = format!("Banned from {} servers", reasons.len());
-            let list: String = reasons
-                .into_iter()
-                .flatten()
-                .collect::<Vec<String>>()
-                .join("\n");
+            let mut list = String::new();
+            for r in reasons.into_iter().flatten() {
+                if !list.is_empty() {
+                    list.push('\n');
+                }
+                list.push_str(&r);
+            }
             if !list.is_empty() {
                 reason.push_str(" for the following reasons\n");
                 reason.push_str(list.as_str());
@@ -186,7 +188,7 @@ impl UsernameMatchRejector {
 #[async_trait]
 pub trait StringMatchRejector: Send + Sync {
     type Key;
-    fn regexes(&self) -> Vec<(Self::Key, Regex)>;
+    fn regexes(&self) -> &[(Self::Key, Regex)];
     async fn criteria(&self, ctx: &context::VerificationContext) -> Result<Vec<String>>;
     fn reason(&self, key: &Self::Key, matched: &str) -> String;
 }
@@ -195,8 +197,8 @@ pub trait StringMatchRejector: Send + Sync {
 impl StringMatchRejector for UsernameMatchRejector {
     type Key = String;
 
-    fn regexes(&self) -> Vec<(Self::Key, Regex)> {
-        self.matches.clone()
+    fn regexes(&self) -> &[(Self::Key, Regex)] {
+        &self.matches
     }
 
     async fn criteria(&self, ctx: &context::VerificationContext) -> Result<Vec<String>> {
@@ -219,7 +221,7 @@ impl<T: StringMatchRejector + Send + Sync> Verifier for T {
         let criteria = self.criteria(ctx).await?;
         let regexes = self.regexes();
         for check in criteria {
-            for (key, regex) in &regexes {
+            for (key, regex) in regexes {
                 if regex.is_match(check.as_str()) {
                     let reason = self.reason(key, check.as_str());
                     ctx.add_rejection_reason(reason);

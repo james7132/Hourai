@@ -315,15 +315,23 @@ impl EscalationHistory {
         let modlog_id = Id::new(config.get_modlog_channel_id());
         let arrow = if diff > 0 { "up" } else { "down" };
         let esc = if diff > 0 { "escalated" } else { "deescalated" };
-        let reasons: HashSet<&str> = escalation
+        let mut reasons = String::new();
+        for (i, reason) in escalation
             .entry
             .action
             .0
             .get_action()
             .iter()
             .map(|a| a.get_reason())
-            .collect();
-        let reasons = reasons.into_iter().collect::<Vec<_>>().join("; ");
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .enumerate()
+        {
+            if i > 0 {
+                reasons.push_str("; ");
+            }
+            reasons.push_str(reason);
+        }
         let msg = format!(
             ":arrow_{}: **<@{}> {} <@{}>**\nReason: {}\nAction: {}\nExpiration: {}",
             arrow,
